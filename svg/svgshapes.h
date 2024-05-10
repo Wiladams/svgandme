@@ -2,7 +2,7 @@
 
 #include "svgattributes.h"
 
-#include "parseblpath.h"
+#include "svgpath.h"
 
 #include <string>
 #include <array>

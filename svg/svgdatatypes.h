@@ -1,8 +1,7 @@
 #pragma once
 
 
-#include "xmltypes.h"
-#include "xmliterator.h"
+#include "xmlscan.h"
 #include "xmlutil.h"
 
 
@@ -10,9 +9,8 @@
 
 #include "irendersvg.h"
 
-//#include "fastbase64/fastavxbase64.h"
+#include "fastavxbase64.h"
 #include "base64.h"
-#include "gif/gifdec.h"
 #include "css.h"
 
 #include <memory>
@@ -436,22 +434,10 @@ namespace waavs {
             uint8_t* outBuff{ new uint8_t[outBuffSize]{} };
             ByteSpan outChunk(outBuff, outBuffSize);
 
-            if ((mime == "image/gif"))
+            if (mime == "image/png")
             {
-                auto decodedSize = base64_decode((const char*)inBuffChunk.fStart, chunk_size(inBuffChunk), outBuff);
-                //auto decodedSize = fast_avx2_base64_decode((char*)outBuff, (const char*)inBuffChunk.fStart, inBuffChunk.size());
-                //auto decodedSize = fast_avx2_base64_decode((char*)outBuff, (const char*)value.fStart, value.size());
-
-                if (decodedSize >0)
-                {
-                    bool success{ false };
-                    success = parseGIF(outBuff, decodedSize, img);
-                }
-            }
-            else if (mime == "image/png")
-            {
-                auto decodedSize = base64_decode((const char*)inBuffChunk.fStart, chunk_size(inBuffChunk), outBuff);
-                //auto decodedSize = fast_avx2_base64_decode((char*)outBuff, (const char*)inBuffChunk.fStart, inBuffChunk.size());
+                //auto decodedSize = base64_decode((const char*)inBuffChunk.fStart, chunk_size(inBuffChunk), outBuff);
+                auto decodedSize = fast_avx2_base64_decode((char*)outBuff, (const char*)inBuffChunk.fStart, inBuffChunk.size());
                 
                 if (decodedSize>0)
                 {
@@ -461,8 +447,8 @@ namespace waavs {
             }
             else if ((mime == "image/jpeg") || (mime == "image/jpg"))
             {
-                auto decodedSize = base64_decode((const char*)inBuffChunk.fStart, chunk_size(inBuffChunk), outBuff);
-                //auto decodedSize = fast_avx2_base64_decode((char*)outBuff, (const char*)inBuffChunk.fStart, inBuffChunk.size());
+                //auto decodedSize = base64_decode((const char*)inBuffChunk.fStart, chunk_size(inBuffChunk), outBuff);
+                auto decodedSize = fast_avx2_base64_decode((char*)outBuff, (const char*)inBuffChunk.fStart, inBuffChunk.size());
 
 				outChunk = ByteSpan(outBuff, decodedSize);
                 //writeChunkToFile(outChunk, "base64.jpg");

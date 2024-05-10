@@ -2,9 +2,9 @@
 
 
 
-#include "xmliterator.h"
-#include "xmlutil.h"
 
+#include "xmlutil.h"
+#include "xmlscan.h"
 
 #include "svgcolors.h"
 #include "svgdatatypes.h"
@@ -13,7 +13,6 @@
 #include "placeable.h"
 
 #include "base64.h"
-#include "gif/gifdec.h"
 #include "css.h"
 
 #include <memory>

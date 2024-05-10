@@ -1,6 +1,6 @@
 #pragma once
 
-#include "xmltypes.h"
+#include "xmlscan.h"
 
 #include <map>
 

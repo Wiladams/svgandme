@@ -23,14 +23,14 @@
 //
 
 
-#include "apphost.h"
+//#include "apphost.h"
 #include "maths.h"
 #include "geometry.h"
 
 #include "filestreamer.h"
 #include "svgshapes.h"
-#include "svgfilter.h"
 #include "svgfont.h"
+#include "svgdrawingcontext.h"
 
 #include "css.h"
 
@@ -69,7 +69,7 @@ namespace waavs {
             :fFileMap(fs),
             fFontHandler(fh)
         {
-            fDpi = systemPpi;
+            //fDpi = systemPpi;
 
             fStyleSheet = std::make_shared<CSSStyleSheet>();
         }
@@ -77,7 +77,7 @@ namespace waavs {
         SVGDocument(std::string filename, FontHandler *fh)
             :fFontHandler(fh)
         {
-            fDpi = systemPpi;
+            //fDpi = systemPpi;
 
             fFileMap = FileStreamer::createFromFilename(filename);
             if (fFileMap == nullptr)
@@ -358,11 +358,11 @@ namespace waavs {
 
             
             // Filter node registrations
-            SVGFilterNode::registerFactory();           // 'filter'
-            SVGFeGaussianBlurNode::registerFactory();   // 'feGaussianBlur'
-            SVGFeColorMatrixNode::registerFactory();    // 'feColorMatrix'
-            SVGFeCompositeNode::registerFactory();      // 'feComposite'
-			SVGFeTurbulenceNode::registerFactory();     // 'feTurbulence'
+            //SVGFilterNode::registerFactory();           // 'filter'
+            //SVGFeGaussianBlurNode::registerFactory();   // 'feGaussianBlur'
+            //SVGFeColorMatrixNode::registerFactory();    // 'feColorMatrix'
+            //SVGFeCompositeNode::registerFactory();      // 'feComposite'
+			//SVGFeTurbulenceNode::registerFactory();     // 'feTurbulence'
             
             
             // Font node registrations

@@ -2,7 +2,6 @@
 
 #include "xmlutil.h"
 #include "base64.h"
-#include "gif/gifdec.h"
 #include "css.h"
 
 #include "irendersvg.h"

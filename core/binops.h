@@ -2,9 +2,6 @@
 
 #include "definitions.h"
 
-// Let compiler know we want to use some intrinsics
-//#pragma intrinsic (_byteswap_ushort, _byteswap_ulong, _byteswap_uint64)
-
 
 /*
     Binary operators

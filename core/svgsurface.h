@@ -3,8 +3,6 @@
 #ifndef Surface_h
 #define Surface_h
 
-//#pragma once
-
 /*
     The mating between a DIBSection and a BLImage Graphics and BLContext
 
