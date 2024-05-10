@@ -13,12 +13,13 @@
 
 #include "svgcolors.h"
 #include "svgdatatypes.h"
+#include "svgcss.h"
 
 #include "irendersvg.h"
 #include "placeable.h"
 
 #include "base64.h"
-#include "css.h"
+
 
 
 

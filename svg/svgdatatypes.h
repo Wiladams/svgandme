@@ -8,16 +8,14 @@
 #include <cstddef>		// nullptr_t, ptrdiff_t, size_t
 
 #include "xmlscan.h"
-//#include "xmlutil.h"
 
-
+#include "svgcss.h"
 #include "svgcolors.h"
-
 #include "irendersvg.h"
 
 #include "fastavxbase64.h"
 #include "base64.h"
-#include "css.h"
+
 
 
 

@@ -33,12 +33,10 @@
 #include "maths.h"
 #include "geometry.h"
 
-#include "filestreamer.h"
 #include "svgshapes.h"
 #include "svgfont.h"
 #include "svgdrawingcontext.h"
-
-#include "css.h"
+#include "svgcss.h"
 
 
 
@@ -50,7 +48,6 @@ namespace waavs {
     {
 		FontHandler* fFontHandler = nullptr;
         
-        std::shared_ptr<FileStreamer> fFileMap{};
         std::shared_ptr<SVGSVGElement> fSVGNode = nullptr;
 		std::shared_ptr<CSSStyleSheet> fStyleSheet = nullptr;
         
@@ -66,23 +63,12 @@ namespace waavs {
         //==========================================
         // Implementation
 		//==========================================
-        SVGDocument(const std::string &filename,  FontHandler* fh, std::shared_ptr<FileStreamer> fs)
-            :fFileMap(fs),
-            fFontHandler(fh)
-        {
-            //fDpi = systemPpi;
-
-            fStyleSheet = std::make_shared<CSSStyleSheet>();
-        }
         
-        SVGDocument(std::string filename, FontHandler *fh)
+        SVGDocument(FontHandler *fh)
             :fFontHandler(fh)
         {
             //fDpi = systemPpi;
 
-            fFileMap = FileStreamer::createFromFilename(filename);
-            if (fFileMap == nullptr)
-                return;
 
 			fStyleSheet = std::make_shared<CSSStyleSheet>();
         }
@@ -264,23 +250,11 @@ namespace waavs {
             return true;
         }
 
-        // A convenience to construct the document from a filename, and return
-        // a shared pointer to the same.
-        static std::shared_ptr<SVGDocument> createFromFilename(const std::string& filename, FontHandler *fh)
+        // A convenience to construct the document from a chunk, and return
+        // a shared pointer to the document
+        static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, FontHandler* fh)
         {
-            auto fileMap = FileStreamer::createFromFilename(filename);
-            if (fileMap == nullptr)
-                return nullptr;
-
-            auto doc = std::make_shared<SVGDocument>(filename, fh, fileMap);
-            doc->loadFromChunk(fileMap->span());
-
-            return doc;
-        }
-
-        static std::shared_ptr<SVGDocument> createFromChunk(const std::string& filename, FontHandler* fh, const ByteSpan& srcChunk)
-        {
-            auto doc = std::make_shared<SVGDocument>(filename, fh);
+            auto doc = std::make_shared<SVGDocument>(fh);
             doc->loadFromChunk(srcChunk);
 
             return doc;
