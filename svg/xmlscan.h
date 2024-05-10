@@ -30,8 +30,6 @@
 //
 
 
-
-
 #include <unordered_map>
 #include <string>
 #include <sstream>
@@ -44,7 +42,7 @@
 namespace waavs {
     static charset xmlwsp(" \t\r\n\f\v");
     static charset xmlalpha("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
-    static charset xmlnum("0123456789");
+    static charset xmldigit("0123456789");
 
     
     enum XML_ELEMENT_TYPE {

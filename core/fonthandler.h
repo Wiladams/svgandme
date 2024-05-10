@@ -3,6 +3,12 @@
 #ifndef fonthandler_h
 #define fonthandler_h
 
+#include <filesystem>
+#include <algorithm>
+#include <vector>
+#include <memory>
+#include <map>
+#include <string>
 
 
 #include "definitions.h"
@@ -11,12 +17,7 @@
 #include "blend2d/blend2d.h"
 #include "bspanutil.h"
 
-#include <filesystem>
-#include <algorithm>
-#include <vector>
-#include <memory>
-#include <map>
-#include <string>
+
 
 
 namespace waavs {

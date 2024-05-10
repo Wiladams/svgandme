@@ -22,8 +22,14 @@
 // 
 //
 
+#include <functional>
+#include <string>
+#include <vector>
+#include <unordered_map>
+#include <memory>
+#include <sstream>
 
-//#include "apphost.h"
+
 #include "maths.h"
 #include "geometry.h"
 
@@ -34,12 +40,7 @@
 
 #include "css.h"
 
-#include <functional>
-#include <string>
-#include <vector>
-#include <unordered_map>
-#include <memory>
-#include <sstream>
+
 
 
 namespace waavs {

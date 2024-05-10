@@ -2,11 +2,13 @@
 
 #pragma comment(lib, "blend2d.lib")
 
+#include <functional>
+
 #include "blend2d/blend2d.h"
 #include "geometry.h"
 #include "fonthandler.h"
 
-#include <functional>
+
 
 namespace waavs
 {

@@ -1,11 +1,10 @@
 #pragma once
 
-
-#include "bithacks.h"
-
 #include <cstdint>
 #include <cstring>
 #include <iterator>	// for std::data(), std::size()
+
+#include "bithacks.h"
 
 namespace waavs {
 

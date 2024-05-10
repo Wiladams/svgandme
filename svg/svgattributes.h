@@ -1,6 +1,12 @@
 #pragma once
 
-#include "xmlutil.h"
+#include <memory>
+#include <vector>
+#include <cstdint>		// uint8_t, etc
+#include <cstddef>		// nullptr_t, ptrdiff_t, size_t
+
+
+#include "xmlscan.h"
 #include "base64.h"
 #include "css.h"
 
@@ -8,10 +14,7 @@
 #include "svgcolors.h"
 #include "svgstructuretypes.h"
 
-#include <memory>
-#include <vector>
-#include <cstdint>		// uint8_t, etc
-#include <cstddef>		// nullptr_t, ptrdiff_t, size_t
+
 
 
 //================================================

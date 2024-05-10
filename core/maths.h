@@ -39,7 +39,7 @@
 #include <algorithm>
 #include <utility>
 
-#include "bitbang.h"
+#include "bithacks.h"
 
 
 //=================================

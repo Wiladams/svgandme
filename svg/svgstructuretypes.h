@@ -1,9 +1,14 @@
 #pragma once
 
 
+#include <memory>
+#include <vector>
+#include <map>
+#include <unordered_map>
+#include <cstdint>		// uint8_t, etc
+#include <cstddef>		// nullptr_t, ptrdiff_t, size_t
 
-
-#include "xmlutil.h"
+//#include "xmlutil.h"
 #include "xmlscan.h"
 
 #include "svgcolors.h"
@@ -14,15 +19,6 @@
 
 #include "base64.h"
 #include "css.h"
-
-#include <memory>
-#include <vector>
-#include <map>
-#include <unordered_map>
-#include <cstdint>		// uint8_t, etc
-#include <cstddef>		// nullptr_t, ptrdiff_t, size_t
-
-
 
 
 

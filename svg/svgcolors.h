@@ -1,11 +1,11 @@
 #pragma once
 
-
+#include <map>
+#include <string>
 
 #include "blend2d/blend2d.h"
 
-#include <map>
-#include <string>
+
 
 namespace waavs
 {

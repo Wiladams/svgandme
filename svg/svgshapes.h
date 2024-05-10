@@ -1,13 +1,14 @@
 #pragma once
 
-#include "svgattributes.h"
-
-#include "svgpath.h"
-
 #include <string>
 #include <array>
 #include <functional>
 #include <unordered_map>
+
+#include "svgattributes.h"
+#include "svgpath.h"
+
+
 
 
 namespace waavs {
