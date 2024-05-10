@@ -53,7 +53,7 @@ namespace waavs {
     // Math constants
     // Some useful constants
     static constexpr auto pi = 3.14159265358979323846;
-    static constexpr auto pif = (f32)pi;
+    static constexpr auto pif = (float)pi;
     static constexpr auto PiOver2 = 1.57079632679489661923;
     static constexpr auto PiOver4 = 0.78539816339744830961;
     static constexpr auto Pi2 = 6.28318530717958647693;

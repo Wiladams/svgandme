@@ -1,8 +1,7 @@
 #pragma once
 
 
-
-#include "binops.h"
+#include "bithacks.h"
 
 #include <cstdint>
 #include <cstring>

@@ -3,22 +3,70 @@
 
 //	Herein you will find various objects and functions which are
 //	useful while scanning, tokenizing, parsing streams of text.
+#include <cmath>
+#include <charconv>
 
 #include "bspan.h"
 #include "charset.h"
 #include "maths.h"
 
-
-#include <cmath>
-#include <charconv>
-
+// Functions that are implemented here
 namespace waavs {
 	
 	static inline ByteSpan chunk_subchunk(const ByteSpan& a, const size_t start, const size_t sz) noexcept;
 	static inline ByteSpan chunk_take(const ByteSpan& dc, size_t n) noexcept;
 
+	static void writeChunkToFile(const ByteSpan& chunk, const char* filename) noexcept;
+	static void writeChunk(const ByteSpan& chunk) noexcept;
+	static void writeChunkBordered(const ByteSpan& chunk) noexcept;
+	static void printChunk(const ByteSpan& chunk) noexcept;
+}
+
+namespace waavs
+{
+	static charset digitChars("0123456789");
+
+	static inline uint64_t chunk_to_u64(ByteSpan& s) noexcept;
+	static inline int64_t chunk_to_i64(ByteSpan& s) noexcept;
+
+	// simple type parsing
+	static inline int64_t toInteger(const ByteSpan& inChunk) noexcept;
+	static inline double toNumber(const ByteSpan& inChunk) noexcept;
+	static inline double toDouble(const ByteSpan& inChunk) noexcept;
+	static inline std::string toString(const ByteSpan& inChunk) noexcept;
+	static inline int toBoolInt(const ByteSpan& inChunk) noexcept;
+
+		// Number Conversions
+	static inline double chunk_to_double(const ByteSpan& inChunk) noexcept;
+}
+
+namespace waavs
+{
+	static inline size_t copy_to_cstr(char* str, size_t len, const ByteSpan& a) noexcept;
+	static inline ByteSpan chunk_ltrim(const ByteSpan& a, const charset& skippable) noexcept;
+	static inline ByteSpan chunk_rtrim(const ByteSpan& a, const charset& skippable) noexcept;
+	static inline ByteSpan chunk_trim(const ByteSpan& a, const charset& skippable) noexcept;
+	static inline ByteSpan chunk_skip_wsp(const ByteSpan& a) noexcept;
+		
+	static inline bool chunk_starts_with(const ByteSpan& a, const ByteSpan& b) noexcept;
+	static inline bool chunk_starts_with_char(const ByteSpan& a, const uint8_t b) noexcept;
+	static inline bool chunk_starts_with_cstr(const ByteSpan& a, const char* b) noexcept;
+		
+	static inline bool chunk_ends_with(const ByteSpan& a, const ByteSpan& b) noexcept;
+	static inline bool chunk_ends_with_char(const ByteSpan& a, const uint8_t b) noexcept;
+	static inline bool chunk_ends_with_cstr(const ByteSpan& a, const char* b) noexcept;
+		
+	static inline ByteSpan chunk_token(ByteSpan& a, const charset& delims) noexcept;
+	static inline ByteSpan chunk_find_char(const ByteSpan& a, char c) noexcept;
+
+
+		
+}
+
+
+namespace waavs {
 	
-// Create a bytespan that is a subspan of another bytespan
+	// Create a bytespan that is a subspan of another bytespan
 	static inline ByteSpan chunk_subchunk(const ByteSpan& a, const size_t startAt, const size_t sz) noexcept
 	{
 		const uint8_t* start = a.fStart;
@@ -39,14 +87,14 @@ namespace waavs {
 	}
 
 	
-static inline ByteSpan chunk_take(const ByteSpan& dc, size_t n) noexcept
-{
-	return chunk_subchunk(dc, 0, n);
-}
+	static inline ByteSpan chunk_take(const ByteSpan& dc, size_t n) noexcept
+	{
+		return chunk_subchunk(dc, 0, n);
+	}
 }
 
 namespace waavs {
-	static void writeChunkToFile(const ByteSpan& chunk, const char* filename)
+	static void writeChunkToFile(const ByteSpan& chunk, const char* filename) noexcept
 	{
 		FILE* f{};
 		errno_t err = fopen_s(&f, filename, "wb");
@@ -57,7 +105,7 @@ namespace waavs {
 		fclose(f);
 	}
 	
-	static void writeChunk(const ByteSpan& chunk)
+	static void writeChunk(const ByteSpan& chunk) noexcept
 	{
 		ByteSpan s = chunk;
 
@@ -67,7 +115,7 @@ namespace waavs {
 		}
 	}
 
-	static void writeChunkBordered(const ByteSpan& chunk)
+	static void writeChunkBordered(const ByteSpan& chunk) noexcept
 	{
 		ByteSpan s = chunk;
 
@@ -79,7 +127,7 @@ namespace waavs {
 		printf("||");
 	}
 
-	static void printChunk(const ByteSpan& chunk)
+	static void printChunk(const ByteSpan& chunk) noexcept
 	{
 		if (chunk)
 		{
@@ -92,48 +140,17 @@ namespace waavs {
 	}
 }
 
-namespace waavs
-{
-	// simple type parsing
-	static inline int64_t toInteger(const ByteSpan& inChunk) noexcept;
-	static inline double toNumber(const ByteSpan& inChunk) noexcept;
-	static inline double toDouble(const ByteSpan& inChunk) noexcept;
-	static inline std::string toString(const ByteSpan& inChunk) noexcept;
-	static inline int toBoolInt(const ByteSpan& inChunk) noexcept;
-}
+
+
+
+
+
 
 namespace waavs
 {
 	static charset wspChars(" \r\n\t\f\v");		// a set of typical whitespace chars
-	
 
 
-		static inline size_t copy_to_cstr(char* str, size_t len, const ByteSpan& a) noexcept;
-		static inline ByteSpan chunk_ltrim(const ByteSpan& a, const charset& skippable) noexcept;
-		static inline ByteSpan chunk_rtrim(const ByteSpan& a, const charset& skippable) noexcept;
-		static inline ByteSpan chunk_trim(const ByteSpan& a, const charset& skippable) noexcept;
-		static inline ByteSpan chunk_skip_wsp(const ByteSpan& a) noexcept;
-		
-		static inline bool chunk_starts_with(const ByteSpan& a, const ByteSpan& b) noexcept;
-		static inline bool chunk_starts_with_char(const ByteSpan& a, const uint8_t b) noexcept;
-		static inline bool chunk_starts_with_cstr(const ByteSpan& a, const char* b) noexcept;
-		
-		static inline bool chunk_ends_with(const ByteSpan& a, const ByteSpan& b) noexcept;
-		static inline bool chunk_ends_with_char(const ByteSpan& a, const uint8_t b) noexcept;
-		static inline bool chunk_ends_with_cstr(const ByteSpan& a, const char* b) noexcept;
-		
-		static inline ByteSpan chunk_token(ByteSpan& a, const charset& delims) noexcept;
-		static inline ByteSpan chunk_find_char(const ByteSpan& a, char c) noexcept;
-
-		// Number Conversions
-		static inline double chunk_to_double(const ByteSpan& inChunk) noexcept;
-		
-}
-
-
-
-namespace waavs
-{
 	static inline size_t copy_to_cstr(char* str, size_t len, const ByteSpan& a) noexcept
 	{
 		size_t maxBytes = chunk_size(a) < len ? chunk_size(a) : len;
@@ -315,9 +332,9 @@ namespace waavs
 	// it into a 64-bit unsigned integer
 	// Stop processing when the first non-digit is seen, 
 	// or the end of the chunk
-	static inline uint64_t chunk_to_u64(ByteSpan& s)
+	static inline uint64_t chunk_to_u64(ByteSpan& s) noexcept
 	{
-		static charset digitChars("0123456789");
+		//static charset digitChars("0123456789");
 
 		uint64_t v = 0;
 
@@ -330,9 +347,9 @@ namespace waavs
 		return v;
 	}
 
-	static inline int64_t chunk_to_i64(ByteSpan& s)
+	static inline int64_t chunk_to_i64(ByteSpan& s) noexcept
 	{
-		static charset digitChars("0123456789");
+		//static charset digitChars("0123456789");
 
 		int64_t v = 0;
 
@@ -372,7 +389,7 @@ namespace waavs
 
 	static ByteSpan scanNumber(const ByteSpan& inChunk, ByteSpan& numchunk)
 	{
-		static charset digitChars("0123456789");                   // only digits
+		//static charset digitChars("0123456789");                   // only digits
 
 		ByteSpan s = inChunk;
 		numchunk = inChunk;
@@ -448,7 +465,7 @@ namespace waavs
 		*/
 		
 		///*
-		static charset digitChars("0123456789");
+		//static charset digitChars("0123456789");
 
 		double sign = 1.0;
 		double res = 0.0;
