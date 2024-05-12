@@ -1,7 +1,7 @@
 #pragma once
 
 #include "blend2d/blend2d.h"
-#include "uievent.h"
+#include "core/uievent.h"
 #include "svg/irendersvg.h"
 
 namespace waavs {

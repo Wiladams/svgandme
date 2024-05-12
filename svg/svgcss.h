@@ -9,6 +9,7 @@
 
 #include "bspan.h"
 #include "bspanutil.h"
+#include "xmlscan.h"
 
 // Core data structures and types to support CSS parsing
 

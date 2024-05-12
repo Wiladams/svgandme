@@ -1,6 +1,6 @@
 #include "svg/xmlscan.h"
 
-#include "filestreamer.h"
+#include "app/filestreamer.h"
 #include "xmlutil.h"
 
 using namespace waavs;

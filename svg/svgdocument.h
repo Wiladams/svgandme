@@ -356,10 +356,5 @@ namespace waavs {
 
         }
 
-		std::shared_ptr<SVGDocument> createDocumentFromFile(const std::string& filename, FontHandler* fh)
-		{
-			auto doc = SVGDocument::createFromFilename(filename, fh);
-            return doc;
-		}
     };
 }

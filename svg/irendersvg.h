@@ -5,8 +5,8 @@
 #include <functional>
 
 #include "blend2d/blend2d.h"
-#include "geometry.h"
-#include "fonthandler.h"
+#include "core/geometry.h"
+#include "core/fonthandler.h"
 
 
 
@@ -58,8 +58,10 @@ namespace waavs
         NON_ZERO = 0,
         EVEN_ODD = 1,
     };
+}
 
-
+namespace waavs
+{
     /*
         IGraphics defines the essential interface for doing vector graphics
         This is a pure virtual interface for the most part, so a sub-class must
