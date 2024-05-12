@@ -1,4 +1,6 @@
 # svgandme
+ <img src="images/peacockspider.png" alt="peacockspider" width=640/></br>
+
  SVGAndMe turns .svg files into something useful for programmers.  You can use
  the parser to turn the .svg file into a document in memory that you can then
  use in your program.  You can also use the parser, and a drawing canvas
