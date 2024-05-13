@@ -40,10 +40,7 @@ inherently support the more web focused aspects of SVG such as CSS, groupings, d
 Here, svgandme fills in the blanks, having a modest amount of support for style sheets, and some more esoteric features 
 of the SVG specification.
 
-## Not supported</br>
-- Animation  - Very runtime specific, not likely to ever be included
-- Filters    - will depend on future blend2d support
-- Path based clipping - will depend on future blend2d support
+
 
 ## Usage</br>
  Look into the 'testy/' directory for some example projects.  'svgimage' shows the basics of how to 
@@ -126,7 +123,7 @@ SVG is an XML based grammar.  SVGAndMe contains a fairly robust XML parser which
 
 ### Non-Structural Nodes
 - 'solidColor'
-- 'clipPath'
+- 'clipPath' (limited to rectangle)
 - 'defs'
 - 'conicGradient'
 - 'linearGradient'
@@ -142,3 +139,9 @@ SVG is an XML based grammar.  SVGAndMe contains a fairly robust XML parser which
 - 'missing-glyph'
 - 'font-face-name'
 - 'font-face-src'
+
+
+## Not supported</br>
+- Animation  - Very runtime specific, not likely to ever be included
+- Filters    - will depend on future blend2d support
+- Path based clipping - will depend on future blend2d support

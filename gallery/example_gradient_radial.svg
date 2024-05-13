@@ -1,0 +1,10 @@
+<svg height="300" width="600" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <radialGradient id="myRG" cx="300" cy="170" r="300" fx="300" fy="170" spreadMethod="pad" gradientUnits="userSpaceOnUse">
+            <stop offset="0%"   stop-color="bisque" />
+            <stop offset="60%" stop-color="cadetblue" />
+        </radialGradient>
+    </defs>
+    <ellipse cx="300" cy="170" rx="165" ry="55" fill="url(#myRG)" />
+    <text x="10" y="85" font-family="Arial" stroke="grey" stroke-width="1" font-size="85" fill="url(#myRG)" >Radial Gradient</text>
+</svg>

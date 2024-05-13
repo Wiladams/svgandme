@@ -1,0 +1,18 @@
+<svg width="220" height="220" 
+  xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <conicGradient id="ConicGradient1" x1="110" y1="110" angle="0">
+      <stop offset="0%" stop-color="red" />
+      <stop offset="15%" stop-color="orange" />
+      <stop offset="35%" stop-color="yellow" />
+      <stop offset="50%" stop-color="green" />
+      <stop offset="65%" stop-color="blue" />
+      <stop offset="80%" stop-color="indigo" />
+      <stop offset="95%" stop-color="violet" />
+      <stop offset="100%" stop-color="red" />
+    </conicGradient>
+  </defs>
+
+  <circle cx="110" cy="110" r="100" fill="none" stroke-width="14" stroke="url(#ConicGradient1)" />
+</svg>
+
