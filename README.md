@@ -11,7 +11,8 @@ SVGAndMe turns .svg files into something useful for programmers.  You can use
  It is a fairly complete library, supporting most of the SVG features found in 
  typical usage today.
  
-
+# Gallery
+Be sure to check the <a href="gallery">gallery</a> for example .svg files SVGAndMe can handle.
 ## Design Goal</br>
 The general design goal of SVGAndMe is to support a high percentage
 of SVG files found in the wild.  It is also a design goal to be as
