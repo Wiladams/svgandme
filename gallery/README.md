@@ -17,6 +17,14 @@
 |gradient, image, path|
 </br>
 
+| Spiderman |
+|-------------------------------|
+| <img src="spiderman.png" alt="spiderman" width=320/> |
+| <a href="Spiderman.svg">Spiderman.svg</a>
+|A simple polygon .svg image|
+|path|
+</br>
+
 | Conical Gradient |
 |-------------------------------|
 | <img src="conical_gradient.png" alt="conical_gradient" width=320/> |
