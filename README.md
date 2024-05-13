@@ -1,7 +1,7 @@
 # svgandme
- <img src="images/peacockspider.png" alt="peacockspider" width=640/></br>
+<img src="images/peacockspider.png" alt="peacockspider" width=640/></br>
 
- SVGAndMe turns .svg files into something useful for programmers.  You can use
+SVGAndMe turns .svg files into something useful for programmers.  You can use
  the parser to turn the .svg file into a document in memory that you can then
  use in your program.  You can also use the parser, and a drawing canvas
  to turn that .svg into an image to be used in your program, or saved to a file.
@@ -16,13 +16,13 @@
  cross platform as possible, not relying on any platform specific features, other
  than the blend2d library, which is fairly portable.
 
-Implementation
+###Implementation
 SVGAndMe is fairly straightforward C++ code.  All the parsing is done with no 
 external dependencies, leaving you with a clean SVGDocument that can be used
 for multiple purposes.  The blend2d graphics library is used to turn a parsed
 document into a rendered image, that can then be further manipulated.
 
- A bit about the blend2d library
+###A bit about the blend2d library
 
  The blend2d library is a fast, multi-threaded 2D graphics library that was designed to be
  fairly compatible with the SVG graphics features.  As such, most of the drawing features of SVG
@@ -35,15 +35,17 @@ document into a rendered image, that can then be further manipulated.
  Here, svgandme fills in the blanks, having a modest amount of support for style sheets, and some more esoteric features 
  of the SVG specification.
 
- Not supported
+###Not supported
  Animation  - Very runtime specific, not likely to ever be included
  Filters    - will depend on future blend2d support
  Path based clipping - will depend on future blend2d support
 
- Usage
- The 'testy/' directory has a couple of example projects.  'svgimage' shows the basics of how to 
+###Usage
+ Look into the 'testy/' directory for some example projects.  'svgimage' shows the basics of how to 
  load a .svg file, and render it into an image, which can then be saved.  That's just the basics
  and can act as a starting point for using the library.
 
+###Extra Notes
+SVG is an XML based grammar.  SVGAndMe contains a fairly robust XML parser which is zero memory allocating, and very fast.  This XML scanner is probably good enough to tackle most typical XML processing tasks, so it might serve as a jumping off point if you have more XML than just SVG to be processed in your applications.  Look at the 'xmlpull/' example for usage details.
 
 
