@@ -54,3 +54,91 @@ of the SVG specification.
 SVG is an XML based grammar.  SVGAndMe contains a fairly robust XML parser which is zero memory allocating, and very fast.  This XML scanner is probably good enough to tackle most typical XML processing tasks, so it might serve as a jumping off point if you have more XML than just SVG to be processed in your applications.  Look at the 'xmlpull/' example for usage details.
 
 
+# Supported Elements and Attributes
+
+### Meta Information
+- Comments
+- 'defs' 
+- 'meta' 
+- 'desc' 
+- 'title'
+
+### Basic Shapes
+
+- PolyLines
+- circle
+- ellipse
+- line
+- polygon
+- polyline
+- path
+- rect
+- Text
+
+### Style
+- 'style' element
+- 'style' property
+- display properties
+- CDATA stylesheet
+
+### Attributes
+- transform
+- opacity
+- clip-path (only rectangle clipping)
+- fill (all kinds of paint)
+- fill-opacity
+- fill-rule
+- font-size
+- font-family
+- font-style
+- font-stretch
+- font-weight
+- marker
+- marker-start
+- marker-mid
+- marker_end
+- stroke (all kinds of paint)
+- stroke-opacity
+- stroke-linecap
+- stroke-linecap-start
+- stroke-linecap-end
+- stroke-linejoin
+- stroke-miterlimit
+- stroke-width
+- marker
+- paint-order
+- systemLanguage
+- text-anchor
+- vector-effect
+- viewBox
+
+
+### Structural Nodes
+- 'a'
+- 'g'
+- 'image' (png, jpeg, bmp, gif)
+- 'svg'
+- 'style'
+- 'switch'
+- 'text'
+- 'tspan'
+- 'use'
+
+### Non-Structural Nodes
+- 'solidColor'
+- 'clipPath'
+- 'defs'
+- 'conicGradient'
+- 'linearGradient'
+- 'radialGradient'
+- 'marker'
+- 'pattern'
+- 'symbol'
+
+### Font Support
+- 'font'
+- 'font-face'
+- 'glyph'
+- 'missing-glyph'
+- 'font-face-name'
+- 'font-face-src'
