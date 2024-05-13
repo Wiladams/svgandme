@@ -25,11 +25,19 @@
 |path, text, gradient|
 </br>
 
+| Smith Chart |
+|-------------------------------|
+| <img src="smithchart.png" alt="smithchart" width=320/> |
+| <a href="Smith_chart.svg">Smith_chart.svg</a>
+|complex text rotations, complex paths|
+|path, text|
+</br>
+
 | Spiderman |
 |-------------------------------|
 | <img src="spiderman.png" alt="spiderman" width=320/> |
 | <a href="Spiderman.svg">Spiderman.svg</a>
-|A simple polygon .svg image|
+|Using large paths|
 |path|
 </br>
 
