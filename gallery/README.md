@@ -9,6 +9,23 @@
 |path|
 </br>
 
+| Gradient Conical |
+|-------------------------------|
+| <img src="conical_gradient.png" alt="conical_gradient" width=320/> |
+| <a href="example_gradient_conical.svg">example_gradient_conical.svg</a>
+|Implementation of non-standard conical gradient feature|
+|gradient, path|
+</br>
+
+| Gradient Radial |
+|-------------------------------|
+| <img src="mandala.png" alt="radial_gradient" width=320/> |
+| <a href="mandala.svg">mandala.svg</a>
+|Heavy usage of radial gradients|
+|radial gradient, path|
+</br>
+
+
 | Peacock Spider |
 |-------------------------------|
 | <img src="peacockspider.png" alt="peacockspider" width=320/> |
@@ -41,9 +58,4 @@
 |path|
 </br>
 
-| Conical Gradient |
-|-------------------------------|
-| <img src="conical_gradient.png" alt="conical_gradient" width=320/> |
-| <a href="example_gradient_conical.svg">example_gradient_conical.svg</a>
-|Implementation of non-standard conical gradient feature|
-|gradient, path|
+
