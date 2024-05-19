@@ -35,7 +35,7 @@
 #include <sstream>
 #include <optional>
 
-#include "bspanutil.h"
+#include "bspan.h"
 
 
 

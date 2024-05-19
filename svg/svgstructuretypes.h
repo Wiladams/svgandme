@@ -8,7 +8,6 @@
 #include <cstdint>		// uint8_t, etc
 #include <cstddef>		// nullptr_t, ptrdiff_t, size_t
 
-//#include "xmlutil.h"
 #include "xmlscan.h"
 
 #include "svgcolors.h"

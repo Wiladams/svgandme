@@ -2,7 +2,7 @@
 #include "svg.h"
 
 #include "filestreamer.h"
-
+#include "viewport.h"
 
 using namespace waavs;
 
@@ -64,9 +64,20 @@ int main(int argc, char **argv)
 	printf("gDoc::sceneFrame: %f,%f %f,%f\n", objFr.x, objFr.y, objFr.w, objFr.h);
 	
 
+	// Setup a viewport to match the document size
+	ViewPort vp{ 0,0,r.w, r.h };
+	
+	// Play with changing the viewport here
+	// You can translate, scale, and rotate
+	//vp.scaleBy(1.0/2.0, 1.0/2.0, r.w / 2.0, r.h / 2.0);
+	//vp.rotateBy(radians(90.0), r.w / 2.0, r.h / 2.0);
+	
 	// Create a drawing context to render into
 	SvgDrawingContext ctx(r.w, r.h, &gFontHandler);
 
+	// apply the viewport's sceneToSurface transform to the context
+	ctx.setTransform(vp.surfaceToSceneTransform());
+	
 	// Render the document into the context
 	gDoc->draw(&ctx);
 

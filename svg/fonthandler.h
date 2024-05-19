@@ -11,11 +11,12 @@
 #include <string>
 
 
-#include "definitions.h"
-#include "maths.h"
+
 
 #include "blend2d/blend2d.h"
-#include "bspanutil.h"
+
+#include "maths.h"
+#include "bspan.h"
 
 
 

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "blend2d/blend2d.h"
-#include "core/uievent.h"
-#include "svg/irendersvg.h"
+#include "uievent.h"
+#include "irendersvg.h"
 
 namespace waavs {
 	inline double right(const BLRect& r) { return r.x + r.w; }

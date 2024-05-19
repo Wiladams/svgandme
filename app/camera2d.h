@@ -1,15 +1,18 @@
 #pragma once
 
-#include "svg/irendersvg.h"
-#include "svg/svgsurface.h"
-#include "core/viewport.h"
-
-
-#include "core/fonthandler.h"
-#include "user32pixelmap.h"
-
 #include <functional>
 #include <memory>
+
+
+#include "svg/irendersvg.h"
+//#include "svg/svgsurface.h"
+#include "viewport.h"
+
+
+#include "fonthandler.h"
+#include "user32pixelmap.h"
+
+
 
 namespace waavs
 {
@@ -21,9 +24,12 @@ namespace waavs
 	//
 	struct Camera2D : public ISVGDrawable
 	{
-		User32PixelMap fPixelMap{};
-		SVGSurface fSurface;
 		bool fNeedsRedraw{ true };
+		
+		IRenderSVG *fSurface;
+		//User32PixelMap fPixelMap{};
+		//SVGSurface fSurface;
+
 		
 		// This is the thing that will be drawn
 		std::shared_ptr<ISVGDrawable> fScene = nullptr;
@@ -32,26 +38,26 @@ namespace waavs
 		
 		
 		// The initial viewport
-		SVGViewPort fViewport;
+		ViewPort fViewport;
 		
-		Camera2D(FontHandler *fh)
-			: fSurface(fh)
+		Camera2D(IRenderSVG *surf, FontHandler *fh)
+			: fSurface(surf)
 		{
 		}
 		
-		Camera2D(double w, double h, FontHandler* fh)
-			:fSurface(fh)
+		Camera2D(double w, double h, IRenderSVG *surf, FontHandler* fh)
+			:fSurface(surf)
 			,fViewport(0,0,w,h)
 		{
-			fPixelMap.init((int)w, (int)h);
-			fSurface.attachPixelArray(fPixelMap,8);
-			fSurface.textFont("Arial");
+			//fPixelMap.init((int)w, (int)h);
+			//fSurface.attachPixelArray(fPixelMap,8);
+			//fSurface.textFont("Arial");
 		}
 
 		void init(int w, int h)
 		{
-			fPixelMap.init(w, h);
-			fSurface.attachPixelArray(fPixelMap);
+			//fPixelMap.init(w, h);
+			//fSurface.attachPixelArray(fPixelMap);
 			needsRedraw(true);
 		}
 		
@@ -99,25 +105,25 @@ namespace waavs
 			// print objectFrame()
 			//printf("Camera2D snapshot:  objectFrame = %f, %f, %f, %f\n", objectFrame().x, objectFrame().y, objectFrame().w, objectFrame().h);
 			
-			fSurface.push();
+			fSurface->push();
 
 			// Do whatever before we render the scene
 			if (fPreRender)
-				fPreRender(&fSurface);
+				fPreRender(fSurface);
 
-			fSurface.push();
+			fSurface->push();
 			// Allow the viewport to alter the surface before drawing
 			// anything else
-			fViewport.draw(&fSurface);
+			fViewport->draw(fSurface);
 			//fSurface.exec(fViewport);
 
 			// draw the scene into the surface
 			if (fScene != nullptr)
 				fScene->draw(&fSurface);
 
-			fSurface.flush();
+			fSurface->flush();
 			
-			fSurface.pop();
+			fSurface->pop();
 
 
 			// Do whatever, after scene is rendered
@@ -126,9 +132,9 @@ namespace waavs
 			if (fPostRender)
 				fPostRender(&fSurface);
 			
-			fSurface.flush();
+			fSurface->flush();
 			
-			fSurface.pop();
+			fSurface->pop();
 
 			needsRedraw(false);
 		}

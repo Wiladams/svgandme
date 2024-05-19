@@ -19,8 +19,8 @@ namespace waavs {
 		BLMatrix2D fInverseTransform = BLMatrix2D::makeIdentity();
 		
 		// For rotation
-		double fRotRad = 0.0;
-		BLPoint fRotCenter{};
+		double fRotRad = 0.0;		// Number of radians rotated
+		BLPoint fRotCenter{};		// Point around which we rotate
 
 		BLRect fSurfaceFrame{};		// Coordinate system we are projecting onto
 		BLRect fSceneFrame{};		// Coordinate system of scene we are projecting
@@ -82,7 +82,7 @@ namespace waavs {
 		// transformation matrix and do it separately.
 		// So, only use these for one offs, otherwise, get the transform
 		// and use that if doing bulk conversions.
-		BLPoint sceneToSurface(double x, double y)
+		BLPoint sceneToSurface(double x, double y) const
 		{
 			BLPoint pt = fTransform.mapPoint(x, y);
 			return pt;
@@ -98,7 +98,7 @@ namespace waavs {
 		// Creates scale from scene to surface
 		// Calculate a scale, returning the minimal
 		// value that preserves aspect ratio.
-		double trueScale(BLPoint &ascale)
+		double trueScale(BLPoint &ascale) const
 		{
 			double tScale = 1.0;
 
@@ -164,7 +164,10 @@ namespace waavs {
 		}
 
 		// This does a scale relative to a given point
-		// It will also do the translation at the same time
+		// You must provide a center point, which indicates
+		// where the scaling is relative to.
+		// The routine will do the necessary translations, so the center
+		// point remains in the center.
 		bool scaleBy(double sdx, double sdy, double cx, double cy)
 		{
 			//printf("ViewRect::scaleBy: %3.3f, %3.3f, %3.3f, %3.3f\n", sx, sy, centerx, centery);

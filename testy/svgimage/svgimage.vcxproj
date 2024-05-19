@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -76,7 +76,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\;..\..\;..\..\core;..\..\svg;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\;..\..\;..\..\svg;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
@@ -94,7 +94,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\;..\..\;..\..\core;..\..\svg;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\;..\..\;..\..\svg;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
@@ -112,7 +112,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\;..\..\;..\..\core;..\..\svg;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\;..\..\;..\..\svg;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
@@ -130,7 +130,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\;..\..\;..\..\core;..\..\svg;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\;..\..\;..\..\svg;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
@@ -143,16 +143,18 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\core\base64.cpp" />
-    <ClCompile Include="..\..\core\chromiumbase64.c" />
-    <ClCompile Include="..\..\core\fastavxbase64.c" />
+    <ClCompile Include="..\..\svg\base64.cpp" />
     <ClCompile Include="svgimage.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\app\blgraphics.h" />
-    <ClInclude Include="..\..\app\joystick.h" />
+    <ClInclude Include="..\..\app\camera2d.h" />
     <ClInclude Include="..\..\app\uievent.h" />
+    <ClInclude Include="..\..\core\geometry.h" />
+    <ClInclude Include="..\..\svg\base64.h" />
+    <ClInclude Include="..\..\svg\bithacks.h" />
+    <ClInclude Include="..\..\svg\bspan.h" />
     <ClInclude Include="..\..\svg\irendersvg.h" />
+    <ClInclude Include="..\..\svg\maths.h" />
     <ClInclude Include="..\..\svg\placeable.h" />
     <ClInclude Include="..\..\svg\svg.h" />
     <ClInclude Include="..\..\svg\svgattributes.h" />
@@ -165,6 +167,7 @@
     <ClInclude Include="..\..\svg\svgpath.h" />
     <ClInclude Include="..\..\svg\svgshapes.h" />
     <ClInclude Include="..\..\svg\svgstructuretypes.h" />
+    <ClInclude Include="..\..\svg\viewport.h" />
     <ClInclude Include="..\..\svg\xmlscan.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

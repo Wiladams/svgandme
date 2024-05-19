@@ -19,8 +19,8 @@
 
 #include "blend2d/blend2d.h"
 
-#include "charset.h"
-#include "bspanutil.h"
+
+#include "bspan.h"
 #include "maths.h"
 
 

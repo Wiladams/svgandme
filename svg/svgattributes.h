@@ -7,7 +7,6 @@
 
 
 #include "xmlscan.h"
-#include "base64.h"
 #include "svgcss.h"
 
 #include "irendersvg.h"

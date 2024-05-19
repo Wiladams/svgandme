@@ -5,8 +5,8 @@
 #include <functional>
 
 #include "blend2d/blend2d.h"
-#include "core/geometry.h"
-#include "core/fonthandler.h"
+#include "geometry.h"
+#include "fonthandler.h"
 
 
 

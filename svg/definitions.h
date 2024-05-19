@@ -30,13 +30,3 @@ namespace waavs
     static INLINE bool isBE() noexcept { return !isLE(); }
 }
 
-namespace {
-    //using byte = uint8_t;
-
-    //using uchar = unsigned char;
-    //using uint = unsigned int;
-    //using ushort = uint16_t;
-
-    //using f32 = float;
-    //using f64 = double;
-}

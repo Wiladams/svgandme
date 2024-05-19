@@ -18,21 +18,12 @@
     <ClCompile Include="svgimage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\core\base64.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\core\chromiumbase64.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\core\fastavxbase64.c">
+    <ClCompile Include="..\..\svg\base64.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\svg\svgdocument.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\app\joystick.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\app\uievent.h">
@@ -77,7 +68,25 @@
     <ClInclude Include="..\..\svg\placeable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\app\blgraphics.h">
+    <ClInclude Include="..\..\core\geometry.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\bithacks.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\bspan.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\maths.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\base64.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\app\camera2d.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\viewport.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
