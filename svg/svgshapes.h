@@ -297,7 +297,7 @@ namespace waavs {
 			return true;
 		}
 		
-
+		/*
 		// for debugging purposes
 		void drawVertices(IRenderSVG* ctx)
 		{	
@@ -308,6 +308,7 @@ namespace waavs {
 				ctx->strokeCircle(pt.x, pt.y, 5);
 			}
 		}
+		*/
 		
 		// traverse the points of the path
 		// drawing a marker at each point

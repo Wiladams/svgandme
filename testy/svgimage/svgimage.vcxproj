@@ -149,10 +149,11 @@
   <ItemGroup>
     <ClInclude Include="..\..\app\camera2d.h" />
     <ClInclude Include="..\..\app\uievent.h" />
-    <ClInclude Include="..\..\core\geometry.h" />
     <ClInclude Include="..\..\svg\base64.h" />
     <ClInclude Include="..\..\svg\bithacks.h" />
     <ClInclude Include="..\..\svg\bspan.h" />
+    <ClInclude Include="..\..\svg\definitions.h" />
+    <ClInclude Include="..\..\svg\geometry.h" />
     <ClInclude Include="..\..\svg\irendersvg.h" />
     <ClInclude Include="..\..\svg\maths.h" />
     <ClInclude Include="..\..\svg\placeable.h" />

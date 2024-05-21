@@ -68,9 +68,6 @@
     <ClInclude Include="..\..\svg\placeable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\core\geometry.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\svg\bithacks.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -87,6 +84,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\viewport.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\definitions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\geometry.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

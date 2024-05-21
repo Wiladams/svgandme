@@ -6,8 +6,7 @@
 #include <unordered_map>
 
 
-#include "svg/svgshapes.h"
-
+#include "svgshapes.h"
 #include "svgpath.h"
 #include "svgcss.h"
 

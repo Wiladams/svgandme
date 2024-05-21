@@ -85,7 +85,7 @@ namespace waavs {
         BLRect frame() const override { return BLRect(); }
 
         void moveTo(double x, double y) override { ; }
-        void mouseEvent(const MouseEvent& e) override { return; }
+        //void mouseEvent(const MouseEvent& e) override { return; }
         
 
         virtual void loadSelfFromXmlElement(const XmlElement& elem)
@@ -525,10 +525,10 @@ namespace waavs {
         
 
 
-        void mouseEvent(const MouseEvent& e) override
-        {
-            ; // do nothing by default
-        }
+        //void mouseEvent(const MouseEvent& e) override
+        //{
+        //  ; // do nothing by default
+        //}
 
     };
 }

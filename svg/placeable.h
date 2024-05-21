@@ -1,8 +1,12 @@
 #pragma once
 
 #include "blend2d/blend2d.h"
-#include "uievent.h"
 #include "irendersvg.h"
+
+//
+// These are various routines that help manipulate the BLRect
+// structure.  Finding corners, moving, query containment
+// scaling, merging, expanding, and the like
 
 namespace waavs {
 	inline double right(const BLRect& r) { return r.x + r.w; }
@@ -62,14 +66,15 @@ namespace waavs {
 			moveTo(frame().x + dx, frame().y + dy);
 		}
 
-		virtual void mouseEvent(const MouseEvent& e) { return; }
-		virtual void keyEvent(const KeyboardEvent& e) { return; }
+		//virtual void mouseEvent(const MouseEvent& e) { return; }
+		//virtual void keyEvent(const KeyboardEvent& e) { return; }
 	};
 
 
 }
 
 namespace waavs {
+	// Something that can be drawn in the user interface
 	struct IViewable : public IPlaceable, public ISVGDrawable
 	{
 		std::string fName{};
