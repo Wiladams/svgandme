@@ -138,7 +138,7 @@ namespace waavs
             BLResult bResult = BLContext::flush(BL_CONTEXT_FLUSH_SYNC);
             if (bResult != BL_SUCCESS)
             {
-                printf("BLGraphics.flush(), ERROR: %d\n", bResult);
+                printf("IRenderSVG.flush(), ERROR: %d\n", bResult);
             }
 
             return bResult == BL_SUCCESS;

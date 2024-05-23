@@ -645,7 +645,7 @@ static LRESULT HandlePointerMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
 
 static LRESULT HandlePaintMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    printf("HandlePaintMessage\n");
+    //printf("HandlePaintMessage\n");
 
     LRESULT res = 0;
     PAINTSTRUCT ps;
