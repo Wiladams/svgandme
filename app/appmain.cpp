@@ -16,18 +16,19 @@
 
 #include "apphost.h"
 
-#include <shellapi.h>   // for drag-drop support
-
-#include "layeredwindow.h"
-#include "fonthandler.h"
-#include "stopwatch.h"
-
-
 #include <cstdio>
 #include <array>
 #include <iostream>
 #include <memory>
 #include <future>
+
+#include <shellapi.h>   // for drag-drop support
+
+#include "layeredwindow.h"
+#include "stopwatch.h"
+
+
+
 
 
 using namespace waavs;
@@ -70,7 +71,6 @@ static StopWatch gAppClock;
 
 User32Window * gAppWindow = nullptr;
 User32PixelMap gAppFrameBuffer;
-FontHandler gFontHandler{};
 
 bool gIsLayered = false;
 
@@ -120,15 +120,8 @@ static Joystick gJoystick1(JOYSTICKID1);
 static Joystick gJoystick2(JOYSTICKID2);
 
 
-User32PixelMap& appFrameBuffer()
-{
-    return gAppFrameBuffer;
-}
+User32PixelMap& appFrameBuffer() {return gAppFrameBuffer;}
 
-FontHandler * appFontHandler()
-{
-	return &gFontHandler;
-}
 
 //
 //    https://docs.microsoft.com/en-us/windows/desktop/inputdev/using-raw-input
@@ -140,9 +133,9 @@ static const USHORT HID_GAMEPAD = 5;
 static const USHORT HID_KEYBOARD = 6;
 
 // Register for mouseand keyboard
-void HID_RegisterDevice(HWND hTarget, USHORT usage, USHORT usagePage = 1)
+static void HID_RegisterDevice(HWND hTarget, USHORT usage, USHORT usagePage = 1)
 {
-    RAWINPUTDEVICE hid[1];
+    RAWINPUTDEVICE hid[1]{};
 
     hid[0].usUsagePage = usagePage;
     hid[0].usUsage = usage;
@@ -154,7 +147,7 @@ void HID_RegisterDevice(HWND hTarget, USHORT usage, USHORT usagePage = 1)
     //printf("HID_RegisterDevice: HWND: 0x%p,  %d  %d\n", hTarget, bResult, ::GetLastError());
 }
 
-void HID_UnregisterDevice(USHORT usage)
+static void HID_UnregisterDevice(USHORT usage)
 {
     RAWINPUTDEVICE hid{ 0 };
     hid.usUsagePage = 1;
@@ -268,7 +261,7 @@ static LRESULT HandleKeyboardMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
     keyCode = 0;
     keyChar = 0;
 
-    KeyboardEvent e;
+    KeyboardEvent e{};
     e.keyCode = (int)wParam;
     e.repeatCount =LOWORD(lParam);  // 0 - 15
     e.scanCode = ((lParam & 0xff0000) >> 16);        // 16 - 23
@@ -652,7 +645,7 @@ static LRESULT HandlePointerMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
 
 static LRESULT HandlePaintMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    //printf("HandlePaintMessage\n");
+    printf("HandlePaintMessage\n");
 
     LRESULT res = 0;
     PAINTSTRUCT ps;
@@ -1032,7 +1025,7 @@ void showAppWindow()
     gAppWindow->show();
 }
 
-
+/*
 // Typography
 BLFontFace loadFont(const char* filename)
 {
@@ -1054,7 +1047,7 @@ void loadFontFiles(std::vector<const char*> filenames)
 {
     gFontHandler.loadFonts(filenames);
 }
-
+*/
 
 //
 //    Generic Windows message handler
@@ -1330,7 +1323,7 @@ bool static prolog()
     setupDpi();
 
     // Typography initialization
-    loadDefaultFonts();
+    //loadDefaultFonts();
 
     // set the canvas a default size to start
     // but don't show it

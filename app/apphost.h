@@ -29,10 +29,12 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <mmsystem.h>
+#include <stdio.h>
+#include <string>
+#include <memory>
+
 
 #include "definitions.h"
-
-
 
 
 #if BUILD_AS_DLL
@@ -55,17 +57,20 @@
 
 #define APP_EXTERN  extern
 
+
+
+#include "blend2d/blend2d.h"
+
 #include "maths.h"
 #include "pubsub.h"
 #include "nativewindow.h"
 #include "uievent.h"
+#include "joystick.h"
 #include "network.h"
 #include "user32pixelmap.h"
-#include "fonthandler.h"
 
-#include <stdio.h>
-#include <string>
-#include <memory>
+
+
 
 
 
@@ -123,7 +128,6 @@ APP_EXPORT extern size_t canvasStride;
 // The control the lifetime of the environment, creation of primary window
 // and whether various parts of the IO system are present
 APP_EXPORT waavs::User32PixelMap& appFrameBuffer();
-APP_EXPORT waavs::FontHandler * appFontHandler();
 
 
 APP_EXPORT void createAppWindow(long aWidth, long aHeight, const char* title);
@@ -210,10 +214,10 @@ extern "C" {
 
 // Typography
 // These should be in the 'extern C' section
-APP_EXPORT void loadDefaultFonts();
-APP_EXPORT void loadFontDirectory(const char * dir);
-APP_EXPORT BLFontFace loadFont(const char* filename);
-APP_EXPORT void loadFontFiles(std::vector<const char*> filenames);
+//APP_EXPORT void loadDefaultFonts();
+//APP_EXPORT void loadFontDirectory(const char * dir);
+//APP_EXPORT BLFontFace loadFont(const char* filename);
+//APP_EXPORT void loadFontFiles(std::vector<const char*> filenames);
 
 // Make Topic publishers available
 // Doing C++ pub/sub

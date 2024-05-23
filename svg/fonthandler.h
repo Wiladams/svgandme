@@ -157,7 +157,7 @@ namespace waavs {
             loadFonts(fontNames);
         }
 
-        float getAdjustedFontSize(float sz)
+        float getAdjustedFontSize(float sz) const
         {
             float fsize = sz * ((float)fDotsPerInch / fUnitsPerInch);
             return fsize;

@@ -22,12 +22,12 @@
 
 #include "maths.h"
 #include "pixelaccessor.h"
-//#include "memutils.h"
+#include "blend2d/blend2d.h"
 
 namespace waavs {
-    	// Used to rapidly copy 32 bit values 
-	static void memset_l(void* adr, int32_t val, size_t count) 
-	{
+    // Used to rapidly copy 32 bit values 
+    static void memset_l(void* adr, int32_t val, size_t count) 
+    {
 		int32_t v;
 		size_t i, n;
 		uint32_t* p;
@@ -49,14 +49,14 @@ namespace waavs {
 		n = count & 3;
 		for (i = 0; i < n; i++)
 			*p++ = val;
-	}
+}
 
     class User32PixelMap : public PixelAccessor<vec4b>
     {
-        BITMAPINFO fBMInfo{ {0} };              // retain bitmap info for  future usage
+        BITMAPINFO fBMInfo{ {0} };          // retain bitmap info for  future usage
         HBITMAP fDIBHandle = nullptr;       // Handle to the dibsection to be created
         HDC     fBitmapDC = nullptr;        // DeviceContext dib is selected into
-
+        
         // A couple of constants
         static const int bitsPerPixel = 32;
         static const int alignment = 4;
@@ -107,7 +107,6 @@ namespace waavs {
 
             // We'll create a DIBSection so we have an actual backing
             // storage for the context to draw into
-            // BUGBUG - check for nullptr and fail if found
             uint8_t* pdata = nullptr;
             fDIBHandle = ::CreateDIBSection(nullptr, &fBMInfo, DIB_RGB_COLORS, (void**)&pdata, nullptr, 0);
 
@@ -118,8 +117,7 @@ namespace waavs {
 
             // select the DIBSection into the memory context so we can 
             // peform GDI operations with it
-            ::SelectObject(fBitmapDC, fDIBHandle);
-
+            auto bitmapobj = ::SelectObject(fBitmapDC, fDIBHandle);
 
 
             return true;
@@ -132,9 +130,9 @@ namespace waavs {
         }
 
         const BITMAPINFO& bitmapInfo() const { return fBMInfo; }
-        HDC bitmapDC() { return fBitmapDC; }
+        HDC bitmapDC() const { return fBitmapDC; }
 
-        size_t dataSize() { return fBMInfo.bmiHeader.biSizeImage; }
+        size_t dataSize() const { return fBMInfo.bmiHeader.biSizeImage; }
 
         void setAllPixels(const vec4b& c) override
         {

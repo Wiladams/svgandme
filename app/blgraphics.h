@@ -1,7 +1,9 @@
+#pragma once
+
 #ifndef BLGraphics_h
 #define BLGraphics_h
 
-//#pragma once
+
 
 
     //Binding P5 graphics API to a blend2d context

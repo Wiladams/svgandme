@@ -22,9 +22,32 @@ namespace waavs
 			BLContext::begin(fImage);
         }
         
+
+        
+        // Construct from a passed in image
+        SvgDrawingContext(BLImage& img, FontHandler* fh)
+            : IRenderSVG(fh)
+        {
+            fImage.reset();
+			fImage.assign(img);
+            //fImage = img;
+            fOwnsImage = false;
+
+            // initialize BLContext to draw into the image
+            BLContext::begin(img);
+        }
+        
+        SvgDrawingContext(FontHandler* fh)
+            : IRenderSVG(fh)
+        {
+        }
+
+        
         virtual ~SvgDrawingContext()
         {
 			// If we own the image, destroy it
+            BLContext::end();
+            
 			if (fOwnsImage)
 			{
 				fImage.reset();
@@ -45,14 +68,6 @@ namespace waavs
         {
             return std::make_shared<SvgDrawingContext>(width, height, fh);
         }
-
-        /*
-        // Create a context given data; width, height, stride, pixel format and data
-        static std::shared_ptr<SvgDrawingContext> createFromData(const size_t width, const size_t height, const size_t stride, const BLFormat format, const void *data)
-        {
-            return std::make_shared<SvgDrawingContext>(width, height, stride, format, data);
-        }
-        */
 
     };
 }

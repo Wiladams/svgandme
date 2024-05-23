@@ -1,8 +1,8 @@
 
 #include "svg.h"
+#include "viewport.h"
 
 #include "filestreamer.h"
-#include "viewport.h"
 
 using namespace waavs;
 
@@ -83,8 +83,8 @@ int main(int argc, char **argv)
 
 			
 	// Save the image from the drawing context out to a file
-		const char* outfilename = argv[2];
-		ctx.saveToFile("testfile.png");
+	const char* outfilename = argv[2];
+	ctx.saveToFile("testfile.png");
 	
 
 

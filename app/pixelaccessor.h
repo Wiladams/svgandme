@@ -1,5 +1,7 @@
 #pragma once
+
 #include <stdint.h>
+#include "blend2d/blend2d.h"
 
 enum class PixelOrientation
 {
@@ -13,7 +15,7 @@ enum class PixelOrientation
 // 
 // Limitations
 // This structure will NOT work well for things smaller than a byte
-// in size.  It assumes a minium of one byte per pixel, so not
+// in size.  It assumes a minimum of one byte per pixel, so not
 // great for super dense bitmap formats like a bit mask
 //
 struct IContainPixels
@@ -23,9 +25,9 @@ struct IContainPixels
     ptrdiff_t fStride = 0;
     PixelOrientation fOrientation = PixelOrientation::TopToBottom;
 
-    void setOrientation(PixelOrientation orient) { fOrientation = orient; }
-
+    void orientation(PixelOrientation orient) { fOrientation = orient; }
     constexpr const PixelOrientation orientation() const noexcept { return fOrientation; }
+    
     constexpr const size_t width() const noexcept { return fWidth; }
     constexpr const size_t height() const noexcept { return fHeight; }
     constexpr const ptrdiff_t stride() const noexcept { return fStride; }   // number of bytes to advence between rows
@@ -58,6 +60,7 @@ struct IContainPixels
 struct PixelArray : public IContainPixels
 {
     uint8_t* fData = nullptr;
+    BLImage fImage{};                     // BLImage to hold the pixel data
 
     PixelArray() { ; }
     PixelArray(void* d, const size_t w, const size_t h, const ptrdiff_t s, PixelOrientation o=PixelOrientation::TopToBottom)
@@ -66,6 +69,10 @@ struct PixelArray : public IContainPixels
     }
 
 
+    // return reference to the fImage
+	BLImage& image() { return fImage; }
+	const BLImage& image() const { return fImage; }
+    
     // Get a pointer to the raw data
     uint8_t* data() noexcept { return fData; }              // this one allows for editing
     const uint8_t* data() const noexcept { return fData; }  // this one's not editable
@@ -79,6 +86,12 @@ struct PixelArray : public IContainPixels
 
         fStride = s;
         fOrientation = o;
+
+        // Create blend2d image
+        fImage.reset();
+		BLResult br = fImage.createFromData(w, h, BL_FORMAT_PRGB32, fData, fStride);
+
+        printf("Result createfromData(): %d\n", br);
     }
 
     // Get a pointer to the beginning of a row
