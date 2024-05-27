@@ -2791,7 +2791,7 @@ namespace waavs {
 			isStructural(false);
 		}
 
-		BLRect viewport() {
+		BLRect viewport() const {
 			if (fViewbox.isSet()) {
 				return fViewbox.fRect;
 			}
@@ -2819,48 +2819,64 @@ namespace waavs {
 			SVGGraphicsElement::bindToGroot(groot);
 
 			double dpi = 96;
-			double w = 1.0;
-			double h = 1.0;
+			double cWidth = 1.0;
+			double cHeight = 1.0;
 
 			if (groot)
 			{
 				dpi = groot->dpi();
-				w = groot->canvasWidth();
-				h = groot->canvasHeight();
+				cWidth = groot->canvasWidth();
+				cHeight = groot->canvasHeight();
 			}
 
-			x = fX.calculatePixels(w, 0, dpi);
-			y = fY.calculatePixels(h, 0, dpi);
-			width = fWidth.calculatePixels(w, 0, dpi)*w;
-			height = fHeight.calculatePixels(h, 0, dpi)*h;
+			x = fX.calculatePixels(cWidth, 0, dpi);
+			y = fY.calculatePixels(cHeight, 0, dpi);
+			width = fWidth.calculatePixels(cWidth, 0, dpi);  //  *w;
+			height = fHeight.calculatePixels(cHeight, 0, dpi);  //  *h;
 
 
-			// Create a surface to match our size
+			// Create a backing image to match our size
 			int iWidth = (int)floor((float)width + 0.5f);
 			int iHeight = (int)floor((float)height + 0.5f);
 
-			fCachedImage.create(iWidth, iHeight, BL_FORMAT_PRGB32);
 
 			// Draw our content into the image
+
+			// need to set the scale based on the pattern viewbox if it exists
+			if (fViewbox.isSet())
 			{
-				IRenderSVG ctx(groot->fontHandler());
-				ctx.begin(fCachedImage);
-				ctx.clearAll();
-				ctx.setCompOp(BL_COMP_OP_SRC_COPY);
-				ctx.noStroke();
+				iWidth = fViewbox.width();
+				iHeight = fViewbox.height();
 				
-				// need to set the scale based on the pattern viewbox if it exists
-				if (fViewbox.isSet())
+				if (fWidth.isSet())
 				{
-					auto vp = viewport();
-					double xScale = width / vp.w;
-					double yScale = height / vp.h;
-					ctx.scale(xScale, yScale);
+					//iWidth = fWidth.calculatePixels(fViewbox.width(), 0, dpi);
+				}
+
+				if (fHeight.isSet())
+				{
+					//iHeight = fHeight.calculatePixels(fViewbox.height(), 0, dpi);
 				}
 				
-				draw(&ctx);
-				ctx.flush();
+				//auto vp = viewport();
+				//	double xScale = width / vp.w;
+				//	double yScale = height / vp.h;
+				//ctx.scale(xScale, yScale);
 			}
+			
+			// create the pattern cached based on the pixel sizing
+			fCachedImage.create(iWidth, iHeight, BL_FORMAT_PRGB32);
+
+				
+			IRenderSVG ctx(groot->fontHandler());
+			ctx.begin(fCachedImage);
+			ctx.clearAll();
+			ctx.setCompOp(BL_COMP_OP_SRC_COPY);
+			ctx.noStroke();
+				
+			draw(&ctx);
+			ctx.flush();
+
 
 
 			// apply the patternTransform

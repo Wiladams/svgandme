@@ -1036,19 +1036,23 @@ namespace waavs {
             }
             else
             {
+                ctx->fill(getVariant());
+                /*
 				// BUGBUG - check the type of the variant
                 const BLVar& aVar = getVariant();
                 if (aVar.isGradient() || aVar.isRgba32() ) {
                     ctx->fill(aVar);
                 }
                 else if (aVar.isPattern()) {
-                    ctx->fill(BLRgba32(0xff00ffff));
+                    //ctx->fill(BLRgba32(0xff00ffff));
+                    ctx->fill(aVar);
                 }
                 else {
                     BLObjectType aType = aVar.type();
                     printf("A Type: %d\n", (int)aType);
                     ctx->fill(BLRgba32(0xffff0000));
                 }
+                */
             }
                 
         }

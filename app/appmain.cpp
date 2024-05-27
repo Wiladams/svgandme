@@ -214,9 +214,6 @@ void screenRefresh()
 //
 //    Environment
 //
-
-
-
 void show()
 {
     gAppWindow->show();
@@ -824,6 +821,21 @@ static LRESULT HandleGestureMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
     return res;
 }
 
+static LRESULT HandleSizeMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+	LRESULT res = 0;
+    
+    // Only resize bigger, never get smaller
+   	WORD aWidth = waavs::max(canvasWidth, LOWORD(lParam));
+	WORD aHeight = waavs::max(canvasHeight, HIWORD(lParam));
+    
+	setCanvasSize(aWidth, aHeight);
+	screenRefresh();
+    
+    return res;
+}
+
+
 //
 //    Subscription routines
 //
@@ -1025,29 +1037,6 @@ void showAppWindow()
     gAppWindow->show();
 }
 
-/*
-// Typography
-BLFontFace loadFont(const char* filename)
-{
-    BLFontFace ff = gFontHandler.loadFontFace(filename);
-    return ff;
-}
-
-void loadFontDirectory(const char* dir)
-{
-    gFontHandler.loadDirectoryOfFonts(dir);
-}
-
-void loadDefaultFonts()
-{
-    gFontHandler.loadDefaultFonts();
-}
-
-void loadFontFiles(std::vector<const char*> filenames)
-{
-    gFontHandler.loadFonts(filenames);
-}
-*/
 
 //
 //    Generic Windows message handler
@@ -1122,7 +1111,15 @@ static LRESULT CALLBACK MsgHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
     else if (msg == WM_DROPFILES) {
         HandleFileDropMessage(hWnd, msg, wParam, lParam);
     }
+    else if (msg == WM_SIZE) {
+        // Resize the canvas to match the new window size
+		// and redraw the canvas
+		HandleSizeMessage(hWnd, msg, wParam, lParam);
+        
+        res = ::DefWindowProcA(hWnd, msg, wParam, lParam);
+    }
     else {
+		//printf("Unhandled message: %04x\n", msg);
         res = ::DefWindowProcA(hWnd, msg, wParam, lParam);
     }
 

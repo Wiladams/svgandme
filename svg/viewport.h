@@ -58,7 +58,14 @@ namespace waavs {
 		{}
 		*/
 
-
+		void reset() {
+			fTransform.reset();
+			fInverseTransform.reset();
+			fRotRad = 0.0;
+			fRotCenter = BLPoint{};
+			fSurfaceFrame = BLRect(0, 0, 1, 1);
+			fSceneFrame = BLRect(0, 0, 1, 1);
+		}
 
 		// retrieve the calculated transform
 		const BLMatrix2D& sceneToSurfaceTransform() {

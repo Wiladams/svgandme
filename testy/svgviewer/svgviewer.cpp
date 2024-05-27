@@ -69,38 +69,16 @@ static void drawDocument(std::shared_ptr<SVGDocument> doc)
 
 	if (rootNode == nullptr)
 		return ;
-
-	
-	//BLRect r = rootNode->viewport();
-	//printf("viewport: %3.0f %3.0f %3.0f %3.0f\n", r.x, r.y, r.w, r.h);
-
-	auto objFr = gDoc->sceneFrame();
-	//printf("gDoc::sceneFrame: %f,%f %f,%f\n", objFr.x, objFr.y, objFr.w, objFr.h);
-
 	
 	// Create a SvgDrawingContext for the canvas
 	SvgDrawingContext ctx(&gFontHandler);
 	ctx.begin(appFrameBuffer().image());
 
 	// setup any transform
-	//double scaleX = canvasWidth / r.w;
-	//double scaleY = canvasHeight / r.h;
-	
-	//ViewPort vp{ r.x,r.y,r.w, r.h };
-	//vp.scaleBy(scaleX, scaleY, canvasWidth/2.0, canvasHeight/2.0);
-
-	//ctx.setTransform(gViewPort.surfaceToSceneTransform());
 	ctx.setTransform(gViewPort.sceneToSurfaceTransform());
 
-	//ctx.scale(scaleX, scaleY);
-	//ctx.translate(-objFr.x, -objFr.y);
-	
 	// draw the document into the ctx
-
 	doc->draw(&ctx);
-
-	
-	// force a screen refresh
 	ctx.flush();
 }
 
@@ -114,6 +92,7 @@ static void refreshDoc()
 
 static void resetView()
 {
+	gViewPort.reset();
 	gViewPort.sceneFrame(BLRect(0, 0, canvasWidth, canvasHeight));
 	gViewPort.surfaceFrame(BLRect(0, 0, canvasWidth, canvasHeight));
 }
@@ -185,6 +164,11 @@ static void zoomBy(double z, double cx = 0, double cy = 0)
 
 }
 
+static void rotateBy(double r, double cx = 0, double cy = 0)
+{
+	gViewPort.rotateBy(r, cx, cy);
+	refreshDoc();
+}
 
 static void onMouseEvent(const MouseEvent& e)
 {
@@ -245,19 +229,19 @@ static void onMouseEvent(const MouseEvent& e)
 		}
 		break;
 
-		/*
+		
 		// Horizontal mouse wheel
 		// Rotate around central point
 		case MOUSEHWHEEL:
 		{
-		//printf("SVGView: MOUSEHWHEEL\n");
-		if (e.delta < 0)
-			rotateBy(waavs::radians(5.0f), lev.x, lev.y);
-		else
-			rotateBy(waavs::radians(-5.0f), lev.x, lev.y);
+			//printf("SVGView: MOUSEHWHEEL\n");
+			if (e.delta < 0)
+				rotateBy(waavs::radians(5.0f), lev.x, lev.y);
+			else
+				rotateBy(waavs::radians(-5.0f), lev.x, lev.y);
 		}
 		break;
-		*/
+		
 	}
 	
 }

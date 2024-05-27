@@ -212,12 +212,6 @@ extern "C" {
 }
 #endif
 
-// Typography
-// These should be in the 'extern C' section
-//APP_EXPORT void loadDefaultFonts();
-//APP_EXPORT void loadFontDirectory(const char * dir);
-//APP_EXPORT BLFontFace loadFont(const char* filename);
-//APP_EXPORT void loadFontFiles(std::vector<const char*> filenames);
 
 // Make Topic publishers available
 // Doing C++ pub/sub
