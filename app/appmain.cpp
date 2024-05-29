@@ -60,6 +60,7 @@ TouchEventTopic gTouchEventTopic;
 PointerEventTopic gPointerEventTopic;
 GestureEventTopic gGestureEventTopic;
 FrameCountEventTopic gFrameCountEventTopic;
+ResizeEventTopic gResizeEventTopic;
 
 // Miscellaneous globals
 int gargc;
@@ -80,7 +81,7 @@ int canvasWidth = 0;
 int canvasHeight = 0;
 uint8_t* canvasPixelData = nullptr;
 size_t canvasStride = 0;
-PixelArray canvasPixelArray;
+//PixelArray canvasPixelArray;
 
 int displayWidth = 0;
 int displayHeight= 0;
@@ -821,6 +822,8 @@ static LRESULT HandleGestureMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
     return res;
 }
 
+// Handle messages related to resizing the window
+//
 static LRESULT HandleSizeMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	LRESULT res = 0;
@@ -830,7 +833,12 @@ static LRESULT HandleSizeMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
 	WORD aHeight = waavs::max(canvasHeight, HIWORD(lParam));
     
 	setCanvasSize(aWidth, aHeight);
-	screenRefresh();
+	
+    // onCanvasResize();
+    ResizeEvent re{ aWidth, aHeight };
+	gResizeEventTopic.notify(re);
+    
+    screenRefresh();
     
     return res;
 }
@@ -888,6 +896,10 @@ void subscribe(FrameCountEventTopic::Subscriber s)
     gFrameCountEventTopic.subscribe(s);
 }
 
+void subscribe(ResizeEventTopic::Subscriber s)
+{
+    gResizeEventTopic.subscribe(s);
+}
 
 // Controlling the runtime
 // Halt the runtime

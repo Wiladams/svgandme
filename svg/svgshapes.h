@@ -2774,12 +2774,15 @@ namespace waavs {
 		BLPattern fPattern{};
 		BLMatrix2D fPatternTransform{};
 		BLImage fCachedImage{};
-		
+		ByteSpan fTemplateReference{};
+
+		// Actual values
 		double x{ 0 };
 		double y{ 0 };
 		double width{ 0 };
 		double height{ 0 };
 		
+		// Raw attribute values
 		SVGViewbox fViewbox{};
 		SVGDimension fX{};
 		SVGDimension fY{};
@@ -2788,6 +2791,8 @@ namespace waavs {
 		
 		SVGPatternNode(IAmGroot* aroot) :SVGGraphicsElement(aroot) 
 		{
+			fPattern.setExtendMode(BL_EXTEND_MODE_PAD);
+			
 			isStructural(false);
 		}
 
@@ -2811,9 +2816,15 @@ namespace waavs {
 			return fVar;
 		}
 		
+
+		
+		// 
+		// Resolve template reference
+		// fix coordinate system
+		//
 		void bindToGroot(IAmGroot* groot) override
 		{
-			if (groot == nullptr)
+			if (nullptr == groot)
 				return;
 			
 			SVGGraphicsElement::bindToGroot(groot);
@@ -2822,57 +2833,49 @@ namespace waavs {
 			double cWidth = 1.0;
 			double cHeight = 1.0;
 
-			if (groot)
-			{
-				dpi = groot->dpi();
-				cWidth = groot->canvasWidth();
-				cHeight = groot->canvasHeight();
+
+			dpi = groot->dpi();
+			cWidth = groot->canvasWidth();
+			cHeight = groot->canvasHeight();
+
+			// Start out with some sizes based on the canvas size
+			if (fX.isSet()) {
+				x = fX.calculatePixels();
+			}
+			if (fY.isSet()) {
+				y = fY.calculatePixels();
+			}
+			
+			if (fWidth.isSet()) {
+				width = fWidth.calculatePixels(cWidth, 0, dpi);
+			}
+			if (fHeight.isSet()) {
+				height = fHeight.calculatePixels(cHeight, 0, dpi);
 			}
 
-			x = fX.calculatePixels(cWidth, 0, dpi);
-			y = fY.calculatePixels(cHeight, 0, dpi);
-			width = fWidth.calculatePixels(cWidth, 0, dpi);  //  *w;
-			height = fHeight.calculatePixels(cHeight, 0, dpi);  //  *h;
 
-
-			// Create a backing image to match our size
+			// start out with an initial size for the backing buffer
 			int iWidth = (int)floor((float)width + 0.5f);
 			int iHeight = (int)floor((float)height + 0.5f);
 
-
-			// Draw our content into the image
-
+			// If we have a viewbox, then we need to adjust the size based on that
+			// BUGBUG - does this override x,y,width, height?
 			// need to set the scale based on the pattern viewbox if it exists
 			if (fViewbox.isSet())
 			{
 				iWidth = fViewbox.width();
 				iHeight = fViewbox.height();
-				
-				if (fWidth.isSet())
-				{
-					//iWidth = fWidth.calculatePixels(fViewbox.width(), 0, dpi);
-				}
-
-				if (fHeight.isSet())
-				{
-					//iHeight = fHeight.calculatePixels(fViewbox.height(), 0, dpi);
-				}
-				
-				//auto vp = viewport();
-				//	double xScale = width / vp.w;
-				//	double yScale = height / vp.h;
-				//ctx.scale(xScale, yScale);
 			}
 			
-			// create the pattern cached based on the pixel sizing
+			// create the backing buffer based on the specified sizes
 			fCachedImage.create(iWidth, iHeight, BL_FORMAT_PRGB32);
 
-				
+			// Render out content into the backing buffer
 			IRenderSVG ctx(groot->fontHandler());
 			ctx.begin(fCachedImage);
 			ctx.clearAll();
-			ctx.setCompOp(BL_COMP_OP_SRC_COPY);
-			ctx.noStroke();
+			//ctx.setCompOp(BL_COMP_OP_SRC_COPY);
+			//ctx.noStroke();
 				
 			draw(&ctx);
 			ctx.flush();
@@ -2885,6 +2888,7 @@ namespace waavs {
 			// assign that BLImage to the pattern object
 			fPattern.setImage(fCachedImage);
 
+			// BUGBUG - Need to set real extend mode
 			// BL_EXTEND_MODE_PAD
 			// BL_EXTEND_MODE_REPEAT
 			// BL_EXTEND_MODE_REFLECT
@@ -2895,11 +2899,9 @@ namespace waavs {
 
 		}
 
-
-		virtual void loadSelfFromXmlElement(const XmlElement& elem)
+		void loadVisualProperties(const XmlAttributeCollection& attrs) override
 		{
-
-			fPattern.setExtendMode(BL_EXTEND_MODE_PAD);
+			SVGGraphicsElement::loadVisualProperties(attrs);
 
 			fX.loadFromChunk(getAttribute("x"));
 			fY.loadFromChunk(getAttribute("y"));
@@ -2907,6 +2909,11 @@ namespace waavs {
 			fHeight.loadFromChunk(getAttribute("height"));
 			fViewbox.loadFromChunk(getAttribute("viewBox"));
 
+			// See if we have a template reference
+			if (attrs.getAttribute("href"))
+				fTemplateReference = attrs.getAttribute("href");
+			else if (attrs.getAttribute("xlink:href"))
+				fTemplateReference = attrs.getAttribute("xlink:href");
 
 			if (getAttribute("patternTransform"))
 			{
@@ -2916,7 +2923,6 @@ namespace waavs {
 				fPattern.setTransform(fPatternTransform);
 			}
 		}
-		
 	
 	};
 	

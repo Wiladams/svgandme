@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{5b455a0a-aeea-4f6d-81df-d9de7c6cafd7}</ProjectGuid>
-    <RootNamespace>svgviewer</RootNamespace>
+    <ProjectGuid>{a79eaee6-74b7-4dc4-9641-cbc9a094c992}</ProjectGuid>
+    <RootNamespace>svgwin32</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -99,7 +99,7 @@
       <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -135,7 +135,7 @@
       <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -143,20 +143,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\app\appmain.cpp" />
-    <ClCompile Include="..\..\svg\base64.cpp" />
-    <ClCompile Include="svgviewer.cpp" />
+    <ClInclude Include="..\..\app\apphost.h" />
+    <ClInclude Include="..\..\app\gmonitor.h" />
+    <ClInclude Include="..\..\app\screensnapshot.h" />
+    <ClInclude Include="..\..\app\svgwaavs.h" />
+    <ClInclude Include="..\..\app\user32pixelmap.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\app\apphost.h" />
-    <ClInclude Include="..\..\app\pixelaccessor.h" />
-    <ClInclude Include="..\..\app\user32pixelmap.h" />
-    <ClInclude Include="..\..\svg\fonthandler.h" />
-    <ClInclude Include="..\..\svg\irendersvg.h" />
-    <ClInclude Include="..\..\svg\svgattributes.h" />
-    <ClInclude Include="..\..\svg\svgdrawingcontext.h" />
-    <ClInclude Include="..\..\svg\svgshapes.h" />
-    <ClInclude Include="..\..\svg\svgstructuretypes.h" />
+    <ClCompile Include="..\..\app\appmain.cpp" />
+    <ClCompile Include="..\..\svg\base64.cpp" />
+    <ClCompile Include="svgwin32.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -178,7 +178,12 @@ namespace waavs {
         uint64_t frameCount;
     };
 
-
+    struct ResizeEvent
+    {
+		size_t width;
+		size_t height;
+	};
+    
     // A kind of mini pub-sub for specific events
 
     struct KeyboardEventDispatch

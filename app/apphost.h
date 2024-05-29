@@ -217,17 +217,18 @@ extern "C" {
 // Doing C++ pub/sub
 // These are only accessible through the C++ interface
 using SignalEventTopic = Topic<intptr_t>; 
-using MouseEventTopic = Topic<waavs::MouseEvent&>;
-using KeyboardEventTopic = Topic<waavs::KeyboardEvent&>;
-using JoystickEventTopic = Topic<waavs::JoystickEvent&>;
-using FileDropEventTopic = Topic<waavs::FileDropEvent&>;
-using TouchEventTopic = Topic<waavs::TouchEvent&>;
-using PointerEventTopic = Topic<waavs::PointerEvent&>;
-using GestureEventTopic = Topic<waavs::GestureEvent&>;
-using FrameCountEventTopic = Topic<waavs::FrameCountEvent&>;
+using MouseEventTopic = Topic<waavs::MouseEvent&>;				// Mouse events
+using KeyboardEventTopic = Topic<waavs::KeyboardEvent&>;		// Keyboard events
+using JoystickEventTopic = Topic<waavs::JoystickEvent&>;		// Joystick events
+using FileDropEventTopic = Topic<waavs::FileDropEvent&>;		// File drop events
+using TouchEventTopic = Topic<waavs::TouchEvent&>;				// Touch events
+using PointerEventTopic = Topic<waavs::PointerEvent&>;			// Pointer events
+using GestureEventTopic = Topic<waavs::GestureEvent&>;			// Gesture events
+using FrameCountEventTopic = Topic<waavs::FrameCountEvent&>;	// Timed Frame count events
+using ResizeEventTopic = Topic<waavs::ResizeEvent&>;			// Application Window Resize events	
 
 
-APP_EXPORT void subscribeToSignal(SignalEventTopic::Subscriber s);
+APP_EXPORT void subscribe(SignalEventTopic::Subscriber s);
 APP_EXPORT void subscribe(MouseEventTopic::Subscriber s);
 APP_EXPORT void subscribe(KeyboardEventTopic::Subscriber s);
 APP_EXPORT void subscribe(JoystickEventTopic::Subscriber s);
@@ -236,6 +237,7 @@ APP_EXPORT void subscribe(TouchEventTopic::Subscriber s);
 APP_EXPORT void subscribe(GestureEventTopic::Subscriber s);
 APP_EXPORT void subscribe(PointerEventTopic::Subscriber s);
 APP_EXPORT void subscribe(FrameCountEventTopic::Subscriber s);
+APP_EXPORT void subscribe(ResizeEventTopic::Subscriber s);
 
 #endif	// apphost_h
 

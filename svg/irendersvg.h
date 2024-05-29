@@ -90,9 +90,22 @@ namespace waavs
         IRenderSVG(FontHandler* fh) :fFontHandler(fh) 
         {
             clearAll();
-			setCompOp(BL_COMP_OP_SRC_OVER);
-            noStroke();
+            
+            // Start with default state
+            setCompOp(BL_COMP_OP_SRC_OVER);
+
+            //ctx->setStrokeMiterLimit(4.0);
+            strokeJoin(BL_STROKE_JOIN_MITER_CLIP);
+
+
+            setFillRule(BL_FILL_RULE_NON_ZERO);
+
             fill(BLRgba32(0, 0, 0));
+            noStroke();
+            strokeWidth(1.0);
+            textAlign(ALIGNMENT::LEFT, ALIGNMENT::BASELINE);
+            textFamily("Arial");
+            textSize(16);
         }
         
         virtual ~IRenderSVG() {}

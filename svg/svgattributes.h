@@ -1036,14 +1036,20 @@ namespace waavs {
             }
             else
             {
-                ctx->fill(getVariant());
-                /*
+                //ctx->fill(getVariant());
+                
+                // Patterns can be recursive
+                // use: Cannon-diagram2.svg to torture test this
 				// BUGBUG - check the type of the variant
                 const BLVar& aVar = getVariant();
                 if (aVar.isGradient() || aVar.isRgba32() ) {
                     ctx->fill(aVar);
                 }
                 else if (aVar.isPattern()) {
+                    // get the pattern out of the variant
+                    //const BLPattern& aPatt = (const BLPattern&)aVar;
+
+                    //ctx->setFillStyle(aPatt);
                     //ctx->fill(BLRgba32(0xff00ffff));
                     ctx->fill(aVar);
                 }
@@ -1052,7 +1058,7 @@ namespace waavs {
                     printf("A Type: %d\n", (int)aType);
                     ctx->fill(BLRgba32(0xffff0000));
                 }
-                */
+                
             }
                 
         }

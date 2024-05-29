@@ -30,7 +30,7 @@ struct IContainPixels
     
     constexpr const size_t width() const noexcept { return fWidth; }
     constexpr const size_t height() const noexcept { return fHeight; }
-    constexpr const ptrdiff_t stride() const noexcept { return fStride; }   // number of bytes to advence between rows
+    constexpr const ptrdiff_t stride() const noexcept { return fStride; }   // number of bytes to advance between rows
 
     virtual uint8_t* rowPointer(const int y) = 0;
     virtual const uint8_t* rowPointer(const int y) const = 0;
@@ -91,7 +91,7 @@ struct PixelArray : public IContainPixels
         fImage.reset();
 		BLResult br = fImage.createFromData(w, h, BL_FORMAT_PRGB32, fData, fStride);
 
-        printf("Result createfromData(): %d\n", br);
+        //printf("Result createfromData(): %d\n", br);
     }
 
     // Get a pointer to the beginning of a row
