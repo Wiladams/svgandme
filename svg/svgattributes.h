@@ -922,7 +922,6 @@ namespace waavs {
                     if (nullptr != node)
                     {
                         node->update();
-
                     }
                 }
             }
@@ -994,7 +993,7 @@ namespace waavs {
                     fExplicitNone = true;
                     set(true);
                 }
-                else if (cName == "inherit")
+                else if ((cName == "inherit") || (cName == "currentColor"))
                 {
                     // Take on whatever color value was previously set
                     // somewhere in the tree

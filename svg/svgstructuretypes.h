@@ -444,6 +444,21 @@ namespace waavs {
             {
 				setAttribute(attr.first, attr.second);
             }
+
+            // if there is a stroke attribute with a value of 'currentColor', then look
+			// for a 'color' attribute, and set the stroke color to that value
+			auto strokeColor = attrCollection.getAttribute("stroke");
+            if (strokeColor)
+            {
+                if (strokeColor == "currentColor")
+                {
+                    auto colorValue = attrCollection.getAttribute("color");
+                    if (colorValue)
+                    {
+                        setAttribute("stroke", colorValue);
+                    }
+                }
+            }
         }
         
         // Assuming we've already scanned our attributes
