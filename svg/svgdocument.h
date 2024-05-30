@@ -2,7 +2,7 @@
 
 // References
 // https://github.com/lemire/fastbase64
-
+// https://razrfalcon.github.io/notes-on-svg-parsing/index.html
 //
 // Notes
 // Things not implemented
@@ -227,8 +227,9 @@ namespace waavs {
                         if (fSVGNode == nullptr) {
 							fSVGNode = node;
                             // Get the canvas width, height, viewbox, etc
-                            fCanvasWidth = fSVGNode->viewport().w;
-                            fCanvasHeight = fSVGNode->viewport().h;
+                            BLRect vport = fSVGNode->viewport();
+                            fCanvasWidth = vport.w;
+                            fCanvasHeight = vport.h;
                         }
 
                         node->bindToGroot(this);

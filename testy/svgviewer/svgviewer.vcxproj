@@ -151,9 +151,11 @@
     <ClInclude Include="..\..\app\apphost.h" />
     <ClInclude Include="..\..\app\pixelaccessor.h" />
     <ClInclude Include="..\..\app\user32pixelmap.h" />
+    <ClInclude Include="..\..\svg\definitions.h" />
     <ClInclude Include="..\..\svg\fonthandler.h" />
     <ClInclude Include="..\..\svg\irendersvg.h" />
     <ClInclude Include="..\..\svg\svgattributes.h" />
+    <ClInclude Include="..\..\svg\svgdocument.h" />
     <ClInclude Include="..\..\svg\svgdrawingcontext.h" />
     <ClInclude Include="..\..\svg\svgshapes.h" />
     <ClInclude Include="..\..\svg\svgstructuretypes.h" />

@@ -767,16 +767,54 @@ namespace waavs {
 	
 	struct SVGPolygonElement : public SVGGeometryElement
 	{
-		static void registerFactory() {
+		static void registerSingularNode()
+		{
 			gShapeCreationMap["polygon"] = [](IAmGroot* root, const XmlElement& elem) {
 				auto node = std::make_shared<SVGPolygonElement>(root);
 				node->loadFromXmlElement(elem);
 				return node;
-			};
+				};
+		}
+
+		static void registerFactory() {
+			gSVGGraphicsElementCreation["polygon"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGPolygonElement>(aroot);
+				node->loadFromXmlIterator(iter);
+				return node;
+				};
+
+			registerSingularNode();
 		}
 
 		
 		SVGPolygonElement(IAmGroot* iMap) :SVGGeometryElement(iMap) {}
+		
+		void loadVisualProperties(const XmlAttributeCollection& attrs) override
+		{
+			SVGGeometryElement::loadVisualProperties(attrs);
+
+			auto points = getAttribute("points");
+
+			BLPoint pt{};
+			parseNextNumber(points, pt.x);
+			parseNextNumber(points, pt.y);
+
+
+			fPath.moveTo(pt);
+
+			while (points)
+			{
+				if (!parseNextNumber(points, pt.x))
+					break;
+				if (!parseNextNumber(points, pt.y))
+					break;
+
+				fPath.lineTo(pt);
+			}
+			fPath.close();
+
+			needsBinding(true);
+		}
 		
 		void loadSelfFromXmlElement(const XmlElement& elem) override
 		{
@@ -804,6 +842,7 @@ namespace waavs {
 
 			needsBinding(true);
 		}
+		
 	};
 	
 
@@ -1112,7 +1151,7 @@ namespace waavs {
 				if (chunk_starts_with_cstr(fImageRef, "data:"))
 				{
 					bool success = parseImage(fImageRef, fImage);
-					printf("fImageRef, parseImage: %d\n", success);
+					//printf("SVGImageNode::fImageRef, parseImage: %d\n", success);
 				}
 				else {
 					// Otherwise, assume it's a file reference
@@ -1129,7 +1168,7 @@ namespace waavs {
 			
 			fImage.getData(&imgData);
 			
-			printf("imgData: %d x %d  depth: %d\n", imgData.size.w, imgData.size.h, fImage.depth());
+			//printf("imgData: %d x %d  depth: %d\n", imgData.size.w, imgData.size.h, fImage.depth());
 			
 			fX = 0;
 			fY = 0;
@@ -2574,7 +2613,7 @@ namespace waavs {
 			gShapeCreationMap["defs"] = [](IAmGroot* aroot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGDefsNode>(aroot);
 				node->loadFromXmlElement(elem);
-				node->visible(false);
+				//node->visible(false);
 				
 				return node;
 			};
@@ -2586,7 +2625,7 @@ namespace waavs {
 			gSVGGraphicsElementCreation["defs"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
 				auto node = std::make_shared<SVGDefsNode>(aroot);
 				node->loadFromXmlIterator(iter);
-				node->visible(false);
+				//node->visible(false);
 				
 				return node;
 			};
@@ -2817,7 +2856,81 @@ namespace waavs {
 		}
 		
 
-		
+		void resolveReferences(IAmGroot* groot, const ByteSpan& inChunk)
+		{
+			// return early if we can't do a lookup
+			if (nullptr == groot)
+			{
+				printf("SVGPatternNode::resolveReferences - groot == null\n");
+				return;
+			}
+			
+			ByteSpan str = inChunk;
+
+			auto id = chunk_trim(str, xmlwsp);
+
+			// The first character could be '.' or '#'
+			// so we need to skip past that
+			if (*id == '.' || *id == '#')
+				id++;
+
+			// return early if we can't do a lookup
+			if (!id)
+				return;
+
+			// lookup the thing we're referencing
+			std::string idStr = toString(id);
+
+
+			auto node = groot->findNodeById(idStr);
+
+			// return early if we could not lookup the node
+			if (nullptr == node)
+			{
+				printf("SVGPatternNode::resolveReferences - node == null\n");
+				return;
+			}
+			
+
+			// That node itself might need to be bound
+			if (node->needsBinding())
+				node->bindToGroot(groot);
+
+			const BLVar& aVar = node->getVariant();
+
+			if (aVar.isPattern())
+			{
+				const BLPattern& tmpPattern = aVar.as<BLPattern>();
+				
+				// pull out whatever values we can inherit
+				BLRectI tmparea = tmpPattern.area();
+				BLExtendMode tmpextendMode = tmpPattern.extendMode();
+				BLMatrix2D tmptransform = tmpPattern.transform();
+				
+				fPattern.setExtendMode(tmpextendMode);
+				fPattern.setArea(tmparea);
+				fPattern.setImage(tmpPattern.getImage());
+				
+				// transform matrix if it already exists and
+				// we had set a new one as well
+				// otherwise, just set the new one
+				if (fPatternTransform.type() == BL_TRANSFORM_TYPE_IDENTITY)
+				{
+					if (tmptransform.type() != BL_TRANSFORM_TYPE_IDENTITY)
+					{
+						fPattern.setTransform(tmptransform);
+					}
+				}
+				else
+				{
+					if (tmpPattern.transform().type() != BL_TRANSFORM_TYPE_IDENTITY)
+					{
+						fPattern.applyTransform(tmptransform);
+					}
+				}
+			}
+		}
+
 		// 
 		// Resolve template reference
 		// fix coordinate system
@@ -2838,6 +2951,13 @@ namespace waavs {
 			cWidth = groot->canvasWidth();
 			cHeight = groot->canvasHeight();
 
+			//
+			// Resolve the templateReference if it exists
+			if (fTemplateReference) {
+				resolveReferences(groot, fTemplateReference);
+			}
+
+			
 			// Start out with some sizes based on the canvas size
 			if (fX.isSet()) {
 				x = fX.calculatePixels();
@@ -2998,12 +3118,21 @@ namespace waavs {
 			ctx->pop();
 		}
 
-		
-		void loadSelfFromXmlElement(const XmlElement& elem) override
+		void loadVisualProperties(const XmlAttributeCollection& attrs) override
 		{
+			SVGGraphicsElement::loadVisualProperties(attrs);
+
+			
 			fViewbox.loadFromChunk(getAttribute("viewBox"));
 			fWidth.loadFromChunk(getAttribute("width"));
 			fHeight.loadFromChunk(getAttribute("height"));
+		}
+		
+		void loadSelfFromXmlElement(const XmlElement& elem) override
+		{
+			//fViewbox.loadFromChunk(getAttribute("viewBox"));
+			//fWidth.loadFromChunk(getAttribute("width"));
+			//fHeight.loadFromChunk(getAttribute("height"));
 		}
 
 	};

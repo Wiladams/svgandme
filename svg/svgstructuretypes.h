@@ -752,14 +752,15 @@ namespace waavs {
             // If the name of the element is found in the map,
             // then create a new node of that type and add it
             // to the list of nodes.
-            if (gSVGGraphicsElementCreation.contains(elem.name()))
+			auto aname = elem.name();
+            if (gSVGGraphicsElementCreation.contains(aname))
             {
-                auto& func = gSVGGraphicsElementCreation[elem.name()];
+                auto& func = gSVGGraphicsElementCreation[aname];
                 auto node = func(root(), iter);
                 addNode(node);
             }
             else {
-                printf("SVGGraphicsElement::loadCompoundNode == UNKNOWN ==> %s\n", elem.name().c_str());
+                printf("SVGGraphicsElement::loadCompoundNode == UNKNOWN ==> '%s'\n", aname.c_str());
                 //printXmlElement(elem);
                 auto node = gSVGGraphicsElementCreation["g"](root(), iter);
                 // don't add the node to the tree as we don't

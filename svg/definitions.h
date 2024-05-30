@@ -16,11 +16,23 @@
 #include <cstdint>		// uint8_t, etc
 #include <cstddef>		// nullptr_t, ptrdiff_t, size_t
 
+#define WAAVS_NOMINMAX 1
 
 #ifdef _MSC_VER
 #define INLINE __forceinline
 #else
 #define INLINE static inline
+#endif
+
+// MSVC++ has #defines for min/max that break various things
+// so undef them, as we won't want to use those
+#if WAAVS_NOMINMAX
+    #ifdef min
+        #undef min
+    #endif
+    #ifdef max
+        #undef max
+    #endif
 #endif
 
 namespace waavs 
