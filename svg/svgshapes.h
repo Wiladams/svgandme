@@ -198,6 +198,18 @@ namespace waavs {
 			return BLRect(bbox.x0, bbox.y0, bbox.x1 - bbox.x0, bbox.y1 - bbox.y0);
 		}
 		
+		BLRectI getBBox() const override
+		{
+			BLBox bbox{};
+			fPath.getBoundingBox(&bbox);
+			if (fHasTransform) {
+				auto leftTop = fTransform.mapPoint(bbox.x0, bbox.y0);
+				auto rightBottom = fTransform.mapPoint(bbox.x1, bbox.y1);
+				return BLRectI(leftTop.x, leftTop.y, rightBottom.x - leftTop.x, rightBottom.y - leftTop.y);
+			}
+
+			return BLRectI(bbox.x0, bbox.y0, bbox.x1 - bbox.x0, bbox.y1 - bbox.y0);
+		}
 		
 		bool contains(double x, double y) override
 		{
@@ -827,33 +839,6 @@ namespace waavs {
 			needsBinding(true);
 		}
 		
-		void loadSelfFromXmlElement(const XmlElement& elem) override
-		{
-			//SVGGeometryElement::loadSelfFromXmlElement(elem);
-			
-			auto points = getAttribute("points");
-			
-			BLPoint pt{};
-			parseNextNumber(points, pt.x);
-			parseNextNumber(points, pt.y);
-
-
-			fPath.moveTo(pt);
-			
-			while (points)
-			{
-				if (!parseNextNumber(points, pt.x))
-					break;
-				if (!parseNextNumber(points, pt.y))
-					break;
-				
-				fPath.lineTo(pt);
-			}
-			fPath.close();	
-
-			needsBinding(true);
-		}
-		
 	};
 	
 
@@ -885,6 +870,24 @@ namespace waavs {
 		
 		SVGPathElement(IAmGroot* iMap) :SVGGeometryElement(iMap) {}
 		
+		/*
+		void loadVisualProperties(const XmlAttributeCollection& attrs) override
+		{
+			SVGGeometryElement::loadVisualProperties(attrs);
+		
+			auto d = getAttribute("d");
+			if (!d)
+				return;
+
+			auto success = blpathparser::parsePath(d, fPath);
+			fPath.shrink();
+
+			needsBinding(true);
+
+		}
+		*/
+		
+		
 		void loadSelfFromXmlElement(const XmlElement& elem) override
 		{
 			//SVGGeometryElement::loadSelfFromXmlElement(elem);
@@ -898,7 +901,7 @@ namespace waavs {
 			
 			needsBinding(true);
 		}
-
+		
 	};
 
 
@@ -3096,7 +3099,9 @@ namespace waavs {
 				return BLRect(0, 0, fWidth.calculatePixels(), fHeight.calculatePixels());
 			}
 			
-			return { 0, 0, 320, 240 };
+			// If no viewbox, width, or height, then we need to use the calculated 
+			// bounding box of the document
+			return frame();
 		}
 		
 		

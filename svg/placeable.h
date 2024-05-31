@@ -52,7 +52,8 @@ namespace waavs {
 		bool autoMoveToFront() const { return fAutoMoveToFront; }
 		
 		virtual BLRect frame() const = 0;
-
+		virtual BLRectI getBBox() const = 0;
+		
 		virtual bool contains(double x, double y)
 		{
 			return containsRect(frame(), x, y);

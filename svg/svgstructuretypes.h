@@ -83,7 +83,8 @@ namespace waavs {
 
         // IPlaceable
         BLRect frame() const override { return BLRect(); }
-
+        BLRectI getBBox() const override { return BLRectI{}; }
+        
         void moveTo(double x, double y) override { ; }
         //void mouseEvent(const MouseEvent& e) override { return; }
         
