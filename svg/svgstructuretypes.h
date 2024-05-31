@@ -401,6 +401,10 @@ namespace waavs {
 
         virtual void setAttribute(const std::string& name, const ByteSpan& value)
         {
+            // If the value is nothing, then don't set it
+            if (!value)
+                return;
+            
             if (gSVGAttributeCreation.contains(name))
             {
                 auto prop = gSVGAttributeCreation[name](value);
@@ -445,18 +449,19 @@ namespace waavs {
 				setAttribute(attr.first, attr.second);
             }
 
+			// BUGBUG - this is a hack to get the fill and stroke
+            // It needs to go deeper and get the color attribute that's from the tree
+            // where the current node is just the latest.
             // if there is a stroke attribute with a value of 'currentColor', then look
 			// for a 'color' attribute, and set the stroke color to that value
 			auto strokeColor = attrCollection.getAttribute("stroke");
-            if (strokeColor)
+            auto fillColor = attrCollection.getAttribute("fill");
+            if (strokeColor && (strokeColor == "currentColor"))
             {
-                if (strokeColor == "currentColor")
+                auto colorValue = attrCollection.getAttribute("color");
+                if (colorValue)
                 {
-                    auto colorValue = attrCollection.getAttribute("color");
-                    if (colorValue)
-                    {
-                        setAttribute("stroke", colorValue);
-                    }
+                    setAttribute("stroke", colorValue);
                 }
             }
         }

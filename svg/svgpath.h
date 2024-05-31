@@ -103,7 +103,7 @@ namespace waavs
 			else {
 				apath.lineTo(x, y);
 #ifdef PATH_COMMAND_DEBUG
-				printf("// moveTo, iteration: %d\n", iteration);
+				//printf("// moveTo, iteration: %d\n", iteration);
 				printf("apath.lineTo(%f, %f);\n", x, y);
 #endif
 			}
@@ -136,7 +136,7 @@ namespace waavs
 			else {
 				apath.lineTo(lastPos.x + x, lastPos.y + y);
 #ifdef PATH_COMMAND_DEBUG
-				printf("// moveBy, iteration: %d\n", iteration);
+				//printf("// moveBy, iteration: %d\n", iteration);
 				printf("apath.lineTo(%f, %f);\n", lastPos.x + x, lastPos.y + y);
 #endif
 			}
@@ -226,7 +226,7 @@ namespace waavs
 			apath.lineTo(lastPos.x + x, lastPos.y);
 
 #ifdef PATH_COMMAND_DEBUG
-			printf("// hLineBy\n");
+			//printf("// hLineBy\n");
 			printf("apath.lineTo(%f, %f);\n", lastPos.x + x, lastPos.y);
 #endif
 			
@@ -248,7 +248,7 @@ namespace waavs
 			apath.lineTo(lastPos.x, y);
 
 #ifdef PATH_COMMAND_DEBUG
-			printf("// VLineTo, iteration: %d\n", iteration);
+			//printf("// VLineTo, iteration: %d\n", iteration);
 			printf("apath.lineTo(%f, %f);\n", lastPos.x, y);
 #endif
 			
@@ -270,7 +270,7 @@ namespace waavs
 			apath.lineTo(lastPos.x, lastPos.y + y);
 
 #ifdef PATH_COMMAND_DEBUG
-			printf("// vLineBy, iteration: %d\n", iteration);
+			//printf("// vLineBy, iteration: %d\n", iteration);
 			printf("apath.lineTo(%f,%f);\n", lastPos.x, lastPos.y + y);
 #endif
 			iteration++;
@@ -656,7 +656,7 @@ namespace waavs
 				}
 				
 #ifdef PATH_COMMAND_DEBUG
-				printf("// Command: %c [%d]\n", currentCommand, iteration);
+				//printf("// Command: %c [%d]\n", currentCommand, iteration);
 #endif
 				
 				// search the parseMap to ensure it has the command

@@ -470,13 +470,24 @@ namespace waavs {
 	
 	struct SVGRectElement : public SVGGeometryElement
 	{
-		static void registerFactory() {
+		static void registerSingular() {
 			gShapeCreationMap["rect"] = [](IAmGroot* root, const XmlElement& elem) {
 				auto node = std::make_shared<SVGRectElement>(root);
 				node->loadFromXmlElement(elem);
 				return node;
 			};
 		}
+		
+		static void registerFactory() {
+			gSVGGraphicsElementCreation["rect"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGRectElement>(aroot);
+				node->loadFromXmlIterator(iter);
+				return node;
+				};
+
+			registerSingular();
+		}
+		
 		
 		SVGDimension fX{};
 		SVGDimension fY{};
@@ -3081,7 +3092,11 @@ namespace waavs {
 			}
 			
 			// BUGBUG - Right here we need to use IAmGroot to get the size of the window
-			return { 0, 0, fWidth.calculatePixels(), fHeight.calculatePixels() };
+			if (fWidth.isSet() && fHeight.isSet()) {
+				return BLRect(0, 0, fWidth.calculatePixels(), fHeight.calculatePixels());
+			}
+			
+			return { 0, 0, 320, 240 };
 		}
 		
 		

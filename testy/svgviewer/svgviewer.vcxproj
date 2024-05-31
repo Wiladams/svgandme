@@ -157,6 +157,7 @@
     <ClInclude Include="..\..\svg\svgattributes.h" />
     <ClInclude Include="..\..\svg\svgdocument.h" />
     <ClInclude Include="..\..\svg\svgdrawingcontext.h" />
+    <ClInclude Include="..\..\svg\svgpath.h" />
     <ClInclude Include="..\..\svg\svgshapes.h" />
     <ClInclude Include="..\..\svg\svgstructuretypes.h" />
   </ItemGroup>
