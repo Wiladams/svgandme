@@ -468,8 +468,10 @@ namespace waavs {
 			fPath.addLine(geom);
 		}
 		
-		void loadSelfFromXmlElement(const XmlElement& elem) override
-		{	
+		void loadVisualProperties(const XmlAttributeCollection& attrs) override
+		{
+			SVGGeometryElement::loadVisualProperties(attrs);
+
 			fDimX1.loadFromChunk(getAttribute("x1"));
 			fDimY1.loadFromChunk(getAttribute("y1"));
 			fDimX2.loadFromChunk(getAttribute("x2"));
@@ -477,6 +479,16 @@ namespace waavs {
 
 			needsBinding(true);
 		}
+		
+		//void loadSelfFromXmlElement(const XmlElement& elem) override
+		//{	
+		//	fDimX1.loadFromChunk(getAttribute("x1"));
+		//	fDimY1.loadFromChunk(getAttribute("y1"));
+		//	fDimX2.loadFromChunk(getAttribute("x2"));
+		//	fDimY2.loadFromChunk(getAttribute("y2"));
+
+		//	needsBinding(true);
+		//}
 		
 	};
 	
@@ -2971,6 +2983,35 @@ namespace waavs {
 				resolveReferences(groot, fTemplateReference);
 			}
 
+			//BLRectI bbox{};
+			// start out with an initial size for the backing buffer
+			int iWidth = (int)cWidth;
+			int iHeight = (int)cHeight;
+			
+			// If a viewbox exists, then it determines the size
+			// of the pattern, and thus the size of the backing store
+			if (fViewbox.isSet())
+			{
+				// If a viewbox is set, then the 'width' and 'height' parameters
+				// are ignored
+				//bbox.reset(0, 0, fViewbox.width(), fViewbox.height());
+				iWidth = (int)fViewbox.width();
+				iHeight = (int)fViewbox.height();
+			}
+			else {
+				// If we don't have a viewbox, then the bbox can be either
+				// 1) A specified width and height
+				// 2) A percentage width and height of the pattern's children
+				BLRect bbox = frame();
+				iWidth = (int)bbox.w;
+				iHeight = (int)bbox.h;
+				//if (fWidth.isSet()) {
+				//	iWidth = int((fWidth.fValue * bbox.w)+0.5);
+				//}
+				//if (fHeight.isSet()) {
+				//	iHeight = int((fHeight.fValue *bbox.h)+0.5);
+				//}
+			}
 			
 			// Start out with some sizes based on the canvas size
 			if (fX.isSet()) {
@@ -2980,27 +3021,7 @@ namespace waavs {
 				y = fY.calculatePixels();
 			}
 			
-			if (fWidth.isSet()) {
-				width = fWidth.calculatePixels(cWidth, 0, dpi);
-			}
-			if (fHeight.isSet()) {
-				height = fHeight.calculatePixels(cHeight, 0, dpi);
-			}
 
-
-			// start out with an initial size for the backing buffer
-			int iWidth = (int)floor((float)width + 0.5f);
-			int iHeight = (int)floor((float)height + 0.5f);
-
-			// If we have a viewbox, then we need to adjust the size based on that
-			// BUGBUG - does this override x,y,width, height?
-			// need to set the scale based on the pattern viewbox if it exists
-			if (fViewbox.isSet())
-			{
-				iWidth = fViewbox.width();
-				iHeight = fViewbox.height();
-			}
-			
 			// create the backing buffer based on the specified sizes
 			fCachedImage.create(iWidth, iHeight, BL_FORMAT_PRGB32);
 
@@ -3008,8 +3029,8 @@ namespace waavs {
 			IRenderSVG ctx(groot->fontHandler());
 			ctx.begin(fCachedImage);
 			ctx.clearAll();
-			//ctx.setCompOp(BL_COMP_OP_SRC_COPY);
-			//ctx.noStroke();
+			ctx.setCompOp(BL_COMP_OP_SRC_COPY);
+			ctx.noStroke();
 				
 			draw(&ctx);
 			ctx.flush();
