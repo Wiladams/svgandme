@@ -73,8 +73,10 @@ int main(int argc, char **argv)
 	//vp.rotateBy(radians(90.0), r.w / 2.0, r.h / 2.0);
 	
 	// Create a drawing context to render into
-	SvgDrawingContext ctx(r.w, r.h, &gFontHandler);
-
+	BLImage img(r.w, r.h, BL_FORMAT_PRGB32);
+	IRenderSVG ctx(&gFontHandler);
+	ctx.begin(img);
+	
 	// apply the viewport's sceneToSurface transform to the context
 	ctx.setTransform(vp.surfaceToSceneTransform());
 	
@@ -83,9 +85,15 @@ int main(int argc, char **argv)
 
 			
 	// Save the image from the drawing context out to a file
-	const char* outfilename = argv[2];
-	ctx.saveToFile("testfile.png");
+	const char* outfilename = nullptr;
+	printf("argc: %d\n", argc);
 	
+	if (argc >= 3)
+		outfilename = argv[2];
+	else 
+		outfilename = "output.png";
+
+	img.writeToFile(outfilename);
 
 
     return 0;

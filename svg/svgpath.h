@@ -3,7 +3,7 @@
 //
 // svgpath.h 
 // The SVGPath element contains a fairly complex set of commands in the 'd' attribute
-// These commands are used to define the shape of the path, and are fairly complex.
+// These commands are used to define the shape of the path, and can be fairly intricate.
 // This file contains the code to parse the 'd' attribute and turn it into a BLPath object
 //
 // Usage:
