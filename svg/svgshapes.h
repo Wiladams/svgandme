@@ -2812,6 +2812,8 @@ namespace waavs {
 	//============================================================
 	// SVGPatternNode
 	// https://www.svgbackgrounds.com/svg-pattern-guide/#:~:text=1%20Background-size%3A%20cover%3B%20This%20declaration%20is%20good%20when,5%20Background-repeat%3A%20repeat%3B%206%20Background-attachment%3A%20scroll%20%7C%20fixed%3B
+	// https://www.svgbackgrounds.com/category/pattern/
+	// https://www.visiwig.com/patterns/
 	//============================================================
 	struct SVGPatternNode :public SVGGraphicsElement
 	{
@@ -3006,6 +3008,11 @@ namespace waavs {
 
 				if (fWidth.isSet() && fHeight.isSet())
 				{
+					BLRect bbox = frame();
+					iWidth = (int)bbox.w;
+					iHeight = (int)bbox.h;
+
+					
 					// if the units on the fWidth == '%', then take the size of the pattern box
 					// and use that as the width, and then calculate the percentage of that
 					if (fWidth.units() == SVGDimensionUnits::SVG_UNITS_USER)
@@ -3013,10 +3020,13 @@ namespace waavs {
 						iWidth = (int)fWidth.calculatePixels();
 						iHeight = (int)fHeight.calculatePixels();
 					} else {
-						BLRect bbox = frame();
-						iWidth = fWidth.calculatePixels(bbox.w, 0, dpi);
-						iHeight = fHeight.calculatePixels(bbox.h, 0, dpi);
+						//iWidth = (int)fWidth.calculatePixels();
+						//iHeight = (int)fHeight.calculatePixels();
+
+						//iWidth = (int)fWidth.calculatePixels(bbox.w, 0, dpi);
+						//iHeight = (int)fHeight.calculatePixels(bbox.h, 0, dpi);
 					}
+					
 				}
 				else {
 					BLRect bbox = frame();
@@ -3040,8 +3050,8 @@ namespace waavs {
 			// Render out content into the backing buffer
 			IRenderSVG ctx(groot->fontHandler());
 			ctx.begin(fCachedImage);
-			ctx.clearAll();
-			//ctx.fillAll(BLRgba32(0xFF000000u));
+			//ctx.clearAll();
+			ctx.fillAll(BLRgba32(0xFFffffffu));
 			ctx.setCompOp(BL_COMP_OP_SRC_COPY);
 			ctx.noStroke();
 				
@@ -3144,7 +3154,7 @@ namespace waavs {
 			ctx->push();
 
 			// Start with default state
-			ctx->blendMode(BL_COMP_OP_SRC_OVER);
+			//ctx->blendMode(BL_COMP_OP_SRC_OVER);
 
 			//ctx->setStrokeMiterLimit(4.0);
 			ctx->strokeJoin(BL_STROKE_JOIN_MITER_CLIP);

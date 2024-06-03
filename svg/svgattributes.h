@@ -1037,7 +1037,7 @@ namespace waavs {
             {
                 //ctx->fill(getVariant());
                 
-
+                
 				// BUGBUG - check the type of the variant
                 const BLVar& aVar = getVariant();
                 if (aVar.isGradient() || aVar.isRgba32() ) {
@@ -1049,7 +1049,7 @@ namespace waavs {
                     // get the pattern out of the variant
                     //const BLPattern& aPatt = aVar.as<BLPattern>();
 
-                    //ctx->setFillStyle(aPatt);
+
                     //ctx->fill(BLRgba32(0xff00ffff));
                     ctx->fill(aVar);
                 }
@@ -1058,6 +1058,7 @@ namespace waavs {
                     printf("A Type: %d\n", (int)aType);
                     ctx->fill(BLRgba32(0xffff0000));
                 }
+                
                 
             }
                 

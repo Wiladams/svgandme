@@ -89,7 +89,8 @@ namespace waavs
     public:
         IRenderSVG(FontHandler* fh) :fFontHandler(fh) 
         {
-            clearAll();
+            //clearAll();
+            fillAll(BLRgba32(0xff000000u));
             
             // Start with default state
             setCompOp(BL_COMP_OP_SRC_OVER);
@@ -162,14 +163,14 @@ namespace waavs
         virtual void fill(const BLRgba32& value) { BLContext::setFillStyle(value); };
         virtual void fillOpacity(double o) { BLContext::setFillAlpha(o); };
 
-        virtual void noFill() { BLContext::setFillStyle(BLRgba32(0, 0, 0, 0)); }
+        virtual void noFill() { BLContext::setFillStyle(BLVar::null()); }
 
         // paint for stroking lines
         virtual void stroke(const BLVar& value) { if (!value.isNull()) BLContext::setStrokeStyle(value); }
         virtual void stroke(const BLRgba32& value) { BLContext::setStrokeStyle(value); }
         virtual void strokeOpacity(double o) { BLContext::setStrokeAlpha(o); }
 
-        virtual void noStroke() { setStrokeStyle(BLRgba32(0, 0, 0, 0)); }
+        virtual void noStroke() { setStrokeStyle(BLVar::null()); }
 
 
         // Background management
