@@ -2811,6 +2811,7 @@ namespace waavs {
 	
 	//============================================================
 	// SVGPatternNode
+	// https://www.svgbackgrounds.com/svg-pattern-guide/#:~:text=1%20Background-size%3A%20cover%3B%20This%20declaration%20is%20good%20when,5%20Background-repeat%3A%20repeat%3B%206%20Background-attachment%3A%20scroll%20%7C%20fixed%3B
 	//============================================================
 	struct SVGPatternNode :public SVGGraphicsElement
 	{
@@ -3002,15 +3003,26 @@ namespace waavs {
 				// If we don't have a viewbox, then the bbox can be either
 				// 1) A specified width and height
 				// 2) A percentage width and height of the pattern's children
-				BLRect bbox = frame();
-				iWidth = (int)bbox.w;
-				iHeight = (int)bbox.h;
-				//if (fWidth.isSet()) {
-				//	iWidth = int((fWidth.fValue * bbox.w)+0.5);
-				//}
-				//if (fHeight.isSet()) {
-				//	iHeight = int((fHeight.fValue *bbox.h)+0.5);
-				//}
+
+				if (fWidth.isSet() && fHeight.isSet())
+				{
+					// if the units on the fWidth == '%', then take the size of the pattern box
+					// and use that as the width, and then calculate the percentage of that
+					if (fWidth.units() == SVGDimensionUnits::SVG_UNITS_USER)
+					{
+						iWidth = (int)fWidth.calculatePixels();
+						iHeight = (int)fHeight.calculatePixels();
+					} else {
+						BLRect bbox = frame();
+						iWidth = fWidth.calculatePixels(bbox.w, 0, dpi);
+						iHeight = fHeight.calculatePixels(bbox.h, 0, dpi);
+					}
+				}
+				else {
+					BLRect bbox = frame();
+					iWidth = (int)bbox.w;
+					iHeight = (int)bbox.h;
+				}
 			}
 			
 			// Start out with some sizes based on the canvas size
@@ -3029,6 +3041,7 @@ namespace waavs {
 			IRenderSVG ctx(groot->fontHandler());
 			ctx.begin(fCachedImage);
 			ctx.clearAll();
+			//ctx.fillAll(BLRgba32(0xFF000000u));
 			ctx.setCompOp(BL_COMP_OP_SRC_COPY);
 			ctx.noStroke();
 				

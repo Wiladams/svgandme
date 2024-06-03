@@ -34,7 +34,7 @@ int main(int argc, char** argv)
     // There is no regard to hierarchy here, just raw
     // element output
     // Printing an element will print its attributes though
-	// nad printing a pure content node will print its content
+	// and printing a pure content node will print its content
 	// and printing a comment will print the comment
     while (iter.next())
     {   

@@ -9,7 +9,10 @@
 #include "fonthandler.h"
 #include "filestreamer.h"
 
+// Add some extension elements
 #include "svgwaavs.h"
+#include "svgscript.h"
+
 
 using namespace waavs;
 
@@ -305,6 +308,7 @@ void onLoad()
 
 	// Register some extra bits to extend SVG language
 	DisplayCaptureElement::registerFactory();
+	SVGScriptElement::registerFactory();
 	
 	//testMonitors();
 }
