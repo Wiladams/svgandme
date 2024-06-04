@@ -1009,7 +1009,7 @@ namespace waavs {
 			// Use the root to lookup the wrapped node
 			if (groot != nullptr && !fWrappedID.empty())
 			{
-				fWrappedNode = groot->findNodeById(fWrappedID);
+				fWrappedNode = groot->getElementById(fWrappedID);
 
 				if (fWrappedNode)
 				{
@@ -1792,7 +1792,7 @@ namespace waavs {
 
 			if (root() != nullptr)
 			{
-				auto node = groot->findNodeById(idStr);
+				auto node = groot->getElementById(idStr);
 
 				
 				// pull out the color value
@@ -2911,7 +2911,7 @@ namespace waavs {
 			std::string idStr = toString(id);
 
 
-			auto node = groot->findNodeById(idStr);
+			auto node = groot->getElementById(idStr);
 
 			// return early if we could not lookup the node
 			if (nullptr == node)

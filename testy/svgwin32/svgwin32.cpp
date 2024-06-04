@@ -292,7 +292,7 @@ void onLoad()
 
 	//layered();
 	// resize app window
-	createAppWindow(1024, 768, "SVGViewer");
+	createAppWindow(1024, 768, "SVG Win32");
 
 	// register to receive various events
 	subscribe(onFileDrop);

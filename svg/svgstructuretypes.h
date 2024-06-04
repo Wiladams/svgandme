@@ -118,7 +118,7 @@ namespace waavs {
     // for the purpose of looking up nodes, but also for style sheets
     struct IAmGroot
     {
-        virtual std::shared_ptr<SVGViewable> findNodeById(const std::string& name) = 0;
+        virtual std::shared_ptr<SVGViewable> getElementById(const std::string& name) = 0;
         virtual std::shared_ptr<SVGViewable> findNodeByHref(const ByteSpan& href) = 0;
         virtual std::shared_ptr<SVGViewable> findNodeByUrl(const ByteSpan& inChunk) = 0;
         virtual ByteSpan findEntity(const std::string& name) = 0;

@@ -3,7 +3,7 @@
 #include "app/apphost.h"
 
 #include "svg.h"
-#include "viewport.h"
+//#include "viewport.h"
 #include "fonthandler.h"
 #include "filestreamer.h"
 

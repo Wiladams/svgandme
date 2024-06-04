@@ -148,6 +148,7 @@
     <ClInclude Include="..\..\app\screensnapshot.h" />
     <ClInclude Include="..\..\app\svgwaavs.h" />
     <ClInclude Include="..\..\app\user32pixelmap.h" />
+    <ClInclude Include="..\..\svg\svgscript.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\app\appmain.cpp" />

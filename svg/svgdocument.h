@@ -99,12 +99,12 @@ namespace waavs {
             return false;
         }
         
-        std::shared_ptr<SVGViewable> findNodeById(const std::string& name) override
+        std::shared_ptr<SVGViewable> getElementById(const std::string& name) override
         {
 			if (fDefinitions.contains(name))
                 return fDefinitions[name];
 
-		    printf("SVGDocument::findNodeById, FAIL: %s\n", name.c_str());
+		    printf("SVGDocument::getElementById, FAIL: %s\n", name.c_str());
             
             return nullptr;
         }
@@ -127,7 +127,7 @@ namespace waavs {
             // lookup the thing we're referencing
             std::string idStr = toString(id);
 
-            return findNodeById(idStr);
+            return getElementById(idStr);
         }
 
         // Load a URL reference, including the 'url(' function indicator
@@ -313,12 +313,12 @@ namespace waavs {
 			SVGAElement::registerFactory();             // 'a'
             SVGGElement::registerFactory();             // 'g'
             SVGImageNode::registerFactory();            // 'image'
-            SVGSVGElement::registerFactory();              // 'svg'
+            SVGSVGElement::registerFactory();           // 'svg'
             SVGStyleNode::registerFactory();            // 'style'
-            SVGSwitchElement::registerFactory();           // 'switch'
+            SVGSwitchElement::registerFactory();        // 'switch'
             SVGTextNode::registerFactory();             // 'text'
             SVGTSpanNode::registerFactory();            // 'tspan'
-            SVGUseElement::registerFactory();              // 'use'
+            SVGUseElement::registerFactory();           // 'use'
             
             // Non-Structural Nodes
 			SVGSolidColorElement::registerFactory();    // 'solidColor'
@@ -342,7 +342,7 @@ namespace waavs {
             
             
             // Font node registrations
-            // These are obsolete and depricated
+            // These are obsolete and deprecated
 			SVGFontNode::registerFactory();             // 'font'
 			SVGFontFaceNode::registerFactory();         // 'font-face'
             SVGGlyphNode::registerFactory();            // 'glyph'

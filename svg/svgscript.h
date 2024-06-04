@@ -24,12 +24,12 @@ namespace waavs {
                 auto node = std::make_shared<SVGScriptElement>(aroot);
                 node->loadFromXmlIterator(iter);
                 return node;
-            };
+                };
         }
 
         ByteSpan fScript{};
 
-        SVGScriptElement(IAmGroot* aroot) : SVGGraphicsElement(aroot) 
+        SVGScriptElement(IAmGroot* aroot) : SVGGraphicsElement(aroot)
         {
             isStructural(false);
         }
@@ -42,5 +42,7 @@ namespace waavs {
         void loadCDataNode(const XmlElement& elem) override
         {
             fScript = elem.data();
+			writeChunkToFile(fScript, "script.js");
         }
+    };
 }

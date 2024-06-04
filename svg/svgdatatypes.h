@@ -13,7 +13,6 @@
 #include "svgcolors.h"
 #include "irendersvg.h"
 
-//#include "fastavxbase64.h"
 #include "base64.h"
 
 
@@ -389,7 +388,7 @@ namespace waavs {
     //
     // Turn a base64 encoded inlined image into a BLImage
     // We are handed the attribute, typically coming from a 
-    // href of an <image> tage, or as a lookup for a 
+    // href of an <image> tag, or as a lookup for a 
     // fill, or stroke, paint attribute.
     // What we're passed are the contents of the 'url()'.  So, only
     // what's in between the parenthesis
