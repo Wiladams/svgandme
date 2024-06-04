@@ -359,7 +359,7 @@ namespace waavs {
                 char * outBuff{ new char[outBuffSize]{} };
                 
                 //auto decodedSize = fast_avx2_base64_decode((char *)outBuff, (const char *)value.data(), value.size());
-                auto decodedSize = base64_decode((const char*)value.data(), value.size(), (unsigned char *)outBuff);
+                auto decodedSize = base64::decode((const char*)value.data(), value.size(), (unsigned char *)outBuff);
 
 				if (decodedSize > 0)
 				{
@@ -434,7 +434,7 @@ namespace waavs {
 
             if (mime == "image/png")
             {
-                auto decodedSize = base64_decode((const char*)inBuffChunk.fStart, chunk_size(inBuffChunk), outBuff);
+                auto decodedSize = base64::decode((const char*)inBuffChunk.fStart, chunk_size(inBuffChunk), outBuff);
                 //auto decodedSize = fast_avx2_base64_decode((char*)outBuff, (const char*)inBuffChunk.fStart, inBuffChunk.size());
                 
                 if (decodedSize>0)
@@ -445,7 +445,7 @@ namespace waavs {
             }
             else if ((mime == "image/jpeg") || (mime == "image/jpg"))
             {
-                auto decodedSize = base64_decode((const char*)inBuffChunk.fStart, chunk_size(inBuffChunk), outBuff);
+                auto decodedSize = base64::decode((const char*)inBuffChunk.fStart, chunk_size(inBuffChunk), outBuff);
                 //auto decodedSize = fast_avx2_base64_decode((char*)outBuff, (const char*)inBuffChunk.fStart, inBuffChunk.size());
 
 				outChunk = ByteSpan(outBuff, decodedSize);

@@ -21,9 +21,6 @@
     <ClCompile Include="svgviewer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\svg\base64.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\app\apphost.h">
@@ -66,6 +63,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\svgdatatypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\base64.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -38,9 +38,6 @@
     <ClCompile Include="svgwin32.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\svg\base64.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\app\appmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

@@ -152,7 +152,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\app\appmain.cpp" />
-    <ClCompile Include="..\..\svg\base64.cpp" />
     <ClCompile Include="svgwin32.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

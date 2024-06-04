@@ -143,7 +143,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\svg\base64.cpp" />
     <ClCompile Include="svgimage.cpp" />
   </ItemGroup>
   <ItemGroup>
