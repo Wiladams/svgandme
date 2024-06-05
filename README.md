@@ -38,7 +38,7 @@ typically found in the wild.
  
 While blend2d provides great support for the various raw graphics primitives, it does not
 inherently support the more web focused aspects of SVG such as CSS, groupings, definitions, and the like.  
-Here, svgandme fills in the blanks, having a modest amount of support for style sheets, and some more esoteric features 
+Here, svgandme fills the gaps, having a modest amount of support for style sheets, and some more esoteric features 
 of the SVG specification.
 
 

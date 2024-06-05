@@ -2,9 +2,9 @@
 
 #include "app/apphost.h"
 
+#include <filesystem>
+
 #include "svg.h"
-//#include "viewport.h"
-#include "fonthandler.h"
 #include "filestreamer.h"
 
 
@@ -31,9 +31,26 @@ static BLFontFace loadFont(const char* filename)
     return ff;
 }
 
+
+
 static void loadFontDirectory(const char* dir)
 {
-    gFontHandler.loadDirectoryOfFonts(dir);
+    //gFontHandler.loadDirectoryOfFonts(dir);
+	const std::filesystem::path fontPath(dir);
+
+	for (const auto& dir_entry : std::filesystem::directory_iterator(fontPath))
+	{
+		if (dir_entry.is_regular_file())
+		{
+			if (endsWith(dir_entry.path().generic_string(), ".ttf") ||
+				endsWith(dir_entry.path().generic_string(), ".TTF") ||
+				endsWith(dir_entry.path().generic_string(), ".otf"))
+			{
+				BLFontFace ff;
+				ff = gFontHandler.loadFontFace(dir_entry.path().generic_string().c_str());
+			}
+		}
+	}
 }
 
 static void loadDefaultFonts()

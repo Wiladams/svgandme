@@ -3,7 +3,7 @@
 #ifndef fonthandler_h
 #define fonthandler_h
 
-#include <filesystem>
+
 #include <algorithm>
 #include <vector>
 #include <memory>
@@ -122,25 +122,6 @@ namespace waavs {
             {
                 BLFontFace face = loadFontFace(filename);
                 //printf("loadFonts: %s, 0x%x\n", face.familyName().data(), face.isValid());
-            }
-        }
-
-        void loadDirectoryOfFonts(const char* dir)
-        {
-            const std::filesystem::path fontPath(dir);
-
-            for (const auto& dir_entry : std::filesystem::directory_iterator(fontPath))
-            {
-                if (dir_entry.is_regular_file())
-                {
-                    if (endsWith(dir_entry.path().generic_string(),".ttf") || 
-                        endsWith(dir_entry.path().generic_string(),".TTF") ||
-                        endsWith(dir_entry.path().generic_string(),".otf"))
-                    {
-                        BLFontFace ff;
-                        ff = loadFontFace(dir_entry.path().generic_string().c_str());
-                    }
-                }
             }
         }
 

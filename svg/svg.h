@@ -9,7 +9,7 @@
 #include "svgdocument.h"
 #include "svgfilter.h"
 #include "viewport.h"
-
+#include "fonthandler.h"
 
 
 
