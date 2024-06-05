@@ -259,9 +259,14 @@ void onLoad()
 {
     printf("onLoad\n");
     
-	frameRate(30);
+	// Load extension elements
 	
-    loadDefaultFonts();
+	
+	frameRate(15);
+	
+    //loadDefaultFonts();
+	loadFontDirectory("c:\\windows\\fonts");
+	
     dropFiles();
 
 

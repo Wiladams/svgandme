@@ -322,7 +322,7 @@ namespace waavs {
         SVGFontFamily& operator=(const SVGFontFamily& rhs) = delete;
 
 
-		const std::string& value() { return fValue; }
+		const std::string& value() const { return fValue; }
         
         void drawSelf(IRenderSVG* ctx) override
         {
@@ -999,7 +999,7 @@ namespace waavs {
                     // somewhere in the tree
                     set(false);
                 }
-                else if (svgcolors.contains(cName))
+                else if (svgcolors.find(cName) != svgcolors.end())
                 {
                     c = svgcolors[cName];
                     blVarAssignRgba32(&fVar, c.value);
@@ -1517,7 +1517,7 @@ namespace waavs {
         
         SVGMarkerAttribute(IAmGroot* groot) : SVGVisualProperty(groot) { }
         
-		std::shared_ptr<SVGViewable> markerNode()
+		std::shared_ptr<SVGViewable> markerNode() const
 		{
             return fWrappedNode;
 		}

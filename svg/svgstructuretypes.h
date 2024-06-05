@@ -29,11 +29,11 @@ namespace waavs {
     {
     protected:
         IAmGroot* fRoot{ nullptr };
+        bool fNeedsBinding{ false };
 
     public:
         BLVar fVar{};
 
-        bool fNeedsBinding{ false };
 
         SVGObject(IAmGroot* root) :fRoot(root) {}
 
@@ -183,6 +183,10 @@ namespace waavs {
             fRawValue = chunk_trim(inChunk, xmlwsp);
             if (!fRawValue)
             {
+                // convert the inChunk to a string
+                // so we can print it out
+				std::string chunkStr(inChunk.fStart, inChunk.fEnd);
+				//printf("BLANK VisualProperty: %s\n", chunkStr.c_str());
                 set(false);
                 return false;
             }
@@ -399,14 +403,20 @@ namespace waavs {
             return nullptr;
         }
 
-
+        //
+        // setAttribute
+        // 
+        // Allows setting any attribute on the element
+        // The 'name', is the name of the attribute to be set
+        // the 'value', is a span, that contains a raw string to be parsed to set the value
+        //
         virtual void setAttribute(const std::string& name, const ByteSpan& value)
         {
             // If the value is nothing, then don't set it
             if (!value)
                 return;
             
-            if (gSVGAttributeCreation.contains(name))
+            if (gSVGAttributeCreation.find(name) != gSVGAttributeCreation.end())
             {
                 auto prop = gSVGAttributeCreation[name](value);
                 if (prop)
@@ -416,11 +426,13 @@ namespace waavs {
             }
         }
 
+        //
+        // loadVisualProperties
+        // 
         // This might be called multiple times on an element
         // once for the regular attributes
         // a second time for attributes hidden in a 'style' attribute
-        // Run through the attributes of the element
-        // looking for field constructors 
+        //
         virtual void loadVisualProperties(const XmlAttributeCollection & attrCollection)
         {
             ByteSpan display = attrCollection.getAttribute("display");
@@ -428,7 +440,6 @@ namespace waavs {
             {
                 display = chunk_trim(display, xmlwsp);
 
-                //auto disp = std::string(display.fStart, display.fEnd);
                 if (display == "none")
                     visible(false);
             }
@@ -438,6 +449,8 @@ namespace waavs {
                 fHasTransform = parseTransform(attrCollection.getAttribute("transform"), fTransform);
                 if (fHasTransform)
                 {
+                    // create the inverse transform for subsequent
+                    // UI interaction
                     fTransformInverse = fTransform;
 					fTransformInverse.invert();
                 }
@@ -507,7 +520,7 @@ namespace waavs {
             // that might need that
             for (auto& prop : fVisualProperties) {
                 // BUGBUG - drawing visual property
-                if (prop.second->autoDraw())
+				if (prop.second->autoDraw() && prop.second->isSet())
                     prop.second->draw(ctx);
             }
         }
@@ -738,7 +751,7 @@ namespace waavs {
                 addNode(node);
             }
             else {
-                //printf("SVGGraphicsElement::loadSelfClosingNode UNKNOWN[%s]\n", elem.name().c_str());
+                printf("SVGGraphicsElement::loadSelfClosingNode UNKNOWN[%s]\n", elem.name().c_str());
                 //printXmlElement(elem);
             }
         }
@@ -774,7 +787,7 @@ namespace waavs {
             // then create a new node of that type and add it
             // to the list of nodes.
 			auto aname = elem.name();
-            if (gSVGGraphicsElementCreation.contains(aname))
+            if (gSVGGraphicsElementCreation.find(aname) != gSVGGraphicsElementCreation.end())
             {
                 auto& func = gSVGGraphicsElementCreation[aname];
                 auto node = func(root(), iter);

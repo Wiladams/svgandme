@@ -237,10 +237,10 @@ namespace waavs {
 		{
 			SVGGraphicsElement::bindPropertiesToGroot(groot);
 			
-			if ((fVisualProperties.contains("marker-start") && fVisualProperties["marker-start"]->isSet()) ||
-				(fVisualProperties.contains("marker-mid") && fVisualProperties["marker-mid"]->isSet()) ||
-				(fVisualProperties.contains("marker-end") && fVisualProperties["marker-end"]->isSet()) ||
-				(fVisualProperties.contains("marker") && fVisualProperties["marker"]->isSet()))
+			if (((fVisualProperties.find("marker-start") != fVisualProperties.end()) && fVisualProperties["marker-start"]->isSet()) ||
+				((fVisualProperties.find("marker-mid") != fVisualProperties.end()) && fVisualProperties["marker-mid"]->isSet()) ||
+				((fVisualProperties.find("marker-end") != fVisualProperties.end()) && fVisualProperties["marker-end"]->isSet()) ||
+				((fVisualProperties.find("marker") != fVisualProperties.end()) && fVisualProperties["marker"]->isSet()))
 			{
 				fHasMarkers = true;
 			}
@@ -620,12 +620,22 @@ namespace waavs {
 	
 	struct SVGCircleElement : public SVGGeometryElement
 	{
-		static void registerFactory() {
+		static void registerSingular() {
 			gShapeCreationMap["circle"] = [](IAmGroot* root, const XmlElement& elem) {
 				auto node = std::make_shared<SVGCircleElement>(root);
 				node->loadFromXmlElement(elem);
 				return node;
-			};
+				};
+		}
+
+		static void registerFactory() {
+			gSVGGraphicsElementCreation["circle"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGCircleElement>(aroot);
+				node->loadFromXmlIterator(iter);
+				return node;
+				};
+
+			registerSingular();
 		}
 
 		

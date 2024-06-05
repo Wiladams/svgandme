@@ -60,21 +60,21 @@ namespace waavs
     static CSSSelectorKind parseSimpleSelectorKind(const waavs::ByteSpan& inChunk)
     {
         if (*inChunk == '.')
-            return CSSSelectorKind::CSS_SELECTOR_CLASS;
+            return CSSSelectorKind::CSS_SELECTOR_CLASS;         // Select a particular class
         else if (*inChunk == '#')
-            return CSSSelectorKind::CSS_SELECTOR_ID;
+            return CSSSelectorKind::CSS_SELECTOR_ID;            // Select elements with the given ID
         else if (*inChunk == '@')
-            return CSSSelectorKind::CSS_SELECTOR_ATRULE;
+            return CSSSelectorKind::CSS_SELECTOR_ATRULE;        // Animation selector
         else if (*inChunk == '[')
-            return CSSSelectorKind::CSS_SELECTOR_ATTRIBUTE;
+			return CSSSelectorKind::CSS_SELECTOR_ATTRIBUTE;     // Select elements with the given attribute
         else if (*inChunk == ':')
-            return CSSSelectorKind::CSS_SELECTOR_PSEUDO_CLASS;
+			return CSSSelectorKind::CSS_SELECTOR_PSEUDO_CLASS;  // Select elements with the given pseudo-class
         else if (*inChunk == '*')
-            return CSSSelectorKind::CSS_SELECTOR_UNIVERSAL;
+			return CSSSelectorKind::CSS_SELECTOR_UNIVERSAL;     // Select all elements
         else if (*inChunk == ',')
-            return CSSSelectorKind::CSS_SELECTOR_COMBINATOR;
+			return CSSSelectorKind::CSS_SELECTOR_COMBINATOR;    // Combinator
         else if (cssalpha[*inChunk])
-            return CSSSelectorKind::CSS_SELECTOR_ELEMENT;
+			return CSSSelectorKind::CSS_SELECTOR_ELEMENT;       // Select elements with the given name
         else
             return CSSSelectorKind::CSS_SELECTOR_INVALID;
     }
@@ -111,6 +111,7 @@ namespace waavs
     //======================================================
     struct CSSSelector
     {
+        bool fIsNull{ true };
         CSSSelectorKind fKind{ CSSSelectorKind::CSS_SELECTOR_INVALID };
         ByteSpan fData{};
         XmlAttributeCollection fAttributes{};
@@ -119,7 +120,8 @@ namespace waavs
         
         CSSSelector() = default;
         CSSSelector(const CSSSelector &other)
-            :fKind(other.fKind)
+            :fIsNull(other.fIsNull),
+            fKind(other.fKind)
 			, fName(other.fName)
             , fData(other.fData)
 			, fAttributes(other.fAttributes)
@@ -131,9 +133,8 @@ namespace waavs
             fName(name),
             fData(inChunk)
         {
-			//fKind = kind;
-            //fName = name;
-            //fData = inChunk;
+            if (!name.empty())
+			    fIsNull = false;
             
             loadFromChunk(inChunk);
         }
@@ -145,11 +146,13 @@ namespace waavs
         const XmlAttributeCollection& attributes() const { return fAttributes; }
 
 
-        explicit operator bool() const { return fKind!= CSSSelectorKind::CSS_SELECTOR_INVALID && !fName.empty() && fAttributes.size() > 0; }
-        
+        //explicit operator bool() const { return fKind!= CSSSelectorKind::CSS_SELECTOR_INVALID && !fName.empty() && fAttributes.size() > 0; }
+        explicit operator bool() const { return !fIsNull; }
+
         
 		CSSSelector& operator=(const CSSSelector& other)
 		{
+            fIsNull = other.fIsNull;
 			fKind = other.fKind;
 			fName = other.fName;
 			fAttributes = other.fAttributes;
@@ -187,7 +190,7 @@ namespace waavs
 			gatherCssAttributes(inChunk, fAttributes);
 		}
         
-        waavs::ByteSpan getAttribute(const std::string &&name)
+        waavs::ByteSpan getAttribute(const std::string &&name) const
         {
             return fAttributes.getAttribute(name);
             
@@ -334,6 +337,7 @@ namespace waavs
         std::map<std::string, std::shared_ptr<CSSSelector>> fIDSelectors{};
         std::map<std::string, std::shared_ptr<CSSSelector>> fClassSelectors{};
         std::map<std::string, std::shared_ptr<CSSSelector>> fElementSelectors{};
+        std::map<std::string, std::shared_ptr<CSSSelector>> fAnimationSelectors{};
         //std::vector<std::shared_ptr<CSSSelector>> fUniversalSelectors{};
 
         CSSStyleSheet() = default;
@@ -358,7 +362,12 @@ namespace waavs
 					return fClassSelectors.at(name);
 				else
 					return nullptr;
-			case CSSSelectorKind::CSS_SELECTOR_ELEMENT:
+			case CSSSelectorKind::CSS_SELECTOR_ATRULE:
+                if (fAnimationSelectors.find(name) != fAnimationSelectors.end())
+                    return fAnimationSelectors.at(name);
+                else
+                    return nullptr;
+            case CSSSelectorKind::CSS_SELECTOR_ELEMENT:
                 if (fElementSelectors.find(name) != fElementSelectors.end())
                     return fElementSelectors.at(name);
                 else
@@ -367,6 +376,8 @@ namespace waavs
 			default:
 				return nullptr;
 			}
+
+            return nullptr;
         }
 
 
@@ -385,10 +396,15 @@ namespace waavs
             return getSelector(name, CSSSelectorKind::CSS_SELECTOR_CLASS);
 		}
         
+        std::shared_ptr<CSSSelector> getAnimationSelector(const std::string& name)
+        {
+            return getSelector(name, CSSSelectorKind::CSS_SELECTOR_ATRULE);
+        }
+        
         
 		void addSelectorToMap(std::map<std::string, std::shared_ptr<CSSSelector>> &amap, std::shared_ptr<CSSSelector> selector)
 		{
-			if (amap.contains(selector->name()))
+			if (amap.find(selector->name()) != amap.end())
 			{
 				// If the selector already exists, we need to merge the properties
 				// into the existing selector
@@ -418,6 +434,9 @@ namespace waavs
                 break;
             case CSSSelectorKind::CSS_SELECTOR_ELEMENT:
                 addSelectorToMap(fElementSelectors, sel);
+                break;
+            case CSSSelectorKind::CSS_SELECTOR_ATRULE:
+                addSelectorToMap(fAnimationSelectors, sel);
                 break;
             }
         }

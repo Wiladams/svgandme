@@ -22,6 +22,14 @@
 
 
 namespace waavs {
+	static bool endsWith(const std::string& src, const std::string &suffix) 
+    {
+        if (suffix.size() > src.size())
+            return false;
+        
+        return src.substr(src.size() - suffix.size()) == suffix;
+	}
+    
     class FontHandler
     {
     public:
@@ -125,9 +133,9 @@ namespace waavs {
             {
                 if (dir_entry.is_regular_file())
                 {
-                    if (dir_entry.path().generic_string().ends_with(".ttf") || 
-                        dir_entry.path().generic_string().ends_with(".TTF") ||
-                        dir_entry.path().generic_string().ends_with(".otf"))
+                    if (endsWith(dir_entry.path().generic_string(),".ttf") || 
+                        endsWith(dir_entry.path().generic_string(),".TTF") ||
+                        endsWith(dir_entry.path().generic_string(),".otf"))
                     {
                         BLFontFace ff;
                         ff = loadFontFace(dir_entry.path().generic_string().c_str());
@@ -168,7 +176,7 @@ namespace waavs {
         // Select a specific family, where a list of possibilities have been supplied
         // The query properties of style, weight, and stretch can also be supplied
         // with defaults of 'normal'
-		bool selectFontFamily(const ByteSpan& names, BLFontFace& face, uint32_t style= BL_FONT_STYLE_NORMAL, uint32_t weight= BL_FONT_WEIGHT_NORMAL, uint32_t stretch= BL_FONT_STRETCH_NORMAL)
+		bool selectFontFamily(const ByteSpan& names, BLFontFace& face, uint32_t style= BL_FONT_STYLE_NORMAL, uint32_t weight= BL_FONT_WEIGHT_NORMAL, uint32_t stretch= BL_FONT_STRETCH_NORMAL) const
 		{
             charset delims(",");
             charset quoteChars("'\"");
@@ -218,7 +226,7 @@ namespace waavs {
         // Select a font with given criteria
 		// If the font is not found, then return the default font
         // which should be Arial
-        bool selectFont(const ByteSpan& names, BLFont& font, float sz, uint32_t style = BL_FONT_STYLE_NORMAL, uint32_t weight = BL_FONT_WEIGHT_NORMAL, uint32_t stretch = BL_FONT_STRETCH_NORMAL)
+        bool selectFont(const ByteSpan& names, BLFont& font, float sz, uint32_t style = BL_FONT_STYLE_NORMAL, uint32_t weight = BL_FONT_WEIGHT_NORMAL, uint32_t stretch = BL_FONT_STRETCH_NORMAL) const
         {
             BLFontFace face;
 
@@ -248,13 +256,13 @@ namespace waavs {
         
         // This is fairly expensive, and should live with a font object
         // instead of on this interface
-        vec2f textMeasure(const ByteSpan & txt, const char* familyname, float sz)
+        BLPoint textMeasure(const ByteSpan & txt, const char* familyname, float sz) const
         {
             BLFont afont{};
             auto success = selectFont(familyname, afont, sz);
             
 			if (!success)
-				return vec2f(0, 0);
+                return BLPoint( 0, 0 );
             
             BLTextMetrics tm{};
             BLGlyphBuffer gb;
@@ -265,7 +273,7 @@ namespace waavs {
             float cx = (float)(tm.boundingBox.x1 - tm.boundingBox.x0);
             float cy = afont.size();
 
-            return { cx, cy };
+            return BLPoint( cx, cy );
         }
     };
 

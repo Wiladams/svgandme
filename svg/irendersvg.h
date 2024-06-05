@@ -330,7 +330,7 @@ namespace waavs
             float cy = fFont.size();
 
 
-            return { cx, cy };
+            return BLPoint( cx, cy );
         }
         
         virtual BLPoint textEmSize() {

@@ -77,7 +77,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>..\;..\..\;..\..\svg;..\..\app;</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
@@ -96,7 +96,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>..\;..\..\;..\..\svg;..\..\app;</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
@@ -115,7 +115,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>..\;..\..\;..\..\svg;..\..\app;</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
@@ -134,7 +134,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>..\;..\..\;..\..\svg;..\..\app;</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
@@ -158,11 +158,15 @@
     <ClInclude Include="..\..\svg\definitions.h" />
     <ClInclude Include="..\..\svg\fonthandler.h" />
     <ClInclude Include="..\..\svg\irendersvg.h" />
+    <ClInclude Include="..\..\svg\svg.h" />
     <ClInclude Include="..\..\svg\svgattributes.h" />
     <ClInclude Include="..\..\svg\svgcolors.h" />
+    <ClInclude Include="..\..\svg\svgcss.h" />
     <ClInclude Include="..\..\svg\svgdatatypes.h" />
     <ClInclude Include="..\..\svg\svgdocument.h" />
     <ClInclude Include="..\..\svg\svgdrawingcontext.h" />
+    <ClInclude Include="..\..\svg\svgfilter.h" />
+    <ClInclude Include="..\..\svg\svgfont.h" />
     <ClInclude Include="..\..\svg\svgpath.h" />
     <ClInclude Include="..\..\svg\svgshapes.h" />
     <ClInclude Include="..\..\svg\svgstructuretypes.h" />

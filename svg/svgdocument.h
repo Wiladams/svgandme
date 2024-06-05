@@ -35,9 +35,9 @@
 
 #include "svgshapes.h"
 #include "svgfont.h"
-#include "svgdrawingcontext.h"
+#include "svgfilter.h"
 #include "svgcss.h"
-
+#include "svgdrawingcontext.h"
 
 
 
@@ -101,7 +101,7 @@ namespace waavs {
         
         std::shared_ptr<SVGViewable> getElementById(const std::string& name) override
         {
-			if (fDefinitions.contains(name))
+			if (fDefinitions.find(name) != fDefinitions.end())
                 return fDefinitions[name];
 
 		    printf("SVGDocument::getElementById, FAIL: %s\n", name.c_str());
@@ -153,7 +153,7 @@ namespace waavs {
         
         ByteSpan findEntity(const std::string& name) override
         {
-			if (fEntities.contains(name))
+			if (fEntities.find(name) != fEntities.end())
 				return fEntities[name];
 
 			return ByteSpan{};
@@ -187,7 +187,7 @@ namespace waavs {
 			//printf("Drawing Duration: %f\n", endTime - startTime);
         }
         
-        BLRect sceneFrame() 
+        BLRect sceneFrame() const
         {
             auto svgRoot = documentElement();
             if (nullptr == svgRoot)
@@ -242,21 +242,25 @@ namespace waavs {
         }
 
 		// Assuming we've already got a file mapped into memory, load the document
-        bool loadFromChunk(const ByteSpan &srcChunk)
-        {
-            XmlElementIterator iter(srcChunk, true);
+        //bool loadFromChunk(const ByteSpan &srcChunk)
+        //{
+        //    XmlElementIterator iter(srcChunk, true);
 
-            loadFromXmlIterator(iter);
+        //    loadFromXmlIterator(iter);
 
-            return true;
-        }
+        //    return true;
+        //}
 
         // A convenience to construct the document from a chunk, and return
         // a shared pointer to the document
         static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, FontHandler* fh)
         {
             auto doc = std::make_shared<SVGDocument>(fh);
-            doc->loadFromChunk(srcChunk);
+
+            XmlElementIterator iter(srcChunk, true);
+            doc->loadFromXmlIterator(iter);
+            
+            //doc->loadFromChunk(srcChunk);
 
             return doc;
         }
@@ -334,11 +338,18 @@ namespace waavs {
 
             
             // Filter node registrations
-            //SVGFilterNode::registerFactory();           // 'filter'
-            //SVGFeGaussianBlurNode::registerFactory();   // 'feGaussianBlur'
-            //SVGFeColorMatrixNode::registerFactory();    // 'feColorMatrix'
-            //SVGFeCompositeNode::registerFactory();      // 'feComposite'
-			//SVGFeTurbulenceNode::registerFactory();     // 'feTurbulence'
+            SVGFilterElement::registerFactory();            // 'filter'
+            SVGFeBlendElement::registerFactory();           // 'feBlend'
+            SVGFeColorMatrixElement::registerFactory();     // 'feColorMatrix'
+            SVGFeCompositeElement::registerFactory();       // 'feComposite'
+            SVGFeConvolveMatrixElement::registerFactory();  // 'feConvolveMatrix'
+            SVGFeDiffuseLightingElement::registerFactory(); // 'feDiffuseLighting'
+            SVGFeDisplacementMapElement::registerFactory(); // 'feDisplacementMap'
+            SVGFeDistantLightElement::registerFactory();    // 'feDistantLightMap'
+            SVGFeFloodElement::registerFactory();           // 'feFlood'
+            SVGFeGaussianBlurElement::registerFactory();    // 'feGaussianBlur'
+            SVGFeOffsetElement::registerFactory();          // 'feOffset'
+            SVGFeTurbulenceElement::registerFactory();      // 'feTurbulence'
             
             
             // Font node registrations
