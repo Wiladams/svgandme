@@ -371,10 +371,12 @@ namespace waavs
             text(txt, xy.x, xy.y);
         }
         
-        virtual void text(const char* txt, double x, double y) {
-            BLContext::strokeUtf8Text(BLPoint(x, y), fFont, txt);
+        virtual void text(const char* txt, double x, double y) 
+        {
+            // BUGBUG - Drawing order should be determined by 
+            // the drawing order attribute
             BLContext::fillUtf8Text(BLPoint(x, y), fFont, txt);
-
+            BLContext::strokeUtf8Text(BLPoint(x, y), fFont, txt);
             
 			fTextX += fTextAdvance;
         }

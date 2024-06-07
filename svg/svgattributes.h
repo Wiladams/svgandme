@@ -12,7 +12,7 @@
 #include "irendersvg.h"
 #include "svgcolors.h"
 #include "svgstructuretypes.h"
-
+#include "maths.h"
 
 
 
@@ -837,7 +837,7 @@ namespace waavs {
                 if (i == 3)
                     rgbi[i] = (uint8_t)(cv.value() * 255.0f);
                 else
-                    rgbi[i] = (uint8_t)cv.value();
+                    rgbi[i] = (uint8_t)waavs::clamp(cv.value(),0.0,255.0);
             }
             i++;
             num = chunk_token(nums, ",");

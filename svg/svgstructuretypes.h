@@ -727,17 +727,19 @@ namespace waavs {
             ctx->pop();
         }
     
-        virtual void addNode(std::shared_ptr < SVGVisualNode > node)
+        virtual bool addNode(std::shared_ptr < SVGVisualNode > node)
         {
             if (node == nullptr)
-                return;
+                return false;
 
             if (!node->id().empty())
                 root()->addDefinition(node->id(), node);
-
+            
             if (node->isStructural()) {
                 fNodes.push_back(node);
             }
+
+            return true;
         }
 
         virtual void loadSelfClosingNode(const XmlElement& elem)

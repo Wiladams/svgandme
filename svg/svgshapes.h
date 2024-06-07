@@ -911,14 +911,17 @@ namespace waavs {
 		
 		
 		void loadSelfFromXmlElement(const XmlElement& elem) override
-		{
-			//SVGGeometryElement::loadSelfFromXmlElement(elem);
-			
+		{	
 			auto d = getAttribute("d");
 			if (!d)
 				return;
 			
 			auto success = blpathparser::parsePath(d, fPath);
+			if (!success)
+			{
+				printf("loadSelfFromXmlElement - failed parsePath: %d\n", success);
+			}
+			
 			fPath.shrink();
 			
 			needsBinding(true);
@@ -1271,7 +1274,9 @@ namespace waavs {
 		
 		void text(const ByteSpan& aSpan)
 		{
-			//fText = toString(aSpan);
+			// BUGBUG - We still want to represent the text as a ByteSpan
+			// So we can use the BLStringView when we eventually draw the text
+			
 			fText = expandStandardEntities(aSpan);
 			
 		}
@@ -2803,7 +2808,7 @@ namespace waavs {
 
 		}
 
-		void addNode(std::shared_ptr<SVGVisualNode> node) override
+		bool addNode(std::shared_ptr<SVGVisualNode> node) override
 		{
 			// If the node has a language attribute, add it to the language map
 			auto lang = node->getVisualProperty("systemLanguage");
@@ -2814,6 +2819,8 @@ namespace waavs {
 			else {
 				fDefaultNode = node;
 			}
+
+			return true;
 		}
 		
 
@@ -3202,12 +3209,6 @@ namespace waavs {
 			fHeight.loadFromChunk(getAttribute("height"));
 		}
 		
-		void loadSelfFromXmlElement(const XmlElement& elem) override
-		{
-			//fViewbox.loadFromChunk(getAttribute("viewBox"));
-			//fWidth.loadFromChunk(getAttribute("width"));
-			//fHeight.loadFromChunk(getAttribute("height"));
-		}
 
 	};
 	

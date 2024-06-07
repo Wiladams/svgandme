@@ -187,6 +187,15 @@ namespace waavs {
                     (name == "sans-serif")) {
                     success = (BL_SUCCESS == fFontManager.queryFace("Arial", qprops, face));
                 }
+				else if ((name == "Serif") ||
+					(name == "serif")) {
+					success = (BL_SUCCESS == fFontManager.queryFace("Georgia", qprops, face));  // Times New Roman, Garamond, Georgia
+				}
+				else if ((name == "Mono") ||
+					(name == "mono") ||
+					(name == "monospace")) {
+					success = (BL_SUCCESS == fFontManager.queryFace("Consolas", qprops, face));
+				}
                 else {
                     familyNameView.reset((char*)name.fStart, name.size());
                     success = (BL_SUCCESS == fFontManager.queryFace(familyNameView, qprops, face));

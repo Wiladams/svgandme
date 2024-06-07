@@ -1,7 +1,6 @@
 #pragma once
 
 // References
-// https://github.com/lemire/fastbase64
 // https://razrfalcon.github.io/notes-on-svg-parsing/index.html
 //
 // Notes
@@ -43,12 +42,16 @@
 
 namespace waavs {
 
-    
-    struct SVGDocument : public ISVGDrawable, public IAmGroot
+    //
+    struct SVGDocument : public  SVGGraphicsElement, public IAmGroot // ISVGDrawable,
     {
 		FontHandler* fFontHandler = nullptr;
         
+        // We only have a single root 'SVGSVGElement' for the whole document
         std::shared_ptr<SVGSVGElement> fSVGNode = nullptr;
+        //std::shared_ptr<SVGVisualNode> fSVGNode = nullptr;
+        
+        // We need a style sheet for the entire document
 		std::shared_ptr<CSSStyleSheet> fStyleSheet = nullptr;
         
         // IAmGroot
@@ -65,7 +68,8 @@ namespace waavs {
 		//==========================================
         
         SVGDocument(FontHandler *fh)
-            :fFontHandler(fh)
+            :SVGGraphicsElement(this)
+            , fFontHandler(fh)
         {
             //fDpi = systemPpi;
 
@@ -189,18 +193,42 @@ namespace waavs {
         
         BLRect sceneFrame() const
         {
-            auto svgRoot = documentElement();
-            if (nullptr == svgRoot)
-                return {};
+            if (nullptr == fSVGNode)
+                return BLRect();
             
-            return svgRoot->viewport();
+            return fSVGNode->viewport();
         }
 
+        
+        bool addNode(std::shared_ptr < SVGVisualNode > node) override
+        {            
+			if (!SVGGraphicsElement::addNode(node))
+                return false;
+
+            if (node->name() == "svg")
+            {
+
+                if (nullptr == fSVGNode)
+                {
+                    fSVGNode = std::dynamic_pointer_cast<SVGSVGElement>(node);
+                    //fSVGNode = node;
+                    
+                    BLRect vport = fSVGNode->viewport();
+                    fCanvasWidth = vport.w;
+                    fCanvasHeight = vport.h;
+
+                    fSVGNode->bindToGroot(this);
+                }
+            }
+
+            return true;
+        }
+        
         
         // Load the document from an XML Iterator
         // Since this is the top level document, we just want to kick
         // off loading the root node 'svg', and we're done 
-        void loadFromXmlIterator(XmlElementIterator& iter)
+        void loadFromXmlIterator(XmlElementIterator& iter) override
         {
 
             // skip past any elements that come before the 'svg' element
@@ -220,10 +248,13 @@ namespace waavs {
                     // break here, but, curiosity...
                     auto node = std::make_shared<SVGSVGElement>(this);
                     
+
                     
                     if (nullptr != node) {
                         node->loadFromXmlIterator(iter);
-
+                        addNode(node);
+                        
+                        /*
                         if (fSVGNode == nullptr) {
 							fSVGNode = node;
                             // Get the canvas width, height, viewbox, etc
@@ -233,34 +264,32 @@ namespace waavs {
                         }
 
                         node->bindToGroot(this);
+                        */
                     }
                     else {
-                        printf("SVGDocument : ERROR - could not create SVG node\n");
+                        printf("SVGDocument.loadFromXmlIterator : ERROR - could not create SVG node\n");
                     }
                 }
             }
         }
-
+        
+        
 		// Assuming we've already got a file mapped into memory, load the document
-        //bool loadFromChunk(const ByteSpan &srcChunk)
-        //{
-        //    XmlElementIterator iter(srcChunk, true);
+        bool loadFromChunk(const ByteSpan &srcChunk)
+        {
+            XmlElementIterator iter(srcChunk, true);
 
-        //    loadFromXmlIterator(iter);
+            loadFromXmlIterator(iter);
 
-        //    return true;
-        //}
+            return true;
+        }
 
         // A convenience to construct the document from a chunk, and return
         // a shared pointer to the document
         static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, FontHandler* fh)
         {
             auto doc = std::make_shared<SVGDocument>(fh);
-
-            XmlElementIterator iter(srcChunk, true);
-            doc->loadFromXmlIterator(iter);
-            
-            //doc->loadFromChunk(srcChunk);
+            doc->loadFromChunk(srcChunk);
 
             return doc;
         }
@@ -342,6 +371,7 @@ namespace waavs {
             SVGFeBlendElement::registerFactory();           // 'feBlend'
             SVGFeColorMatrixElement::registerFactory();     // 'feColorMatrix'
             SVGFeCompositeElement::registerFactory();       // 'feComposite'
+            SVGFeComponentTransferElement::registerFactory();       // 'feComponentTransfer'
             SVGFeConvolveMatrixElement::registerFactory();  // 'feConvolveMatrix'
             SVGFeDiffuseLightingElement::registerFactory(); // 'feDiffuseLighting'
             SVGFeDisplacementMapElement::registerFactory(); // 'feDisplacementMap'

@@ -118,6 +118,43 @@ namespace waavs {
 	};
 	
 	//
+	// feComponentTransfer
+	//
+	struct SVGFeComponentTransferElement : public SVGGraphicsElement
+	{
+		static void registerSingularNode()
+		{
+			gShapeCreationMap["feComponentTransfer"] = [](IAmGroot* aroot, const XmlElement& elem) {
+				auto node = std::make_shared<SVGFeComponentTransferElement>(aroot);
+				node->loadFromXmlElement(elem);
+
+				return node;
+				};
+		}
+
+		static void registerFactory()
+		{
+			gSVGGraphicsElementCreation["feComponentTransfer"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGFeComponentTransferElement>(aroot);
+				node->loadFromXmlIterator(iter);
+				return node;
+				};
+
+			registerSingularNode();
+		}
+
+
+
+		SVGFeComponentTransferElement(IAmGroot* aroot)
+			: SVGGraphicsElement(aroot)
+		{
+			isStructural(true);
+		}
+
+	};
+	
+	
+	//
 	// feComposite
 	//
 	struct SVGFeCompositeElement : public SVGGraphicsElement
