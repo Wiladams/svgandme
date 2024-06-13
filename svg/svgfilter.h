@@ -113,7 +113,7 @@ namespace waavs {
 			if (!SVGGraphicsElement::addNode(node))
 				return false;
 			
-			printf("SVGFeFilter.addNode(%s)\n", node->id().c_str());
+			//printf("SVGFeFilter.addNode(%s)\n", node->id().c_str());
 			
 			return true;
 		}

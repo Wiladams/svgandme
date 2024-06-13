@@ -2518,8 +2518,8 @@ namespace waavs {
 		SVGMaskNode(IAmGroot* aroot)
 			: SVGGraphicsElement(aroot) 
 		{
-			//isStructural(false);
-			fUseCacheIsolation = true;
+			isStructural(false);
+			//fUseCacheIsolation = true;
 		}
 
 
@@ -2955,14 +2955,7 @@ namespace waavs {
 				
 				// pull out whatever values we can inherit
 				fPattern = tmpPattern;
-				//BLRectI tmparea = tmpPattern.area();
-				//BLExtendMode tmpextendMode = tmpPattern.extendMode();
-				//BLMatrix2D tmptransform = tmpPattern.transform();
-				
-				//fPattern.setExtendMode(tmpextendMode);
-				//fPattern.setArea(tmparea);
-				//fPattern.setImage(tmpPattern.getImage());
-				
+
 				// transform matrix if it already exists and
 				// we had set a new one as well
 				// otherwise, just set the new one
@@ -2993,8 +2986,7 @@ namespace waavs {
 		{
 			if (nullptr == groot)
 				return;
-			
-			//SVGGraphicsElement::bindToGroot(groot);
+
 
 			double dpi = 96;
 			double cWidth = 1.0;

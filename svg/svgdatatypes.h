@@ -462,8 +462,8 @@ namespace waavs {
 
             auto decodedSize = base64::decode((const char*)value.data(), value.size(), outBuff.data());
 
-            //ByteSpan outChunk = ByteSpan(outBuff.data(), decodedSize);
             // BUGBUG - write chunk to file for debugging
+            //ByteSpan outChunk = ByteSpan(outBuff.data(), decodedSize);
             //writeChunkToFile(outChunk, "base64.dat");
             
             if (decodedSize < 1) {
