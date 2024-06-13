@@ -918,36 +918,31 @@ namespace waavs {
 
 }
 
+namespace waavs {
+	// A data structure that allocates a chunk of memory
+	// and frees it
+	struct memBuff {
+		uint8_t* fData;
+		size_t fSize;
 
-/*
-
-	static inline void skipOverCharset(ByteSpan& dc, const charset& cs)
-	{
-		while (dc && cs.contains(*dc))
-			dc++;
-	}
-
-	static inline void skipUntilCharset(ByteSpan& dc, const charset& cs)
-	{
-		while (dc && !cs.contains(*dc))
-			++dc;
-	}
-
-		// Turn a chunk into a vector of chunks, splitting on the delimiters
-	// return number of tokens found
-	static inline  int chunk_split(const ByteSpan& inChunk, const charset& delims, std::vector<svg2b2d::ByteSpan> spans, bool wantEmpties = false) noexcept
-	{
-		ByteSpan s = inChunk;
-
-		while (s)
+		memBuff(size_t sz)
+			: fSize(sz)
 		{
-			ByteSpan token = chunk_token(s, delims);
-			//if (size(token) > 0)
-			spans.push_back(token);
-
+			fData = new uint8_t[sz];
 		}
 
-		return spans.size();
-	}
+		~memBuff()
+		{
+			delete[] fData;
+		}
 
-*/
+		uint8_t* data() const { return fData; }
+		size_t size() const { return fSize; }
+
+		// create a ByteSpan from the memory buffer
+		ByteSpan span() const { return ByteSpan(fData, fData + fSize); }
+		
+	};
+}
+
+

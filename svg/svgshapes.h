@@ -56,9 +56,9 @@ namespace waavs {
 		const SVGOrient& orientation() const { return fOrientation; }
 
 		
-		void bindToGroot(IAmGroot* groot) override
+		void bindSelfToGroot(IAmGroot* groot) override
 		{
-			SVGGraphicsElement::bindToGroot(groot);
+			//SVGGraphicsElement::bindToGroot(groot);
 			
 			if (fDimMarkerWidth.isSet())
 				fMarkerWidth = fDimMarkerWidth.calculatePixels();
@@ -202,6 +202,10 @@ namespace waavs {
 		{
 			BLBox bbox{};
 			fPath.getBoundingBox(&bbox);
+
+			// if we have markers turned on, add in the bounding
+			// box of the markers
+			
 			if (fHasTransform) {
 				auto leftTop = fTransform.mapPoint(bbox.x0, bbox.y0);
 				auto rightBottom = fTransform.mapPoint(bbox.x1, bbox.y1);
@@ -262,47 +266,35 @@ namespace waavs {
 			// cast the node to a SVGMarkerNode
 			std::shared_ptr<SVGMarkerNode> markerNode = std::dynamic_pointer_cast<SVGMarkerNode>(aNode);
 			
-			// Use the two given points to calculate the angle of rotation 
-			// from the markerNode
-			// 
-			double rads = markerNode->orientation().calculateRadians(pos, p1, p2);
 			
 			ctx->push();
+			
+			BLPoint transP{};
 			
 			switch (pos)
 			{
 			case MarkerPosition::MARKER_POSITION_START:
-				ctx->translate(p1.x, p1.y);
+				transP = p1;
 				break;
 			case MarkerPosition::MARKER_POSITION_MIDDLE:
-				ctx->translate(p2.x, p2.y);
+				transP = p2;
 				break;
 			case MarkerPosition::MARKER_POSITION_END:
-				ctx->translate(p2.x, p2.y);
+				transP = p2;
 				break;
 			}
 
+			// Use the two given points to calculate the angle of rotation 
+			// from the markerNode
+			double rads = markerNode->orientation().calculateRadians(pos, p1, p2);
 
-			
-			// draw the marker
+			// apply the transformation
+			ctx->translate(transP);
 			ctx->rotate(rads);
 			
+			// draw the marker
 			markerNode->draw(ctx);
-			
-			/*
-			// draw the frame of the marker
-			// BUGBUG -drawing marker frame
-			ctx->push();
 
-			// The y-axis in blue
-			ctx->setStrokeStyle(BLRgba32(0xff0000ff));
-			ctx->strokeLine(BLPoint(0, 0), BLPoint(0, markerNode->markerHeight()));
-			// The x-axis in green
-			ctx->setStrokeStyle(BLRgba32(0xff00ff00));
-			ctx->strokeLine(BLPoint(0, 0), BLPoint(markerNode->markerWidth(), 0));
-			
-			ctx->pop();
-			*/
 				
 			ctx->pop();
 
@@ -401,13 +393,10 @@ namespace waavs {
 				drawMarkers(ctx);
 		}
 		
-
-		void loadFromXmlElement(const XmlElement& elem) override
-		{
-			SVGGraphicsElement::loadFromXmlElement(elem);
-		}
 	};
 	
+
+
 	struct SVGLineElement : public SVGGeometryElement
 	{
 		static void registerFactory() {
@@ -430,9 +419,9 @@ namespace waavs {
 			:SVGGeometryElement(iMap) {}
 		
 	
-		void bindToGroot(IAmGroot* groot) override
+		void bindSelfToGroot(IAmGroot* groot) override
 		{
-			SVGGeometryElement::bindToGroot(groot);
+			//SVGGeometryElement::bindToGroot(groot);
 			
 			BLLine geom{};
 			double dpi = 96;
@@ -480,16 +469,6 @@ namespace waavs {
 			needsBinding(true);
 		}
 		
-		//void loadSelfFromXmlElement(const XmlElement& elem) override
-		//{	
-		//	fDimX1.loadFromChunk(getAttribute("x1"));
-		//	fDimY1.loadFromChunk(getAttribute("y1"));
-		//	fDimX2.loadFromChunk(getAttribute("x2"));
-		//	fDimY2.loadFromChunk(getAttribute("y2"));
-
-		//	needsBinding(true);
-		//}
-		
 	};
 	
 	struct SVGRectElement : public SVGGeometryElement
@@ -522,9 +501,8 @@ namespace waavs {
 		
 		SVGRectElement(IAmGroot* iMap) :SVGGeometryElement(iMap) {}
 		
-		void bindToGroot(IAmGroot* groot) override
+		void bindSelfToGroot(IAmGroot* groot) override
 		{
-			SVGGeometryElement::bindToGroot(groot);
 			
 			BLRoundRect geom{};
 			
@@ -609,10 +587,6 @@ namespace waavs {
 			if (attrs.getAttribute("ry"))
 				fRy.loadFromChunk(attrs.getAttribute("ry"));
 			
-		}
-		
-		void loadSelfFromXmlElement(const XmlElement& elem) override
-		{
 			needsBinding(true);
 		}
 		
@@ -647,9 +621,8 @@ namespace waavs {
 		
 		SVGCircleElement(IAmGroot* iMap) :SVGGeometryElement(iMap) {}
 
-		void bindToGroot(IAmGroot *groot) override
+		void bindSelfToGroot(IAmGroot *groot) override
 		{
-			SVGGeometryElement::bindToGroot(groot);
 
 			BLCircle geom{};
 			double dpi = 96;
@@ -706,9 +679,8 @@ namespace waavs {
 			:SVGGeometryElement(iMap) {}
 		
 
-		void bindToGroot(IAmGroot* groot) override
+		void bindSelfToGroot(IAmGroot* groot) override
 		{
-			SVGGeometryElement::bindToGroot(groot);
 
 			double dpi = 96;
 			double w = 1.0;
@@ -745,6 +717,7 @@ namespace waavs {
 			if (attrs.getAttribute("ry"))
 				fRy.loadFromChunk(attrs.getAttribute("ry"));
 			
+			needsBinding(true);
 		}
 		
 
@@ -890,7 +863,10 @@ namespace waavs {
 			registerSingularNode();
 		}
 		
-		SVGPathElement(IAmGroot* iMap) :SVGGeometryElement(iMap) {}
+		SVGPathElement(IAmGroot* iMap) :SVGGeometryElement(iMap) 
+		{
+			//fUseCacheIsolation = true;
+		}
 		
 		/*
 		void loadVisualProperties(const XmlAttributeCollection& attrs) override
@@ -909,7 +885,7 @@ namespace waavs {
 		}
 		*/
 		
-		
+		///*
 		void loadSelfFromXmlElement(const XmlElement& elem) override
 		{	
 			auto d = getAttribute("d");
@@ -926,7 +902,7 @@ namespace waavs {
 			
 			needsBinding(true);
 		}
-		
+		//*/
 	};
 
 
@@ -993,9 +969,8 @@ namespace waavs {
 			return BLRect{ };
 		}
 		
-		void bindToGroot(IAmGroot* groot) override
+		void bindSelfToGroot(IAmGroot* groot) override
 		{
-			SVGGraphicsElement::bindToGroot(groot);
 			
 			double dpi = 96;
 			double w = 1.0;
@@ -1029,6 +1004,7 @@ namespace waavs {
 					fWrappedNode->bindToGroot(groot);
 				}
 			}
+			
 			needsBinding(false);
 		}
 
@@ -1094,10 +1070,10 @@ namespace waavs {
 
 
 		
-		void loadSelfFromXmlElement(const XmlElement& elem) override
-		{
-			loadVisualProperties(*this);
-		}
+		//void loadSelfFromXmlElement(const XmlElement& elem) override
+		//{
+		//	loadVisualProperties(*this);
+		//}
 		
 	};
 
@@ -1168,10 +1144,8 @@ namespace waavs {
 			return fVar;
 		}
 
-		void bindToGroot(IAmGroot* groot) override
+		void bindSelfToGroot(IAmGroot* groot) override
 		{
-			SVGGraphicsElement::bindToGroot(groot);
-
 			double dpi = 96;
 			double w = 1.0;
 			double h = 1.0;
@@ -1263,9 +1237,16 @@ namespace waavs {
 
 	
 	//
-	// Text - Simple text and tspan nodes
+	// Text - text and tspan elements
 	//
 	//
+	
+	//
+	// SVGTextcontentNode
+	// Not strictly a part of the DOM, but a useful representation 
+	// of text content.  This is the node that actually displays text
+	// They are contained as child nodes either of the 'text' or 'tspan'
+	// elements.
 	struct SVGTextContentNode : public SVGVisualNode
 	{
 		std::string fText{};
@@ -1287,6 +1268,7 @@ namespace waavs {
 		}
 	};
 	
+
 	// A span has coordinate attributes, and possibly text content
 	// It can also be a container of more spans as well, so it is
 	// a compound node.
@@ -1298,12 +1280,12 @@ namespace waavs {
 				auto node = std::make_shared<SVGTSpanNode>(aroot);
 				node->loadFromXmlIterator(iter);
 				return node;
-			};
+				};
 		}
-		
+
 		double fXOffset = 0;
 		double fYOffset = 0;
-		
+
 		SVGDimension fX{};
 		SVGDimension fY{};
 		SVGDimension fDy{};
@@ -1317,11 +1299,9 @@ namespace waavs {
 		{
 			fFontSelection = aSelection;
 		}
-		
-		void bindToGroot(IAmGroot* groot) override
+
+		void bindSelfToGroot(IAmGroot* groot) override
 		{
-			SVGGraphicsElement::bindToGroot(groot);
-			
 			double dpi = 96;
 			double w = 1.0;
 			double h = 1.0;
@@ -1333,11 +1313,11 @@ namespace waavs {
 				h = groot->canvasHeight();
 			}
 
-			
+
 			if (fX.isSet())
-				fXOffset = fX.calculatePixels(w,0,96);
+				fXOffset = fX.calculatePixels(w, 0, 96);
 			if (fY.isSet())
-				fYOffset = fY.calculatePixels(h,0,96);
+				fYOffset = fY.calculatePixels(h, 0, 96);
 			if (fDx.isSet())
 				fXOffset += fDx.calculatePixels(w, 0, 96);
 			if (fDy.isSet())
@@ -1345,25 +1325,25 @@ namespace waavs {
 
 			if (fFontSelection.isSet())
 				fFontSelection.bindToGroot(groot);
-			
+
 			needsBinding(false);
 		}
-		
+
 		void applyAttributes(IRenderSVG* ctx) override
 		{
 			SVGGraphicsElement::applyAttributes(ctx);
-			
+
 			if (fX.isSet())
 				ctx->textPosition(fXOffset, fYOffset);
-			
+
 			fFontSelection.draw(ctx);
 		}
-		
+
 		void loadVisualProperties(const XmlAttributeCollection& attrs) override
 		{
 			SVGGraphicsElement::loadVisualProperties(attrs);
 			fFontSelection.loadFromXmlAttributes(attrs);
-			
+
 			if (attrs.getAttribute("x"))
 				fX.loadFromChunk(attrs.getAttribute("x"));
 			if (attrs.getAttribute("y"))
@@ -1376,7 +1356,7 @@ namespace waavs {
 			needsBinding(true);
 		}
 
-		
+
 		// Load the text content if it exists
 		void loadContentNode(const XmlElement& elem) override
 		{
@@ -1391,11 +1371,11 @@ namespace waavs {
 		{
 			auto node = std::make_shared<SVGTSpanNode>(root());
 			node->fontSelection(fFontSelection);
-			
+
 			node->loadFromXmlElement(elem);
 			addNode(node);
 		}
-		
+
 		void loadCompoundNode(XmlElementIterator& iter) override
 		{
 			// Most likely a <tspan>
@@ -1404,7 +1384,7 @@ namespace waavs {
 			{
 				auto node = std::make_shared<SVGTSpanNode>(root());
 				node->fontSelection(fFontSelection);
-				
+
 				node->loadFromXmlIterator(iter);
 				addNode(node);
 			}
@@ -1414,17 +1394,18 @@ namespace waavs {
 				SVGGraphicsElement::loadCompoundNode(iter);
 			}
 		}
-		
+
 	};
 	
+	
 	//=====================================================
-	// SVGTextNode
-	// There is a reasonable temptation to make this a sub-class
-	// of tspan, as most of their behavior is the same.  There
-	// are subtle enough differences though that it is probably
-	// better to keep them separate, and introduce a core base
-	// class later for better factoring.
-	//=====================================================
+// SVGTextNode
+// There is a reasonable temptation to make this a sub-class
+// of tspan, as most of their behavior is the same.  There
+// are subtle enough differences though that it is probably
+// better to keep them separate, and introduce a core base
+// class later for better factoring.
+//=====================================================
 	struct SVGTextNode : public SVGGraphicsElement
 	{
 		static void registerFactory()
@@ -1433,9 +1414,9 @@ namespace waavs {
 				auto node = std::make_shared<SVGTextNode>(aroot);
 				node->loadFromXmlIterator(iter);
 				return node;
-			};
+				};
 		}
-		
+
 		double fXOffset = 0;
 		double fYOffset = 0;
 
@@ -1444,30 +1425,30 @@ namespace waavs {
 		SVGDimension fDy{};
 		SVGDimension fDx{};
 		SVGFontSelection fFontSelection{ nullptr };
-		
+
 		SVGTextNode(IAmGroot* aroot) :SVGGraphicsElement(aroot) {}
 
 		void fontSelection(const SVGFontSelection& fs)
 		{
 			fFontSelection = fs;
 		}
-		
+
 		void applyAttributes(IRenderSVG* ctx) override
 		{
 			// set the text alignment to left, baseline
 			ctx->textAlign(ALIGNMENT::LEFT, ALIGNMENT::BASELINE);
 			ctx->textPosition(fXOffset, fYOffset);
 			fFontSelection.draw(ctx);
-			
+
 			SVGGraphicsElement::applyAttributes(ctx);
 		}
 
 
-		
-		void bindToGroot(IAmGroot* groot) override
+
+		void bindSelfToGroot(IAmGroot* groot) override
 		{
-			SVGGraphicsElement::bindToGroot(groot);
-			
+			//SVGGraphicsElement::bindToGroot(groot);
+
 			double dpi = 96;
 			double w = 1.0;
 			double h = 1.0;
@@ -1480,7 +1461,7 @@ namespace waavs {
 			}
 
 
-			
+
 			if (fX.isSet())
 				fXOffset = fX.calculatePixels(w, 0, dpi);
 			if (fY.isSet())
@@ -1493,7 +1474,7 @@ namespace waavs {
 
 			if (fFontSelection.isSet())
 				fFontSelection.bindToGroot(groot);
-			
+
 			needsBinding(false);
 		}
 
@@ -1503,20 +1484,19 @@ namespace waavs {
 		void loadVisualProperties(const XmlAttributeCollection& attrs) override
 		{
 			SVGGraphicsElement::loadVisualProperties(attrs);
-			fFontSelection.loadFromXmlAttributes(attrs);
-		}
 
-		void loadSelfFromXmlElement(const XmlElement& elem) override
-		{
 			fX.loadFromChunk(getAttribute("x"));
 			fY.loadFromChunk(getAttribute("y"));
 			fDy.loadFromChunk(getAttribute("dy"));
 			fDx.loadFromChunk(getAttribute("dx"));
-
 			
+			fFontSelection.loadFromXmlAttributes(attrs);
+
 			needsBinding(true);
 		}
-		
+
+
+
 		// Load the text content if it exists
 		void loadContentNode(const XmlElement& elem) override
 		{
@@ -1532,7 +1512,7 @@ namespace waavs {
 		{
 			auto node = std::make_shared<SVGTSpanNode>(root());
 			node->fontSelection(fFontSelection);
-			
+
 			node->loadFromXmlElement(elem);
 			addNode(node);
 		}
@@ -1546,7 +1526,7 @@ namespace waavs {
 			{
 				auto node = std::make_shared<SVGTSpanNode>(root());
 				node->fontSelection(fFontSelection);
-				
+
 				node->loadFromXmlIterator(iter);
 				addNode(node);
 			}
@@ -1557,8 +1537,13 @@ namespace waavs {
 				SVGGraphicsElement::loadCompoundNode(iter);
 			}
 		}
-		
+
 	};
+
+	
+
+	
+
 	
 	//============================================================
 	//	SVGStyleNode
@@ -1873,9 +1858,9 @@ namespace waavs {
 			}
 		}
 		
-		void bindToGroot(IAmGroot* groot) override
+		void bindSelfToGroot(IAmGroot* groot) override
 		{
-			SVGGraphicsElement::bindToGroot(groot);
+			//SVGGraphicsElement::bindToGroot(groot);
 			
 			if (fTemplateReference) {
 				resolveReferences(groot, fTemplateReference);
@@ -1992,9 +1977,9 @@ namespace waavs {
 			fGradient.setType(BL_GRADIENT_TYPE_LINEAR);
 		}
 		
-		void bindToGroot(IAmGroot* groot) override
+		void bindSelfToGroot(IAmGroot* groot) override
 		{
-			SVGGradient::bindToGroot(groot);
+			SVGGradient::bindSelfToGroot(groot);
 
 			double dpi = 96;
 			double w = 1.0;
@@ -2107,9 +2092,9 @@ namespace waavs {
 			
 		}
 
-		void bindToGroot(IAmGroot* groot)
+		void bindSelfToGroot(IAmGroot* groot)
 		{
-			SVGGradient::bindToGroot(groot);
+			SVGGradient::bindSelfToGroot(groot);
 
 			double dpi = 96;
 			double w = 1.0;
@@ -2195,9 +2180,9 @@ namespace waavs {
 		}
 
 
-		void bindToGroot(IAmGroot* groot)
+		void bindSelfToGroot(IAmGroot* groot)
 		{
-			SVGGradient::bindToGroot(groot);
+			SVGGradient::bindSelfToGroot(groot);
 
 			double dpi = 96;
 			double w = 1.0;
@@ -2531,10 +2516,24 @@ namespace waavs {
 
 		// Instance Constructor
 		SVGMaskNode(IAmGroot* aroot)
-			: SVGGraphicsElement(aroot) {
-			isStructural(false);
+			: SVGGraphicsElement(aroot) 
+		{
+			//isStructural(false);
+			fUseCacheIsolation = true;
 		}
 
+
+		void drawSelf(IRenderSVG* ctx) override
+		{
+			//The parent graphic should be stuffed into a BLPattern
+			// and set as a fill style, then we can 
+			// do this fillMask
+			// parent->getVar()
+			// BLPattern* pattern = new BLPattern(parent->getVar());
+			// ctx->setFillStyle(pattern);
+			ctx->fillMask(BLPoint(0, 0), fCachedImage);
+			
+		}
 	};
 	
 	
@@ -2565,10 +2564,17 @@ namespace waavs {
 			registerSingularNode();
 		}
 
+
+		
 		// Instance Constructor
 		SVGGElement(IAmGroot* aroot)
-			: SVGGraphicsElement(aroot){}
-		
+			: SVGGraphicsElement(aroot)
+		{
+			//fUseCacheIsolation = true;
+		}
+	
+
+
 	};
 
 	//================================================
@@ -2578,8 +2584,8 @@ namespace waavs {
 	{
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["g"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGGElement>(aroot);
+			gSVGGraphicsElementCreation["foreignObject"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGForeignObjectElement>(aroot);
 				node->loadFromXmlIterator(iter);
 				return node;
 			};
@@ -2602,9 +2608,8 @@ namespace waavs {
 		SVGForeignObjectElement(IAmGroot* aroot)
 			: SVGGraphicsElement(aroot) {}
 		
-		void bindToGroot(IAmGroot* groot) override
+		void bindSelfToGroot(IAmGroot* groot) override
 		{
-			SVGVisualNode::bindToGroot(groot);
 
 			double dpi = 96;
 			double w = 1.0;
@@ -2780,9 +2785,9 @@ namespace waavs {
 		SVGSwitchElement(IAmGroot* root) : SVGGraphicsElement(root) {}
 
 
-		void bindToGroot(IAmGroot* groot) override
+		void bindSelfToGroot(IAmGroot* groot) override
 		{
-			SVGGraphicsElement::bindToGroot(groot);
+			//SVGGraphicsElement::bindToGroot(groot);
 
 			// Get the system language
 			fSystemLanguage = groot->systemLanguage();
@@ -2805,7 +2810,6 @@ namespace waavs {
 			if (fSelectedNode) {
 				fSelectedNode->draw(ctx);
 			}
-
 		}
 
 		bool addNode(std::shared_ptr<SVGVisualNode> node) override
@@ -2873,7 +2877,8 @@ namespace waavs {
 		SVGDimension fY{};
 		SVGDimension fWidth{};
 		SVGDimension fHeight{};
-		
+		SVGPatternExtendMode fExtendMode{nullptr };
+
 		SVGPatternNode(IAmGroot* aroot) :SVGGraphicsElement(aroot) 
 		{
 			fPattern.setExtendMode(BL_EXTEND_MODE_PAD);
@@ -2949,17 +2954,19 @@ namespace waavs {
 				const BLPattern& tmpPattern = aVar.as<BLPattern>();
 				
 				// pull out whatever values we can inherit
-				BLRectI tmparea = tmpPattern.area();
-				BLExtendMode tmpextendMode = tmpPattern.extendMode();
-				BLMatrix2D tmptransform = tmpPattern.transform();
+				fPattern = tmpPattern;
+				//BLRectI tmparea = tmpPattern.area();
+				//BLExtendMode tmpextendMode = tmpPattern.extendMode();
+				//BLMatrix2D tmptransform = tmpPattern.transform();
 				
-				fPattern.setExtendMode(tmpextendMode);
-				fPattern.setArea(tmparea);
-				fPattern.setImage(tmpPattern.getImage());
+				//fPattern.setExtendMode(tmpextendMode);
+				//fPattern.setArea(tmparea);
+				//fPattern.setImage(tmpPattern.getImage());
 				
 				// transform matrix if it already exists and
 				// we had set a new one as well
 				// otherwise, just set the new one
+				/*
 				if (fPatternTransform.type() == BL_TRANSFORM_TYPE_IDENTITY)
 				{
 					if (tmptransform.type() != BL_TRANSFORM_TYPE_IDENTITY)
@@ -2974,6 +2981,7 @@ namespace waavs {
 						fPattern.applyTransform(tmptransform);
 					}
 				}
+				*/
 			}
 		}
 
@@ -2981,12 +2989,12 @@ namespace waavs {
 		// Resolve template reference
 		// fix coordinate system
 		//
-		void bindToGroot(IAmGroot* groot) override
+		void bindSelfToGroot(IAmGroot* groot) override
 		{
 			if (nullptr == groot)
 				return;
 			
-			SVGGraphicsElement::bindToGroot(groot);
+			//SVGGraphicsElement::bindToGroot(groot);
 
 			double dpi = 96;
 			double cWidth = 1.0;
@@ -3001,56 +3009,83 @@ namespace waavs {
 			// Resolve the templateReference if it exists
 			if (fTemplateReference) {
 				resolveReferences(groot, fTemplateReference);
-			}
-
-			//BLRectI bbox{};
-			// start out with an initial size for the backing buffer
-			int iWidth = (int)cWidth;
-			int iHeight = (int)cHeight;
 			
-			// If a viewbox exists, then it determines the size
-			// of the pattern, and thus the size of the backing store
-			if (fViewbox.isSet())
-			{
-				// If a viewbox is set, then the 'width' and 'height' parameters
-				// are ignored
-				//bbox.reset(0, 0, fViewbox.width(), fViewbox.height());
-				iWidth = (int)fViewbox.width();
-				iHeight = (int)fViewbox.height();
+			
 			}
 			else {
-				// If we don't have a viewbox, then the bbox can be either
-				// 1) A specified width and height
-				// 2) A percentage width and height of the pattern's children
+				//BLRectI bbox{};
+				// start out with an initial size for the backing buffer
+				int iWidth = (int)cWidth;
+				int iHeight = (int)cHeight;
 
-				if (fWidth.isSet() && fHeight.isSet())
+				// If a viewbox exists, then it determines the size
+				// of the pattern, and thus the size of the backing store
+				if (fViewbox.isSet())
 				{
-					BLRect bbox = frame();
-					iWidth = (int)bbox.w;
-					iHeight = (int)bbox.h;
-
-					
-					// if the units on the fWidth == '%', then take the size of the pattern box
-					// and use that as the width, and then calculate the percentage of that
-					if (fWidth.units() == SVGDimensionUnits::SVG_UNITS_USER)
-					{
-						iWidth = (int)fWidth.calculatePixels();
-						iHeight = (int)fHeight.calculatePixels();
-					} else {
-						//iWidth = (int)fWidth.calculatePixels();
-						//iHeight = (int)fHeight.calculatePixels();
-
-						//iWidth = (int)fWidth.calculatePixels(bbox.w, 0, dpi);
-						//iHeight = (int)fHeight.calculatePixels(bbox.h, 0, dpi);
-					}
-					
+					// If a viewbox is set, then the 'width' and 'height' parameters
+					// are ignored
+					//bbox.reset(0, 0, fViewbox.width(), fViewbox.height());
+					iWidth = (int)fViewbox.width();
+					iHeight = (int)fViewbox.height();
 				}
 				else {
-					BLRect bbox = frame();
-					iWidth = (int)bbox.w;
-					iHeight = (int)bbox.h;
+					// If we don't have a viewbox, then the bbox can be either
+					// 1) A specified width and height
+					// 2) A percentage width and height of the pattern's children
+
+					if (fWidth.isSet() && fHeight.isSet())
+					{
+						BLRect bbox = frame();
+						iWidth = (int)bbox.w;
+						iHeight = (int)bbox.h;
+
+
+						// if the units on the fWidth == '%', then take the size of the pattern box
+						// and use that as the width, and then calculate the percentage of that
+						if (fWidth.units() == SVGDimensionUnits::SVG_UNITS_USER)
+						{
+							iWidth = (int)fWidth.calculatePixels();
+							iHeight = (int)fHeight.calculatePixels();
+						}
+						else {
+							//iWidth = (int)fWidth.calculatePixels();
+							//iHeight = (int)fHeight.calculatePixels();
+
+							//iWidth = (int)fWidth.calculatePixels(bbox.w, 0, dpi);
+							//iHeight = (int)fHeight.calculatePixels(bbox.h, 0, dpi);
+						}
+
+					}
+					else {
+						BLRect bbox = frame();
+						iWidth = (int)bbox.w;
+						iHeight = (int)bbox.h;
+					}
 				}
+
+				// create the backing buffer based on the specified sizes
+				fCachedImage.create(iWidth, iHeight, BL_FORMAT_PRGB32);
+
+				// Render out content into the backing buffer
+				IRenderSVG ctx(groot->fontHandler());
+				ctx.begin(fCachedImage);
+				ctx.clearAll();
+				//ctx.fillAll(BLRgba32(0xFFffffffu));
+				ctx.setCompOp(BL_COMP_OP_SRC_COPY);
+				ctx.noStroke();
+
+				draw(&ctx);
+				ctx.flush();
+
+
+
+				// apply the patternTransform
+				// maybe do a translate on x, y?
+
+				// assign that BLImage to the pattern object
+				fPattern.setImage(fCachedImage);
 			}
+			
 			
 			// Start out with some sizes based on the canvas size
 			if (fX.isSet()) {
@@ -3060,34 +3095,17 @@ namespace waavs {
 				y = fY.calculatePixels();
 			}
 			
+			// Whether it was a reference or not, set the extendMode
+			if (fExtendMode.isSet())
+			{
+				fPattern.setExtendMode(fExtendMode.value());
+			}
+			else {
+				fPattern.setExtendMode(BL_EXTEND_MODE_REPEAT);
 
-			// create the backing buffer based on the specified sizes
-			fCachedImage.create(iWidth, iHeight, BL_FORMAT_PRGB32);
-
-			// Render out content into the backing buffer
-			IRenderSVG ctx(groot->fontHandler());
-			ctx.begin(fCachedImage);
-			//ctx.clearAll();
-			ctx.fillAll(BLRgba32(0xFFffffffu));
-			ctx.setCompOp(BL_COMP_OP_SRC_COPY);
-			ctx.noStroke();
-				
-			draw(&ctx);
-			ctx.flush();
-
-
-
-			// apply the patternTransform
-			// maybe do a translate on x, y?
+				}
 			
-			// assign that BLImage to the pattern object
-			fPattern.setImage(fCachedImage);
 
-			// BUGBUG - Need to set real extend mode
-			// BL_EXTEND_MODE_PAD
-			// BL_EXTEND_MODE_REPEAT
-			// BL_EXTEND_MODE_REFLECT
-			fPattern.setExtendMode(BL_EXTEND_MODE_REPEAT);
 
 			// Finallly, assign the pattern to the fVar
 			// do it in the getVariant() call
@@ -3104,6 +3122,8 @@ namespace waavs {
 			fHeight.loadFromChunk(getAttribute("height"));
 			fViewbox.loadFromChunk(getAttribute("viewBox"));
 
+			fExtendMode.loadFromChunk(getAttribute("extendMode"));
+			
 			// See if we have a template reference
 			if (attrs.getAttribute("href"))
 				fTemplateReference = attrs.getAttribute("href");

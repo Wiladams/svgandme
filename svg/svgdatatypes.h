@@ -7,7 +7,6 @@
 #include <cstdint>		// uint8_t, etc
 #include <cstddef>		// nullptr_t, ptrdiff_t, size_t
 
-#include "xmlscan.h"
 
 #include "svgcss.h"
 #include "svgcolors.h"
@@ -298,6 +297,50 @@ namespace waavs
 // Specific types of attributes
 
 namespace waavs {
+    // SVGExtendMode
+    // Supports the various ExtendMode kinds that BLPattern supports
+    static bool parseExtendMode(const ByteSpan& inChunk, BLExtendMode& outMode)
+    {
+        if (!inChunk)
+            return false;
+
+        // These are the simple ones
+        if (inChunk == "pad")
+			outMode = BL_EXTEND_MODE_PAD;
+		else if (inChunk == "repeat")
+			outMode = BL_EXTEND_MODE_REPEAT;
+		else if (inChunk == "reflect")
+			outMode = BL_EXTEND_MODE_REFLECT;
+
+        // These are more complex
+		else if (inChunk == "pad-x-pad-y")
+			outMode = BL_EXTEND_MODE_PAD_X_PAD_Y;
+		else if (inChunk == "pad-x-repeat-y")
+			outMode = BL_EXTEND_MODE_PAD_X_REPEAT_Y;
+		else if (inChunk == "pad-x-reflect-y")
+			outMode = BL_EXTEND_MODE_PAD_X_REFLECT_Y;
+		else if (inChunk == "repeat-x-repeat-y")
+			outMode = BL_EXTEND_MODE_REPEAT_X_REPEAT_Y;
+		else if (inChunk == "repeat-x-pad-y")
+			outMode = BL_EXTEND_MODE_REPEAT_X_PAD_Y;
+		else if (inChunk == "repeat-x-reflect-y")
+			outMode = BL_EXTEND_MODE_REPEAT_X_REFLECT_Y;
+		else if (inChunk == "reflect-x-reflect-y")
+			outMode = BL_EXTEND_MODE_REFLECT_X_REFLECT_Y;
+		else if (inChunk == "reflect-x-pad-y")
+			outMode = BL_EXTEND_MODE_REFLECT_X_PAD_Y;
+		else if (inChunk == "reflect-x-repeat-y")
+			outMode = BL_EXTEND_MODE_REFLECT_X_REPEAT_Y;
+		else
+			return false;
+
+        
+        return true;
+    }
+}
+
+
+namespace waavs {
     
     static bool parseStyleAttribute(const ByteSpan & inChunk, XmlAttributeCollection &styleAttributes)
     {
@@ -332,6 +375,9 @@ namespace waavs {
     }
 }
 
+
+
+
 namespace waavs {
     //
     // parseFont()
@@ -355,20 +401,20 @@ namespace waavs {
 		if (value) {
             if (encoding == "base64" && mime == "base64")
             {
-                size_t outBuffSize = BASE64_DECODE_OUT_SIZE(value.size());
-                char * outBuff{ new char[outBuffSize]{} };
+                unsigned int outBuffSize = base64::getOutputSize(value.size());
+                memBuff outBuff(outBuffSize);
+                //char * outBuff{ new char[outBuffSize]{} };
                 
-                //auto decodedSize = fast_avx2_base64_decode((char *)outBuff, (const char *)value.data(), value.size());
-                auto decodedSize = base64::decode((const char*)value.data(), value.size(), (unsigned char *)outBuff);
+                auto decodedSize = base64::decode((const char*)value.data(), value.size(), outBuff.data());
 
 				if (decodedSize > 0)
 				{
                     BLDataView dataView{};
-					dataView.reset((uint8_t *)outBuff, decodedSize);
+					dataView.reset(outBuff.data(), decodedSize);
                     
                     // create a BLFontData
                     BLFontData fontData;
-                    fontData.createFromData(outBuff, decodedSize);
+                    fontData.createFromData(outBuff.data(), decodedSize);
 
                     
 					BLResult result = face.createFromData(fontData, 0);
@@ -408,58 +454,35 @@ namespace waavs {
 
         if (encoding == "base64")
         {
-            // BUGBUG - This is not needed if base64 decoder
-            // can deal with whitespace
-            // allocate some memory to cleanup the buffer
-            uint8_t* inBuff{ new uint8_t[value.size()]{} };
-            size_t inCharCount = 0;
 
-            for (int i=0; i< value.size(); i++)
-
-            {
-                if (!xmlwsp.contains(value[i]))
-                {
-                    inBuff[inCharCount] = value[i];
-                    inCharCount++;
-                }
-            }
-            ByteSpan inBuffChunk(inBuff, inCharCount);
-
-            //size_t outBuffSize = BASE64_DECODE_OUT_SIZE(chunk_size(inBuffChunk));
-            size_t outBuffSize = chunk_size(value);
-            
             // allocate some memory to decode into
-            uint8_t* outBuff{ new uint8_t[outBuffSize]{} };
-            ByteSpan outChunk(outBuff, outBuffSize);
+            unsigned int outBuffSize = base64::getOutputSize(value.size());
+            memBuff outBuff(outBuffSize);
 
+
+            auto decodedSize = base64::decode((const char*)value.data(), value.size(), outBuff.data());
+
+            //ByteSpan outChunk = ByteSpan(outBuff.data(), decodedSize);
+            // BUGBUG - write chunk to file for debugging
+            //writeChunkToFile(outChunk, "base64.dat");
+            
+            if (decodedSize < 1) {
+                printf("parseImage: Error in base54::decode, decoded \n");
+                return false;
+            }
+            
+            // BUGBUG - Add gif as well
             if (mime == "image/png")
             {
-                auto decodedSize = base64::decode((const char*)inBuffChunk.fStart, chunk_size(inBuffChunk), outBuff);
-                //auto decodedSize = fast_avx2_base64_decode((char*)outBuff, (const char*)inBuffChunk.fStart, inBuffChunk.size());
-                
-                if (decodedSize>0)
-                {
-                    BLResult res = img.readFromData(outBuff, decodedSize);
-                    success = (res == BL_SUCCESS);
-                }
+                BLResult res = img.readFromData(outBuff.data(), outBuff.size());
+                success = (res == BL_SUCCESS);
             }
             else if ((mime == "image/jpeg") || (mime == "image/jpg"))
             {
-                auto decodedSize = base64::decode((const char*)inBuffChunk.fStart, chunk_size(inBuffChunk), outBuff);
-                //auto decodedSize = fast_avx2_base64_decode((char*)outBuff, (const char*)inBuffChunk.fStart, inBuffChunk.size());
-
-				outChunk = ByteSpan(outBuff, decodedSize);
-                //writeChunkToFile(outChunk, "base64.jpg");
-                
-                if (decodedSize > 0)
-                {
-                    BLResult res = img.readFromData(outBuff, decodedSize);
-                    success = (res == BL_SUCCESS);
-                }
+                BLResult res = img.readFromData(outBuff.data(), outBuff.size());
+                success = (res == BL_SUCCESS);
             }
             
-            delete[] outBuff;
-            delete[] inBuff;
         }
 
         return success;

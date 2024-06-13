@@ -30,7 +30,6 @@
 
 
 #include "maths.h"
-#include "geometry.h"
 
 #include "svgshapes.h"
 #include "svgfont.h"

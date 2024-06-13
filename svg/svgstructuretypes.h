@@ -8,18 +8,106 @@
 #include <cstdint>		// uint8_t, etc
 #include <cstddef>		// nullptr_t, ptrdiff_t, size_t
 
-#include "xmlscan.h"
 
-#include "svgcolors.h"
 #include "svgdatatypes.h"
 #include "svgcss.h"
 
 #include "irendersvg.h"
-#include "placeable.h"
+#include "uievent.h"
+#include "svgcolors.h"
 
-#include "base64.h"
 
 
+
+
+
+//
+// These are various routines that help manipulate the BLRect
+// structure.  Finding corners, moving, query containment
+// scaling, merging, expanding, and the like
+
+namespace waavs {
+    inline double right(const BLRect& r) { return r.x + r.w; }
+    inline double left(const BLRect& r) { return r.x; }
+    inline double top(const BLRect& r) { return r.y; }
+    inline double bottom(const BLRect& r) { return r.y + r.h; }
+    inline BLPoint center(const BLRect& r) { return { r.x + (r.w / 2),r.y + (r.h / 2) }; }
+
+    inline void moveBy(BLRect& r, double dx, double dy) { r.x += dx; r.y += dy; }
+    inline void moveBy(BLRect& r, const BLPoint& dxy) { r.x += dxy.x; r.y += dxy.y; }
+
+
+    inline bool containsRect(const BLRect& a, double x, double y)
+    {
+        return (x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h);
+    }
+
+    inline bool containsRect(const BLRect& a, const BLPoint& pt)
+    {
+        return containsRect(a, pt.x, pt.y);
+    }
+
+    // Expand the size of the rectangle such that the supplied point
+    // is contained within the new rectangle
+    inline BLRect mergeRect(const BLRect& a, const BLPoint& b) {
+        return { min(a.x, b.x), min(a.y, b.y), max(a.x + a.w,b.x), max(a.y + a.h, b.y) };
+    }
+
+    // Expand the size of the rectangle such that the supplied rectangle
+    // is contained within the new rectangle
+    inline BLRect mergeRect(const BLRect& a, const BLRect& b) {
+        return { min(a.x, b.x), min(a.y, b.y), max(a.x + a.w, b.x + b.w), max(a.y + a.h,b.y + b.h) };
+    }
+
+    inline void expandRect(BLRect& a, const BLPoint& b) { a = mergeRect(a, b); }
+    inline void expandRect(BLRect& a, const BLRect& b) { a = mergeRect(a, b); }
+}
+
+namespace waavs {
+    // Experimental
+    struct IPlaceable
+    {
+        bool fAutoMoveToFront{ false };
+
+
+        void autoMoveToFront(bool b) { fAutoMoveToFront = b; }
+        bool autoMoveToFront() const { return fAutoMoveToFront; }
+
+        virtual BLRect frame() const = 0;
+        virtual BLRectI getBBox() const = 0;
+
+        virtual bool contains(double x, double y)
+        {
+            return containsRect(frame(), x, y);
+        }
+
+        virtual void gainFocus() { ; }
+        virtual void loseFocus(double x, double y) { ; }
+
+        virtual void moveTo(double x, double y) = 0;
+        virtual void moveBy(double dx, double dy) {
+            moveTo(frame().x + dx, frame().y + dy);
+        }
+
+        virtual void mouseEvent(const MouseEvent& e) { return; }
+        virtual void keyEvent(const KeyboardEvent& e) { return; }
+    };
+
+
+}
+
+namespace waavs {
+    // Something that can be drawn in the user interface
+    struct IViewable : public IPlaceable, public ISVGDrawable
+    {
+        std::string fName{};
+
+        void name(const ByteSpan& aname) { if (!aname) return;  fName = toString(aname); }
+        void name(const char* aname) { fName = aname; }
+        void name(const std::string& aname) { fName = aname; }
+        const std::string& name() const { return fName; }
+    };
+}
 
 
 namespace waavs {
@@ -86,7 +174,7 @@ namespace waavs {
         BLRectI getBBox() const override { return BLRectI{}; }
         
         void moveTo(double x, double y) override { ; }
-        //void mouseEvent(const MouseEvent& e) override { return; }
+        void mouseEvent(const MouseEvent& e) override { return; }
         
 
         virtual void loadSelfFromXmlElement(const XmlElement& elem)
@@ -153,7 +241,7 @@ namespace waavs {
     //
     // This is used for things like; Paint, Transform, Miter, etc.
     //
-    struct SVGVisualProperty : public SVGObject  // public SVGViewable
+    struct SVGVisualProperty : public SVGObject
     {
         bool fAutoDraw{ true };
         bool fIsSet{ false };
@@ -559,10 +647,10 @@ namespace waavs {
         
 
 
-        //void mouseEvent(const MouseEvent& e) override
-        //{
-        //  ; // do nothing by default
-        //}
+        void mouseEvent(const MouseEvent& e) override
+        {
+          ; // do nothing by default
+        }
 
     };
 }
@@ -592,19 +680,46 @@ namespace waavs {
         static constexpr int BUILD_STATE_CLOSE = 2;
 
 
+        std::shared_ptr<SVGGraphicsElement> fParent{ nullptr };
         std::vector<std::shared_ptr<SVGVisualNode>> fNodes{};
 
         int buildState = BUILD_STATE_OPEN;
+        
+        // Dealing with a cached image
+        bool fUseCacheIsolation{ false };
+        bool fImageIsCached{ false };
+        BLRect fBBox{};
+        BLImage fCachedImage{};
+        double fOpacity{ 1.0 };
 
+        
         SVGGraphicsElement(IAmGroot* aroot)
             :SVGVisualNode(aroot) {}
 
+
+		// Return a reference to the cached image if it exists
+        // Function returns 'true' when the image cache is active
+        // and returns 'false' when the image cache is not used
+        virtual bool getCachedImage(BLImage& img) const
+        {
+			if (!fImageIsCached)
+				return false;
+            
+			img = fCachedImage;
+			return true;
+        }
+        
         virtual void bindChildrenToGroot(IAmGroot* groot)
         {
 			for (auto& node : fNodes)
 			{
 				node->bindToGroot(groot);
 			}
+        }
+        
+        virtual void bindSelfToGroot(IAmGroot* groot)
+        {
+            // don't do anything by default
         }
         
         // For compound nodes (which have children) we want to 
@@ -617,6 +732,21 @@ namespace waavs {
         {
 			SVGVisualNode::bindToGroot(groot);
             bindChildrenToGroot(groot);
+            
+            bindSelfToGroot(groot);
+
+            // Do the image cache thing if necessary
+            auto opacity = getVisualProperty("opacity");
+            if (opacity)
+            {
+                BLResult res = opacity->getVariant().toDouble(&fOpacity);
+
+                if (fUseCacheIsolation)
+                {
+                    drawIntoCache();
+                }
+
+            }
         }
 
 
@@ -711,19 +841,54 @@ namespace waavs {
 			}
         }
         
+        virtual void drawIntoCache()
+        {
+            // get the bounding box to determine how big
+            // the cache should be
+            fBBox = frame();
+            int iWidth = (int)fBBox.w;
+            int iHeight = (int)fBBox.h;
+
+            // Create a new image with the same size as the bounding box
+            fCachedImage.create(iWidth, iHeight, BLFormat::BL_FORMAT_PRGB32);
+
+            // Create the drawing context to go with the cache
+            IRenderSVG cachectx(root()->fontHandler());
+            cachectx.begin(fCachedImage);
+            cachectx.clearAll();
+            //cachectx.fillAll(BLRgba32(0xFFffffffu));
+            cachectx.setCompOp(BL_COMP_OP_SRC_COPY);
+            cachectx.noStroke();
+            cachectx.translate(-fBBox.x, -fBBox.y);
+
+
+            // Render out content into the backing buffer
+            fImageIsCached = false;
+            SVGGraphicsElement::draw(&cachectx);
+            fImageIsCached = true;
+            
+            cachectx.flush();
+        }
+        
         void draw(IRenderSVG *ctx) override
         {
             if (!visible())
                 return;
 
             ctx->push();
-
-            applyAttributes(ctx);
-            drawSelf(ctx);
             
-            drawChildren(ctx);
+            if (fUseCacheIsolation && fImageIsCached && !fCachedImage.empty())
+            {
+                ctx->setGlobalAlpha(fOpacity);
+                ctx->blitImage(fBBox, fCachedImage);
+            }
+            else {
+                applyAttributes(ctx);
+                drawSelf(ctx);
 
-
+                drawChildren(ctx);
+            }
+            
             ctx->pop();
         }
     

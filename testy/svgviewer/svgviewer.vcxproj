@@ -153,9 +153,11 @@
   <ItemGroup>
     <ClInclude Include="..\..\app\apphost.h" />
     <ClInclude Include="..\..\app\filestreamer.h" />
+    <ClInclude Include="..\..\app\mappedfile.h" />
     <ClInclude Include="..\..\app\pixelaccessor.h" />
     <ClInclude Include="..\..\app\user32pixelmap.h" />
     <ClInclude Include="..\..\svg\base64.h" />
+    <ClInclude Include="..\..\svg\bspan.h" />
     <ClInclude Include="..\..\svg\definitions.h" />
     <ClInclude Include="..\..\svg\fonthandler.h" />
     <ClInclude Include="..\..\svg\irendersvg.h" />
@@ -171,6 +173,7 @@
     <ClInclude Include="..\..\svg\svgpath.h" />
     <ClInclude Include="..\..\svg\svgshapes.h" />
     <ClInclude Include="..\..\svg\svgstructuretypes.h" />
+    <ClInclude Include="..\..\svg\xmlscan.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

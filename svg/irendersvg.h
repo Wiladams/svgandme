@@ -1,11 +1,10 @@
 #pragma once
 
-#pragma comment(lib, "blend2d.lib")
+#pragma comment(lib, "blend2d.lib") // Link with Blend2D static library, on Windows
 
 #include <functional>
 
 #include "blend2d/blend2d.h"
-#include "geometry.h"
 #include "fonthandler.h"
 
 
@@ -195,8 +194,8 @@ namespace waavs
         }
 
         // Clipping
-        virtual void clip(const rectf& bb) {
-            BLContext::clipToRect(BLRect(bb.x,bb.y, bb.w, bb.h));
+        virtual void clip(const BLRect& bb) {
+            BLContext::clipToRect(bb);
         }
         
         virtual void noClip() { BLContext::restoreClipping(); }
@@ -217,6 +216,12 @@ namespace waavs
         }
         
         // Bitmaps
+        void setFillMask(BLImageCore& mask, const BLRectI &maskArea)
+        {
+            BLPointI origin(maskArea.x , maskArea.y);
+            BLResult res = blContextFillMaskI(this, &origin, &mask, &maskArea);
+        }
+        
         virtual void image(const BLImageCore& img, int x, int y)
         {
             BLContext::blitImage(BLPointI(x, y), img);

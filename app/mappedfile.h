@@ -55,9 +55,9 @@ namespace waavs
 
         virtual ~MappedFile() { close(); }
 
-        bool isValid() { return fIsValid; }
-        void* data() { return fData; }
-        size_t size() { return fSize; }
+        bool isValid() const { return fIsValid; }
+        void* data() const { return fData; }
+        size_t size() const { return fSize; }
 
         bool close()
         {

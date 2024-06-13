@@ -16,6 +16,8 @@ namespace waavs {
 	constexpr auto BASE64DE_FIRST = '+';
 	constexpr auto BASE64DE_LAST = 'z';
 	
+	static charset b64wsp(" \t\r\n\f\v");
+	
 	// BASE 64 encode table
 	// According to RFC 4648
 	static const char base64en[] = {
@@ -31,44 +33,48 @@ namespace waavs {
 	
 	// ASCII order for BASE 64 decode, 255 is unused character
 	static const unsigned char base64de[] = {
-		// nul, soh, stx, etx, eot, enq, ack, bel,
+	 // nul, soh, stx, etx, eot, enq, ack, bel,
 		255, 255, 255, 255, 255, 255, 255, 255,
-		//  bs,  ht,  nl,  vt,  np,  cr,  so,  si,
+	 //  bs,  ht,  nl,  vt,  np,  cr,  so,  si,
 		255, 255, 255, 255, 255, 255, 255, 255,
-		// dle, dc1, dc2, dc3, dc4, nak, syn, etb,
+	 // dle, dc1, dc2, dc3, dc4, nak, syn, etb,
 		255, 255, 255, 255, 255, 255, 255, 255,
-		// can,  em, sub, esc,  fs,  gs,  rs,  us,
+	 // can,  em, sub, esc,  fs,  gs,  rs,  us,
+	    255, 255, 255, 255, 255, 255, 255, 255,
+	 //  sp, '!', '"', '#', '$', '%', '&', ''',
 		255, 255, 255, 255, 255, 255, 255, 255,
-		//  sp, '!', '"', '#', '$', '%', '&', ''',
-		255, 255, 255, 255, 255, 255, 255, 255,
-		// '(', ')', '*', '+', ',', '-', '.', '/',
+	 // '(', ')', '*', '+', ',', '-', '.', '/',
 		255, 255, 255,  62, 255, 255, 255,  63,
-		// '0', '1', '2', '3', '4', '5', '6', '7',
-		52,  53,  54,  55,  56,  57,  58,  59,
-		// '8', '9', ':', ';', '<', '=', '>', '?',
-		60,  61, 255, 255, 255, 255, 255, 255,
-		// '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G',
+	 // '0', '1', '2', '3', '4', '5', '6', '7',
+	     52,  53,  54,  55,  56,  57,  58,  59,
+	 // '8', '9', ':', ';', '<', '=', '>', '?',
+	     60,  61, 255, 255, 255, 255, 255, 255,
+	 // '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G',
 		255,   0,   1,  2,   3,   4,   5,    6,
-		// 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
-		7,   8,   9,  10,  11,  12,  13,  14,
-		// 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W',
-		15,  16,  17,  18,  19,  20,  21,  22,
-		// 'X', 'Y', 'Z', '[', '\', ']', '^', '_',
-		23,  24,  25, 255, 255, 255, 255, 255,
-		// '`', 'a', 'b', 'c', 'd', 'e', 'f', 'g',
-		255,  26,  27,  28,  29,  30,  31,  32,
-		// 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
-		33,  34,  35,  36,  37,  38,  39,  40,
-		// 'p', 'q', 'r', 's', 't', 'u', 'v', 'w',
-		41,  42,  43,  44,  45,  46,  47,  48,
-		// 'x', 'y', 'z', '{', '|', '}', '~', del,
-		49,  50,  51, 255, 255, 255, 255, 255
+	 // 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
+	      7,   8,   9,  10,  11,  12,  13,  14,
+	 // 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W',
+	     15,  16,  17,  18,  19,  20,  21,  22,
+	 // 'X', 'Y', 'Z', '[', '\', ']', '^', '_',
+	     23,  24,  25, 255, 255, 255, 255, 255,
+	 // '`', 'a', 'b', 'c', 'd', 'e', 'f', 'g',
+	    255,  26,  27,  28,  29,  30,  31,  32,
+	 // 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
+	     33,  34,  35,  36,  37,  38,  39,  40,
+	 // 'p', 'q', 'r', 's', 't', 'u', 'v', 'w',
+	     41,  42,  43,  44,  45,  46,  47,  48,
+	 // 'x', 'y', 'z', '{', '|', '}', '~', del,
+	     49,  50,  51, 255, 255, 255, 255, 255
 	};
 	
 
 	
 	struct base64 {
-
+		static unsigned int getOutputSize(const unsigned int inputSize)
+		{
+			return BASE64_DECODE_OUT_SIZE(inputSize);
+		}
+			
 		// base64_encode
 		// out is null-terminated encode string.
 		// return values is out length, excluding the terminating `\0'
@@ -125,25 +131,69 @@ namespace waavs {
 		// Given an input that is base64 encoded, decode it to the output buffer.
 		// the return value of the function is the number of bytes that
 		// are in the 'out' buffer
-		//
+		// skip over whitespace, ignore invalid characters
 		static size_t decode(const char* in, size_t inlen, unsigned char* out)
 		{
-			unsigned int i;
+			unsigned int i;	// i - tracks the input location
 			unsigned int j;
 			unsigned char c;
 
-			if (inlen & 0x3) {
-				return 0;
+			//if (inlen & 0x3) {
+			//	return 0;
+			//}
+
+			i = 0;
+			j = 0;
+			while (i < inlen) {
+				c = base64de[(unsigned char)in[i++]];
+				if (c == 255) {
+					continue;
+				}
+				out[j] = c << 2;
+				c = base64de[(unsigned char)in[i++]];
+				if (c == 255) {
+					continue;
+				}
+				out[j] |= c >> 4;
+				if (i < inlen) {
+					out[j + 1] = c << 4;
+					c = base64de[(unsigned char)in[i++]];
+					if (c == 255) {
+						continue;
+					}
+					out[j + 1] |= c >> 2;
+				}
+				if (i < inlen) {
+					out[j + 2] = c << 6;
+					c = base64de[(unsigned char)in[i++]];
+					if (c == 255) {
+						continue;
+					}
+					out[j + 2] |= c;
+				}
+				j += 3;
 			}
 
-			for (i = j = 0; i < inlen; i++) {
-				if (in[i] == BASE64_PAD) {
+			/*
+			for (i = j = 0; i < inlen; i++) 
+			{
+				if (in[i] == BASE64_PAD) 
+				{
+					// break out of the loop, because we've hit the end
+					// of valid characters
 					break;
 				}
-				if (in[i] < BASE64DE_FIRST || in[i] > BASE64DE_LAST) {
+				
+				if (in[i] < BASE64DE_FIRST || in[i] > BASE64DE_LAST) 
+				{
+					// if there's an invalid character in the stream, return 
+					// a length of zero
+					// here we should consider whitespace ok
 					return 0;
 				}
 
+				// check the character against our decoding set of characters
+				// if the value == 255, then return 0 as length
 				c = base64de[(unsigned char)in[i]];
 				if (c == 255) {
 					return 0;
@@ -166,7 +216,7 @@ namespace waavs {
 					break;
 				}
 			}
-
+			*/
 			return j;
 		}
 	};

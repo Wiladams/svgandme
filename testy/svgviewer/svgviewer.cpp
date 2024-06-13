@@ -5,8 +5,7 @@
 #include <filesystem>
 
 #include "svg.h"
-#include "filestreamer.h"
-
+#include "mappedfile.h"
 
 using namespace waavs;
 
@@ -67,7 +66,7 @@ static void loadFontFiles(std::vector<const char*> filenames)
 
 static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 {
-	auto mapped = FileStreamer::createFromFilename(filename);
+	auto mapped = waavs::MappedFile::create_shared(filename);
 	
 	// if the mapped file does not exist, return
 	if (mapped == nullptr)
@@ -76,7 +75,9 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 		return nullptr;
 	}
 
-	std::shared_ptr<SVGDocument> aDoc = SVGDocument::createFromChunk(mapped->span(), &gFontHandler);
+	ByteSpan aspan(mapped->data(), mapped->size());
+	std::shared_ptr<SVGDocument> aDoc = SVGDocument::createFromChunk(aspan, &gFontHandler);
+	
 	return aDoc;
 }
 

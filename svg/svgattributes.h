@@ -16,6 +16,46 @@
 
 
 
+
+namespace waavs {
+    //
+    // SVGPatternExtendMode
+    // 
+	// A structure that represents the extend mode of a pattern.
+	struct SVGPatternExtendMode : public SVGVisualProperty 
+    {
+        static void registerFactory() {
+            registerSVGAttribute("extendMode", [](const ByteSpan& value) {
+                auto node = std::make_shared<SVGPatternExtendMode>(nullptr);
+                node->loadFromChunk(value);
+                return node;
+                });
+        }
+        
+        BLExtendMode fExtendMode{ BL_EXTEND_MODE_REPEAT };      // repeat by default
+
+        SVGPatternExtendMode(IAmGroot* iMap) : SVGVisualProperty(iMap) {
+            autoDraw(false);
+        }
+
+        bool loadSelfFromChunk(const ByteSpan& inChunk) override
+        {
+            BLExtendMode outMode{ BL_EXTEND_MODE_PAD };
+            if (parseExtendMode(inChunk, outMode))
+			{
+				fExtendMode = outMode;
+                set(true);
+                
+				return true;
+			}
+            
+            return false;
+        }
+        
+		BLExtendMode value() const { return fExtendMode; }
+	};
+}
+
 //================================================
 // SVGTransform
 // Transformation matrix
@@ -121,7 +161,16 @@ namespace waavs {
 // Specific types of attributes
 namespace waavs {
 
-    
+    //
+    // SVGOpacity
+    // https://svgwg.org/svg2-draft/render.html#ObjectAndGroupOpacityProperties
+    // Opacity, when applied to a group, should create a backing
+    // store to be created.
+    // We don't need to set the global opacity at as part of drawing
+    // this attribute.  Allow the specific geometry to do what it will 
+    // with this attribute during it's own drawing.  That might include
+    // simply inheriting the value.
+    //
     struct SVGOpacity : public SVGVisualProperty
     {
         static void registerFactory() {
@@ -140,7 +189,7 @@ namespace waavs {
 
         void drawSelf(IRenderSVG* ctx) override
         {
-			ctx->globalOpacity(fValue);
+			//ctx->globalOpacity(fValue);
         }
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override

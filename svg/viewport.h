@@ -7,10 +7,15 @@ namespace waavs {
 	// Viewport
 	// The Viewport represents the mapping between one 2D coordinate system and another.
 	// 
-	// The surfaceFrame, is where the image is projected.
-	// The sceneFrame, is the content that is being looked at.
+	// The surfaceFrame, is where the image is projected.  This is typically
+	// the actual window on the screen the user is interacting with.
 	// 
+	// The sceneFrame, is the content that is being looked at.  So, if you're looking
+	// through a window as a painting outside, the sceneFrame is the painting
 	// 
+	// The viewport allows you to do typical 'camera' kinds of movements, like pan, zoom,
+	// lookAt, and the like, and returns you the transformation matrix that will
+	// be applied to a drawing context.
 	//
 	struct ViewPort
 	{

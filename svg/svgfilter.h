@@ -40,8 +40,6 @@
 // feFuncG			- single
 // feFuncB			- single
 // feFuncA			- single
-// feComponentTransfer- single
-// feComposite		- single
 //
 
 namespace waavs {
@@ -73,12 +71,64 @@ namespace waavs {
 			registerSingularNode();
 		}
 
+		// filters need to setup an execution environment.  
+		SVGDimension fX{};
+		SVGDimension fY{};
+		SVGDimension fWidth{};
+		SVGDimension fHeight{};
+		
+		// dictionary of images used in the filter
+		std::unordered_map<std::string, BLImage> fFilterImages;
+		
+		
 		SVGFilterElement(IAmGroot* aroot)
 			: SVGGraphicsElement(aroot)
 		{
 			isStructural(false);
 		}
 
+		bool addImage(const std::string &name, BLImage &img)
+		{
+			auto it = fFilterImages.find(name);
+			if (it != fFilterImages.end())
+				return false;
+
+			fFilterImages[name] = img;
+			return true;
+		}
+
+		bool getImage(const std::string& name, BLImage &img)
+		{
+			auto it = fFilterImages.find(name);
+			if (it == fFilterImages.end())
+				return false;
+
+			img = it->second;
+			return true;
+		}
+
+		virtual bool addNode(std::shared_ptr < SVGVisualNode > node)
+		{
+			// if superclass fails to add the node, then forget it
+			if (!SVGGraphicsElement::addNode(node))
+				return false;
+			
+			printf("SVGFeFilter.addNode(%s)\n", node->id().c_str());
+			
+			return true;
+		}
+
+		void loadVisualProperties(const XmlAttributeCollection& attrs) override
+		{
+			SVGGraphicsElement::loadVisualProperties(attrs);
+
+			fX.loadFromChunk(getAttribute("x"));
+			fY.loadFromChunk(getAttribute("y"));
+			fWidth.loadFromChunk(getAttribute("width"));
+			fHeight.loadFromChunk(getAttribute("height"));
+
+		}
+		
 	};
 
 	//
@@ -432,11 +482,20 @@ namespace waavs {
 		}
 		
 
-
+		SVGDimension fStdDeviation;
+		
 		SVGFeGaussianBlurElement(IAmGroot* aroot)
 			: SVGGraphicsElement(aroot)
 		{
 			isStructural(true);
+		}
+
+		void loadVisualProperties(const XmlAttributeCollection& attrs) override
+		{
+			SVGGraphicsElement::loadVisualProperties(attrs);
+
+			fStdDeviation.loadFromChunk(getAttribute("stdDeviation"));
+
 		}
 	};
 
