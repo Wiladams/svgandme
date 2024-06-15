@@ -35,10 +35,5 @@
     #endif
 #endif
 
-namespace waavs 
-{
-    // Determine at runtime if the CPU is little-endian (intel standard)
-    static INLINE bool isLE() noexcept {int i = 1; return (int)*((unsigned char*)&i) == 1;}
-    static INLINE bool isBE() noexcept { return !isLE(); }
-}
+
 

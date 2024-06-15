@@ -11,7 +11,11 @@ namespace waavs
 {
     // Database of SVG colors
     // BUGBUG - it might be better if these used float instead of byte values
-    // Then they can be converted to various forms as needed
+    // Then they can be converted to various forms as needed.
+    // It might also be beneficial to have a key that is a ByteSpan instead
+    // of a std::string
+    // Note:  Everything is in lowercase.  So, when looking up a key
+    // the caller should ensure their key is lowercase first
     // https://www.w3.org/TR/SVG11/types.html#ColorKeywords
     //
     static std::map<std::string, BLRgba32> svgcolors =

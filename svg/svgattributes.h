@@ -560,7 +560,6 @@ namespace waavs {
             fFontSize.bindToGroot(groot);
             auto fsize = fFontSize.value();
 
-			//bool success = fh->selectFont(fFontFamily.value().c_str(), fFont, fsize, fFontStyle, fFontWeight, fFontStretch);
             bool success = fh->selectFont(fFamilyName.c_str(), fFont, (float)fsize, fFontStyle, fFontWeight, fFontStretch);
             if (success)
                 set(true);

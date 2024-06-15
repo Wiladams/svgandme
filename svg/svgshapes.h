@@ -1426,7 +1426,10 @@ namespace waavs {
 		SVGDimension fDx{};
 		SVGFontSelection fFontSelection{ nullptr };
 
-		SVGTextNode(IAmGroot* aroot) :SVGGraphicsElement(aroot) {}
+		
+		SVGTextNode(IAmGroot* aroot) :SVGGraphicsElement(aroot) 
+		{
+		}
 
 		void fontSelection(const SVGFontSelection& fs)
 		{
@@ -1447,7 +1450,6 @@ namespace waavs {
 
 		void bindSelfToGroot(IAmGroot* groot) override
 		{
-			//SVGGraphicsElement::bindToGroot(groot);
 
 			double dpi = 96;
 			double w = 1.0;

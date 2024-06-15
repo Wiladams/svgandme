@@ -3,6 +3,17 @@
 #include "definitions.h"
 
 
+
+namespace waavs
+{
+    // Determine which endianness the CPU has at runtime
+    // little-endian (intel standard)
+    static INLINE bool isLE() noexcept { int i = 1; return (int)*((unsigned char*)&i) == 1; }
+    
+    // big-endian
+    static INLINE bool isBE() noexcept { return !isLE(); }
+}
+
 /*
     Binary operators
 

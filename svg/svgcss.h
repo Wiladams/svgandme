@@ -284,6 +284,34 @@ namespace waavs
 			// BUGBUG - somewhere in here we need to remove the comments
             while (fSource)
             {
+                // Skip whitespace
+                fSource = chunk_ltrim(fSource, csswsp);
+                if (fSource.size() == 0)
+                    break;
+
+                // skip C comment
+                if (fSource.size() > 2 && fSource[0] == '/' && fSource[1] == '*')
+                {
+                    // skip past the asterisk style comment
+                    fSource += 2;
+                    while (fSource.size() > 1 && !(fSource[0] == '*' && fSource[1] == '/'))
+                        fSource += 1;
+                    if (fSource.size() > 1)
+                        fSource += 2;
+                    
+                    continue;
+                }
+                else if (fSource.size() > 1 && fSource[0] == '/' && fSource[1] == '/')
+                {
+                    // skip past the double slash style of comment
+                    fSource += 2;
+                    while (fSource.size() > 0 && fSource[0] != '\n')
+                        fSource += 1;
+
+                    continue;
+                }
+
+                
                 // Look for the next selector, which should be a string
                 // followed by a '{', with optional whitespace in between
                 // terminated with a '}'

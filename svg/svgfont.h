@@ -11,8 +11,11 @@
 #include "svgcss.h"
 
 
-
-
+//
+// SVG Supports embedded fonts.  This feature is little used, and obsolete
+// as web fonts, and truetype fonts are the norm.  The support here is experimental
+// as there's no real way of adding this information in this form into blend2d
+//
 
 namespace waavs {
 	enum GLYPH_ORIENTATION {
