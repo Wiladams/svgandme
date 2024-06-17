@@ -8,7 +8,7 @@
 #include <functional>
 #include <cstdint>
 
-#include "blend2d/blend2d.h"
+#include "blend2d.h"
 
 
 #include "bspan.h"

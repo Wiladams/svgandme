@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cmath>
-//#include <charconv>
 #include <cstdint>
 #include <cstring>
 #include <iterator>	// for std::data(), std::size()
@@ -405,6 +404,7 @@ namespace waavs {
 }
 
 namespace waavs {
+	/*
 	static void writeChunkToFile(const ByteSpan& chunk, const char* filename) noexcept
 	{
 		FILE* f{};
@@ -415,7 +415,8 @@ namespace waavs {
 		fwrite(chunk.data(), 1, chunk.size(), f);
 		fclose(f);
 	}
-
+	*/
+	
 	static void writeChunk(const ByteSpan& chunk) noexcept
 	{
 		ByteSpan s = chunk;

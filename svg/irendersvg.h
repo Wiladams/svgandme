@@ -4,7 +4,7 @@
 
 #include <functional>
 
-#include "blend2d/blend2d.h"
+#include "blend2d.h"
 #include "fonthandler.h"
 
 
@@ -386,7 +386,7 @@ namespace waavs
 			fTextX += fTextAdvance;
         }
 
-
+        /*
         virtual void vartext(double x, double y, const char* format, ...)
         {
             char txtBuff[512];
@@ -399,6 +399,7 @@ namespace waavs
             va_end(args);
 
         }
+        */
     };
 
     // DrawRoutine

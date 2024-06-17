@@ -42,7 +42,7 @@
 namespace waavs {
 
     //
-    struct SVGDocument : public  SVGGraphicsElement, public IAmGroot // ISVGDrawable,
+    struct SVGDocument : public  SVGGraphicsElement, public IAmGroot
     {
 		FontHandler* fFontHandler = nullptr;
         
@@ -247,23 +247,9 @@ namespace waavs {
                     // break here, but, curiosity...
                     auto node = std::make_shared<SVGSVGElement>(this);
                     
-
-                    
                     if (nullptr != node) {
                         node->loadFromXmlIterator(iter);
                         addNode(node);
-                        
-                        /*
-                        if (fSVGNode == nullptr) {
-							fSVGNode = node;
-                            // Get the canvas width, height, viewbox, etc
-                            BLRect vport = fSVGNode->viewport();
-                            fCanvasWidth = vport.w;
-                            fCanvasHeight = vport.h;
-                        }
-
-                        node->bindToGroot(this);
-                        */
                     }
                     else {
                         printf("SVGDocument.loadFromXmlIterator : ERROR - could not create SVG node\n");

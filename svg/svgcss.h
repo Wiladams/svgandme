@@ -281,7 +281,6 @@ namespace waavs
 
             fCurrentItem = CSSSelector();
 
-			// BUGBUG - somewhere in here we need to remove the comments
             while (fSource)
             {
                 // Skip whitespace
@@ -289,25 +288,27 @@ namespace waavs
                 if (fSource.size() == 0)
                     break;
 
-                // skip C comment
+                // skip 'C' style single line, and multi-line comments
                 if (fSource.size() > 2 && fSource[0] == '/' && fSource[1] == '*')
                 {
-                    // skip past the asterisk style comment
+                    // skip past the /* asterisk */ style comment
                     fSource += 2;
                     while (fSource.size() > 1 && !(fSource[0] == '*' && fSource[1] == '/'))
                         fSource += 1;
                     if (fSource.size() > 1)
                         fSource += 2;
                     
+                    // start from the top again, if there are consecutive comments
                     continue;
                 }
                 else if (fSource.size() > 1 && fSource[0] == '/' && fSource[1] == '/')
                 {
-                    // skip past the double slash style of comment
+                    // skip past the // double slash style of comment
                     fSource += 2;
                     while (fSource.size() > 0 && fSource[0] != '\n')
                         fSource += 1;
 
+                    // start from the top again, if there are consecutive comments
                     continue;
                 }
 

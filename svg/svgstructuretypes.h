@@ -8,15 +8,12 @@
 #include <cstdint>		// uint8_t, etc
 #include <cstddef>		// nullptr_t, ptrdiff_t, size_t
 
+#include "maths.h"
 
 #include "svgdatatypes.h"
-#include "svgcss.h"
 
 #include "irendersvg.h"
 #include "uievent.h"
-#include "svgcolors.h"
-
-
 
 
 
@@ -309,10 +306,10 @@ namespace waavs {
 		gSVGAttributeCreation[name] = func;
 	}
 
-    static void registerSVGProperty(const std::string& name, std::function < std::shared_ptr<SVGVisualProperty>(IAmGroot* aroot, const XmlAttributeCollection&)> func)
-    {
-        gSVGPropertyCreation[name] = func;
-    }
+    //static void registerSVGProperty(const std::string& name, std::function < std::shared_ptr<SVGVisualProperty>(IAmGroot* aroot, const XmlAttributeCollection&)> func)
+    //{
+    //    gSVGPropertyCreation[name] = func;
+    //}
     
 }
 
@@ -607,7 +604,6 @@ namespace waavs {
             // as additional context for attributes such as gradients
             // that might need that
             for (auto& prop : fVisualProperties) {
-                // BUGBUG - drawing visual property
 				if (prop.second->autoDraw() && prop.second->isSet())
                     prop.second->draw(ctx);
             }

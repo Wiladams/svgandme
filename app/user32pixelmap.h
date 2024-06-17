@@ -22,7 +22,7 @@
 
 #include "maths.h"
 #include "pixelaccessor.h"
-#include "blend2d/blend2d.h"
+
 
 namespace waavs {
     // Used to rapidly copy 32 bit values 

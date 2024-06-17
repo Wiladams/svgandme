@@ -3,7 +3,7 @@
 #ifndef BASE64_H
 #define BASE64_H
 
-#include "charset.h"
+//#include "charset.h"
 
 
 #define BASE64_ENCODE_OUT_SIZE(s) ((unsigned int)((((s) + 2) / 3) * 4 + 1))
@@ -16,7 +16,7 @@ namespace waavs {
 	constexpr auto BASE64DE_FIRST = '+';
 	constexpr auto BASE64DE_LAST = 'z';
 	
-	static charset b64wsp(" \t\r\n\f\v");
+	//static charset b64wsp(" \t\r\n\f\v");
 	
 	// BASE 64 encode table
 	// According to RFC 4648
@@ -72,7 +72,9 @@ namespace waavs {
 	struct base64 {
 		static unsigned int getOutputSize(const unsigned int inputSize)
 		{
-			return BASE64_DECODE_OUT_SIZE(inputSize);
+			return ((unsigned int)(((inputSize) / 4) * 3));
+			
+			//return BASE64_DECODE_OUT_SIZE(inputSize);
 		}
 			
 		// base64_encode
@@ -174,49 +176,7 @@ namespace waavs {
 				j += 3;
 			}
 
-			/*
-			for (i = j = 0; i < inlen; i++) 
-			{
-				if (in[i] == BASE64_PAD) 
-				{
-					// break out of the loop, because we've hit the end
-					// of valid characters
-					break;
-				}
-				
-				if (in[i] < BASE64DE_FIRST || in[i] > BASE64DE_LAST) 
-				{
-					// if there's an invalid character in the stream, return 
-					// a length of zero
-					// here we should consider whitespace ok
-					return 0;
-				}
 
-				// check the character against our decoding set of characters
-				// if the value == 255, then return 0 as length
-				c = base64de[(unsigned char)in[i]];
-				if (c == 255) {
-					return 0;
-				}
-
-				switch (i & 0x3) {
-				case 0:
-					out[j] = (c << 2) & 0xFF;
-					break;
-				case 1:
-					out[j++] |= (c >> 4) & 0x3;
-					out[j] = (c & 0xF) << 4;
-					break;
-				case 2:
-					out[j++] |= (c >> 2) & 0xF;
-					out[j] = (c & 0x3) << 6;
-					break;
-				case 3:
-					out[j++] |= c;
-					break;
-				}
-			}
-			*/
 			return j;
 		}
 	};

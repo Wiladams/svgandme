@@ -2378,7 +2378,7 @@ namespace waavs
             {0, 0, 0} };
     }
     inline frame3f rotation_frame(const quat4f& quat) {
-        auto v = quat;
+        quat4f v = quat;
         return { {v.w * v.w + v.x * v.x - v.y * v.y - v.z * v.z,
                     (v.x * v.y + v.z * v.w) * 2, (v.z * v.x - v.y * v.w) * 2},
             {(v.x * v.y - v.z * v.w) * 2,

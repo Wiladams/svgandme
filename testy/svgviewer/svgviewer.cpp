@@ -284,7 +284,7 @@ void onLoad()
 	
     //loadDefaultFonts();
 	loadFontDirectory("c:\\windows\\fonts");
-	loadFontDirectory("..\\resources");
+	//loadFontDirectory("..\\resources");
 	
     dropFiles();
 

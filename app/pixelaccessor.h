@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "blend2d/blend2d.h"
+#include "blend2d.h"
 
 enum class PixelOrientation
 {

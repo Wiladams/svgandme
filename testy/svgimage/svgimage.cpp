@@ -1,8 +1,12 @@
 
+#include <filesystem>
+
+
 #include "svg.h"
 #include "viewport.h"
 
-#include "filestreamer.h"
+#include "mappedfile.h"
+
 
 using namespace waavs;
 
@@ -14,9 +18,33 @@ std::shared_ptr<SVGDocument> gDoc{ nullptr };
 
 FontHandler gFontHandler{};
 
+
+
+static void loadFontDirectory(const char* dir)
+{
+	//gFontHandler.loadDirectoryOfFonts(dir);
+	const std::filesystem::path fontPath(dir);
+
+	for (const auto& dir_entry : std::filesystem::directory_iterator(fontPath))
+	{
+		if (dir_entry.is_regular_file())
+		{
+			if (endsWith(dir_entry.path().generic_string(), ".ttf") ||
+				endsWith(dir_entry.path().generic_string(), ".TTF") ||
+				endsWith(dir_entry.path().generic_string(), ".otf"))
+			{
+				BLFontFace ff;
+				ff = gFontHandler.loadFontFace(dir_entry.path().generic_string().c_str());
+			}
+		}
+	}
+}
+
+
 static void setupFonts()
 {
-    gFontHandler.loadDefaultFonts();
+	loadFontDirectory("c:\\Windows\\Fonts");
+    //gFontHandler.loadDefaultFonts();
 
 }
 
@@ -30,8 +58,8 @@ int main(int argc, char **argv)
 
     // create an mmap for the specified file
     const char* filename = argv[1];
-    auto mapped = FileStreamer::createFromFilename(filename);
 
+	auto mapped = MappedFile::create_shared(filename);
     
 	// if the mapped file does not exist, return
 	if (mapped == nullptr)
@@ -40,7 +68,8 @@ int main(int argc, char **argv)
 		return 1;
 	}
     
-    gDoc = SVGDocument::createFromChunk(mapped->span(), &gFontHandler);
+	ByteSpan mappedSpan(mapped->data(), mapped->size());
+    gDoc = SVGDocument::createFromChunk(mappedSpan, &gFontHandler);
 
 
     if (gDoc == nullptr)

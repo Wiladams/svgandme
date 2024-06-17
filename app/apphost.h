@@ -59,7 +59,7 @@
 
 
 
-#include "blend2d/blend2d.h"
+#include "blend2d.h"
 
 #include "maths.h"
 #include "pubsub.h"
