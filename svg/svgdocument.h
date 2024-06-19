@@ -294,8 +294,8 @@ namespace waavs {
             
             SVGFillRule::registerFactory();
             
-            //SVGFontFamily::registerFactory();
-            //SVGFontSize::registerFactory();
+            SVGFontFamily::registerFactory();
+            SVGFontSize::registerFactory();
             
 			SVGMarkerAttribute::registerMarkerFactory();
 

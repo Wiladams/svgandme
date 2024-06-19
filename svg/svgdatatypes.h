@@ -624,7 +624,7 @@ namespace waavs {
             if (encoding == "base64" && mime == "base64")
             {
                 unsigned int outBuffSize = base64::getOutputSize(value.size());
-                memBuff outBuff(outBuffSize);
+                MemBuff outBuff(outBuffSize);
                 //char * outBuff{ new char[outBuffSize]{} };
                 
                 auto decodedSize = base64::decode((const char*)value.data(), value.size(), outBuff.data());
@@ -679,7 +679,7 @@ namespace waavs {
         {
             // allocate some memory to decode into
             unsigned int outBuffSize = base64::getOutputSize(value.size());
-            memBuff outBuff(outBuffSize);
+            MemBuff outBuff(outBuffSize);
 
             auto decodedSize = base64::decode((const char*)value.data(), value.size(), outBuff.data());
 

@@ -380,26 +380,12 @@ namespace waavs
         {
             // BUGBUG - Drawing order should be determined by 
             // the drawing order attribute
-            BLContext::fillUtf8Text(BLPoint(x, y), fFont, txt);
             BLContext::strokeUtf8Text(BLPoint(x, y), fFont, txt);
+            BLContext::fillUtf8Text(BLPoint(x, y), fFont, txt);
             
 			fTextX += fTextAdvance;
         }
 
-        /*
-        virtual void vartext(double x, double y, const char* format, ...)
-        {
-            char txtBuff[512];
-            va_list args = nullptr;
-            va_start(args, format);
-
-            vsprintf_s(txtBuff, format, args);
-
-            text(txtBuff, x, y);
-            va_end(args);
-
-        }
-        */
     };
 
     // DrawRoutine

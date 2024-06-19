@@ -379,7 +379,7 @@ namespace waavs {
 		
 		void drawSelf(IRenderSVG *ctx) override
 		{
-			// The paint-method attribute can change which
+			// The paint-order attribute can change which
 			// order these are done in
 			//ctx->path(fPath);
 			//printf("SVGGeometryElement::drawSelf(%s)\n", id().c_str());

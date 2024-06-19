@@ -34,9 +34,13 @@ static BLFontFace loadFont(const char* filename)
 
 static void loadFontDirectory(const char* dir)
 {
-    //gFontHandler.loadDirectoryOfFonts(dir);
 	const std::filesystem::path fontPath(dir);
 
+	if (fontPath.empty())
+	{
+		return;
+	}
+	
 	for (const auto& dir_entry : std::filesystem::directory_iterator(fontPath))
 	{
 		if (dir_entry.is_regular_file())
@@ -284,7 +288,7 @@ void onLoad()
 	
     //loadDefaultFonts();
 	loadFontDirectory("c:\\windows\\fonts");
-	//loadFontDirectory("..\\resources");
+	loadFontDirectory("..\\resources");
 	
     dropFiles();
 

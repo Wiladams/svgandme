@@ -920,19 +920,24 @@ namespace waavs {
 }
 
 namespace waavs {
-	// A data structure that allocates a chunk of memory
-	// and frees it
-	struct memBuff {
+	//
+	// memBuff
+	// This is a very simple data structure that allocates a chunk of memory
+	// When the destructor is called, the memory is freed.
+	// This could easily be handled by something like a unique_ptr, but I don't
+	// want to force the usage of std library when it's not really needed.
+	// besides, it's so easy and convenient and small.
+	struct MemBuff {
 		uint8_t* fData;
 		size_t fSize;
 
-		memBuff(size_t sz)
+		MemBuff(size_t sz)
 			: fSize(sz)
 		{
 			fData = new uint8_t[sz];
 		}
 
-		~memBuff()
+		~MemBuff()
 		{
 			delete[] fData;
 		}
@@ -941,6 +946,8 @@ namespace waavs {
 		size_t size() const { return fSize; }
 
 		// create a ByteSpan from the memory buffer
+		// The lifetime of the ByteSpan that is returned it not governed
+		// by the MemBuff object.  This is something the caller must manage.
 		ByteSpan span() const { return ByteSpan(fData, fData + fSize); }
 		
 	};

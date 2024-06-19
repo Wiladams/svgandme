@@ -256,7 +256,8 @@ namespace waavs {
         ByteSpan fValue{};
         
         
-        SVGPaintOrderAttribute(IAmGroot* iMap) :SVGVisualProperty(iMap) {
+        SVGPaintOrderAttribute(IAmGroot* iMap) :SVGVisualProperty(iMap) 
+        {
 
         }
 
@@ -274,11 +275,18 @@ namespace waavs {
     
     struct SVGRawAttribute : public SVGVisualProperty
     {
-		static void registerFactory() {
-            registerSVGAttribute("systemLanguage", [](const ByteSpan& value) {auto node = std::make_shared<SVGRawAttribute>(nullptr); node->loadFromChunk(value);  return node; });
+		static void registerFactory() 
+        {
+            registerSVGAttribute("systemLanguage", [](const ByteSpan& value) {
+                auto node = std::make_shared<SVGRawAttribute>(nullptr); 
+                node->loadFromChunk(value);  
+                return node; 
+                });
 		}
 
-        SVGRawAttribute(IAmGroot* iMap) :SVGVisualProperty(iMap) { 
+        
+        SVGRawAttribute(IAmGroot* iMap) :SVGVisualProperty(iMap) 
+        { 
             //visible(false); 
         }        
 
@@ -292,6 +300,7 @@ namespace waavs {
 
     };
 }
+
 //==================================================================
 //  SVG Text Properties
 //==================================================================
@@ -299,20 +308,28 @@ namespace waavs {
     struct SVGFontSize : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute("font-size", [](const ByteSpan& value) {auto node = std::make_shared<SVGFontSize>(nullptr); node->loadFromChunk(value);  return node; });
+            registerSVGAttribute("font-size", [](const ByteSpan& value) {
+                auto node = std::make_shared<SVGFontSize>(nullptr); 
+                node->loadFromChunk(value);  
+                return node; 
+                });
         }
         
         
         SVGDimension dimValue{};
         double fValue{ 16.0 };
 
-        SVGFontSize(IAmGroot* inMap) : SVGVisualProperty(inMap) {}
+        SVGFontSize(IAmGroot* inMap) 
+            : SVGVisualProperty(inMap) 
+        {
+        }
 
         SVGFontSize& operator=(const SVGFontSize& rhs)
 		{
 			dimValue = rhs.dimValue;
 			fValue = rhs.fValue;
-			return *this;
+			
+            return *this;
 		}
 
 		double value() const { return fValue; }
@@ -660,13 +677,8 @@ namespace waavs {
             return true;
         }
 
-
     };
 }
-
-
-
-
 
 
 namespace waavs {
@@ -695,8 +707,7 @@ namespace waavs {
 
             if (nullptr == node)
                 return false;
-            
-            // pull out the variant, assuming there is one
+
 
             if (node->needsBinding())
                 node->bindToGroot(groot);
