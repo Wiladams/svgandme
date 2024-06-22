@@ -630,7 +630,7 @@ namespace waavs {
 
     // Representation of an xml element
     // The xml scanner will generate these
-    struct XmlElement //: public XmlAttributeCollection
+    struct XmlElement
     {
     private:
         int fElementKind{ XML_ELEMENT_TYPE_INVALID };
@@ -781,13 +781,18 @@ namespace waavs {
 // The XmlElementIterator is used to iterate over the elements in a chunk of memory.
 //
 namespace waavs {
-    // XML Iterator States
+    // XML_ITERATOR_STATE
+    // An enumeration that represents the control
+    // state of the iterator
     enum XML_ITERATOR_STATE {
         XML_ITERATOR_STATE_CONTENT = 0
         , XML_ITERATOR_STATE_START_TAG
 
     };
     
+    // XmlIteratorParams
+    // The set of parameters that configure how the iterator
+    // will operate
     struct XmlIteratorParams {
         bool fSkipComments = true;
         bool fSkipProcessingInstructions = true;
@@ -796,6 +801,9 @@ namespace waavs {
         bool fAutoScanAttributes = false;
     };
 
+	// XmlIteratorState
+    // The information needed for the iterator to continue
+    // after it has returned a value.
     struct XmlIteratorState {
         int fState{ XML_ITERATOR_STATE_CONTENT };
         ByteSpan fSource{};
@@ -899,7 +907,7 @@ namespace waavs {
 
                 return elem;
             }
-                                             break;
+            break;
 
             default:
                 // Just advance to next character
@@ -917,14 +925,20 @@ namespace waavs {
     // This is a forward only non-writeable iterator
     // 
     // Usage:
-    //   XmlElementIterator iter = XmlElementIterator(xmlChunk);
+    //   XmlElementIterator iter(xmlChunk, false);
     // 
-    //   while(iter)
+    //   while(iter.next())
     //   {
     //     printXmlElement(*iter);
-    //     iter++;
     //   }
     //
+    //.  or, you can do it this way
+    //.  
+    //.  iter++;
+    //.  while (iter) {
+    //.    printXmlElement(*iter);
+    //.    iter++;
+    //.  }
     //
     struct XmlElementIterator {
     private:
@@ -937,18 +951,24 @@ namespace waavs {
             : fState{ XML_ITERATOR_STATE_CONTENT, inChunk, inChunk }
         {
 			fParams.fAutoScanAttributes = autoScanAttributes;
+            // We do not advance in the constructor, leaving that
+            // for the user to call 'next()' to get the first element
             //next();
         }
 
+		// return 'true' if the node we're currently sitting on is valid
+        // return 'false' if otherwise
         explicit operator bool() { return !fCurrentElement.isEmpty(); }
 
         // These operators make it operate like an iterator
         const XmlElement& operator*() const { return fCurrentElement; }
         const XmlElement* operator->() const { return &fCurrentElement; }
 
+        // Increment the iterator either pre, or post notation
         XmlElementIterator& operator++() { next(); return *this; }
         XmlElementIterator& operator++(int) { next(); return *this; }
 
+        // Return the current value of the iteration
         const XmlElement & next() 
         {
             fCurrentElement = XmlElementGenerator(fParams, fState);
