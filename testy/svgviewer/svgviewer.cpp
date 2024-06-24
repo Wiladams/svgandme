@@ -29,21 +29,28 @@ static vec2f gDragPos{ 0,0 };
 static double gZoomFactor = 0.1;
 
 // Typography
-static BLFontFace loadFont(const char* filename)
+static bool loadFont(const char* filename, BLFontFace &ff)
 {
-    BLFontFace ff = gFontHandler.loadFontFace(filename);
-    return ff;
+    bool success = gFontHandler.loadFontFace(filename, ff);
+    return success;
 }
 
 
 
-static void loadFontDirectory(const char* dir)
+static bool loadFontDirectory(const char* dir)
 {
 	const std::filesystem::path fontPath(dir);
 
+	// If the path does not exist
+	// return immediately
+	if (!std::filesystem::exists(fontPath))
+	{
+		return false;
+	}
+	
 	if (fontPath.empty())
 	{
-		return;
+		return false;
 	}
 	
 	for (const auto& dir_entry : std::filesystem::directory_iterator(fontPath))
@@ -54,21 +61,27 @@ static void loadFontDirectory(const char* dir)
 				endsWith(dir_entry.path().generic_string(), ".TTF") ||
 				endsWith(dir_entry.path().generic_string(), ".otf"))
 			{
-				BLFontFace ff;
-				ff = gFontHandler.loadFontFace(dir_entry.path().generic_string().c_str());
+				BLFontFace ff{};
+				bool success = gFontHandler.loadFontFace(dir_entry.path().generic_string().c_str(), ff);
 			}
 		}
 	}
+
+	return true;
 }
 
-static void loadDefaultFonts()
+static bool loadDefaultFonts()
 {
     gFontHandler.loadDefaultFonts();
+	
+	return true;
 }
 
-static void loadFontFiles(std::vector<const char*> filenames)
+static bool loadFontFiles(std::vector<const char*> filenames)
 {
     gFontHandler.loadFonts(filenames);
+	
+	return true;
 }
 
 

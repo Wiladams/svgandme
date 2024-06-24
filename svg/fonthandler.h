@@ -88,9 +88,9 @@ namespace waavs {
         // create a single font face by filename
         // Put it into the font manager
         // return it to the user
-        BLFontFace loadFontFace(const char* filename)
+        bool loadFontFace(const char* filename, BLFontFace &ff)
         {
-            BLFontFace ff;
+            //BLFontFace ff;
             //BLResult err = ff.createFromFile(filename, BL_FILE_READ_MMAP_AVOID_SMALL);
             BLResult err = ff.createFromFile(filename);
 
@@ -105,28 +105,39 @@ namespace waavs {
                 
                 fFontManager.addFace(ff);
                 fFamilyNames.push_back(std::string(ff.familyName().data()));
+                return true;
             }
             else {
                 ;
                 printf("FontHandler::loadFont Error: %s (0x%x)\n", filename, err);
             }
 
-            return ff;
+            return false;
         }
 
         // Load the list of font files into 
         // the font manager
-        void loadFonts(std::vector<const char*> fontNames)
+        bool loadFonts(std::vector<const char*> fontNames)
         {
+            bool success{ false };
+            
             for (const auto& filename : fontNames)
             {
-                BLFontFace face = loadFontFace(filename);
-                //printf("loadFonts: %s, 0x%x\n", face.familyName().data(), face.isValid());
+                BLFontFace ff{};
+                bool success = loadFontFace(filename, ff);
+                if (!success)
+				{
+                    //printf("loadFonts: %s, 0x%x\n", face.familyName().data(), face.isValid());
+					return false;
+				}
+
             }
+
+            return true;
         }
 
         // Do this only once to load in fonts
-        void loadDefaultFonts()
+        bool loadDefaultFonts()
         {
             // Load in some fonts to start
             std::vector<const char*> fontNames{
@@ -143,7 +154,7 @@ namespace waavs {
                 "c:\\Windows\\Fonts\\verdana.ttf",
                 "c:\\Windows\\Fonts\\wingding.ttf"
             };
-            loadFonts(fontNames);
+            return loadFonts(fontNames);
         }
 
         float getAdjustedFontSize(float sz) const
