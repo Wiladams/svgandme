@@ -485,7 +485,7 @@ namespace waavs {
             b = hue_to_rgb(p, q, h - 1 / 3.0);
         }
 
-        return BLRgba32(r * 255, g * 255, b * 255);
+        return BLRgba32(uint32_t(r * 255), uint32_t(g * 255), uint32_t(b * 255));
     }
 
     static BLRgba32 parseColorHsl(const ByteSpan& inChunk)
@@ -532,7 +532,7 @@ namespace waavs {
         //o = od.calculatePixels(255);
 
         auto res = hsl_to_rgb(h, s, l);
-        res.setA(o * 255);
+        res.setA(uint32_t(o * 255));
 
         return res;
     }
@@ -623,7 +623,7 @@ namespace waavs {
 		if (value) {
             if (encoding == "base64" && mime == "base64")
             {
-                unsigned int outBuffSize = base64::getOutputSize(value.size());
+                unsigned int outBuffSize = base64::getDecodeOutputSize(value.size());
                 MemBuff outBuff(outBuffSize);
                 //char * outBuff{ new char[outBuffSize]{} };
                 
@@ -678,7 +678,7 @@ namespace waavs {
         if (encoding == "base64")
         {
             // allocate some memory to decode into
-            unsigned int outBuffSize = base64::getOutputSize(value.size());
+            unsigned int outBuffSize = base64::getDecodeOutputSize(value.size());
             MemBuff outBuff(outBuffSize);
 
             auto decodedSize = base64::decode((const char*)value.data(), value.size(), outBuff.data());

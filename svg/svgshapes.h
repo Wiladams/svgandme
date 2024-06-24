@@ -209,10 +209,10 @@ namespace waavs {
 			if (fHasTransform) {
 				auto leftTop = fTransform.mapPoint(bbox.x0, bbox.y0);
 				auto rightBottom = fTransform.mapPoint(bbox.x1, bbox.y1);
-				return BLRectI(leftTop.x, leftTop.y, rightBottom.x - leftTop.x, rightBottom.y - leftTop.y);
+				return BLRectI((int)leftTop.x, (int)leftTop.y, int((rightBottom.x - leftTop.x)+0.5), int((rightBottom.y - leftTop.y)+0.5));
 			}
 
-			return BLRectI(bbox.x0, bbox.y0, bbox.x1 - bbox.x0, bbox.y1 - bbox.y0);
+			return BLRectI((int)bbox.x0, (int)bbox.y0, int((bbox.x1 - bbox.x0)+0.5), int((bbox.y1 - bbox.y0)+0.5));
 		}
 		
 		bool contains(double x, double y) override

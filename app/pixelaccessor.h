@@ -63,7 +63,7 @@ struct PixelArray : public IContainPixels
     BLImage fImage{};                     // BLImage to hold the pixel data
 
     PixelArray() { ; }
-    PixelArray(void* d, const size_t w, const size_t h, const ptrdiff_t s, PixelOrientation o=PixelOrientation::TopToBottom)
+    PixelArray(void* d, const int w, const int h, const ptrdiff_t s, PixelOrientation o=PixelOrientation::TopToBottom)
     {
         reset(d, w, h, s, o);
     }
@@ -78,7 +78,7 @@ struct PixelArray : public IContainPixels
     const uint8_t* data() const noexcept { return fData; }  // this one's not editable
 
     // take the specified parameters as our own
-    void reset(void* d = nullptr, const size_t w = 0, const size_t h = 0, const ptrdiff_t s = 0, const PixelOrientation o=PixelOrientation::TopToBottom)
+    void reset(void* d = nullptr, const int w = 0, const int h = 0, const ptrdiff_t s = 0, const PixelOrientation o=PixelOrientation::TopToBottom)
     {
         fData = (uint8_t*)d;
         fWidth = w;

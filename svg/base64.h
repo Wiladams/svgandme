@@ -3,11 +3,19 @@
 #ifndef BASE64_H
 #define BASE64_H
 
-//#include "charset.h"
-
+//
+// Base 64 encoding and decoding
+// The couple of routines in this file will encode and decode base64 strings.
+// The encoding is done according to RFC 4648.
+// The decoding is done according to RFC 4648 and RFC 2045.
+//
+// The decode routine is tolerant of whitespace and other non-base64 characters.
+// it will just ignore them.
+// The routines here may not be the fastest vectorized versions, but they are simple
+// and easily portable.
 
 #define BASE64_ENCODE_OUT_SIZE(s) ((unsigned int)((((s) + 2) / 3) * 4 + 1))
-#define BASE64_DECODE_OUT_SIZE(s) ((unsigned int)(((s) / 4) * 3))
+//#define BASE64_DECODE_OUT_SIZE(s) ((unsigned int)(((s) / 4) * 3))
 
 
 
@@ -16,7 +24,6 @@ namespace waavs {
 	constexpr auto BASE64DE_FIRST = '+';
 	constexpr auto BASE64DE_LAST = 'z';
 	
-	//static charset b64wsp(" \t\r\n\f\v");
 	
 	// BASE 64 encode table
 	// According to RFC 4648
@@ -31,7 +38,7 @@ namespace waavs {
 		'4', '5', '6', '7', '8', '9', '+', '/',
 	};
 	
-	// ASCII order for BASE 64 decode, 255 is unused character
+	// ASCII order for BASE 64 decode, 255 is unused and invalid character
 	static const unsigned char base64de[] = {
 	 // nul, soh, stx, etx, eot, enq, ack, bel,
 		255, 255, 255, 255, 255, 255, 255, 255,
@@ -70,11 +77,11 @@ namespace waavs {
 
 	
 	struct base64 {
-		static unsigned int getOutputSize(const unsigned int inputSize)
+		// Given an input buffer size, getDecodeOutputSize() returns the size
+		// of buffer needed to contain the decoded data.
+		static unsigned int getDecodeOutputSize(const size_t inputSize)
 		{
 			return ((unsigned int)(((inputSize) / 4) * 3));
-			
-			//return BASE64_DECODE_OUT_SIZE(inputSize);
 		}
 			
 		// base64_encode
