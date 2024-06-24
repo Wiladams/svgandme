@@ -6,6 +6,8 @@
 
 #include "svg.h"
 #include "mappedfile.h"
+#include "recorder.h"
+
 
 using namespace waavs;
 
@@ -17,6 +19,9 @@ FontHandler gFontHandler{};
 // Reference to currently active document
 std::shared_ptr<SVGDocument> gDoc{ nullptr };
 ViewPort gViewPort{};
+
+Recorder gRecorder{ nullptr };
+
 
 // For mouse management
 static bool gIsDragging = false;
@@ -162,6 +167,9 @@ static void onFrameEvent(const FrameCountEvent& fe)
 	//appFrameBuffer().setAllPixels(vec4b{ 0x00,0xff,0x00,0xff });
 	
 	screenRefresh();
+
+
+	gRecorder.saveFrame();
 }
 
 static void onResizeEvent(const ResizeEvent& re)
@@ -276,6 +284,23 @@ static void onMouseEvent(const MouseEvent& e)
 	
 }
 
+void onKeyboardEvent(const KeyboardEvent& ke)
+{
+	//printf("SVGViewer::onKeyboardEvent: %d\n", ke.key);
+	if (ke.activity == KEYRELEASED)
+	{
+		switch (ke.keyCode)
+		{
+			case VK_PLAY:
+			case VK_PAUSE:
+			case 'R':
+				gRecorder.toggleRecording();
+			break;			
+
+		}
+	}
+}
+
 // called once before main loop is running
 void onLoad()
 {
@@ -297,11 +322,14 @@ void onLoad()
 	// resize app window
 	createAppWindow(1024, 768, "SVGViewer");
 	
+	gRecorder.reset(&appFrameBuffer().image(), "frame", 15, 0);
+	
 	// register to receive various events
 	subscribe(onFileDrop);
 	subscribe(onFrameEvent);
 	subscribe(onMouseEvent);
 	subscribe(onResizeEvent);
+	subscribe(onKeyboardEvent);
 	
 	// clear the buffer to white to start
 	appFrameBuffer().setAllPixels(vec4b{ 0xFF,0xff,0xff,0xff });
