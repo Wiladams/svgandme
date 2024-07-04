@@ -44,6 +44,8 @@ namespace waavs {
     //
     struct SVGDocument : public  SVGGraphicsElement, public IAmGroot
     {
+        MemBuff fSourceMem{};
+        
 		FontHandler* fFontHandler = nullptr;
         
         // We only have a single root 'SVGSVGElement' for the whole document
@@ -262,7 +264,10 @@ namespace waavs {
 		// Assuming we've already got a file mapped into memory, load the document
         bool loadFromChunk(const ByteSpan &srcChunk)
         {
-            XmlElementIterator iter(srcChunk, true);
+            // create a memBuff from srcChunk
+            fSourceMem.initFromSpan(srcChunk);
+            
+            XmlElementIterator iter(fSourceMem.span(), true);
 
             loadFromXmlIterator(iter);
 

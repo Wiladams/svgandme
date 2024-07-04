@@ -4,23 +4,22 @@
 
 #include <filesystem>
 
-#include "svg.h"
+
 #include "mappedfile.h"
-#include "recorder.h"
+#include "svguiapp.h"
 
 
 using namespace waavs;
 
-// Create one of these first, so factory constructor will run
-SVGFactory gSVG;
 
-FontHandler gFontHandler{};
+
+
 
 // Reference to currently active document
 std::shared_ptr<SVGDocument> gDoc{ nullptr };
 ViewPort gViewPort{};
 
-Recorder gRecorder{ nullptr };
+
 
 
 // For mouse management
@@ -28,61 +27,11 @@ static bool gIsDragging = false;
 static vec2f gDragPos{ 0,0 };
 static double gZoomFactor = 0.1;
 
-// Typography
-static bool loadFont(const char* filename, BLFontFace &ff)
-{
-    bool success = gFontHandler.loadFontFace(filename, ff);
-    return success;
-}
 
 
 
-static bool loadFontDirectory(const char* dir)
-{
-	const std::filesystem::path fontPath(dir);
 
-	// If the path does not exist
-	// return immediately
-	if (!std::filesystem::exists(fontPath))
-	{
-		return false;
-	}
-	
-	if (fontPath.empty())
-	{
-		return false;
-	}
-	
-	for (const auto& dir_entry : std::filesystem::directory_iterator(fontPath))
-	{
-		if (dir_entry.is_regular_file())
-		{
-			if (endsWith(dir_entry.path().generic_string(), ".ttf") ||
-				endsWith(dir_entry.path().generic_string(), ".TTF") ||
-				endsWith(dir_entry.path().generic_string(), ".otf"))
-			{
-				BLFontFace ff{};
-				bool success = gFontHandler.loadFontFace(dir_entry.path().generic_string().c_str(), ff);
-			}
-		}
-	}
 
-	return true;
-}
-
-static bool loadDefaultFonts()
-{
-    gFontHandler.loadDefaultFonts();
-	
-	return true;
-}
-
-static bool loadFontFiles(std::vector<const char*> filenames)
-{
-    gFontHandler.loadFonts(filenames);
-	
-	return true;
-}
 
 
 
@@ -97,6 +46,7 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 		return nullptr;
 	}
 
+	
 	ByteSpan aspan(mapped->data(), mapped->size());
 	std::shared_ptr<SVGDocument> aDoc = SVGDocument::createFromChunk(aspan, &gFontHandler);
 	
@@ -297,7 +247,7 @@ static void onMouseEvent(const MouseEvent& e)
 	
 }
 
-void onKeyboardEvent(const KeyboardEvent& ke)
+static void onKeyboardEvent(const KeyboardEvent& ke)
 {
 	//printf("SVGViewer::onKeyboardEvent: %d\n", ke.key);
 	if (ke.activity == KEYRELEASED)
@@ -319,6 +269,7 @@ void onLoad()
 {
     printf("onLoad\n");
     
+	
 	// Load extension elements
 	
 	

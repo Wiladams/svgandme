@@ -22,7 +22,7 @@ FontHandler gFontHandler{};
 
 static void loadFontDirectory(const char* dir)
 {
-	//gFontHandler.loadDirectoryOfFonts(dir);
+
 	const std::filesystem::path fontPath(dir);
 
 	for (const auto& dir_entry : std::filesystem::directory_iterator(fontPath))
@@ -34,7 +34,7 @@ static void loadFontDirectory(const char* dir)
 				endsWith(dir_entry.path().generic_string(), ".otf"))
 			{
 				BLFontFace ff;
-				ff = gFontHandler.loadFontFace(dir_entry.path().generic_string().c_str());
+				bool success = gFontHandler.loadFontFace(dir_entry.path().generic_string().c_str(), ff);
 			}
 		}
 	}

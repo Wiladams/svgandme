@@ -138,7 +138,9 @@
     <ClCompile Include="xmlpull.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="xmlutil.h" />
+    <ClInclude Include="..\..\app\mappedfile.h" />
+    <ClInclude Include="..\..\app\xmlutil.h" />
+    <ClInclude Include="..\..\svg\xmlscan.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

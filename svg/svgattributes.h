@@ -807,7 +807,7 @@ namespace waavs {
                 chunk_starts_with(str, rgbaStrCaps) ||
                 chunk_starts_with(str, rgbStrCaps))
             {
-                c = parseColorRGB(str);
+                parseColorRGB(str, c);
                 blVarAssignRgba32(&fVar, c.value);
                 set(true);
             }
@@ -833,7 +833,8 @@ namespace waavs {
                 else if (svgcolors.find(cName) != svgcolors.end())
                 {
                     c = svgcolors[cName];
-                    blVarAssignRgba32(&fVar, c.value);
+                    fVar = c;
+                    //blVarAssignRgba32(&fVar, c.value);
                     set(true);
                 }
                 else {
@@ -841,7 +842,8 @@ namespace waavs {
                     // or a color function we don't support yet
                     // so set a default gray color
                     c = BLRgba32(128, 128, 128);
-                    blVarAssignRgba32(&fVar, c.value);
+                    fVar = c;
+                    //blVarAssignRgba32(&fVar, c.value);
                     set(true);
                 }
             }
@@ -1261,7 +1263,7 @@ namespace waavs {
     // 
     struct SVGOrient
     {
-        SVGAngle fAngle;
+        double fAngle{ 0 };
 		MarkerOrientation fOrientation{ MarkerOrientation::MARKER_ORIENT_AUTO };
         
         
@@ -1287,7 +1289,9 @@ namespace waavs {
 			else
 			{
 				fOrientation = MarkerOrientation::MARKER_ORIENT_ANGLE;
-				return fAngle.loadFromChunk(s);
+                SVGAngleUnits units{ SVGAngleUnits::SVG_ANGLETYPE_UNKNOWN };
+                return parseAngle(s, fAngle, units);
+				//return fAngle.loadFromChunk(s);
 			}
 
             return true;
@@ -1300,7 +1304,8 @@ namespace waavs {
         {
             if (fOrientation == MarkerOrientation::MARKER_ORIENT_ANGLE)
             {
-                return fAngle.radians();
+                return fAngle;
+                //return fAngle.radians();
             }
             
             
@@ -1321,7 +1326,7 @@ namespace waavs {
 				// where p1 is the origin, and p2 is the vector
 				// then add pi to the angle
 
-                
+        
 				return -ang;
 			}
 

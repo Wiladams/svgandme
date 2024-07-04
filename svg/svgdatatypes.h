@@ -1,16 +1,190 @@
 #pragma once
 
-#include <memory>
-#include <vector>
-#include <map>
-#include <unordered_map>
+
 #include <cstdint>		// uint8_t, etc
 #include <cstddef>		// nullptr_t, ptrdiff_t, size_t
 
 
+#include "blend2d.h"
 #include "bspan.h"
 #include "base64.h"
 
+//
+// Parsing routines for the core SVG data types
+// Higher level parsing routines will use these lower level
+// routines to construct visual properties and structural components
+// These routines are meant to be fairly low level, independent, and fast
+//
+
+
+namespace waavs {
+    // parseNumber()
+    //
+    // Parse a number from the given chunk, advancing the chunk
+    // to beyond where we found the number.
+    // Assumption:  We're sitting at beginning of a number,
+    // with no whitespace
+    static bool parseNumber(ByteSpan& s, double &value) noexcept
+    {
+        double sign = 1.0;
+        double res = 0.0;
+        long long intPart = 0;
+        uint64_t fracPart = 0;
+        bool hasIntPart = false;
+        bool hasFracPart = false;
+
+        // Parse optional sign
+        if (*s == '+') {
+            s++;
+        }
+        else if (*s == '-') {
+            sign = -1;
+            s++;
+        }
+
+        // Parse integer part
+        if (digitChars[*s]) {
+
+            intPart = chunk_to_u64(s);
+
+            res = (double)intPart;
+            hasIntPart = true;
+        }
+
+        // Parse fractional part.
+        if (*s == '.') {
+            s++; // Skip '.'
+            auto sentinel = s.fStart;
+
+            if (digitChars(*s)) {
+                fracPart = chunk_to_u64(s);
+                auto ending = s.fStart;
+
+                ptrdiff_t diff = ending - sentinel;
+                res = res + ((double)fracPart) / (double)powd((double)10, double(diff));
+                hasFracPart = true;
+            }
+        }
+
+        // A valid number should have integer or fractional part.
+        if (!hasIntPart && !hasFracPart)
+            return false;
+
+
+        // Parse optional exponent
+        if (*s == 'e' || *s == 'E') {
+            long long expPart = 0;
+            s++; // skip 'E'
+
+            double expSign = 1.0;
+            if (*s == '+') {
+                s++;
+            }
+            else if (*s == '-') {
+                expSign = -1.0;
+                s++;
+            }
+
+            if (digitChars[*s]) {
+                expPart = chunk_to_u64(s);
+                res = res * powd(10, double(expSign * double(expPart)));
+            }
+        }
+
+        value = res * sign;
+        
+        return true;
+    }
+
+    
+    // Parse a number which may have units after it
+    //   1.2em
+    // -1.0E2em
+    // 2.34ex
+    // -2.34e3M10,20
+    // 
+    // By the end of this routine, the numchunk represents the range of the 
+    // captured number.
+    // 
+    // The returned chunk represents what comes next, and can be used
+    // to continue scanning the original inChunk
+    //
+    // Note:  We assume here that the inChunk is already positioned at the start
+    // of a number (including +/- sign), with no leading whitespace
+
+    static ByteSpan scanNumber(const ByteSpan& inChunk, ByteSpan& numchunk) noexcept
+    {
+        ByteSpan s = inChunk;
+        numchunk = inChunk;
+        numchunk.fEnd = inChunk.fStart;
+
+
+        // sign
+        if (*s == '-' || *s == '+') {
+            s++;
+            numchunk.fEnd = s.fStart;
+        }
+
+        // integer part
+        while (s && digitChars[*s]) {
+            s++;
+            numchunk.fEnd = s.fStart;
+        }
+
+        if (*s == '.') {
+            // decimal point
+            s++;
+            numchunk.fEnd = s.fStart;
+
+            // fraction part
+            while (s && digitChars[*s]) {
+                s++;
+                numchunk.fEnd = s.fStart;
+            }
+        }
+
+        // exponent
+        // but it could be units (em, ex)
+        if ((*s == 'e' || *s == 'E') && (s[1] != 'm' && s[1] != 'x'))
+        {
+            s++;
+            numchunk.fEnd = s.fStart;
+
+            // Might be a sign
+            if (*s == '-' || *s == '+') {
+                s++;
+                numchunk.fEnd = s.fStart;
+            }
+
+            // Get any remaining digits
+            while (s && digitChars[*s]) {
+                s++;
+                numchunk.fEnd = s.fStart;
+            }
+        }
+
+        return s;
+    }
+
+    // parseNextNumber()
+    // 
+    // Consume the next number off the front of the chunk
+    // modifying the input chunk to advance past the  removed number
+    // Return true if we found a number, false otherwise
+    //
+    static inline bool parseNextNumber(ByteSpan& s, double& outNumber) noexcept
+    {
+        // typical whitespace found in lists of numbers, like on paths and polylines
+        static charset whitespaceChars(",\t\n\f\r ");          
+
+        // clear up leading whitespace, including ','
+        s = chunk_ltrim(s, whitespaceChars);
+
+        ByteSpan numChunk{};
+
+		return parseNumber(s, outNumber);
+    }
+}
 
 
 namespace waavs
@@ -44,67 +218,43 @@ namespace waavs
 			return SVG_ANGLETYPE_UNKNOWN;
     }
     
-    // The angle struct holds the angle in radians
-	// It can parse and convert to other units
-    struct SVGAngle
+    // returns in radians
+    static bool parseAngle(ByteSpan &s, double& value, SVGAngleUnits& units)
     {
-        double fValue{ 0 };
-        bool fIsSet{ false };
-		SVGAngleUnits fUnits{ SVG_ANGLETYPE_UNSPECIFIED };
+        s = chunk_ltrim(s, xmlwsp);
         
-        SVGAngle() :fIsSet(false), fValue(0) {}
-		SVGAngle(double value, SVGAngleUnits units = SVG_ANGLETYPE_DEG) :fIsSet(true), fValue(value), fUnits(units) {}
-        SVGAngle(const ByteSpan& inChunk) {
-            loadFromChunk(inChunk);
-        }
-        
-        bool isSet() const { return fIsSet; }
+        if (!s)
+            return false;
 
-        bool valueInSpecifiedUnits(double& v) { v = fValue; return true; }
-        double value() const { return fValue; }
-        SVGAngleUnits unitType() const { return fUnits; }
+		if (!parseNumber(s, value))
+			return false;
         
-        double radians() const { return fValue; }
+        units = parseAngleUnits(s);
 
-        
-        bool loadFromChunk(const ByteSpan& inChunk)
+
+        switch (units)
         {
-            ByteSpan s = chunk_ltrim(inChunk, xmlwsp);
-
-            if (s.size() == 0)
-            {
-                //printf("SVGAngle::loadSelfFromChunk; ERROR - inChunk is blank\n");
-                fIsSet = false;
-                return false;
-            }
-
-            ByteSpan numChunk;
-            auto nextPart = scanNumber(s, numChunk);
-            fValue = toDouble(numChunk);
-            fUnits = parseAngleUnits(nextPart);
-
-			// Convert from the units to radians
-			switch (fUnits)
-			{
+            // If degrees or unspecified, convert degress to radians
             case SVG_ANGLETYPE_UNSPECIFIED:
-			case SVG_ANGLETYPE_DEG:
-				fValue = fValue * (3.14159265358979323846 / 180.0);
-				break;
-			case SVG_ANGLETYPE_RAD:
-				break;
-			case SVG_ANGLETYPE_GRAD:
-				fValue = fValue * (3.14159265358979323846 / 200.0);
-				break;
-			default:
-				//printf("SVGAngle::loadSelfFromChunk; ERROR - unknown units\n");
-				fIsSet = false;
-				return false;
-			}
+            case SVG_ANGLETYPE_DEG:
+                value = value * (3.14159265358979323846 / 180.0);
+            break;
             
-            fIsSet = true;
-            return true;
+			// If radians, do nothing
+            case SVG_ANGLETYPE_RAD:
+            break;
+            
+			// If gradians specified, convert to radians
+            case SVG_ANGLETYPE_GRAD:
+                value = value * (3.14159265358979323846 / 200.0);
+            break;
+            
+            default:
+                return false;
         }
-    };
+
+        return true;
+    }
     
     //==============================================================================
     // SVGLength
@@ -115,24 +265,51 @@ namespace waavs
 	enum SVGLengthUnits
 	{
 		SVG_LENGTHTYPE_UNKNOWN = 0,
-		SVG_LENGTHTYPE_NUMBER = 1,
-		SVG_LENGTHTYPE_PERCENTAGE = 2,
-		SVG_LENGTHTYPE_EMS = 3,
-		SVG_LENGTHTYPE_EXS = 4,
-		SVG_LENGTHTYPE_PX = 5,
-		SVG_LENGTHTYPE_CM = 6,
-		SVG_LENGTHTYPE_MM = 7,
-		SVG_LENGTHTYPE_IN = 8,
-		SVG_LENGTHTYPE_PT = 9,
-		SVG_LENGTHTYPE_PC = 10
+		SVG_LENGTHTYPE_USER = 1,
+		SVG_LENGTHTYPE_PERCENTAGE,
+		SVG_LENGTHTYPE_CM,
+        SVG_LENGTHTYPE_EMS,
+        SVG_LENGTHTYPE_EXS,
+        SVG_LENGTHTYPE_IN,
+		SVG_LENGTHTYPE_MM,
+        SVG_LENGTHTYPE_PC,
+		SVG_LENGTHTYPE_PT,
+        SVG_LENGTHTYPE_PX,
 	};
 
+    enum SVGDimensionUnits
+    {
+		SVG_UNITS_UNKNOWN = 0,
+        SVG_UNITS_USER,
+        SVG_UNITS_PERCENT,
+        SVG_UNITS_CM,
+        SVG_UNITS_EM,
+        SVG_UNITS_EX,
+        SVG_UNITS_IN,
+        SVG_UNITS_MM,
+        SVG_UNITS_PC,
+        SVG_UNITS_PT,
+        SVG_UNITS_PX,
+    };
+    
+    //
+    // parseLengthUnits
+    // %
+    // em
+    // ex
+	// px
+    // pt
+	// pc
+	// cm
+	// mm
+	// in
+    //
     static SVGLengthUnits parseLengthUnits(const ByteSpan& units)
     {
 		// If no units specified, then it is a number
         // in user units
         if (!units)
-            return SVG_LENGTHTYPE_NUMBER;
+            return SVG_LENGTHTYPE_USER;
 
         if (units[0] == '%')
             return SVG_LENGTHTYPE_PERCENTAGE;
@@ -160,23 +337,13 @@ namespace waavs
         return SVG_LENGTHTYPE_UNKNOWN;
 
     }
+
+    
     //==============================================================================
     // SVGDimension
     // used for length, time, frequency, resolution, location
     //==============================================================================
-    enum SVGDimensionUnits
-    {
-        SVG_UNITS_USER,
-        SVG_UNITS_PX,
-        SVG_UNITS_PT,
-        SVG_UNITS_PC,
-        SVG_UNITS_MM,
-        SVG_UNITS_CM,
-        SVG_UNITS_IN,
-        SVG_UNITS_PERCENT,
-        SVG_UNITS_EM,
-        SVG_UNITS_EX
-    };
+
 
     // Turn a units indicator into an enum
     static SVGDimensionUnits parseDimensionUnits(const ByteSpan& units)
@@ -207,6 +374,7 @@ namespace waavs
         return SVG_UNITS_USER;
     }
 
+    
     struct SVGDimension 
     {
         double fValue;
@@ -276,10 +444,13 @@ namespace waavs
                 return false;
             }
             
-            ByteSpan numChunk;
-            auto nextPart = scanNumber(s, numChunk);
-            fValue = toDouble(numChunk);
-            fUnits = parseDimensionUnits(nextPart);
+            if (!parseNumber(s, fValue))
+                return false;
+            
+            //ByteSpan numChunk;
+            //auto nextPart = scanNumber(s, numChunk);
+            //fValue = toDouble(numChunk);
+            fUnits = parseDimensionUnits(s);
             fIsSet = true;
             
             return true;
@@ -288,7 +459,7 @@ namespace waavs
 
 }
 
-// Specific types of attributes
+
 
 namespace waavs {
     // SVGExtendMode
@@ -378,15 +549,15 @@ namespace waavs {
     // https://www.w3.org/TR/css-color-4/#typedef-color
     // Over time, this structure could represent the full specification
     // but for practical purposes, we'll focus on rgb, rgba for now
-    /*
-    <color> = <absolute-color-base> | currentcolor | <system-color>
-
-    <absolute-color-base> = <hex-color> | <absolute-color-function> | <named-color> | transparent
-    <absolute-color-function> = <rgb()> | <rgba()> |
-                            <hsl()> | <hsla()> | <hwb()> |
-                            <lab()> | <lch()> | <oklab()> | <oklch()> |
-                            <color()>
-    */
+    //
+    //<color> = <absolute-color-base> | currentcolor | <system-color>
+    //
+    //<absolute-color-base> = <hex-color> | <absolute-color-function> | <named-color> | transparent
+    //<absolute-color-function> = <rgb()> | <rgba()> |
+    //                        <hsl()> | <hsla()> | <hwb()> |
+    //                        <lab()> | <lch()> | <oklab()> | <oklch()> |
+    //                        <color()>
+    
 
 
 namespace waavs {
@@ -397,7 +568,7 @@ namespace waavs {
     // #RRGGBB
     // #RGB
     // Anything else is an error
-    static inline uint8_t  hexCharToDecimal(uint8_t value)
+    static inline uint8_t  hexCharToDecimal(const uint8_t value) noexcept
     {
         if (value >= '0' && value <= '9')
             return value - '0';
@@ -409,7 +580,7 @@ namespace waavs {
             return 0;
     }
 
-    static bool hexSpanToDecimal(const ByteSpan& inSpan, BLRgba32& outValue)
+    static bool hexSpanToDecimal(const ByteSpan& inSpan, BLRgba32& outValue) noexcept
     {
         outValue.value = 0;
 
@@ -448,7 +619,7 @@ namespace waavs {
     // Turn a 3 or 6 digit hex string into a BLRgba32 value
     // if there's an error in the conversion, a transparent color is returned
     // BUGBUG - maybe a more obvious color should be returned
-    static BLRgba32 parseColorHex(const ByteSpan& chunk)
+    static BLRgba32 parseColorHex(const ByteSpan& chunk) noexcept
     {
         BLRgba32 res{};
         if (hexSpanToDecimal(chunk, res))
@@ -461,7 +632,8 @@ namespace waavs {
     //
     // parse a color string
     // Return a BLRgba32 value
-    static double hue_to_rgb(double p, double q, double t) {
+    static double hue_to_rgb(double p, double q, double t) noexcept 
+    {
         if (t < 0) t += 1;
         if (t > 1) t -= 1;
         if (t < 1 / 6.0) return p + (q - p) * 6 * t;
@@ -470,7 +642,7 @@ namespace waavs {
         return p;
     }
 
-    BLRgba32 hsl_to_rgb(double h, double s, double l)
+    static BLRgba32 hsl_to_rgb(double h, double s, double l) noexcept
     {
         double r, g, b;
 
@@ -488,7 +660,7 @@ namespace waavs {
         return BLRgba32(uint32_t(r * 255), uint32_t(g * 255), uint32_t(b * 255));
     }
 
-    static BLRgba32 parseColorHsl(const ByteSpan& inChunk)
+    static BLRgba32 parseColorHsl(const ByteSpan& inChunk) noexcept
     {
         BLRgba32 defaultColor(0, 0, 0);
         ByteSpan str = inChunk;
@@ -541,7 +713,7 @@ namespace waavs {
     // This function returns gray (rgb(128, 128, 128) == '#808080') on parse errors
     // for backwards compatibility. Note: other image viewers return black instead.
 
-    static BLRgba32 parseColorRGB(const ByteSpan& inChunk)
+    static bool parseColorRGB(const ByteSpan& inChunk, BLRgba32 &aColor)
     {
         // skip past the leading "rgb("
         ByteSpan s = inChunk;
@@ -567,13 +739,17 @@ namespace waavs {
         // if it's not there, then return gray
         auto num = chunk_token(nums, ",");
         if (chunk_size(num) < 1)
-            return BLRgba32(128, 128, 128, 0);
-
+        {
+            //aColor.reset(128, 128, 128, 0);
+            aColor.reset(255, 255, 0, 255);
+            return false;
+        }
+        
         while (num)
         {
             SVGDimension cv{};
             cv.loadFromChunk(num);
-            //auto cv = parseDimension(num);
+
 
             if (cv.units() == SVGDimensionUnits::SVG_UNITS_PERCENT)
             {
@@ -594,9 +770,11 @@ namespace waavs {
         }
 
         if (i == 4)
-            return BLRgba32(rgbi[0], rgbi[1], rgbi[2], rgbi[3]);
+            aColor.reset(rgbi[0], rgbi[1], rgbi[2], rgbi[3]);
+        else
+            aColor.reset(rgbi[0], rgbi[1], rgbi[2]);
 
-        return BLRgba32(rgbi[0], rgbi[1], rgbi[2]);
+        return true;
     }
 }
 
@@ -654,12 +832,15 @@ namespace waavs {
 
 namespace waavs {
     //
+    // parseImage()
+    // 
     // Turn a base64 encoded inlined image into a BLImage
     // We are handed the attribute, typically coming from a 
-    // href of an <image> tag, or as a lookup for a 
-    // fill, or stroke, paint attribute.
-    // What we're passed are the contents of the 'url()'.  So, only
-    // what's in between the parenthesis
+    // href of an <image> tag, or as a lookup for a fill, or stroke, 
+    // paint attribute.
+    // What we're passed are the contents of the 'url()'.  
+    // 
+    // Example: <image id="image_textures" x="0" y="0" width="1024" height="768" xlink:href="data:image/jpeg;base64,/9j/...
     //
     static bool parseImage(const ByteSpan& inChunk, BLImage& img)
     {
@@ -694,12 +875,12 @@ namespace waavs {
                 return false;
             }
             
-            // BUGBUG - Add gif as well
-			// First try to decode it to see if we got a valid image
+			// See if it's a format that blend2d can deal with using its
+            // own codecs
             BLResult res = img.readFromData(outBuff.data(), outBuff.size());
             success = (res == BL_SUCCESS);
             
-            // If we didn't get it decoded, then try any specilized methods of decoding
+            // If we didn't succeed in decoding, then try any specilized methods of decoding
             // we might have.
             if (!success) {
                 if (mime == "image/gif")
@@ -709,7 +890,6 @@ namespace waavs {
                     //BLResult res = img.readFromData(outBuff.data(), outBuff.size());
                     //success = (res == BL_SUCCESS);
                 }
-
             }
             
         }
@@ -886,15 +1066,17 @@ namespace waavs
         return  s;
     }
 
+    // parseTransform()
+    // 
     // Parse a transform attribute, stuffing the results
     // into a single BLMatrix2D structure
     // This will repeatedly apply the portions that are parsed
+    //
     static bool parseTransform(const ByteSpan& inChunk, BLMatrix2D& xform)
-    {
-        
+    {        
         ByteSpan s = inChunk;
         xform = BLMatrix2D::makeIdentity();
-        //xform.reset();
+
         bool isSet = false;
 
         while (s)

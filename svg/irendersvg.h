@@ -266,7 +266,7 @@ namespace waavs
         }
 
         // Measuring Text
-        BLRect calcTextPosition(const char* txt, double x, double y)
+        BLRect calcTextPosition(const ByteSpan & txt, double x, double y)
         {
             BLPoint txtSize = textMeasure(txt);
             double cx = txtSize.x;
@@ -323,11 +323,12 @@ namespace waavs
         }
 
         
-        virtual BLPoint textMeasure(const char* txt) {
+        virtual BLPoint textMeasure(const ByteSpan & txt) 
+        {
             BLTextMetrics tm;
             BLGlyphBuffer gb;
 
-            gb.setUtf8Text(txt);
+			gb.setUtf8Text(txt.data(), txt.size());
             fFont.shape(gb);
             fFont.getTextMetrics(gb, tm);
 
@@ -369,12 +370,31 @@ namespace waavs
         }
 
         // Text Drawing
+        virtual void text(const ByteSpan &txt) 
+        {
+            auto xy = calcTextPosition(txt, fTextX, fTextY);
+            fTextAdvance = xy.w;
+
+            text(txt, xy.x, xy.y);
+        }
+        
         virtual void text(const char* txt) {
             auto xy = calcTextPosition(txt, fTextX, fTextY);
             fTextAdvance = xy.w;
 
             text(txt, xy.x, xy.y);
         }
+        
+        virtual void text(const ByteSpan &txt, double x, double y)
+        {
+            // BUGBUG - Drawing order should be determined by 
+            // the drawing order attribute
+            BLContext::strokeUtf8Text(BLPoint(x, y), fFont, (char *)txt.data(), txt.size());
+            BLContext::fillUtf8Text(BLPoint(x, y), fFont, (char *)txt.data(), txt.size());
+
+            fTextX += fTextAdvance;
+        }
+        
         
         virtual void text(const char* txt, double x, double y) 
         {

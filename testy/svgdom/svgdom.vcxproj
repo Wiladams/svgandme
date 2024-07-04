@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{a0ab4c50-890d-4c12-abe1-94bcdecc5350}</ProjectGuid>
-    <RootNamespace>svgimage</RootNamespace>
+    <ProjectGuid>{ec86f719-7bb8-4b7e-b7fb-231fec07cd6b}</ProjectGuid>
+    <RootNamespace>svgdom</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -77,13 +77,10 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>..\;..\..\;..\..\blend2d;..\..\svg;..\..\app;</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
-      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\lib\Release</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -95,15 +92,12 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>..\;..\..\;..\..\blend2d;..\..\svg;..\..\app;</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
-      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\lib\Release</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -113,13 +107,10 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>..\;..\..\;..\..\blend2d;..\..\svg;..\..\app;</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
-      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\lib\Release</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -131,44 +122,22 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>..\;..\..\;..\..\blend2d;..\..\svg;..\..\app;</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
-      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\lib\Release</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="svgimage.cpp" />
+    <ClCompile Include="..\..\app\appmain.cpp" />
+    <ClCompile Include="svgdom_main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\app\camera2d.h" />
-    <ClInclude Include="..\..\app\uievent.h" />
-    <ClInclude Include="..\..\svg\base64.h" />
-    <ClInclude Include="..\..\svg\bithacks.h" />
-    <ClInclude Include="..\..\svg\bspan.h" />
-    <ClInclude Include="..\..\svg\definitions.h" />
-    <ClInclude Include="..\..\svg\geometry.h" />
     <ClInclude Include="..\..\svg\irendersvg.h" />
-    <ClInclude Include="..\..\svg\maths.h" />
-    <ClInclude Include="..\..\svg\placeable.h" />
-    <ClInclude Include="..\..\svg\svg.h" />
-    <ClInclude Include="..\..\svg\svgattributes.h" />
-    <ClInclude Include="..\..\svg\svgcolors.h" />
-    <ClInclude Include="..\..\svg\svgcss.h" />
-    <ClInclude Include="..\..\svg\svgdatatypes.h" />
-    <ClInclude Include="..\..\svg\svgdocument.h" />
-    <ClInclude Include="..\..\svg\svgdrawingcontext.h" />
-    <ClInclude Include="..\..\svg\svgfont.h" />
-    <ClInclude Include="..\..\svg\svgpath.h" />
-    <ClInclude Include="..\..\svg\svgshapes.h" />
-    <ClInclude Include="..\..\svg\svgstructuretypes.h" />
-    <ClInclude Include="..\..\svg\viewport.h" />
     <ClInclude Include="..\..\svg\xmlscan.h" />
+    <ClInclude Include="svgdomdocument.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

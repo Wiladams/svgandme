@@ -60,7 +60,132 @@ namespace waavs {
 		, XML_ELEMENT_TYPE_ENTITY                       // <!ENTITY hello "Hello">
     };
     
+    // expandBasicEntities()
+    // 
+    // This is a very simple entity expander
+    // It expands the 5 basic entities
+    // &lt; &gt; &amp; &apos; &quot;
+    // It also handles numeric entities
+    // It does not handle any other entities
+    //
+    static int expandBasicEntities(const ByteSpan& inSpan, ByteSpan& outSpan)
+    {
+        ByteSpan outCursor = outSpan;
+        
 
+        for (auto it = inSpan.begin(); it != inSpan.end(); ++it)
+        {
+            if (*it == '&')
+            {
+                auto next = it + 1;
+                if (next == inSpan.end())
+                    break;
+
+
+                if (*next == '#')
+                {
+                    auto next2 = next + 1;
+                    if (next2 == inSpan.end())
+                        break;
+
+                    if (*next2 == 'x')
+                    {
+                        auto next3 = next2 + 1;
+                        if (next3 == inSpan.end())
+                            break;
+
+                        auto end = next3;
+                        while (end != inSpan.end() && isxdigit(*end))
+                            ++end;
+
+                        if (end == inSpan.end())
+                            break;
+
+                        if (*end != ';')
+                            break;
+
+                        std::string hexStr(next3, end);
+                        int hexVal = std::stoi(hexStr, nullptr, 16);
+                        *outCursor = (char)hexVal;
+                        outCursor++;
+
+                        it = end;
+                    }
+                    else
+                    {
+                        auto end = next2;
+                        while (end != inSpan.end() && isdigit(*end))
+                            ++end;
+
+                        if (end == inSpan.end())
+                            break;
+
+                        if (*end != ';')
+                            break;
+
+                        std::string decStr(next2, end);
+                        int decVal = std::stoi(decStr, nullptr, 10);
+                        *outCursor = (char)decVal;
+                        outCursor++;
+                        
+                        it = end;
+                    }
+                } else
+                {
+                    auto end = next;
+                    while (end != inSpan.end() && isalnum(*end))
+                        ++end;
+
+                    if (end == inSpan.end())
+                        break;
+
+                    if (*end != ';')
+                        break;
+
+                    ByteSpan entity(next, end);
+                    if (entity == "lt") {
+                        *outCursor = '<';
+						++outCursor;
+                    }
+                    else if (entity == "gt") {
+                        *outCursor = '>';
+						++outCursor;
+                    }
+                    else if (entity == "amp") {
+                        *outCursor = '&';
+						++outCursor;
+                    }
+                    else if (entity == "apos") {
+                        *outCursor = '\'';
+						++outCursor;
+                    }
+                    else if (entity == "quot") {
+                        *outCursor = '"';
+						++outCursor;
+                    }
+                    else
+                        break;
+
+                    it = end;
+                }
+            }
+            else
+            {
+                if (*it != '\r' && *it != '\n') {
+                    *outCursor = *it;
+                    outCursor++;
+                }
+            }
+        }
+        
+        return outSpan.size();
+    }
+    
+    // 
+    // expandStandardEntities()
+    // Do basic XML entity expansion
+    // BUGBUG - It should use a ByteSpan for output instead of 
+    // a std::string.  Return value can be the size of the output
 	static std::string expandStandardEntities(const ByteSpan &inSpan)
 	{
         std::ostringstream oss;
@@ -160,6 +285,13 @@ namespace waavs {
 		return oss.str();
 	}
     
+    //
+    // readQuoted()
+    // 
+	// Read a quoted string from the input stream
+	// Read a first quote, then use that as the delimiter
+    // to read to the end of the string
+    //
     static bool readQuoted(ByteSpan &src, ByteSpan &dataChunk)
     {
         uint8_t* beginattrValue = nullptr;
@@ -674,17 +806,17 @@ namespace waavs {
 
             return fNameSpan;
         }
-        
+
     public:
         XmlElement() {}
-		XmlElement(const XmlElement& other)
-			:fElementKind(other.fElementKind), 
-            fNameSpan(other.fNameSpan), 
+        XmlElement(const XmlElement& other)
+            :fElementKind(other.fElementKind),
+            fNameSpan(other.fNameSpan),
             fData(other.fData),
             fXmlName(other.fXmlName)
-		{
-		}
-        
+        {
+        }
+
         XmlElement(int kind, const ByteSpan& data)
             :fElementKind(kind)
             , fData(data)
@@ -720,8 +852,8 @@ namespace waavs {
 
         // Clear this element to a default state
         virtual void clear()
-        {   
-			fXmlName.reset({});
+        {
+            fXmlName.reset({});
             fElementKind = XML_ELEMENT_TYPE_INVALID;
             fData = {};
         }
@@ -732,12 +864,12 @@ namespace waavs {
         explicit operator bool() const { return !isEmpty(); }
 
         // Returning information about the element
-		ByteSpan nameSpan() const { return fNameSpan; }
-		XmlName xmlName() const { return fXmlName; }
-		ByteSpan tagName() const { return fXmlName.name(); }
-		ByteSpan tagNamespace() const { return fXmlName.ns(); }
-		std::string name() const { return std::string(fXmlName.name().fStart, fXmlName.name().fEnd); }
-        
+        ByteSpan nameSpan() const { return fNameSpan; }
+        XmlName xmlName() const { return fXmlName; }
+        ByteSpan tagName() const { return fXmlName.name(); }
+        ByteSpan tagNamespace() const { return fXmlName.ns(); }
+        std::string name() const { return std::string(fXmlName.name().fStart, fXmlName.name().fEnd); }
+
         int kind() const { return fElementKind; }
         void setKind(int kind) { fElementKind = kind; }
 
@@ -745,6 +877,7 @@ namespace waavs {
 
 
         // Convenience for what kind of tag it is
+		bool isXmlDecl() const { return fElementKind == XML_ELEMENT_TYPE_XMLDECL; }
         bool isStart() const { return (fElementKind == XML_ELEMENT_TYPE_START_TAG); }
         bool isSelfClosing() const { return fElementKind == XML_ELEMENT_TYPE_SELF_CLOSING; }
         bool isEnd() const { return fElementKind == XML_ELEMENT_TYPE_END_TAG; }
@@ -755,25 +888,6 @@ namespace waavs {
         bool isDoctype() const { return fElementKind == XML_ELEMENT_TYPE_DOCTYPE; }
 
     };
-
-   
-    struct XmlNode : public XmlElement, public XmlAttributeCollection
-    {
-        virtual bool loadProperties(const XmlAttributeCollection& attrs)
-        {
-            return false;
-        }
-        
-        virtual void loadFromXmlElement(const XmlElement& elem)
-        {
-			// First assign
-            XmlElement::operator=(elem);
-            
-            scanAttributes(elem.data());
-            loadProperties(*this);
-        }
-    };
-        
 }
 
 

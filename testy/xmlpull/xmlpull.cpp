@@ -1,7 +1,9 @@
-#include "svg/xmlscan.h"
 
-#include "app/filestreamer.h"
+
+#include "app/mappedfile.h"
 #include "app/xmlutil.h"
+
+#include "svg/xmlscan.h"
 
 using namespace waavs;
 
@@ -15,16 +17,13 @@ int main(int argc, char** argv)
 
     // create an mmap for the specified file
     const char* filename = argv[1];
-    auto mapped = FileStreamer::createFromFilename(filename);
+    auto mapped = MappedFile::create_shared(filename);
 
-    if (mapped == nullptr)
+    if (nullptr == mapped)
         return 0;
 
 
-    // 
-    // Parse the mapped file as XML
-    // printing out the con
-    waavs::ByteSpan s = mapped->span();
+    waavs::ByteSpan s(mapped->data(), mapped->size());
     
     XmlElementIterator iter(s);
 

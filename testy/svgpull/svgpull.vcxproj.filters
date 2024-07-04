@@ -15,18 +15,21 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="xmlpull.cpp">
+    <ClCompile Include="svgpull.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\svg\svgdomdocument.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\svgcss.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\svg\xmlscan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\app\mappedfile.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\app\xmlutil.h">
+    <ClInclude Include="..\..\svg\bspan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

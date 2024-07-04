@@ -326,7 +326,7 @@ namespace waavs {
 	static inline ByteSpan chunk_subchunk(const ByteSpan& a, const size_t start, const size_t sz) noexcept;
 	static inline ByteSpan chunk_take(const ByteSpan& dc, size_t n) noexcept;
 
-	static void writeChunkToFile(const ByteSpan& chunk, const char* filename) noexcept;
+	//static void writeChunkToFile(const ByteSpan& chunk, const char* filename) noexcept;
 	static void writeChunk(const ByteSpan& chunk) noexcept;
 	static void writeChunkBordered(const ByteSpan& chunk) noexcept;
 	static void printChunk(const ByteSpan& chunk) noexcept;
@@ -644,10 +644,10 @@ namespace waavs
 	// it into a 64-bit unsigned integer
 	// Stop processing when the first non-digit is seen, 
 	// or the end of the chunk
+	// This routine alters the input chunk to reflect the remaining
+	// characters after the number
 	static inline uint64_t chunk_to_u64(ByteSpan& s) noexcept
 	{
-		//static charset digitChars("0123456789");
-
 		uint64_t v = 0;
 
 		while (s && digitChars(*s))
@@ -661,8 +661,6 @@ namespace waavs
 
 	static inline int64_t chunk_to_i64(ByteSpan& s) noexcept
 	{
-		//static charset digitChars("0123456789");
-
 		int64_t v = 0;
 
 		bool negative = false;
@@ -684,100 +682,33 @@ namespace waavs
 		return v;
 	}
 
-	// Parse a number which may have units after it
-//   1.2em
-// -1.0E2em
-// 2.34ex
-// -2.34e3M10,20
-// 
-// By the end of this routine, the numchunk represents the range of the 
-// captured number.
-// 
-// The returned chunk represents what comes next, and can be used
-// to continue scanning the original inChunk
-//
-// Note:  We assume here that the inChunk is already positioned at the start
-// of a number (including +/- sign), with no leading whitespace
-
-	static ByteSpan scanNumber(const ByteSpan& inChunk, ByteSpan& numchunk)
-	{
-		//static charset digitChars("0123456789");                   // only digits
-
-		ByteSpan s = inChunk;
-		numchunk = inChunk;
-		numchunk.fEnd = inChunk.fStart;
 
 
-		// sign
-		if (*s == '-' || *s == '+') {
-			s++;
-			numchunk.fEnd = s.fStart;
-		}
-
-		// integer part
-		while (s && digitChars[*s]) {
-			s++;
-			numchunk.fEnd = s.fStart;
-		}
-
-		if (*s == '.') {
-			// decimal point
-			s++;
-			numchunk.fEnd = s.fStart;
-
-			// fraction part
-			while (s && digitChars[*s]) {
-				s++;
-				numchunk.fEnd = s.fStart;
-			}
-		}
-
-		// exponent
-		// but it could be units (em, ex)
-		if ((*s == 'e' || *s == 'E') && (s[1] != 'm' && s[1] != 'x'))
-		{
-			s++;
-			numchunk.fEnd = s.fStart;
-
-			// Might be a sign
-			if (*s == '-' || *s == '+') {
-				s++;
-				numchunk.fEnd = s.fStart;
-			}
-
-			// Get any remaining digits
-			while (s && digitChars[*s]) {
-				s++;
-				numchunk.fEnd = s.fStart;
-			}
-		}
-
-		return s;
-	}
-
+	//
+	// chunk_to_double()
+	// 
 	// parse floating point number
 	// includes sign, exponent, and decimal point
 	// The input chunk is altered, with the fStart pointer moved to the end of the number
-
+	// Note:  If we want to include "charconv", the we can use the std::from_chars
+	// This should be a fast implementation, far batter than something like atof, or sscanf
+	// But, the routine here should be universally fast, when charconv is not available on the 
+	// target platform.
+	//
+			// Just put this from_chars implementation here in case
+		// we ever want to use it instead
+		//double outNumber = 0;
+		//auto res = std::from_chars((const char*)s.fStart, (const char*)s.fEnd, outNumber);
+		//if (res.ec == std::errc::invalid_argument)
+		//{
+		//	printf("chunk_to_double: INVALID ARGUMENT: ");
+		//	printChunk(s);
+		//}
+		//return outNumber;
+	
 	static inline double chunk_to_double(const ByteSpan& inChunk) noexcept
 	{
 		ByteSpan s = inChunk;
-		/*
-		double outNumber = 0;
-
-
-		auto res = std::from_chars((const char*)s.fStart, (const char*)s.fEnd, outNumber);
-		if (res.ec == std::errc::invalid_argument)
-		{
-			printf("chunk_to_double: INVALID ARGUMENT: ");
-			printChunk(s);
-		}
-
-		return outNumber;
-		*/
-
-		///*
-		//static charset digitChars("0123456789");
 
 		double sign = 1.0;
 		double res = 0.0;
@@ -845,33 +776,9 @@ namespace waavs
 		}
 
 		return res * sign;
-		//*/
-	}
-
-	// Consume the next number off the front of the chunk
-	// modifying the input chunk to advance past the  number
-	// we removed.
-	// Return true if we found a number, false otherwise
-	static inline bool parseNextNumber(ByteSpan& s, double& outNumber)
-	{
-		static charset whitespaceChars(",\t\n\f\r ");          // whitespace found in paths
-
-		// clear up leading whitespace, including ','
-		s = chunk_ltrim(s, whitespaceChars);
-
-		ByteSpan numChunk{};
-		s = scanNumber(s, numChunk);
-
-		if (!numChunk)
-			return false;
-
-		outNumber = toDouble(numChunk);
-
-		return true;
+		
 	}
 }
-
-
 
 
 
@@ -921,35 +828,70 @@ namespace waavs {
 
 namespace waavs {
 	//
-	// memBuff
+	// MemBuff
+	// 
 	// This is a very simple data structure that allocates a chunk of memory
 	// When the destructor is called, the memory is freed.
 	// This could easily be handled by something like a unique_ptr, but I don't
 	// want to force the usage of std library when it's not really needed.
 	// besides, it's so easy and convenient and small.
+	// Note:  This could be a sub-class of ByteSpan, but the semantics are different
+	// With a ByteSpan, you can alter the start/end pointers, but with a memBuff, you can't.
+	// so, it is much easier to return a ByteSpan, and let that be manipulated instead.
+	// 
+	
 	struct MemBuff {
-		uint8_t* fData;
-		size_t fSize;
+		uint8_t* fData{};
+		ptrdiff_t fSize{};
 
+		MemBuff() {}
+		
 		MemBuff(size_t sz)
-			: fSize(sz)
 		{
-			fData = new uint8_t[sz];
+			initSize(sz);
 		}
 
 		~MemBuff()
 		{
-			delete[] fData;
+			if (fData != nullptr)
+				delete[] fData;
 		}
 
 		uint8_t* data() const { return fData; }
 		size_t size() const { return fSize; }
 
+		// initSize
+		// Initialize the memory buffer with a given size
+		bool initSize(const size_t sz)
+		{
+			fData = new uint8_t[sz];
+			fSize = sz;
+
+			return true;
+		}
+		
+		// initFromSpan
+		// copy the data from the input span into the memory buffer
+		//
+		bool initFromSpan(const ByteSpan& srcSpan)
+		{
+			if (fData != nullptr)
+				delete[] fData;
+			
+			fSize = srcSpan.size();
+			fData = new uint8_t[fSize];
+
+			memcpy(fData, srcSpan.fStart, fSize);
+			
+			return true;
+		}
+		
+
 		// create a ByteSpan from the memory buffer
 		// The lifetime of the ByteSpan that is returned it not governed
 		// by the MemBuff object.  This is something the caller must manage.
 		ByteSpan span() const { return ByteSpan(fData, fData + fSize); }
-		
+
 	};
 }
 

@@ -1453,7 +1453,6 @@ namespace waavs {
 		{
 			fGradient.setExtendMode(BL_EXTEND_MODE_PAD);
 			//visible(true);
-			//isStructural(true);
 			isStructural(false);
 		}
 		SVGGradient(const SVGGradient& other) = delete;
@@ -1463,7 +1462,8 @@ namespace waavs {
 		{	
 			if (fGradientVar.isNull())
 			{
-				blVarAssignWeak(&fGradientVar, &fGradient);
+				fGradientVar = fGradient;
+				//blVarAssignWeak(&fGradientVar, &fGradient);
 			}
 			
 			return fGradientVar;
@@ -1867,9 +1867,11 @@ namespace waavs {
 			registerSingularNode();
 		}
 		
-		SVGDimension x1{};
-		SVGDimension y1{};
+		SVGDimension x0{};
+		SVGDimension y0{};
 		SVGDimension angle{};
+		SVGDimension repeat{};
+
 		
 		SVGConicGradient(IAmGroot* aroot) :SVGGradient(aroot)
 		{
@@ -1894,20 +1896,30 @@ namespace waavs {
 			
 			BLConicGradientValues values = fGradient.conic();
 
-			if (x1.isSet())
+			if (x0.isSet())
 			{
-				values.x0 = x1.calculatePixels(w, 0, dpi);
+				values.x0 = x0.calculatePixels(w, 0, dpi);
 			}
 
-			if (y1.isSet())
+			if (y0.isSet())
 			{
-				values.y0 = y1.calculatePixels(h, 0, dpi);
+				values.y0 = y0.calculatePixels(h, 0, dpi);
 			}
 
 			if (angle.isSet())
 			{
 				values.angle = angle.calculatePixels(360, 0, dpi);
 			}
+			
+			// If there is a specified repeat, then use that
+			// otherwise, if the current value is zero, then 
+			// set it to one
+			if (repeat.isSet())
+			{
+				values.repeat = repeat.calculatePixels(1.0,0,dpi);
+			} else if (values.repeat == 0)
+				values.repeat = 1.0;
+			
 
 			fGradient.setValues(values);
 
@@ -1920,10 +1932,11 @@ namespace waavs {
 		{
 			SVGGradient::loadVisualProperties(attrs);
 			
-			x1.loadFromChunk(attrs.getAttribute("x1"));
-			y1.loadFromChunk(attrs.getAttribute("y1"));
+			x0.loadFromChunk(attrs.getAttribute("x1"));
+			y0.loadFromChunk(attrs.getAttribute("y1"));
 			angle.loadFromChunk(attrs.getAttribute("angle"));
-
+			repeat.loadFromChunk(attrs.getAttribute("repeat"));
+			
 			needsBinding(true);
 		}
 	};

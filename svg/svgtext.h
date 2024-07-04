@@ -17,22 +17,29 @@ namespace waavs {
 	// elements.
 	struct SVGTextContentNode : public SVGVisualNode
 	{
-		std::string fText{};
-
-		SVGTextContentNode(IAmGroot* root) : SVGVisualNode(root) { name("text"); }
+		//std::string fText{};
+		ByteSpan fText{};
+		
+		SVGTextContentNode(IAmGroot* root) 
+			: SVGVisualNode(root) 
+		{ 
+			name("text"); 
+		}
 
 		void text(const ByteSpan& aSpan)
 		{
 			// BUGBUG - We still want to represent the text as a ByteSpan
 			// So we can use the BLStringView when we eventually draw the text
 
-			fText = expandStandardEntities(aSpan);
-
+			//fText = expandStandardEntities(aSpan);
+			fText = aSpan;
+			expandBasicEntities(aSpan, fText);
 		}
 
 		void draw(IRenderSVG* ctx) override
 		{
-			ctx->text(fText.c_str());
+			ctx->text(fText);
+			//ctx->text(fText.c_str());
 		}
 	};
 

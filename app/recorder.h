@@ -1,4 +1,6 @@
 
+#pragma once
+
 /*
     Record a Surface
 
