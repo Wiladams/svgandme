@@ -47,13 +47,21 @@ namespace waavs {
     // Expand the size of the rectangle such that the supplied point
     // is contained within the new rectangle
     inline BLRect mergeRect(const BLRect& a, const BLPoint& b) {
-        return { min(a.x, b.x), min(a.y, b.y), max(a.x + a.w,b.x), max(a.y + a.h, b.y) };
-    }
+        double x0 = min(a.x, b.x);
+        double y0 = min(a.y, b.y);
+        double x1 = max(a.x + a.w, b.x);
+        double y1 = max(a.y + a.h, b.y);
 
+        return BLRect( x0, y0, x1-x0, y1-y0 );
+    }
     // Expand the size of the rectangle such that the supplied rectangle
     // is contained within the new rectangle
     inline BLRect mergeRect(const BLRect& a, const BLRect& b) {
-        return { min(a.x, b.x), min(a.y, b.y), max(a.x + a.w, b.x + b.w), max(a.y + a.h,b.y + b.h) };
+        double x0 = min(a.x, b.x);
+        double y0 = min(a.y, b.y);
+        double x1 = max(a.x + a.w, b.x + b.w);
+        double y1 = max(a.y + a.h, b.y + b.h);
+        return BLRect( x0, y0, x1-x0, y1-y0 );
     }
 
     inline void expandRect(BLRect& a, const BLPoint& b) { a = mergeRect(a, b); }
