@@ -75,11 +75,9 @@ namespace waavs
 	// such as "M 10 10 20 20 30 30"
 	//
 	namespace blpathparser {
-		static charset whitespaceChars(",\t\n\f\r ");          // whitespace found in paths
-		static charset commandChars("mMlLhHvVcCqQsStTaAzZ");   // set of characters used for commands
+		static charset pathCmdChars("mMlLhHvVcCqQsStTaAzZ");   // set of characters used for commands
 		static charset numberChars("0123456789.+-eE");         // digits, symbols, and letters found in numbers
-		static charset leadingChars("0123456789.+-");          // digits, symbols, and letters found in numbers
-		static charset digitChars("0123456789");               // only digits
+		static charset leadingChars("0123456789.+-");          // digits, symbols, and letters found at start of numbers
 
 
 		
@@ -636,14 +634,14 @@ namespace waavs
 			while (s)
 			{
 				// always ignore leading whitespace
-				s = chunk_ltrim(s, whitespaceChars);
+				s = chunk_ltrim(s, chrWspChars);
 
 				// If we've gotten to the end, we're done
 				// so just return
 				if (!s)
 					break;
 
-				if (commandChars[*s])
+				if (pathCmdChars[*s])
 				{
 					// we have a command
 					currentCommand = SegmentCommand(*s);
@@ -653,6 +651,11 @@ namespace waavs
 
 					// move past the command character
 					s++;
+				}
+				else {
+					// Failed to see a known command, so 
+					// return immediately
+					return false;
 				}
 				
 #ifdef PATH_COMMAND_DEBUG

@@ -17,49 +17,6 @@
 
 
 
-
-//
-// These are various routines that help manipulate the BLRect
-// structure.  Finding corners, moving, query containment
-// scaling, merging, expanding, and the like
-
-namespace waavs {
-    inline double right(const BLRect& r) { return r.x + r.w; }
-    inline double left(const BLRect& r) { return r.x; }
-    inline double top(const BLRect& r) { return r.y; }
-    inline double bottom(const BLRect& r) { return r.y + r.h; }
-    inline BLPoint center(const BLRect& r) { return { r.x + (r.w / 2),r.y + (r.h / 2) }; }
-
-    inline void moveBy(BLRect& r, double dx, double dy) { r.x += dx; r.y += dy; }
-    inline void moveBy(BLRect& r, const BLPoint& dxy) { r.x += dxy.x; r.y += dxy.y; }
-
-
-    inline bool containsRect(const BLRect& a, double x, double y)
-    {
-        return (x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h);
-    }
-
-    inline bool containsRect(const BLRect& a, const BLPoint& pt)
-    {
-        return containsRect(a, pt.x, pt.y);
-    }
-
-    // Expand the size of the rectangle such that the supplied point
-    // is contained within the new rectangle
-    inline BLRect mergeRect(const BLRect& a, const BLPoint& b) {
-        return { min(a.x, b.x), min(a.y, b.y), max(a.x + a.w,b.x), max(a.y + a.h, b.y) };
-    }
-
-    // Expand the size of the rectangle such that the supplied rectangle
-    // is contained within the new rectangle
-    inline BLRect mergeRect(const BLRect& a, const BLRect& b) {
-        return { min(a.x, b.x), min(a.y, b.y), max(a.x + a.w, b.x + b.w), max(a.y + a.h,b.y + b.h) };
-    }
-
-    inline void expandRect(BLRect& a, const BLPoint& b) { a = mergeRect(a, b); }
-    inline void expandRect(BLRect& a, const BLRect& b) { a = mergeRect(a, b); }
-}
-
 namespace waavs {
     // Experimental
     struct IPlaceable

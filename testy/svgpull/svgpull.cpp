@@ -8,22 +8,24 @@
 
 using namespace waavs;
 
-static void testParseNumber()
+static void printRect(const BLRect& aRect)
 {
-	const char* str = "-2.34e3M10,20";
-    ByteSpan s(str);
-    double num{ 0 };
-    
-    while (parseNextNumber(s, num))
-    {
-        printf("NUM: %f\n", num);
-    }
+	printf("x=%f, y=%f, w=%f, h=%f\n", aRect.x, aRect.y, aRect.w, aRect.h);
+}
 
+static void testMergeRect()
+{
+	BLRect rectA(-100, -100, 200, 200);
+    BLRect rectB(0, 0, 20, 20);
+
+    mergeRect(rectA, rectB);
+
+	printRect(rectA);
 }
 
 int main(int argc, char** argv)
 {
-    testParseNumber();
+    testMergeRect();
     
     if (argc < 2)
     {

@@ -43,7 +43,7 @@ namespace waavs {
         }
 
         // Parse integer part
-        if (digitChars[*s]) {
+        if (chrDecDigits[*s]) {
 
             intPart = chunk_to_u64(s);
 
@@ -56,7 +56,7 @@ namespace waavs {
             s++; // Skip '.'
             auto sentinel = s.fStart;
 
-            if (digitChars(*s)) {
+            if (chrDecDigits(*s)) {
                 fracPart = chunk_to_u64(s);
                 auto ending = s.fStart;
 
@@ -85,7 +85,7 @@ namespace waavs {
                 s++;
             }
 
-            if (digitChars[*s]) {
+            if (chrDecDigits[*s]) {
                 expPart = chunk_to_u64(s);
                 res = res * powd(10, double(expSign * double(expPart)));
             }
@@ -96,76 +96,8 @@ namespace waavs {
         return true;
     }
 
+
     
-    // Parse a number which may have units after it
-    //   1.2em
-    // -1.0E2em
-    // 2.34ex
-    // -2.34e3M10,20
-    // 
-    // By the end of this routine, the numchunk represents the range of the 
-    // captured number.
-    // 
-    // The returned chunk represents what comes next, and can be used
-    // to continue scanning the original inChunk
-    //
-    // Note:  We assume here that the inChunk is already positioned at the start
-    // of a number (including +/- sign), with no leading whitespace
-
-    static ByteSpan scanNumber(const ByteSpan& inChunk, ByteSpan& numchunk) noexcept
-    {
-        ByteSpan s = inChunk;
-        numchunk = inChunk;
-        numchunk.fEnd = inChunk.fStart;
-
-
-        // sign
-        if (*s == '-' || *s == '+') {
-            s++;
-            numchunk.fEnd = s.fStart;
-        }
-
-        // integer part
-        while (s && digitChars[*s]) {
-            s++;
-            numchunk.fEnd = s.fStart;
-        }
-
-        if (*s == '.') {
-            // decimal point
-            s++;
-            numchunk.fEnd = s.fStart;
-
-            // fraction part
-            while (s && digitChars[*s]) {
-                s++;
-                numchunk.fEnd = s.fStart;
-            }
-        }
-
-        // exponent
-        // but it could be units (em, ex)
-        if ((*s == 'e' || *s == 'E') && (s[1] != 'm' && s[1] != 'x'))
-        {
-            s++;
-            numchunk.fEnd = s.fStart;
-
-            // Might be a sign
-            if (*s == '-' || *s == '+') {
-                s++;
-                numchunk.fEnd = s.fStart;
-            }
-
-            // Get any remaining digits
-            while (s && digitChars[*s]) {
-                s++;
-                numchunk.fEnd = s.fStart;
-            }
-        }
-
-        return s;
-    }
-
     // parseNextNumber()
     // 
     // Consume the next number off the front of the chunk
@@ -261,7 +193,29 @@ namespace waavs
     // Representation of a unit based length.
     // This is the DOM specific replacement of SVGDimension
     //==============================================================================
-        
+    enum SVGLengthRelativeUnits {
+        SVG_LENGTH_RELATIVE_UNKNOWN = 0,
+        SVG_LENGTH_RELATIVE_EM      = 1,
+		SVG_LENGTH_RELATIVE_EX      = 2,
+		SVG_LENGTH_RELATIVE_CH      = 3,
+		SVG_LENGTH_RELATIVE_REM     = 4,
+        SVG_LENGTH_RELATIVE_VW      = 5,
+		SVG_LENGTH_RELATIVE_VH      = 6,
+		SVG_LENGTH_RELATIVE_VMIN    = 7,
+		SVG_LENGTH_RELATIVE_VMAX    = 8,
+    };
+    
+    enum SVGLengthAbsoluteUnits {
+		SVG_LENGTH_ABSOLUTE_UNKNOWN = 0,
+		SVG_LENGTH_ABSOLUTE_CM = 1, // centimeters
+		SVG_LENGTH_ABSOLUTE_MM,     // millimeters
+		SVG_LENGTH_ABSOLUTE_IN,     // inches
+		SVG_LENGTH_ABSOLUTE_PT,     // points
+		SVG_LENGTH_ABSOLUTE_PC,     // Picas
+		SVG_LENGTH_ABSOLUTE_PX,     // pixels
+		SVG_LENGTH_ABSOLUTE_Q       // quarter-millimeters
+    };
+    
 	enum SVGLengthUnits
 	{
 		SVG_LENGTHTYPE_UNKNOWN = 0,
@@ -303,38 +257,61 @@ namespace waavs
 	// cm
 	// mm
 	// in
-    //
-    static SVGLengthUnits parseLengthUnits(const ByteSpan& units)
+    //		SVG_LENGTHTYPE_UNKNOWN = 0,
+
+        
+    static bool parseLengthUnits(ByteSpan& s, SVGLengthUnits &units) noexcept
     {
 		// If no units specified, then it is a number
         // in user units
-        if (!units)
-            return SVG_LENGTHTYPE_USER;
+         if (!s)
+         {
+             units = SVG_LENGTHTYPE_USER;   return true;
+         }
 
-        if (units[0] == '%')
-            return SVG_LENGTHTYPE_PERCENTAGE;
-        else if (units[0] == 'e')
+        if (s[0] == 'p' && s[1] == 'x')
         {
-            if (units[1] == 'm')
-                return SVG_LENGTHTYPE_EMS;
-            else if (units[1] == 'x')
-                return SVG_LENGTHTYPE_EXS;
-        } else if (units[0] == 'p')
+            s += 2; units = SVG_LENGTHTYPE_PX;
+        }
+        else if (s[0] == 'p' && s[1] == 't')
         {
-            if (units[1] == 'x')
-                return SVG_LENGTHTYPE_PX;
-            else if (units[1] == 't')
-                return SVG_LENGTHTYPE_PT;
-            else if (units[1] == 'c')
-                return SVG_LENGTHTYPE_PC;
-        } else if (units == "cm")
-            return SVG_LENGTHTYPE_CM;
-        else if (units == "mm")
-            return SVG_LENGTHTYPE_MM;
-        else if (units == "in")
-            return SVG_LENGTHTYPE_IN;
+            s += 2; units = SVG_LENGTHTYPE_PT;
+        }
+        else if (s[0] == 'p' && s[1] == 'c')
+        {
+            s += 2; units = SVG_LENGTHTYPE_PC;
+        }
+        else if (s[0] == 'm' && s[1] == 'm')
+        {
+            s += 2; units = SVG_LENGTHTYPE_MM;
+        }
+        else if (s[0] == 'c' && s[1] == 'm')
+        {
+            s += 2; units = SVG_LENGTHTYPE_CM;
+        }
+        else if (s[0] == 'i' && s[1] == 'n')
+        {
+            s += 2; units = SVG_LENGTHTYPE_IN;
+        }
+        else if (s[0] == '%')
+        {
+            s += 1; units = SVG_LENGTHTYPE_PERCENTAGE;
+        }
+        else if (s[0] == 'e' && s[1] == 'm')
+        {
+            s += 2; units= SVG_LENGTHTYPE_EMS;
+        }
+        else if (s[0] == 'e' && s[1] == 'x')
+		{
+            s += 2; units = SVG_LENGTHTYPE_EXS;
 
-        return SVG_LENGTHTYPE_UNKNOWN;
+		}
+		else
+		{
+			return false;
+		}
+
+        return true;
 
     }
 
@@ -1050,7 +1027,7 @@ namespace waavs
     }
 
 
-    static ByteSpan parseRotate(const ByteSpan& inChunk, BLMatrix2D& xform)
+    static ByteSpan parseRotate(const ByteSpan& inChunk, BLMatrix2D& xform) noexcept
     {
         double args[3]{ 0 };
         int na = 0;
@@ -1058,10 +1035,17 @@ namespace waavs
 
         s = parseTransformArgs(s, args, 3, na);
 
+        // If there was only one parameter, then the center
+        // of rotation is the point 0,0
         if (na == 1)
             args[1] = args[2] = 0.0;
 
-        xform.rotate(radians(args[0]), args[1], args[2]);
+		double ang = radians(args[0]);
+        double x = args[1];
+		double y = args[2];
+        
+		xform.resetToRotation(ang, x, y);
+        //xform.rotate(0, x, y);
 
         return  s;
     }
@@ -1076,7 +1060,7 @@ namespace waavs
     {        
         ByteSpan s = inChunk;
         xform = BLMatrix2D::makeIdentity();
-
+        
         bool isSet = false;
 
         while (s)
@@ -1134,6 +1118,68 @@ namespace waavs
 
 
 
+//
+// These are various routines that help manipulate the BLRect
+// structure.  Finding corners, moving, query containment
+// scaling, merging, expanding, and the like
+
+namespace waavs {
+    inline double right(const BLRect& r) { return r.x + r.w; }
+    inline double left(const BLRect& r) { return r.x; }
+    inline double top(const BLRect& r) { return r.y; }
+    inline double bottom(const BLRect& r) { return r.y + r.h; }
+    inline BLPoint center(const BLRect& r) { return { r.x + (r.w / 2),r.y + (r.h / 2) }; }
+
+    inline void moveBy(BLRect& r, double dx, double dy) { r.x += dx; r.y += dy; }
+    inline void moveBy(BLRect& r, const BLPoint& dxy) { r.x += dxy.x; r.y += dxy.y; }
+
+
+    inline bool containsRect(const BLRect& a, double x, double y)
+    {
+        return (x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h);
+    }
+
+    inline bool containsRect(const BLRect& a, const BLPoint& pt)
+    {
+        return containsRect(a, pt.x, pt.y);
+    }
+
+    // mergeRect()
+    // 
+    // Perform a union operation between a BLRect and a BLPoint
+    // Return a new BLRect that represents the union.
+    inline BLRect mergeRect(const BLRect& a, const BLPoint& b)
+    {
+        // return a BLRect that is the union of BLRect a 
+        // and BLPoint b using local temporary variables
+        double x1 = std::min(a.x, b.x);
+        double y1 = std::min(a.y, b.y);
+        double x2 = std::max(a.x + a.w, b.x);
+        double y2 = std::max(a.y + a.h, b.y);
+
+        return { x1, y1, x2 - x1, y2 - y1 };
+    }
+
+    // mergeRect()
+    // 
+    // Expand the size of the rectangle such that the new rectangle
+    // firts the original (a) as well as the new one (b)
+    // this is a union operation.
+    inline BLRect mergeRect(const BLRect& a, const BLRect& b)
+    {
+        // return a BLRect that is the union of BLRect a
+        // and BLRect b, using local temporary variables
+        double x1 = std::min(a.x, b.x);
+        double y1 = std::min(a.y, b.y);
+        double x2 = std::max(a.x + a.w, b.x + b.w);
+        double y2 = std::max(a.y + a.h, b.y + b.h);
+
+        return { x1, y1, x2 - x1, y2 - y1 };
+    }
+
+    inline void expandRect(BLRect& a, const BLPoint& b) { a = mergeRect(a, b); }
+    inline void expandRect(BLRect& a, const BLRect& b) { a = mergeRect(a, b); }
+}
 
 
 

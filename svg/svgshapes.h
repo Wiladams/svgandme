@@ -1908,7 +1908,13 @@ namespace waavs {
 
 			if (angle.isSet())
 			{
-				values.angle = angle.calculatePixels(360, 0, dpi);
+				// treat the angle as an angle type
+				ByteSpan angAttr = getAttribute("angle");
+				if (angAttr)
+				{
+					SVGAngleUnits units;
+					parseAngle(angAttr, values.angle, units);
+				}
 			}
 			
 			// If there is a specified repeat, then use that
@@ -2592,6 +2598,7 @@ namespace waavs {
 		SVGPatternNode(IAmGroot* aroot) :SVGGraphicsElement(aroot) 
 		{
 			fPattern.setExtendMode(BL_EXTEND_MODE_PAD);
+			fPatternTransform = BLMatrix2D::makeIdentity();
 			
 			isStructural(false);
 		}
@@ -2610,7 +2617,8 @@ namespace waavs {
 			// This should be called
 			if (fVar.isNull())
 			{
-				fVar.assign(fPattern);
+				fVar = fPattern;
+				//fVar.assign(fPattern);
 			}
 
 			return fVar;
@@ -2724,11 +2732,19 @@ namespace waavs {
 				// of the pattern, and thus the size of the backing store
 				if (fViewbox.isSet())
 				{
-					// If a viewbox is set, then the 'width' and 'height' parameters
-					// are ignored
-					//bbox.reset(0, 0, fViewbox.width(), fViewbox.height());
-					iWidth = (int)fViewbox.width();
-					iHeight = (int)fViewbox.height();
+					if (fWidth.isSet() && fHeight.isSet())
+					{
+						iWidth = (int)fWidth.calculatePixels();
+						iHeight = (int)fHeight.calculatePixels();
+					}
+					else {
+
+						// If a viewbox is set, then the 'width' and 'height' parameters
+						// are ignored
+						//bbox.reset(0, 0, fViewbox.width(), fViewbox.height());
+						iWidth = (int)fViewbox.width();
+						iHeight = (int)fViewbox.height();
+					}
 				}
 				else {
 					// If we don't have a viewbox, then the bbox can be either
@@ -2772,14 +2788,12 @@ namespace waavs {
 				IRenderSVG ctx(groot->fontHandler());
 				ctx.begin(fCachedImage);
 				ctx.clearAll();
-				//ctx.fillAll(BLRgba32(0xFFffffffu));
 				ctx.setCompOp(BL_COMP_OP_SRC_COPY);
 				ctx.noStroke();
-
+				//ctx.setTransform(fPatternTransform);
+				
 				draw(&ctx);
 				ctx.flush();
-
-
 
 				// apply the patternTransform
 				// maybe do a translate on x, y?
@@ -2807,17 +2821,17 @@ namespace waavs {
 
 				}
 			
-
-
 			// Finallly, assign the pattern to the fVar
 			// do it in the getVariant() call
-
 		}
 
 		void loadVisualProperties(const XmlAttributeCollection& attrs) override
 		{
 			SVGGraphicsElement::loadVisualProperties(attrs);
 
+			//parseTransform(getAttribute("patternTransform"), fPatternTransform);
+
+			
 			fX.loadFromChunk(getAttribute("x"));
 			fY.loadFromChunk(getAttribute("y"));
 			fWidth.loadFromChunk(getAttribute("width"));
@@ -2832,13 +2846,6 @@ namespace waavs {
 			else if (attrs.getAttribute("xlink:href"))
 				fTemplateReference = attrs.getAttribute("xlink:href");
 
-			if (getAttribute("patternTransform"))
-			{
-				SVGTransform tform(root());
-				tform.loadFromChunk(getAttribute("patternTransform"));
-				fPatternTransform = tform.fTransform;
-				fPattern.setTransform(fPatternTransform);
-			}
 		}
 	
 	};

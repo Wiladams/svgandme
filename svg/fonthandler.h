@@ -183,7 +183,7 @@ namespace waavs {
             // nammes are quoted, or separated by commas
             while (s.size() > 0)
             {
-                s = chunk_ltrim(s, wspChars);
+                s = chunk_ltrim(s, chrWspChars);
                 ByteSpan name = chunk_token(s, delims);
                 name = chunk_trim(name, quoteChars);
 
