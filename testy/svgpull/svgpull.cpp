@@ -18,7 +18,7 @@ static void testMergeRect()
 	BLRect rectA(-100, -100, 200, 200);
     BLRect rectB(0, 0, 20, 20);
 
-    mergeRect(rectA, rectB);
+    rectMerge(rectA, rectB);
 
 	printRect(rectA);
 }

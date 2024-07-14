@@ -270,7 +270,7 @@ namespace waavs
             :fSource(inChunk),
 			fMark(inChunk)
         {
-            next();
+            //next();
         }
 
         explicit operator bool() const { return (bool)fCurrentItem; }
@@ -476,12 +476,12 @@ namespace waavs
 
             // Iterate over the selectors
             CSSSelectorIterator iter(fSource);
-            while (iter)
+            while (iter.next())
             {
 				auto sel = std::make_shared<CSSSelector>(*iter);
 				addSelector(sel);
                 
-                ++iter;
+                //++iter;
             }
 
             return true;

@@ -48,7 +48,8 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 
 	
 	ByteSpan aspan(mapped->data(), mapped->size());
-	std::shared_ptr<SVGDocument> aDoc = SVGDocument::createFromChunk(aspan, &gFontHandler);
+	std::shared_ptr<SVGDocument> aDoc = SVGDocument::createFromChunk(aspan, &gFontHandler, canvasWidth, canvasHeight, systemPpi);
+
 	
 	return aDoc;
 }
@@ -107,12 +108,14 @@ static void onFileDrop(const FileDropEvent& fde)
 
 		if (gDoc != nullptr)
 		{
+
+			
 			resetView();
 
 			auto objFr = gDoc->sceneFrame();
 			
 			// Set the initial viewport
-			//gViewPort.surfaceFrame({ 0, 0, (double)canvasWidth, (double)canvasHeight });
+			gViewPort.surfaceFrame({ 0, 0, (double)canvasWidth, (double)canvasHeight });
 			//gViewPort.surfaceFrame(objFr);
 			gViewPort.sceneFrame(objFr);
 			

@@ -56,9 +56,15 @@ namespace waavs {
 		std::shared_ptr<CSSStyleSheet> fStyleSheet = nullptr;
         
         // IAmGroot
+        // Information about the environment
         double fDpi = 96;
         double fCanvasWidth{};
 		double fCanvasHeight{};
+        
+        // Information from the document
+        double fDocumentWidth{};
+		double fDocumentHeight{};
+        
         
         std::unordered_map<std::string, std::shared_ptr<SVGViewable>> fDefinitions{};
         std::unordered_map<std::string, ByteSpan> fEntities{};
@@ -68,13 +74,14 @@ namespace waavs {
         // Implementation
 		//==========================================
         
-        SVGDocument(FontHandler *fh)
+        SVGDocument(FontHandler *fh, const double w, const double h, const double ppi = 96)
             :SVGGraphicsElement(this)
+            , fDpi(ppi)
             , fFontHandler(fh)
+            , fCanvasWidth(w)
+            , fCanvasHeight(h)
         {
-            //fDpi = systemPpi;
-
-
+            // Create document style sheet that can be filled in
 			fStyleSheet = std::make_shared<CSSStyleSheet>();
         }
 
@@ -82,6 +89,8 @@ namespace waavs {
 		FontHandler* fontHandler() const override { return fFontHandler; }
         
         double dpi() const override { return fDpi; }
+		void dpi(const double d) override { fDpi = d; }
+        
 		double canvasWidth() const override { return fCanvasWidth; }
 		double canvasHeight() const override { return fCanvasHeight; }
         
@@ -197,7 +206,7 @@ namespace waavs {
             if (nullptr == fSVGNode)
                 return BLRect();
             
-            return fSVGNode->viewport();
+            return fSVGNode->frame();
         }
 
         
@@ -212,14 +221,18 @@ namespace waavs {
                 if (nullptr == fSVGNode)
                 {
                     fSVGNode = std::dynamic_pointer_cast<SVGSVGElement>(node);
-                    //fSVGNode = node;
                     
-                    BLRect vport = fSVGNode->viewport();
-                    fCanvasWidth = vport.w;
-                    fCanvasHeight = vport.h;
+                    //BLRect vport = fSVGNode->viewport();
+                    //fCanvasWidth = vport.w;
+                    //fCanvasHeight = vport.h;
 
                     fSVGNode->bindToGroot(this);
-                }
+
+                    // now get the document width from the bound viewport
+					//fDocumentWidth = fSVGNode->width();
+					//fDocumentHeight = fSVGNode->height();
+				}
+
             }
 
             return true;
@@ -276,9 +289,9 @@ namespace waavs {
 
         // A convenience to construct the document from a chunk, and return
         // a shared pointer to the document
-        static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, FontHandler* fh)
+        static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, FontHandler* fh, const double w, const double h, const double ppi)
         {
-            auto doc = std::make_shared<SVGDocument>(fh);
+            auto doc = std::make_shared<SVGDocument>(fh, w, h, ppi);
             doc->loadFromChunk(srcChunk);
 
             return doc;

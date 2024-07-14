@@ -23,6 +23,8 @@
 #include "bspan.h"
 #include "maths.h"
 
+//#define PATH_COMMAND_DEBUG 1
+
 
 namespace waavs {
 
@@ -61,7 +63,7 @@ namespace waavs {
 
 
 
-//#define PATH_COMMAND_DEBUG 1
+
 
 namespace waavs
 {
@@ -655,7 +657,7 @@ namespace waavs
 				else {
 					// Failed to see a known command, so 
 					// return immediately
-					return false;
+					//return false;
 				}
 				
 #ifdef PATH_COMMAND_DEBUG

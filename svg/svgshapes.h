@@ -8,7 +8,7 @@
 #include "svgattributes.h"
 #include "svgpath.h"
 #include "svgtext.h"
-
+#include "viewport.h"
 
 
 namespace waavs {
@@ -58,7 +58,6 @@ namespace waavs {
 		
 		void bindSelfToGroot(IAmGroot* groot) override
 		{
-			//SVGGraphicsElement::bindToGroot(groot);
 			
 			if (fDimMarkerWidth.isSet())
 				fMarkerWidth = fDimMarkerWidth.calculatePixels();
@@ -198,7 +197,7 @@ namespace waavs {
 			return BLRect(bbox.x0, bbox.y0, bbox.x1 - bbox.x0, bbox.y1 - bbox.y0);
 		}
 		
-		BLRectI getBBox() const override
+		BLRect getBBox() const override
 		{
 			BLBox bbox{};
 			fPath.getBoundingBox(&bbox);
@@ -209,10 +208,10 @@ namespace waavs {
 			if (fHasTransform) {
 				auto leftTop = fTransform.mapPoint(bbox.x0, bbox.y0);
 				auto rightBottom = fTransform.mapPoint(bbox.x1, bbox.y1);
-				return BLRectI((int)leftTop.x, (int)leftTop.y, int((rightBottom.x - leftTop.x)+0.5), int((rightBottom.y - leftTop.y)+0.5));
+				return BLRect(leftTop.x, leftTop.y, (rightBottom.x - leftTop.x), (rightBottom.y - leftTop.y));
 			}
 
-			return BLRectI((int)bbox.x0, (int)bbox.y0, int((bbox.x1 - bbox.x0)+0.5), int((bbox.y1 - bbox.y0)+0.5));
+			return BLRect(bbox.x0, bbox.y0, (bbox.x1 - bbox.x0), (bbox.y1 - bbox.y0));
 		}
 		
 		bool contains(double x, double y) override
@@ -303,6 +302,7 @@ namespace waavs {
 		
 		/*
 		// for debugging purposes
+		// draw the vertices of the path
 		void drawVertices(IRenderSVG* ctx)
 		{	
 			for (int i = 0; i < fPath.size(); i++)
@@ -420,9 +420,7 @@ namespace waavs {
 		
 	
 		void bindSelfToGroot(IAmGroot* groot) override
-		{
-			//SVGGeometryElement::bindToGroot(groot);
-			
+		{	
 			BLLine geom{};
 			double dpi = 96;
 			double w = 1.0;
@@ -1556,9 +1554,7 @@ namespace waavs {
 		}
 		
 		void bindSelfToGroot(IAmGroot* groot) override
-		{
-			//SVGGraphicsElement::bindToGroot(groot);
-			
+		{	
 			if (fTemplateReference) {
 				resolveReferences(groot, fTemplateReference);
 			}
@@ -2503,7 +2499,6 @@ namespace waavs {
 
 		void bindSelfToGroot(IAmGroot* groot) override
 		{
-			//SVGGraphicsElement::bindToGroot(groot);
 
 			// Get the system language
 			fSystemLanguage = groot->systemLanguage();
@@ -2867,33 +2862,84 @@ namespace waavs {
 
 		}
 
+		double fX{ 0 };
+		double fY{ 0 };
+		double fWidth{ 0 };
+		double fHeight{ 0 };
+		ViewPort fViewport{};
 		
 		SVGViewbox fViewbox{};
-		SVGDimension fX{};
-		SVGDimension fY{};
-		SVGDimension fWidth{};
-		SVGDimension fHeight{};
+		SVGDimension fDimWidth{};
+		SVGDimension fDimHeight{};
 		
 		SVGSVGElement(IAmGroot *aroot)
 			: SVGGraphicsElement(aroot)
 		{
 		}
 
+		BLRect frame() const override
+		{
+			return BLRect(fX, fY, fWidth, fHeight);
+		}
+		
+		/*
 		BLRect viewport() const { 
 			if (fViewbox.isSet()) {
 				return fViewbox.fRect;
 			}
 			
 			// BUGBUG - Right here we need to use IAmGroot to get the size of the window
-			if (fWidth.isSet() && fHeight.isSet()) {
-				return BLRect(0, 0, fWidth.calculatePixels(), fHeight.calculatePixels());
+			if (fDimWidth.isSet() && fDimHeight.isSet()) {
+				return BLRect(0, 0, fDimWidth.calculatePixels(), fDimHeight.calculatePixels());
 			}
 			
 			// If no viewbox, width, or height, then we need to use the calculated 
 			// bounding box of the document
 			return frame();
 		}
+		*/
 		
+		void bindSelfToGroot(IAmGroot* groot) override
+		{
+			// We need to resolve the size of the user space
+			// start out with some information from groot
+			double dpi = 96;
+			double w = 1.0;
+			double h = 1.0;
+
+			if (nullptr != groot)
+			{
+				dpi = groot->dpi();
+				w = groot->canvasWidth();
+				h = groot->canvasHeight();
+			}
+
+			// if we have width and height, then set those
+			if (fDimWidth.isSet() && fDimHeight.isSet())
+			{
+				fWidth = fDimWidth.calculatePixels(w,0,dpi);
+				fHeight = fDimHeight.calculatePixels(h,0,dpi);
+			}
+			else {
+				// if the width and height are not explicitly set, then use
+				// the canvas size instead
+				fWidth = w;
+				fHeight = h;
+			}
+			
+			if (fViewbox.isSet())
+			{
+				fViewport.sceneFrame(fViewbox.fRect);
+				fViewport.surfaceFrame(frame());
+			}
+			else
+			{
+				fViewport.sceneFrame(frame());
+				fViewport.surfaceFrame(frame());
+
+			}
+
+		}
 		
 		void draw(IRenderSVG *ctx) override
 		{
@@ -2921,6 +2967,9 @@ namespace waavs {
 			// in the case of the root node, it's mostly the viewport
 			applyAttributes(ctx);
 
+			// Apply scaling transform based on viewbox
+			//ctx->setTransform(fViewport.sceneToSurfaceTransform());
+			
 			// Draw the children
 			drawChildren(ctx);
 
@@ -2934,8 +2983,8 @@ namespace waavs {
 
 			
 			fViewbox.loadFromChunk(getAttribute("viewBox"));
-			fWidth.loadFromChunk(getAttribute("width"));
-			fHeight.loadFromChunk(getAttribute("height"));
+			fDimWidth.loadFromChunk(getAttribute("width"));
+			fDimHeight.loadFromChunk(getAttribute("height"));
 		}
 		
 

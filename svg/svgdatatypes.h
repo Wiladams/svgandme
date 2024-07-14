@@ -1044,8 +1044,7 @@ namespace waavs
         double x = args[1];
 		double y = args[2];
         
-		xform.resetToRotation(ang, x, y);
-        //xform.rotate(0, x, y);
+        xform.rotate(ang, x, y);
 
         return  s;
     }
@@ -1148,7 +1147,7 @@ namespace waavs {
     // 
     // Perform a union operation between a BLRect and a BLPoint
     // Return a new BLRect that represents the union.
-    inline BLRect mergeRect(const BLRect& a, const BLPoint& b)
+    inline BLRect rectMerge(const BLRect& a, const BLPoint& b)
     {
         // return a BLRect that is the union of BLRect a 
         // and BLPoint b using local temporary variables
@@ -1165,7 +1164,7 @@ namespace waavs {
     // Expand the size of the rectangle such that the new rectangle
     // firts the original (a) as well as the new one (b)
     // this is a union operation.
-    inline BLRect mergeRect(const BLRect& a, const BLRect& b)
+    inline BLRect rectMerge(const BLRect& a, const BLRect& b)
     {
         // return a BLRect that is the union of BLRect a
         // and BLRect b, using local temporary variables
@@ -1177,8 +1176,8 @@ namespace waavs {
         return { x1, y1, x2 - x1, y2 - y1 };
     }
 
-    inline void expandRect(BLRect& a, const BLPoint& b) { a = mergeRect(a, b); }
-    inline void expandRect(BLRect& a, const BLRect& b) { a = mergeRect(a, b); }
+    inline void expandRect(BLRect& a, const BLPoint& b) { a = rectMerge(a, b); }
+    inline void expandRect(BLRect& a, const BLRect& b) { a = rectMerge(a, b); }
 }
 
 

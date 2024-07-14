@@ -28,7 +28,7 @@ namespace waavs {
         bool autoMoveToFront() const { return fAutoMoveToFront; }
 
         virtual BLRect frame() const = 0;
-        virtual BLRectI getBBox() const = 0;
+        virtual BLRect getBBox() const = 0;
 
         virtual bool contains(double x, double y)
         {
@@ -125,7 +125,7 @@ namespace waavs {
 
         // IPlaceable
         BLRect frame() const override { return BLRect(); }
-        BLRectI getBBox() const override { return BLRectI{}; }
+        BLRect getBBox() const override { return BLRect{}; }
         
         void moveTo(double x, double y) override { ; }
         void mouseEvent(const MouseEvent& e) override { return; }
@@ -177,7 +177,9 @@ namespace waavs {
 
         virtual double canvasWidth() const = 0;
         virtual double canvasHeight() const = 0;
+        
         virtual double dpi() const = 0;
+        virtual void dpi(const double d) = 0;
     };
 
 }
@@ -262,11 +264,6 @@ namespace waavs {
 	{
 		gSVGAttributeCreation[name] = func;
 	}
-
-    //static void registerSVGProperty(const std::string& name, std::function < std::shared_ptr<SVGVisualProperty>(IAmGroot* aroot, const XmlAttributeCollection&)> func)
-    //{
-    //    gSVGPropertyCreation[name] = func;
-    //}
     
 }
 
