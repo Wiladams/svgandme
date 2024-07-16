@@ -218,7 +218,7 @@ namespace waavs
         CSSInlineStyleIterator(const waavs::ByteSpan& inChunk) 
             : fSource(inChunk)
         {
-            next();
+            //next();
         }
 
 		CSSInlineStyleIterator& operator=(const CSSInlineStyleIterator& other)

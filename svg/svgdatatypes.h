@@ -500,7 +500,7 @@ namespace waavs {
             // creating a visual attribute, using the gSVGPropertyCreation map
             CSSInlineStyleIterator iter(styleChunk);
 
-            while (iter)
+            while (iter.next())
             {
                 std::string name = std::string((*iter).first.fStart, (*iter).first.fEnd);
                 if (!name.empty() && (*iter).second)
@@ -509,7 +509,7 @@ namespace waavs {
 					styleAttributes.addAttribute(name, value);
                 }
 
-                iter++;
+                //iter++;
             }
         }
 

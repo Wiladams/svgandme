@@ -195,6 +195,19 @@ namespace waavs {
                 return;
 
             //double startTime = seconds();
+
+            // Setup default context
+            ctx->strokeJoin(BL_STROKE_JOIN_MITER_CLIP);
+            ctx->setFillRule(BL_FILL_RULE_NON_ZERO);
+
+            ctx->fill(BLRgba32(0, 0, 0));
+            ctx->noStroke();
+            ctx->strokeWidth(1.0);
+            ctx->textAlign(ALIGNMENT::LEFT, ALIGNMENT::BASELINE);
+            ctx->textFamily("Arial");
+            ctx->textSize(16);
+
+            
             fSVGNode->draw(ctx);
 			//double endTime = seconds();
 

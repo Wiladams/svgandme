@@ -2869,6 +2869,8 @@ namespace waavs {
 		ViewPort fViewport{};
 		
 		SVGViewbox fViewbox{};
+		SVGDimension fDimX{};
+		SVGDimension fDimY{};
 		SVGDimension fDimWidth{};
 		SVGDimension fDimHeight{};
 		
@@ -2879,6 +2881,10 @@ namespace waavs {
 
 		BLRect frame() const override
 		{
+			if (fViewbox.isSet()) {
+				return fViewbox.fRect;
+			}
+
 			return BLRect(fX, fY, fWidth, fHeight);
 		}
 		
@@ -2913,6 +2919,9 @@ namespace waavs {
 				w = groot->canvasWidth();
 				h = groot->canvasHeight();
 			}
+
+			fX = fDimX.calculatePixels(w, 0, dpi);
+			fY = fDimY.calculatePixels(h, 0, dpi);
 
 			// if we have width and height, then set those
 			if (fDimWidth.isSet() && fDimHeight.isSet())
@@ -2949,19 +2958,15 @@ namespace waavs {
 			//ctx->blendMode(BL_COMP_OP_SRC_OVER);
 
 			//ctx->setStrokeMiterLimit(4.0);
-			ctx->strokeJoin(BL_STROKE_JOIN_MITER_CLIP);
-			//ctx->strokeJoin(BL_STROKE_JOIN_MITER_BEVEL);
-			//ctx->strokeJoin(BL_STROKE_JOIN_MITER_ROUND);
-			//ctx->strokeJoin(BL_STROKE_JOIN_ROUND);
+			//ctx->strokeJoin(BL_STROKE_JOIN_MITER_CLIP);
+			//ctx->setFillRule(BL_FILL_RULE_NON_ZERO);
 			
-			ctx->setFillRule(BL_FILL_RULE_NON_ZERO);
-			
-			ctx->fill(BLRgba32(0, 0, 0));
-			ctx->noStroke();
-			ctx->strokeWidth(1.0);
-			ctx->textAlign(ALIGNMENT::LEFT, ALIGNMENT::BASELINE);
-			ctx->textFamily("Arial");
-			ctx->textSize(16);
+			//ctx->fill(BLRgba32(0, 0, 0));
+			//ctx->noStroke();
+			//ctx->strokeWidth(1.0);
+			//ctx->textAlign(ALIGNMENT::LEFT, ALIGNMENT::BASELINE);
+			//ctx->textFamily("Arial");
+			//ctx->textSize(16);
 			
 			// Apply attributes that have been gathered
 			// in the case of the root node, it's mostly the viewport
@@ -2969,6 +2974,7 @@ namespace waavs {
 
 			// Apply scaling transform based on viewbox
 			//ctx->setTransform(fViewport.sceneToSurfaceTransform());
+			ctx->translate(fX, fY);
 			
 			// Draw the children
 			drawChildren(ctx);
@@ -2983,6 +2989,9 @@ namespace waavs {
 
 			
 			fViewbox.loadFromChunk(getAttribute("viewBox"));
+
+			fDimX.loadFromChunk(getAttribute("x"));
+			fDimY.loadFromChunk(getAttribute("y"));
 			fDimWidth.loadFromChunk(getAttribute("width"));
 			fDimHeight.loadFromChunk(getAttribute("height"));
 		}
