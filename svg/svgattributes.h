@@ -788,18 +788,18 @@ namespace waavs {
             // and finish for now.
             if (chunk_starts_with_cstr(str, "url("))
             {
-                //fReference = str;
                 needsBinding(true);
 
                 return true;
             }
             
-            BLRgba32 c{};
+            BLRgba32 c(128, 128, 128);
             len = chunk_size(str);
             if (len >= 1 && *str == '#')
             {
                 c = parseColorHex(str);
-                blVarAssignRgba32(&fVar, c.value);
+                fVar = c;
+                //blVarAssignRgba32(&fVar, c.value);
                 set(true);
             }
             else if (chunk_starts_with(str, rgbStr) || 
@@ -808,42 +808,32 @@ namespace waavs {
                 chunk_starts_with(str, rgbStrCaps))
             {
                 parseColorRGB(str, c);
-                blVarAssignRgba32(&fVar, c.value);
+                fVar = c;
                 set(true);
             }
             else if (chunk_starts_with(str, hslStr) ||
                 chunk_starts_with(str, hslaStr))
             {
                 c = parseColorHsl(str);
-                blVarAssignRgba32(&fVar, c.value);
+                fVar = c;
+
                 set(true);
             }
             else {
-                std::string cName = std::string(str.fStart, str.fEnd);
-                if (cName == "none") {
+                if (str == "none") {
                     fExplicitNone = true;
                     set(true);
                 }
-                else if ((cName == "inherit") || (cName == "currentColor"))
+                else if ((str == "inherit") || (str == "currentColor"))
                 {
                     // Take on whatever color value was previously set
                     // somewhere in the tree
                     set(false);
                 }
-                else if (svgcolors.find(cName) != svgcolors.end())
-                {
-                    c = svgcolors[cName];
-                    fVar = c;
-                    //blVarAssignRgba32(&fVar, c.value);
-                    set(true);
-                }
                 else {
-                    // user wants some sort of color, which is either invalid name
-                    // or a color function we don't support yet
-                    // so set a default gray color
-                    c = BLRgba32(128, 128, 128);
+					c = getSVGColorByName(str);
                     fVar = c;
-                    //blVarAssignRgba32(&fVar, c.value);
+                    
                     set(true);
                 }
             }
@@ -935,7 +925,6 @@ namespace waavs {
         }
 
         
-        //BLFillRule fValue{ BL_FILL_RULE_NON_ZERO };
         BLFillRule fValue{ BL_FILL_RULE_EVEN_ODD };
 
         SVGFillRule(IAmGroot* iMap) : SVGVisualProperty(iMap) {}

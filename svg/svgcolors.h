@@ -4,7 +4,7 @@
 #include <string>
 
 #include "blend2d.h"
-
+#include "bspan.h"
 
 
 namespace waavs
@@ -18,7 +18,11 @@ namespace waavs
     // the caller should ensure their key is lowercase first
     // https://www.w3.org/TR/SVG11/types.html#ColorKeywords
     //
-    static std::map<std::string, BLRgba32> svgcolors =
+    // 
+ /*
+    //static std::map<std::string, BLRgba32> svgcolors =
+    
+    static std::map<ByteSpan, BLRgba32> svgcolors =
     {
         {"white",  BLRgba32(255, 255, 255)},
         {"ivory", BLRgba32(255, 255, 240)},
@@ -163,5 +167,164 @@ namespace waavs
         {"black", BLRgba32(0, 0, 0)},
         {"transparent", BLRgba32(0, 0, 0) },
     };
+    */
 
+using cHash = std::hash<ByteSpan>;
+
+    static std::map<size_t, BLRgba32> svgcolors =
+    {
+        {cHash{}("white"),  BLRgba32(255, 255, 255)},
+        {cHash{}("ivory"), BLRgba32(255, 255, 240)},
+        {cHash{}("lightyellow"), BLRgba32(255, 255, 224)},
+        {cHash{}("mintcream"), BLRgba32(245, 255, 250)},
+        {cHash{}("azure"), BLRgba32(240, 255, 255)},
+        {cHash{}("snow"), BLRgba32(255, 250, 250)},
+        {cHash{}("honeydew"), BLRgba32(240, 255, 240)},
+        {cHash{}("floralwhite"), BLRgba32(255, 250, 240)},
+        {cHash{}("ghostwhite"), BLRgba32(248, 248, 255)},
+        {cHash{}("lightcyan"), BLRgba32(224, 255, 255)},
+        {cHash{}("lemonchiffon"), BLRgba32(255, 250, 205)},
+        {cHash{}("cornsilk"), BLRgba32(255, 248, 220)},
+        {cHash{}("lightgoldenrodyellow"), BLRgba32(250, 250, 210)},
+        {cHash{}("aliceblue"), BLRgba32(240, 248, 255)},
+        {cHash{}("seashell"), BLRgba32(255, 245, 238)},
+        {cHash{}("oldlace"), BLRgba32(253, 245, 230)},
+        {cHash{}("whitesmoke"), BLRgba32(245, 245, 245)},
+        {cHash{}("lavenderblush"), BLRgba32(255, 240, 245)},
+        {cHash{}("beige"), BLRgba32(245, 245, 220)},
+        {cHash{}("linen"), BLRgba32(250, 240, 230)},
+        {cHash{}("papayawhip"), BLRgba32(255, 239, 213)},
+        {cHash{}("blanchedalmond"), BLRgba32(255, 235, 205)},
+        {cHash{}("antiquewhite"), BLRgba32(250, 235, 215)},
+        {cHash{}("yellow"), BLRgba32(255, 255, 0)},
+        {cHash{}("mistyrose"), BLRgba32(255, 228, 225)},
+        {cHash{}("lavender"), BLRgba32(230, 230, 250)},
+        {cHash{}("bisque"), BLRgba32(255, 228, 196)},
+        {cHash{}("moccasin"), BLRgba32(255, 228, 181)},
+        {cHash{}("palegoldenrod"), BLRgba32(238, 232, 170)},
+        {cHash{}("khaki"), BLRgba32(240, 230, 140)},
+        {cHash{}("navajowhite"), BLRgba32(255, 222, 173)},
+        {cHash{}("aquamarine"), BLRgba32(127, 255, 212)},
+        {cHash{}("paleturquoise"), BLRgba32(175, 238, 238)},
+        {cHash{}("wheat"), BLRgba32(245, 222, 179)},
+        {cHash{}("peachpuff"), BLRgba32(255, 218, 185)},
+        {cHash{}("palegreen"), BLRgba32(152, 251, 152)},
+        {cHash{}("greenyellow"), BLRgba32(173, 255, 47)},
+        {cHash{}("gainsboro"), BLRgba32(220, 220, 220)},
+        {cHash{}("powderblue"), BLRgba32(176, 224, 230)},
+        {cHash{}("lightgreen"), BLRgba32(144, 238, 144)},
+        {cHash{}("lightgray"), BLRgba32(211, 211, 211)},
+        {cHash{}("chartreuse"), BLRgba32(127, 255, 0)},
+        {cHash{}("gold"), BLRgba32(255, 215, 0)},
+        {cHash{}("lightblue"), BLRgba32(173, 216, 230)},
+        {cHash{}("lawngreen"), BLRgba32(124, 252, 0)},
+        {cHash{}("pink"), BLRgba32(255, 192, 203)},
+        {cHash{}("aqua"), BLRgba32(0, 255, 255)},
+        {cHash{}("cyan"), BLRgba32(0, 255, 255)},
+        {cHash{}("lightpink"), BLRgba32(255, 182, 193)},
+        {cHash{}("thistle"), BLRgba32(216, 191, 216)},
+        {cHash{}("lightskyblue"), BLRgba32(135, 206, 250)},
+        {cHash{}("lightsteelblue"), BLRgba32(176, 196, 222)},
+        {cHash{}("skyblue"), BLRgba32(135, 206, 235)},
+        {cHash{}("silver"), BLRgba32(192, 192, 192)},
+        {cHash{}("springgreen"), BLRgba32(0, 255, 127)},
+        {cHash{}("mediumspringgreen"), BLRgba32(0, 250, 154)},
+        {cHash{}("turquoise"), BLRgba32(64, 224, 208)},
+        {cHash{}("burlywood"), BLRgba32(222, 184, 135)},
+        {cHash{}("tan"), BLRgba32(210, 180, 140)},
+        {cHash{}("yellowgreen"), BLRgba32(154, 205, 50)},
+        {cHash{}("lime"), BLRgba32(0, 255, 0)},
+        {cHash{}("mediumaquamarine"), BLRgba32(102, 205, 170)},
+        {cHash{}("mediumturquoise"), BLRgba32(72, 209, 204)},
+        {cHash{}("darkkhaki"), BLRgba32(189, 183, 107)},
+        {cHash{}("lightsalmon"), BLRgba32(255, 160, 122)},
+        {cHash{}("plum"), BLRgba32(221, 160, 221)},
+        {cHash{}("sandybrown"), BLRgba32(244, 164, 96)},
+        {cHash{}("darkseagreen"), BLRgba32(143, 188, 143)},
+        {cHash{}("orange"), BLRgba32(255, 165, 0)},
+        {cHash{}("darkgray"), BLRgba32(169, 169, 169)},
+        {cHash{}("goldenrod"), BLRgba32(218, 165, 32)},
+        {cHash{}("darksalmon"), BLRgba32(233, 150, 122)},
+        {cHash{}("darkturquoise"), BLRgba32(0, 206, 209)},
+        {cHash{}("limegreen"), BLRgba32(50, 205, 50)},
+        {cHash{}("violet"), BLRgba32(238, 130, 238)},
+        {cHash{}("deepskyblue"), BLRgba32(0, 191, 255)},
+        {cHash{}("darkorange"), BLRgba32(255, 140, 0)},
+        {cHash{}("salmon"), BLRgba32(250, 128, 114)},
+        {cHash{}("rosybrown"), BLRgba32(188, 143, 143)},
+        {cHash{}("lightcoral"), BLRgba32(240, 128, 128)},
+        {cHash{}("coral"), BLRgba32(255, 127, 80)},
+        {cHash{}("mediumseagreen"), BLRgba32(60, 179, 113)},
+        {cHash{}("lightseagreen"), BLRgba32(32, 178, 170)},
+        {cHash{}("cornflowerblue"), BLRgba32(100, 149, 237)},
+        {cHash{}("cadetblue"), BLRgba32(95, 158, 160)},
+        {cHash{}("peru"), BLRgba32(205, 133, 63)},
+        {cHash{}("hotpink"), BLRgba32(255, 105, 180)},
+        {cHash{}("orchid"), BLRgba32(218, 112, 214)},
+        {cHash{}("palevioletred"), BLRgba32(219, 112, 147)},
+        {cHash{}("darkgoldenrod"), BLRgba32(184, 134, 11)},
+        {cHash{}("lightslategray"), BLRgba32(119, 136, 153)},
+        {cHash{}("tomato"), BLRgba32(255, 99, 71)},
+        {cHash{}("gray"), BLRgba32(128, 128, 128)},
+        {cHash{}("dodgerblue"), BLRgba32(30, 144, 255)},
+        {cHash{}("mediumpurple"), BLRgba32(147, 112, 219)},
+        {cHash{}("olivedrab"), BLRgba32(107, 142, 35)},
+        {cHash{}("slategray"), BLRgba32(112, 128, 144)},
+        {cHash{}("chocolate"), BLRgba32(210, 105, 30)},
+        {cHash{}("steelblue"), BLRgba32(70, 130, 180)},
+        {cHash{}("olive"), BLRgba32(128, 128, 0)},
+        {cHash{}("mediumslateblue"), BLRgba32(123, 104, 238)},
+        {cHash{}("indianred"), BLRgba32(205, 92, 92)},
+        {cHash{}("mediumorchid"), BLRgba32(186, 85, 211)},
+        {cHash{}("seagreen"), BLRgba32(46, 139, 87)},
+        {cHash{}("darkcyan"), BLRgba32(0, 139, 139)},
+        {cHash{}("forestgreen"), BLRgba32(34, 139, 34)},
+        {cHash{}("royalblue"), BLRgba32(65, 105, 225)},
+        {cHash{}("dimgray"), BLRgba32(105, 105, 105)},
+        {cHash{}("orangered"), BLRgba32(255, 69, 0)},
+        {cHash{}("slateblue"), BLRgba32(106, 90, 205)},
+        {cHash{}("teal"), BLRgba32(0, 128, 128)},
+        {cHash{}("darkolivegreen"), BLRgba32(85, 107, 47)},
+        {cHash{}("sienna"), BLRgba32(160, 82, 45)},
+        {cHash{}("green"), BLRgba32(0, 128, 0)},
+        {cHash{}("darkorchid"), BLRgba32(153, 50, 204)},
+        {cHash{}("saddlebrown"), BLRgba32(139, 69, 19)},
+        {cHash{}("deeppink"), BLRgba32(255, 20, 147)},
+        {cHash{}("blueviolet"), BLRgba32(138, 43, 226)},
+        {cHash{}("magenta"), BLRgba32(255, 0, 255)},
+        {cHash{}("fuchsia"), BLRgba32(255, 0, 255)},
+        {cHash{}("darkslategray"), BLRgba32(47, 79, 79)},
+        {cHash{}("darkgreen"), BLRgba32(0, 100, 0)},
+        {cHash{}("darkslateblue"), BLRgba32(72, 61, 139)},
+        {cHash{}("brown"), BLRgba32(165, 42, 42)},
+        {cHash{}("mediumvioletred"), BLRgba32(199, 21, 133)},
+        {cHash{}("crimson"), BLRgba32(220, 20, 60)},
+        {cHash{}("firebrick"), BLRgba32(178, 34, 34)},
+        {cHash{}("red"), BLRgba32(255, 0, 0)},
+        {cHash{}("darkviolet"), BLRgba32(148, 0, 211)},
+        {cHash{}("darkmagenta"), BLRgba32(139, 0, 139)},
+        {cHash{}("purple"), BLRgba32(128, 0, 128)},
+        {cHash{}("rebeccapurple"),BLRgba32(102,51,153)},
+        {cHash{}("midnightblue"), BLRgba32(25, 25, 112)},
+        {cHash{}("darkred"), BLRgba32(139, 0, 0)},
+        {cHash{}("maroon"), BLRgba32(128, 0, 0)},
+        {cHash{}("indigo"), BLRgba32(75, 0, 130)},
+        {cHash{}("blue"), BLRgba32(0, 0, 255)},
+        {cHash{}("mediumblue"), BLRgba32(0, 0, 205)},
+        {cHash{}("darkblue"), BLRgba32(0, 0, 139)},
+        {cHash{}("navy"), BLRgba32(0, 0, 128)},
+        {cHash{}("black"), BLRgba32(0, 0, 0)},
+        {cHash{}("transparent"), BLRgba32(0, 0, 0) },
+    };
+    
+
+    
+    static BLRgba32 getSVGColorByName(const ByteSpan &colorName) noexcept
+    {
+        BLRgba32 aColor(128, 128, 128);
+
+        aColor = svgcolors[cHash{}(colorName)];
+        
+        return aColor;
+    }
 }

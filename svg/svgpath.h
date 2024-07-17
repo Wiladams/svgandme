@@ -26,6 +26,34 @@
 // uncomment the following to print diagnostics
 //#define PATH_COMMAND_DEBUG 1
 
+/*
+// Old reference
+// A dispatch std::map that matches the command character to the
+		// appropriate parse function
+		static std::map<SegmentCommand, std::function<bool(ByteSpan&, BLPath&, int&)>> parseMap = {
+			{SegmentCommand::MoveTo, parseMoveTo},				// M
+			{SegmentCommand::MoveBy, parseMoveBy},				// m
+			{SegmentCommand::LineTo, parseLineTo},				// L
+			{SegmentCommand::LineBy, parseLineBy},				// l
+			{SegmentCommand::HLineTo, parseHLineTo},			// H
+			{SegmentCommand::HLineBy, parseHLineBy},			// h
+			{SegmentCommand::VLineTo, parseVLineTo},			// V
+			{SegmentCommand::VLineBy, parseVLineBy},			// v
+			{SegmentCommand::CubicTo, parseCubicTo},			// C
+			{SegmentCommand::CubicBy, parseCubicBy},			// c
+			{SegmentCommand::SCubicTo, parseSmoothCubicTo},		// S
+			{SegmentCommand::SCubicBy, parseSmoothCubicBy},		// s
+			{SegmentCommand::QuadTo, parseQuadTo},				// Q
+			{SegmentCommand::QuadBy, parseQuadBy},				// q
+			{SegmentCommand::SQuadTo, parseSmoothQuadTo},		// T
+			{SegmentCommand::SQuadBy, parseSmoothQuadBy},		// t
+			{SegmentCommand::ArcTo, parseArcTo},				// A
+			{SegmentCommand::ArcBy, parseArcBy},				// a
+			{SegmentCommand::CloseTo, parseClose},				// Z
+			{SegmentCommand::CloseBy, parseClose}				// z
+		};
+*/
+
 
 namespace waavs {
 
@@ -104,7 +132,7 @@ namespace waavs
 			else {
 				res = apath.lineTo(x, y);
 #ifdef PATH_COMMAND_DEBUG
-				//printf("// moveTo, iteration: %d\n", iteration);
+				printf("// moveTo, iteration: %d\n", iteration);
 				printf("apath.lineTo(%f, %f);\n", x, y);
 #endif
 			}
@@ -132,13 +160,14 @@ namespace waavs
 				res = apath.moveTo(lastPos.x + x, lastPos.y + y);
 
 #ifdef PATH_COMMAND_DEBUG
+				printf("// moveBy(%f, %f), iteration: %d\n", x, y, iteration);
 				printf("apath.moveTo(%f, %f);\n", lastPos.x + x, lastPos.y + y);
 #endif
 			}
 			else {
 				res = apath.lineTo(lastPos.x + x, lastPos.y + y);
 #ifdef PATH_COMMAND_DEBUG
-				//printf("// moveBy, iteration: %d\n", iteration);
+				printf("// moveBy(%f, %f), iteration: %d\n", x, y, iteration);
 				printf("apath.lineTo(%f, %f);\n", lastPos.x + x, lastPos.y + y);
 #endif
 			}
@@ -187,6 +216,7 @@ namespace waavs
 			res = apath.lineTo(lastPos.x + x, lastPos.y + y);
 
 #ifdef PATH_COMMAND_DEBUG
+			printf("// lineBy: (%f, %f), %d\n", x, y, iteration);
 			printf("apath.lineTo([%d] %f, %f);\n", res, lastPos.x + x, lastPos.y + y);
 #endif
 			
@@ -597,13 +627,24 @@ namespace waavs
 			
 			if (iteration > 0)
 			{
-				printf("PARSECLOSE(), found close command after first command, ignoring\n");
+				// consume the character and return
+				// This deals with the odd case where there is a number
+				// typically '0' after a 'z' close
+
+#ifdef PATH_COMMAND_DEBUG
+				printf("PARSECLOSE(), unknown character after first command (%c), ignoring\n", *s);
+#endif
+				s++;
+				iteration++;
+
+
 				return false;
 			}
 			
 			res = apath.close();
 			
 #ifdef PATH_COMMAND_DEBUG
+			printf("// z\n");
 			printf("apath.close();\n");
 #endif
 			// No parameters expected to follow
@@ -615,32 +656,7 @@ namespace waavs
 			return true;
 		}
 
-		/*
-		// A dispatch std::map that matches the command character to the
-		// appropriate parse function
-		static std::map<SegmentCommand, std::function<bool(ByteSpan&, BLPath&, int&)>> parseMap = {
-			{SegmentCommand::MoveTo, parseMoveTo},				// M
-			{SegmentCommand::MoveBy, parseMoveBy},				// m
-			{SegmentCommand::LineTo, parseLineTo},				// L
-			{SegmentCommand::LineBy, parseLineBy},				// l
-			{SegmentCommand::HLineTo, parseHLineTo},			// H
-			{SegmentCommand::HLineBy, parseHLineBy},			// h
-			{SegmentCommand::VLineTo, parseVLineTo},			// V
-			{SegmentCommand::VLineBy, parseVLineBy},			// v
-			{SegmentCommand::CubicTo, parseCubicTo},			// C
-			{SegmentCommand::CubicBy, parseCubicBy},			// c
-			{SegmentCommand::SCubicTo, parseSmoothCubicTo},		// S
-			{SegmentCommand::SCubicBy, parseSmoothCubicBy},		// s
-			{SegmentCommand::QuadTo, parseQuadTo},				// Q
-			{SegmentCommand::QuadBy, parseQuadBy},				// q
-			{SegmentCommand::SQuadTo, parseSmoothQuadTo},		// T
-			{SegmentCommand::SQuadBy, parseSmoothQuadBy},		// t
-			{SegmentCommand::ArcTo, parseArcTo},				// A
-			{SegmentCommand::ArcBy, parseArcBy},				// a
-			{SegmentCommand::CloseTo, parseClose},				// Z
-			{SegmentCommand::CloseBy, parseClose}				// z
-		};
-		*/
+
 
 
 		static bool parsePath(const waavs::ByteSpan& inSpan, BLPath& apath) noexcept
@@ -650,9 +666,12 @@ namespace waavs
 			SegmentCommand currentCommand = SegmentCommand::INVALID;
 			int iteration = 0;
 			std::function<bool(ByteSpan&, BLPath&, int&)> pFunc{ nullptr };
+			bool success = false;
 			
 			while (s)
 			{
+
+				
 				// always ignore leading whitespace
 				s = chunk_ltrim(s, chrWspChars);
 
@@ -682,7 +701,9 @@ namespace waavs
 			        // to be more robust, we can check whether it's the beginning
 					// of a number or not.  If not, then return false
 					//if (!leadingChars[*s])
-					//	return false;
+					// {
+					//	 return false;
+					// }
 				}
 				
 #ifdef PATH_COMMAND_DEBUG
@@ -718,35 +739,18 @@ namespace waavs
 				}
 				
 				if (pFunc != nullptr)
-					pFunc(s, apath, iteration);
+					success = pFunc(s, apath, iteration);
 				
-				/*
-				// search the parseMap to ensure it has the command
-				// and then call the appropriate parse function
-				auto it = parseMap.find(currentCommand);
-				if (it != parseMap.end())
+				if (!success)
 				{
-					// call the parse function
-					// if it fails, return error
-					if (!it->second(s, apath, iteration))
-					{
-						printf("Path Command Failed: %c\n", currentCommand);
-						
-						return false;
-					}
-				}
-				else
-				{
-					// we have an invalid command
-					// so return failure
-					printf("parsePath: INVALID COMMAND: %c\n", *s);
-
+					printf("parsePath: failed to parse command: %c\n", *s);
 					return false;
 				}
-				*/
 			}
 
-			return true;
+			printf("parsePath(), FINISHED\n");
+			
+			return success;
 		}
 	}
 }

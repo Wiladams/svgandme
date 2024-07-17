@@ -515,7 +515,7 @@ namespace waavs {
 				h = groot->canvasHeight();
 			}
 
-			// If height or width < 0, they are invalid
+			// If height or width <= 0, they are invalid
 			//if (fWidth.value() < 0) { fWidth.fValue = 0; fWidth.fIsSet = false; }
 			//if (fHeight.value() < 0) { fHeight.fValue = 0; fHeight.fIsSet = false; }
 
@@ -525,10 +525,10 @@ namespace waavs {
 
 			
 			
-			geom.x = fX.calculatePixels(w);
-			geom.y = fY.calculatePixels(h);
-			geom.w = fWidth.calculatePixels(w);
-			geom.h = fHeight.calculatePixels(h);
+			geom.x = fX.calculatePixels(w, 0, dpi);
+			geom.y = fY.calculatePixels(h, 0, dpi);
+			geom.w = fWidth.calculatePixels(w, 0, dpi);
+			geom.h = fHeight.calculatePixels(h, 0, dpi);
 
 			if (fRx.isSet() || fRy.isSet())
 			{
@@ -555,9 +555,9 @@ namespace waavs {
 				fPath.addRect(geom.x, geom.y, geom.w, geom.h);
 			}
 
-			// BUGBUG - turn off fill-rule attribute if it exists
+			// BUGBUG - fill-rule 
+			// turn off fill-rule attribute if it exists
 			// Because it makes something not display?
-			// what was it that was subject to this?
 			// poker-13-rey-de-diamantes-vectorizado.svg
 			// if you comment this out, then the red diamonds will not
 			// be filled in.
@@ -1060,18 +1060,14 @@ namespace waavs {
 		
 		void drawSelf(IRenderSVG* ctx) override
 		{
+			ctx->push();
+			
 			// Draw the wrapped graphic
 			if (fWrappedNode != nullptr)
 				fWrappedNode->draw(ctx);
-		}
-
-
-
 		
-		//void loadSelfFromXmlElement(const XmlElement& elem) override
-		//{
-		//	loadVisualProperties(*this);
-		//}
+			ctx->pop();
+		}
 		
 	};
 
@@ -2956,17 +2952,6 @@ namespace waavs {
 
 			// Start with default state
 			//ctx->blendMode(BL_COMP_OP_SRC_OVER);
-
-			//ctx->setStrokeMiterLimit(4.0);
-			//ctx->strokeJoin(BL_STROKE_JOIN_MITER_CLIP);
-			//ctx->setFillRule(BL_FILL_RULE_NON_ZERO);
-			
-			//ctx->fill(BLRgba32(0, 0, 0));
-			//ctx->noStroke();
-			//ctx->strokeWidth(1.0);
-			//ctx->textAlign(ALIGNMENT::LEFT, ALIGNMENT::BASELINE);
-			//ctx->textFamily("Arial");
-			//ctx->textSize(16);
 			
 			// Apply attributes that have been gathered
 			// in the case of the root node, it's mostly the viewport

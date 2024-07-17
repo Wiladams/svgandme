@@ -363,4 +363,33 @@ static INLINE double fixedToFloat(const uint64_t vint, const int scale) noexcept
     return (whole + (frac / ((uint64_t)1 << scale)));
 }
 
-}; // namespace binops
+} // namespace
+
+namespace waavs {
+#define bh_hashrot(x, k) (((x) << (k)) | ((x) >> (32 - (k))))
+#define bh_getu32(p) ((uint32_t)(p)[0] | ((uint32_t)(p)[1] << 8) | ((uint32_t)(p)[2] << 16) | ((uint32_t)(p)[3] << 24))
+
+    
+    static INLINE uint32_t bh_hashkey(const char* str, size_t len) noexcept
+    {
+        uint32_t a, b, h = (uint32_t)len;
+        if (len >= 4) {
+            a = bh_getu32(str);
+            h ^= bh_getu32(str + len - 4);
+            b = bh_getu32(str + (len >> 1) - 2);
+            h ^= b; h -= bh_hashrot(b, 14);
+            b += bh_getu32(str + (len >> 2) - 1);
+        }
+        else {
+            a = *(const uint8_t*)str;
+            b = *(const uint8_t*)(str + (len - 1));
+            h ^= b; h -= bh_hashrot(b, 14);
+        }
+        a ^= h; a -= bh_hashrot(h, 11);
+        b ^= a; b -= bh_hashrot(a, 25);
+        h ^= b; h -= bh_hashrot(b, 16);
+        
+        return h;
+    }
+    
+}

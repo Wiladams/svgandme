@@ -904,10 +904,12 @@ namespace waavs {
             // then create a new node of that type and add it
             // to the list of nodes.
 			auto aname = elem.name();
-            if (gSVGGraphicsElementCreation.find(aname) != gSVGGraphicsElementCreation.end())
+			auto it = gSVGGraphicsElementCreation.find(aname);
+            if (it != gSVGGraphicsElementCreation.end())
             {
-                auto& func = gSVGGraphicsElementCreation[aname];
-                auto node = func(root(), iter);
+                //auto& func = gSVGGraphicsElementCreation[aname];
+                //auto node = func(root(), iter);
+                auto node = it->second(root(), iter);
                 addNode(node);
             }
             else {

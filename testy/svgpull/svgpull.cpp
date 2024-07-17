@@ -1,5 +1,7 @@
 
 
+#include <iostream>
+
 #include "mappedfile.h"
 #include "xmlutil.h"
 
@@ -13,19 +15,27 @@ static void printRect(const BLRect& aRect)
 	printf("x=%f, y=%f, w=%f, h=%f\n", aRect.x, aRect.y, aRect.w, aRect.h);
 }
 
-static void testMergeRect()
+using cHash = std::hash<ByteSpan>;
+
+static void testSomething()
 {
-	BLRect rectA(-100, -100, 200, 200);
-    BLRect rectB(0, 0, 20, 20);
+	ByteSpan a("blue");
+    ByteSpan b("blueviolet");
 
-    rectMerge(rectA, rectB);
+    // Get std::hash value from each of them and
+    // print them out.
+	std::cout << "hash(a) = " << cHash{}(a) << std::endl;
+	std::cout << "hash(b) = " << cHash{}(b) << std::endl;
+    
 
-	printRect(rectA);
+
+    
+
 }
 
 int main(int argc, char** argv)
 {
-    testMergeRect();
+    testSomething();
     
     if (argc < 2)
     {

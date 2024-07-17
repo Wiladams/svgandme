@@ -115,13 +115,22 @@ namespace waavs {
         
         std::shared_ptr<SVGViewable> getElementById(const std::string& name) override
         {
-			if (fDefinitions.find(name) != fDefinitions.end())
-                return fDefinitions[name];
+            // BUGBUG - this is the older more wasteful way
+            //	if (fDefinitions.find(name) != fDefinitions.end())
+            //      return fDefinitions[name];
 
-		    printf("SVGDocument::getElementById, FAIL: %s\n", name.c_str());
             
-            return nullptr;
-        }
+            auto it = fDefinitions.find(name);
+			if (it != fDefinitions.end())
+				return it->second;
+
+            printf("SVGDocument::getElementById, FAIL: %s\n", name.c_str());
+            
+			return nullptr;
+		}
+        
+
+
 
         // Load a URL Reference
         std::shared_ptr<SVGViewable> findNodeByHref(const ByteSpan& inChunk) override
@@ -167,9 +176,14 @@ namespace waavs {
         
         ByteSpan findEntity(const std::string& name) override
         {
-			if (fEntities.find(name) != fEntities.end())
-				return fEntities[name];
-
+			//if (fEntities.find(name) != fEntities.end())
+			//	return fEntities[name];
+			auto it = fEntities.find(name);
+			if (it != fEntities.end())
+				return it->second;
+            
+			printf("SVGDocument::findEntity(), FAIL: %s\n", name.c_str());
+            
 			return ByteSpan{};
         }
         
@@ -194,12 +208,12 @@ namespace waavs {
             if (nullptr == fSVGNode)
                 return;
 
-            //double startTime = seconds();
+            double startTime = seconds();
 
             // Setup default context
             ctx->strokeJoin(BL_STROKE_JOIN_MITER_CLIP);
-            ctx->setFillRule(BL_FILL_RULE_NON_ZERO);
-
+            //ctx->setFillRule(BL_FILL_RULE_NON_ZERO);
+            ctx->setFillRule(BL_FILL_RULE_EVEN_ODD);
             ctx->fill(BLRgba32(0, 0, 0));
             ctx->noStroke();
             ctx->strokeWidth(1.0);
@@ -209,7 +223,7 @@ namespace waavs {
 
             
             fSVGNode->draw(ctx);
-			//double endTime = seconds();
+			double endTime = seconds();
 
 			//printf("Drawing Duration: %f\n", endTime - startTime);
         }

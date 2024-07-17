@@ -303,18 +303,22 @@ namespace waavs {
 }
 
 
+
 // Implementation of hash function for ByteSpan
 // so it can be used in 'map' collections
 namespace std {
 	template<>
 	struct hash<waavs::ByteSpan> {
 		size_t operator()(const waavs::ByteSpan& span) const {
-			uint32_t hash = 0;
+			size_t ahash = waavs::bh_hashkey((const char*)span.data(), span.size());
+			return ahash;
 			
-			for (const unsigned char* p = span.fStart; p != span.fEnd; ++p) {
-				hash = hash * 31 + *p;
-			}
-			return hash;
+			//size_t hash = 0;
+			
+			//for (const unsigned char* p = span.fStart; p != span.fEnd; ++p) {
+			//	hash = hash * 31 + *p;
+			//}
+			//return hash;
 		}
 	};
 }

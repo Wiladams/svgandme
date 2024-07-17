@@ -508,8 +508,6 @@ namespace waavs {
                     auto value = (*iter).second;
 					styleAttributes.addAttribute(name, value);
                 }
-
-                //iter++;
             }
         }
 
