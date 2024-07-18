@@ -748,7 +748,7 @@ namespace waavs
 				}
 			}
 
-			printf("parsePath(), FINISHED\n");
+			//printf("parsePath(), FINISHED\n");
 			
 			return success;
 		}

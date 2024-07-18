@@ -36,6 +36,9 @@ namespace waavs {
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
+            if (!inChunk)
+                return false;
+            
             BLExtendMode outMode{ BL_EXTEND_MODE_PAD };
             if (parseExtendMode(inChunk, outMode))
 			{
@@ -91,6 +94,10 @@ namespace waavs {
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
             ByteSpan s = inChunk;
+
+			if (!s)
+				return false;
+            
             fTransform.reset();     // set to identity initially
 
 
@@ -190,6 +197,9 @@ namespace waavs {
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
+            if (!inChunk)
+                return false;
+            
             SVGDimension dim;
 			dim.loadFromChunk(inChunk);
 			fValue = dim.calculatePixels(1.0);
@@ -228,7 +238,11 @@ namespace waavs {
     struct SVGStrokeOpacity : public SVGOpacity
     {
         static void registerFactory() {
-            registerSVGAttribute("stroke-opacity", [](const ByteSpan& value) {auto node = std::make_shared<SVGStrokeOpacity>(nullptr); node->loadFromChunk(value);  return node; });
+            registerSVGAttribute("stroke-opacity", [](const ByteSpan& value) {
+                auto node = std::make_shared<SVGStrokeOpacity>(nullptr); 
+                node->loadFromChunk(value);  
+                return node; 
+                });
 
         }
 
@@ -250,7 +264,11 @@ namespace waavs {
     struct SVGPaintOrderAttribute : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute("paint-order", [](const ByteSpan& value) {auto node = std::make_shared<SVGPaintOrderAttribute>(nullptr); node->loadFromChunk(value);  return node; });
+            registerSVGAttribute("paint-order", [](const ByteSpan& value) {
+                auto node = std::make_shared<SVGPaintOrderAttribute>(nullptr); 
+                node->loadFromChunk(value);  
+                return node; 
+                });
         }
 
         ByteSpan fValue{};
@@ -263,6 +281,9 @@ namespace waavs {
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
+            if (!inChunk)
+                return false;
+            
             fValue = inChunk;
             
             set(true);
@@ -342,16 +363,19 @@ namespace waavs {
 
         void bindToGroot(IAmGroot* groot) override
         {
-            needsBinding(false);
-            
             if (nullptr == groot)
                 return;
             
 			fValue = dimValue.calculatePixels(16, 0, groot->dpi());
+            
+            needsBinding(false);
         }
         
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
+			if (!inChunk)
+				return false;
+            
             dimValue.loadFromChunk(inChunk);
 
             if (!dimValue.isSet())
@@ -376,7 +400,11 @@ namespace waavs {
     struct SVGFontFamily : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute("font-family", [](const ByteSpan& value) {auto node = std::make_shared<SVGFontFamily>(nullptr); node->loadFromChunk(value);  return node; });
+            registerSVGAttribute("font-family", [](const ByteSpan& value) {
+                auto node = std::make_shared<SVGFontFamily>(nullptr); 
+                node->loadFromChunk(value);  
+                return node; 
+                });
         }
         
 
@@ -397,6 +425,9 @@ namespace waavs {
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
+            if (!inChunk)
+				return false;
+            
             fValue = toString(chunk_trim(inChunk, xmlwsp));
             set(true);
             
@@ -646,11 +677,15 @@ namespace waavs {
     struct SVGTextAnchor : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute("text-anchor", [](const ByteSpan& value) {auto node = std::make_shared<SVGTextAnchor>(nullptr); node->loadFromChunk(value);  return node; });
+            registerSVGAttribute("text-anchor", [](const ByteSpan& value) {
+                auto node = std::make_shared<SVGTextAnchor>(nullptr); 
+                node->loadFromChunk(value);  
+                return node; 
+                });
         }
 
         
-        ALIGNMENT fValue{ ALIGNMENT::LEFT };
+        ALIGNMENT fValue{ ALIGNMENT::CENTER };
 
         SVGTextAnchor(IAmGroot* iMap) : SVGVisualProperty(iMap) {}
         SVGTextAnchor(const SVGTextAnchor& other) = delete;
@@ -660,6 +695,60 @@ namespace waavs {
 
         void drawSelf(IRenderSVG* ctx) override
         {
+
+            ctx->textAlign(fValue, ALIGNMENT::BASELINE);
+        }
+
+        bool loadSelfFromChunk(const ByteSpan& inChunk) override
+        {
+            if (inChunk == "start")
+                fValue = ALIGNMENT::LEFT;
+            else if (inChunk == "middle")
+                fValue = ALIGNMENT::CENTER;
+            else if (inChunk == "end")
+                fValue = ALIGNMENT::RIGHT;
+
+            set(true);
+
+            return true;
+        }
+
+    };
+}
+
+namespace waavs {
+    //====================================
+    // Text Anchoring
+    //====================================
+    //enum class TEXTANCHOR : unsigned
+    //{
+    //    MIDDLE = 0x01,
+    //    START = 0x02,
+    //    END = 0x04,
+    //};
+
+    struct SVGTextAlign : public SVGVisualProperty
+    {
+        static void registerFactory() {
+            registerSVGAttribute("text-align", [](const ByteSpan& value) {
+                auto node = std::make_shared<SVGTextAlign>(nullptr); 
+                node->loadFromChunk(value);  
+                return node; 
+                });
+        }
+
+
+        ALIGNMENT fValue{ ALIGNMENT::CENTER };
+
+        SVGTextAlign(IAmGroot* iMap) : SVGVisualProperty(iMap) {}
+        SVGTextAlign(const SVGTextAnchor& other) = delete;
+
+
+        SVGTextAlign& operator=(const SVGTextAlign& rhs) = delete;
+
+        void drawSelf(IRenderSVG* ctx) override
+        {
+
             ctx->textAlign(fValue, ALIGNMENT::BASELINE);
         }
 
@@ -845,7 +934,11 @@ namespace waavs {
 	struct SVGFillPaint : public SVGPaint
 	{
         static void registerFactory() {
-            registerSVGAttribute("fill", [](const ByteSpan& value) {auto node = std::make_shared<SVGFillPaint>(nullptr); node->loadFromChunk(value);  return node; });
+            registerSVGAttribute("fill", [](const ByteSpan& value) {
+                auto node = std::make_shared<SVGFillPaint>(nullptr); 
+                node->loadFromChunk(value);  
+                return node; 
+                });
         }
         
         
@@ -888,7 +981,11 @@ namespace waavs {
     struct SVGStrokePaint : public SVGPaint
     {
         static void registerFactory() {
-            registerSVGAttribute("stroke", [](const ByteSpan& value) {auto node = std::make_shared<SVGStrokePaint>(nullptr); node->loadFromChunk(value);  return node; });
+            registerSVGAttribute("stroke", [](const ByteSpan& value) {
+                auto node = std::make_shared<SVGStrokePaint>(nullptr); 
+                node->loadFromChunk(value);  
+                return node; 
+                });
         }
         
 
@@ -900,7 +997,6 @@ namespace waavs {
                 ctx->noStroke();
             }
             else {
-                // BUGBUG - check the type of the variant
                 ctx->stroke(getVariant());
             }
 		}
@@ -921,7 +1017,11 @@ namespace waavs {
     struct SVGFillRule : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute("fill-rule", [](const ByteSpan& value) {auto node = std::make_shared<SVGFillRule>(nullptr); node->loadFromChunk(value);  return node; });
+            registerSVGAttribute("fill-rule", [](const ByteSpan& value) {
+                auto node = std::make_shared<SVGFillRule>(nullptr); 
+                node->loadFromChunk(value);  
+                return node; 
+                });
         }
 
         
@@ -934,13 +1034,18 @@ namespace waavs {
 
         void drawSelf(IRenderSVG* ctx) override
         {
-            ctx->fillRule(fValue);
+            if (isSet())
+                ctx->fillRule(fValue);
         }
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
             ByteSpan s = chunk_trim(inChunk, xmlwsp);
 
+            if (!s)
+                return false;
+
+            
             set(true);
 
             if (s == "nonzero")
@@ -1203,7 +1308,9 @@ namespace waavs {
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
             ByteSpan s = inChunk;
-
+            if (!s)
+                return false;
+            
             if (!parseNextNumber(s, fRect.x))
                 return false;
             if (!parseNextNumber(s, fRect.y))
@@ -1265,6 +1372,9 @@ namespace waavs {
 			ByteSpan s = inChunk;
 			s = chunk_skip_wsp(s);
 
+            if (!s)
+                return false;
+            
 			if (s == "auto")
 			{
 				fOrientation = MarkerOrientation::MARKER_ORIENT_AUTO;

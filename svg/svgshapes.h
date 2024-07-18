@@ -572,17 +572,17 @@ namespace waavs {
 		{
 			SVGGeometryElement::loadVisualProperties(attrs);
 
-			if (attrs.getAttribute("x"))
+			//if (attrs.getAttribute("x"))
 				fX.loadFromChunk(attrs.getAttribute("x"));
-			if (attrs.getAttribute("y"))
+			//if (attrs.getAttribute("y"))
 				fY.loadFromChunk(attrs.getAttribute("y"));
-			if (attrs.getAttribute("width"))
+			//if (attrs.getAttribute("width"))
 				fWidth.loadFromChunk(attrs.getAttribute("width"));
-			if (attrs.getAttribute("height"))
+			//if (attrs.getAttribute("height"))
 				fHeight.loadFromChunk(attrs.getAttribute("height"));
-			if (attrs.getAttribute("rx"))
+			//if (attrs.getAttribute("rx"))
 				fRx.loadFromChunk(attrs.getAttribute("rx"));
-			if (attrs.getAttribute("ry"))
+			//if (attrs.getAttribute("ry"))
 				fRy.loadFromChunk(attrs.getAttribute("ry"));
 			
 			needsBinding(true);
@@ -645,11 +645,11 @@ namespace waavs {
 		{
 			SVGGeometryElement::loadVisualProperties(attrs);
 		
-			if (attrs.getAttribute("cx"))
+			//if (attrs.getAttribute("cx"))
 				fCx.loadFromChunk(attrs.getAttribute("cx"));
-			if (attrs.getAttribute("cy"))
+			//if (attrs.getAttribute("cy"))
 				fCy.loadFromChunk(attrs.getAttribute("cy"));
-			if (attrs.getAttribute("r"))
+			//if (attrs.getAttribute("r"))
 				fR.loadFromChunk(attrs.getAttribute("r"));
 			
 			needsBinding(true);
@@ -706,13 +706,10 @@ namespace waavs {
 		{
 			SVGGeometryElement::loadVisualProperties(attrs);
 			
-			if (attrs.getAttribute("cx"))
+
 				fCx.loadFromChunk(attrs.getAttribute("cx"));
-			if (attrs.getAttribute("cy"))
 				fCy.loadFromChunk(attrs.getAttribute("cy"));
-			if (attrs.getAttribute("rx"))
 				fRx.loadFromChunk(attrs.getAttribute("rx"));
-			if (attrs.getAttribute("ry"))
 				fRy.loadFromChunk(attrs.getAttribute("ry"));
 			
 			needsBinding(true);
@@ -769,12 +766,7 @@ namespace waavs {
 		{
 			SVGGeometryElement::loadVisualProperties(attrs);
 
-			if (attrs.getAttribute("points"))
-			{
-				ByteSpan points = attrs.getAttribute("points");
-				loadPoints(points);
-			}
-
+			loadPoints(attrs.getAttribute("points"));
 		}
 
 	};
@@ -940,14 +932,18 @@ namespace waavs {
 		double width{ 0 };
 		double height{ 0 };
 		
-		SVGDimension fX{};
-		SVGDimension fY{};
-		SVGDimension fWidth{};
-		SVGDimension fHeight{};
+		SVGDimension fDimX{};
+		SVGDimension fDimY{};
+		SVGDimension fDimWidth{};
+		SVGDimension fDimHeight{};
 
-
+		
+		SVGUseElement(const SVGUseElement& other) = delete;
+		
 		SVGUseElement(IAmGroot* aroot) : SVGGraphicsElement(aroot) {}
 
+		
+		
 		const BLVar& getVariant() override
 		{
 			if (fWrappedNode)
@@ -982,14 +978,14 @@ namespace waavs {
 			}
 
 
-			if (fX.isSet())
-				x = fX.calculatePixels(w,0,dpi);
-			if (fY.isSet())
-				y = fY.calculatePixels(h, 0, dpi);
-			if (fWidth.isSet())
-				width = fWidth.calculatePixels(w, 0, dpi);
-			if (fHeight.isSet())
-				height = fHeight.calculatePixels(h, 0, dpi);
+			if (fDimX.isSet())
+				x = fDimX.calculatePixels(w,0,dpi);
+			if (fDimY.isSet())
+				y = fDimY.calculatePixels(h, 0, dpi);
+			if (fDimWidth.isSet())
+				width = fDimWidth.calculatePixels(w, 0, dpi);
+			if (fDimHeight.isSet())
+				height = fDimHeight.calculatePixels(h, 0, dpi);
 			
 			
 			// Use the root to lookup the wrapped node
@@ -1020,7 +1016,7 @@ namespace waavs {
 			// wrapped graphic might want to do something different
 			// really it applies to symbols, and they're do their 
 			// own scaling.
-			if (fWidth.isSet() && fHeight.isSet())
+			if (fDimWidth.isSet() && fDimHeight.isSet())
 			{
 				ctx->localSize(width, height);
 			}
@@ -1045,15 +1041,12 @@ namespace waavs {
 				href++;
 				fWrappedID = toString(href);
 			}
-			
-			if (attrs.getAttribute("x"))
-				fX.loadFromChunk(attrs.getAttribute("x"));
-			if (attrs.getAttribute("y"))
-				fY.loadFromChunk(attrs.getAttribute("y"));
-			if (attrs.getAttribute("width"))
-				fWidth.loadFromChunk(attrs.getAttribute("width"));
-			if (attrs.getAttribute("height"))
-				fHeight.loadFromChunk(attrs.getAttribute("height"));
+
+
+			fDimX.loadFromChunk(attrs.getAttribute("x"));
+			fDimY.loadFromChunk(attrs.getAttribute("y"));
+			fDimWidth.loadFromChunk(attrs.getAttribute("width"));
+			fDimHeight.loadFromChunk(attrs.getAttribute("height"));
 
 			needsBinding(true);
 		}
@@ -1198,13 +1191,13 @@ namespace waavs {
 		{
 			SVGGraphicsElement::loadVisualProperties(attrs);
 
-			if (attrs.getAttribute("x"))
+			//if (attrs.getAttribute("x"))
 				fDimX.loadFromChunk(attrs.getAttribute("x"));
-			if (attrs.getAttribute("y"))
+			//if (attrs.getAttribute("y"))
 				fDimY.loadFromChunk(attrs.getAttribute("y"));
-			if (attrs.getAttribute("width"))
+			//if (attrs.getAttribute("width"))
 				fDimWidth.loadFromChunk(attrs.getAttribute("width"));
-			if (attrs.getAttribute("height"))
+			//if (attrs.getAttribute("height"))
 				fDimHeight.loadFromChunk(attrs.getAttribute("height"));
 
 			//printf("SVGImageNode: %3.0f %3.0f\n", fWidth, fHeight);
@@ -1527,20 +1520,6 @@ namespace waavs {
 							fGradient.setTransform(fGradientTransform);
 						}
 						
-						/*
-						switch (fGradient.type())
-						{
-						case BL_GRADIENT_TYPE_LINEAR:
-							fGradient.setValues(tmpGradient.linear());
-							break;
-						case BL_GRADIENT_TYPE_RADIAL:
-							fGradient.setValues(tmpGradient.radial());
-							break;
-						case BL_GRADIENT_TYPE_CONICAL:
-							fGradient.setValues(tmpGradient.conical());
-							break;
-						}
-						*/
 					}
 				}
 			}
@@ -1574,17 +1553,13 @@ namespace waavs {
 
 			// Whether we've loaded a template or not
 			// load the common attributes for gradients
-			if (attrs.getAttribute("spreadMethod"))
+			BLExtendMode extendMode{ BL_EXTEND_MODE_PAD };
+			if (parseSpreadMethod(attrs.getAttribute("spreadMethod"), extendMode))
 			{
-				auto spread = attrs.getAttribute("spreadMethod");
-				if (spread == "pad")
-					fGradient.setExtendMode(BL_EXTEND_MODE_PAD);
-				else if (spread == "reflect")
-					fGradient.setExtendMode(BL_EXTEND_MODE_REFLECT);
-				else if (spread == "repeat")
-					fGradient.setExtendMode(BL_EXTEND_MODE_REPEAT);
+				fGradient.setExtendMode(extendMode);
 			}
-
+			
+			
 			// read the gradientUnits
 			if (attrs.getAttribute("gradientUnits"))
 			{
@@ -1725,13 +1700,13 @@ namespace waavs {
 			// common goodies.
 			SVGGradient::loadVisualProperties(attrs);
 
-			if (attrs.getAttribute("x1"))
+			//if (attrs.getAttribute("x1"))
 				fX1.loadFromChunk(attrs.getAttribute("x1"));
-			if (attrs.getAttribute("y1"))
+			//if (attrs.getAttribute("y1"))
 				fY1.loadFromChunk(attrs.getAttribute("y1"));
-			if (attrs.getAttribute("x2"))
+			//if (attrs.getAttribute("x2"))
 				fX2.loadFromChunk(attrs.getAttribute("x2"));
-			if (attrs.getAttribute("y2"))
+			//if (attrs.getAttribute("y2"))
 				fY2.loadFromChunk(attrs.getAttribute("y2"));
 
 			needsBinding(true);
@@ -1821,15 +1796,15 @@ namespace waavs {
 		{
 			SVGGradient::loadVisualProperties(attrs);
 
-			if (attrs.getAttribute("cx"))
+			//if (attrs.getAttribute("cx"))
 				fCx.loadFromChunk(attrs.getAttribute("cx"));
-			if (attrs.getAttribute("cy"))
+			//if (attrs.getAttribute("cy"))
 				fCy.loadFromChunk(attrs.getAttribute("cy"));
-			if (attrs.getAttribute("r"))
+			//if (attrs.getAttribute("r"))
 				fR.loadFromChunk(attrs.getAttribute("r"));
-			if (attrs.getAttribute("fx"))
+			//if (attrs.getAttribute("fx"))
 				fFx.loadFromChunk(attrs.getAttribute("fx"));
-			if (attrs.getAttribute("fy"))
+			//if (attrs.getAttribute("fy"))
 				fFy.loadFromChunk(attrs.getAttribute("fy"));
 
 			needsBinding(true);
@@ -1963,8 +1938,8 @@ namespace waavs {
 		SVGViewbox fViewbox{};
 		SVGDimension fRefX{};
 		SVGDimension fRefY{};
-		SVGDimension fX{};
-		SVGDimension fY{};
+		SVGDimension fDimX{};
+		SVGDimension fDimY{};
 		SVGDimension fDimWidth{};
 		SVGDimension fDimHeight{};
 
@@ -2024,37 +1999,14 @@ namespace waavs {
 		{
 			SVGGraphicsElement::loadVisualProperties(attrs);
 
-			if (attrs.getAttribute("viewBox"))
-			{
-				fViewbox.loadFromChunk(attrs.getAttribute("viewBox"));
-			}
+			fViewbox.loadFromChunk(attrs.getAttribute("viewBox"));
+			fRefX.loadFromChunk(attrs.getAttribute("refX"));
+			fRefY.loadFromChunk(attrs.getAttribute("refY"));
+			fDimX.loadFromChunk(attrs.getAttribute("x"));
+			fDimY.loadFromChunk(attrs.getAttribute("y"));
+			fDimWidth.loadFromChunk(attrs.getAttribute("width"));
+			fDimHeight.loadFromChunk(attrs.getAttribute("height"));
 
-
-			if (attrs.getAttribute("refX"))
-			{
-				fRefX.loadFromChunk(attrs.getAttribute("refX"));
-			}
-			if (attrs.getAttribute("refY"))
-			{
-				fRefY.loadFromChunk(attrs.getAttribute("refY"));
-			}
-
-			if (attrs.getAttribute("x"))
-			{
-				fX.loadFromChunk(attrs.getAttribute("x"));
-			}
-			if (attrs.getAttribute("y"))
-			{
-				fY.loadFromChunk(attrs.getAttribute("y"));
-			}
-			if (attrs.getAttribute("width"))
-			{
-				fDimWidth.loadFromChunk(attrs.getAttribute("width"));
-			}
-			if (attrs.getAttribute("height"))
-			{
-				fDimHeight.loadFromChunk(attrs.getAttribute("height"));
-			}
 		}
 		
 
@@ -2344,13 +2296,10 @@ namespace waavs {
 			SVGGraphicsElement::loadVisualProperties(attrs);
 
 
-			if (attrs.getAttribute("x"))
+
 				fDimX.loadFromChunk(attrs.getAttribute("x"));
-			if (attrs.getAttribute("y"))
 				fDimY.loadFromChunk(attrs.getAttribute("y"));
-			if (attrs.getAttribute("width"))
 				fDimWidth.loadFromChunk(attrs.getAttribute("width"));
-			if (attrs.getAttribute("height"))
 				fDimHeight.loadFromChunk(attrs.getAttribute("height"));
 
 		}

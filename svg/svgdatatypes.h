@@ -354,38 +354,39 @@ namespace waavs
     
     struct SVGDimension 
     {
-        double fValue;
-        SVGDimensionUnits fUnits;
-        bool fIsSet{ false };
+        double fValue{ 0.0 };
+        SVGDimensionUnits fUnits{ SVGDimensionUnits::SVG_UNITS_USER };
+        bool fHasValue{ false };
 
-        SVGDimension()
-            : fValue(0.0f)
-            , fUnits(SVGDimensionUnits::SVG_UNITS_USER)
-        {
-        }
+        SVGDimension() = default;
+        //    : fValue(0.0f)
+        //    , fUnits(SVGDimensionUnits::SVG_UNITS_USER)
+        //{
+        //}
 
-        SVGDimension(const SVGDimension& other)
-            :fValue(other.fValue)
-            , fUnits(other.fUnits)
-        {}
+        SVGDimension(const SVGDimension& other) = delete;
+        //    :fValue(other.fValue)
+        //    , fUnits(other.fUnits)
+		//	, fIsSet(other.fIsSet)
+        //{}
 
 		SVGDimension(double value, SVGDimensionUnits units, bool setValue = true)
             : fValue(value)
             , fUnits(units)
+			, fHasValue(setValue)
         {
-            fIsSet = setValue;
         }
 
         SVGDimension& operator=(const SVGDimension& rhs)
         {
             fValue = rhs.fValue;
             fUnits = rhs.fUnits;
-
+            fHasValue = rhs.fHasValue;
+            
             return *this;
         }
 
-		bool isSet() const { return fIsSet; }
-        
+		bool isSet() const { return fHasValue; }
         double value() const { return fValue; }
         SVGDimensionUnits units() const { return fUnits; }
         
@@ -414,21 +415,19 @@ namespace waavs
         {
             ByteSpan s = chunk_ltrim(inChunk, xmlwsp);
             
-            if (inChunk.size() == 0)
-            {
-                //printf("SVGDimension::loadSelfFromChunk; ERROR - inChunk is blank\n");
-                fIsSet = false;
+            // don't change the state of 'hasValue'
+            // if we previously parsed something, and now
+            // we're being asked to parse again, just leave
+            // the old state if there's nothing new
+            if (!s)
                 return false;
-            }
+
             
             if (!parseNumber(s, fValue))
                 return false;
             
-            //ByteSpan numChunk;
-            //auto nextPart = scanNumber(s, numChunk);
-            //fValue = toDouble(numChunk);
             fUnits = parseDimensionUnits(s);
-            fIsSet = true;
+            fHasValue = true;
             
             return true;
         }
@@ -481,10 +480,31 @@ namespace waavs {
     }
 }
 
+// Parsing spreadMethod, which is applied to the 
+// ExtendMode of the gradient
+namespace waavs {
+    static bool parseSpreadMethod(const ByteSpan& inChunk, BLExtendMode& outMode) noexcept
+    {
+
+        if (!inChunk)
+            return false;
+        
+        if (inChunk == "pad")
+            outMode = BL_EXTEND_MODE_PAD;
+        else if (inChunk == "reflect")
+            outMode = BL_EXTEND_MODE_REFLECT;
+        else if (inChunk == "repeat")
+            outMode = BL_EXTEND_MODE_REPEAT;
+        else
+            return false;
+
+        return true;
+    }
+}
 
 namespace waavs {
     
-    static bool parseStyleAttribute(const ByteSpan & inChunk, XmlAttributeCollection &styleAttributes)
+    static bool parseStyleAttribute(const ByteSpan & inChunk, XmlAttributeCollection &styleAttributes) noexcept
     {
         if (!inChunk)
             return false;

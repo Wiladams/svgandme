@@ -734,7 +734,6 @@ namespace waavs {
             fAttributes[name] = valueChunk;
         }
 
-        //std::optional<ByteSpan> 
         ByteSpan getAttribute(const std::string& name) const
         {
             auto it = fAttributes.find(name);
@@ -742,8 +741,6 @@ namespace waavs {
                 return it->second;
             else
                 return ByteSpan{};
-            
-                //return std::nullopt;
         }
 
         XmlAttributeCollection & mergeProperties(const XmlAttributeCollection & other)

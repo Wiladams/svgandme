@@ -17,7 +17,6 @@ namespace waavs {
 	// elements.
 	struct SVGTextContentNode : public SVGVisualNode
 	{
-		//std::string fText{};
 		ByteSpan fText{};
 		
 		SVGTextContentNode(IAmGroot* root) 
@@ -217,7 +216,7 @@ namespace waavs {
 			SVGGraphicsElement::applyAttributes(ctx);
 
 			// set the text alignment to left, baseline
-			ctx->textAlign(ALIGNMENT::LEFT, ALIGNMENT::BASELINE);
+			//ctx->textAlign(ALIGNMENT::LEFT, ALIGNMENT::BASELINE);
 			ctx->textPosition(fXOffset, fYOffset);
 			fFontSelection.draw(ctx);
 

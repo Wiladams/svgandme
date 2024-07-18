@@ -227,10 +227,6 @@ namespace waavs {
             fRawValue = chunk_trim(inChunk, xmlwsp);
             if (!fRawValue)
             {
-                // convert the inChunk to a string
-                // so we can print it out
-				std::string chunkStr(inChunk.fStart, inChunk.fEnd);
-				//printf("BLANK VisualProperty: %s\n", chunkStr.c_str());
                 set(false);
                 return false;
             }
