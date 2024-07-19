@@ -68,7 +68,7 @@ namespace waavs {
     // It also handles numeric entities
     // It does not handle any other entities
     //
-    static int expandBasicEntities(const ByteSpan& inSpan, ByteSpan& outSpan)
+    static size_t expandBasicEntities(const ByteSpan& inSpan, ByteSpan& outSpan)
     {
         ByteSpan outCursor = outSpan;
         

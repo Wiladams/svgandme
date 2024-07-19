@@ -232,7 +232,7 @@ namespace waavs {
 		
 			
 			// BUGBUG - should use the fill-rule attribute that will actually apply
-			BLHitTest ahit = fPath.hitTest(localPoint, BLFillRule::BL_FILL_RULE_EVEN_ODD);
+			BLHitTest ahit = fPath.hitTest(localPoint, BLFillRule::BL_FILL_RULE_NON_ZERO);
 			return (ahit == BLHitTest::BL_HIT_TEST_IN);
 		}
 
@@ -247,6 +247,8 @@ namespace waavs {
 			{
 				fHasMarkers = true;
 			}
+
+			needsBinding(false);
 		}
 		
 		bool drawMarker(IRenderSVG* ctx, std::shared_ptr<SVGVisualProperty> prop, MarkerPosition pos, const BLPoint &p1, const BLPoint &p2)
@@ -459,10 +461,10 @@ namespace waavs {
 		{
 			SVGGeometryElement::loadVisualProperties(attrs);
 
-			fDimX1.loadFromChunk(getAttribute("x1"));
-			fDimY1.loadFromChunk(getAttribute("y1"));
-			fDimX2.loadFromChunk(getAttribute("x2"));
-			fDimY2.loadFromChunk(getAttribute("y2"));
+			fDimX1.loadFromChunk(attrs.getAttribute("x1"));
+			fDimY1.loadFromChunk(attrs.getAttribute("y1"));
+			fDimX2.loadFromChunk(attrs.getAttribute("x2"));
+			fDimY2.loadFromChunk(attrs.getAttribute("y2"));
 
 			needsBinding(true);
 		}
@@ -572,17 +574,13 @@ namespace waavs {
 		{
 			SVGGeometryElement::loadVisualProperties(attrs);
 
-			//if (attrs.getAttribute("x"))
+
 				fX.loadFromChunk(attrs.getAttribute("x"));
-			//if (attrs.getAttribute("y"))
 				fY.loadFromChunk(attrs.getAttribute("y"));
-			//if (attrs.getAttribute("width"))
 				fWidth.loadFromChunk(attrs.getAttribute("width"));
-			//if (attrs.getAttribute("height"))
 				fHeight.loadFromChunk(attrs.getAttribute("height"));
-			//if (attrs.getAttribute("rx"))
+
 				fRx.loadFromChunk(attrs.getAttribute("rx"));
-			//if (attrs.getAttribute("ry"))
 				fRy.loadFromChunk(attrs.getAttribute("ry"));
 			
 			needsBinding(true);
@@ -645,12 +643,9 @@ namespace waavs {
 		{
 			SVGGeometryElement::loadVisualProperties(attrs);
 		
-			//if (attrs.getAttribute("cx"))
-				fCx.loadFromChunk(attrs.getAttribute("cx"));
-			//if (attrs.getAttribute("cy"))
-				fCy.loadFromChunk(attrs.getAttribute("cy"));
-			//if (attrs.getAttribute("r"))
-				fR.loadFromChunk(attrs.getAttribute("r"));
+			fCx.loadFromChunk(attrs.getAttribute("cx"));
+			fCy.loadFromChunk(attrs.getAttribute("cy"));
+			fR.loadFromChunk(attrs.getAttribute("r"));
 			
 			needsBinding(true);
 		}
@@ -705,13 +700,13 @@ namespace waavs {
 		void loadVisualProperties(const XmlAttributeCollection& attrs) override
 		{
 			SVGGeometryElement::loadVisualProperties(attrs);
-			
 
-				fCx.loadFromChunk(attrs.getAttribute("cx"));
-				fCy.loadFromChunk(attrs.getAttribute("cy"));
-				fRx.loadFromChunk(attrs.getAttribute("rx"));
-				fRy.loadFromChunk(attrs.getAttribute("ry"));
-			
+
+			fCx.loadFromChunk(attrs.getAttribute("cx"));
+			fCy.loadFromChunk(attrs.getAttribute("cy"));
+			fRx.loadFromChunk(attrs.getAttribute("rx"));
+			fRy.loadFromChunk(attrs.getAttribute("ry"));
+
 			needsBinding(true);
 		}
 		
@@ -801,7 +796,7 @@ namespace waavs {
 		{
 			SVGGeometryElement::loadVisualProperties(attrs);
 
-			auto points = getAttribute("points");
+			auto points = attrs.getAttribute("points");
 
 			BLPoint pt{};
 			parseNextNumber(points, pt.x);
@@ -859,16 +854,27 @@ namespace waavs {
 		}
 		
 		/*
+		void draw(IRenderSVG* ctx) override
+		{
+			printf("================== P A T H ===============\n");
+			printChunk(getAttribute("d"));
+			printf("FILL: ");
+			printChunk(getAttribute("fill"));
+
+			SVGGeometryElement::draw(ctx);
+		}
+		*/
+		
+		/*
 		void loadVisualProperties(const XmlAttributeCollection& attrs) override
 		{
 			SVGGeometryElement::loadVisualProperties(attrs);
 		
-			auto d = getAttribute("d");
-			if (!d)
-				return;
-
-			auto success = blpathparser::parsePath(d, fPath);
-			fPath.shrink();
+			auto d = attrs.getAttribute("d");
+			if (d) {
+				auto success = blpathparser::parsePath(d, fPath);
+				fPath.shrink();
+			}
 
 			needsBinding(true);
 
@@ -1191,20 +1197,17 @@ namespace waavs {
 		{
 			SVGGraphicsElement::loadVisualProperties(attrs);
 
-			//if (attrs.getAttribute("x"))
-				fDimX.loadFromChunk(attrs.getAttribute("x"));
-			//if (attrs.getAttribute("y"))
-				fDimY.loadFromChunk(attrs.getAttribute("y"));
-			//if (attrs.getAttribute("width"))
-				fDimWidth.loadFromChunk(attrs.getAttribute("width"));
-			//if (attrs.getAttribute("height"))
-				fDimHeight.loadFromChunk(attrs.getAttribute("height"));
+
+			fDimX.loadFromChunk(attrs.getAttribute("x"));
+			fDimY.loadFromChunk(attrs.getAttribute("y"));
+			fDimWidth.loadFromChunk(attrs.getAttribute("width"));
+			fDimHeight.loadFromChunk(attrs.getAttribute("height"));
 
 			//printf("SVGImageNode: %3.0f %3.0f\n", fWidth, fHeight);
 			ByteSpan href = attrs.getAttribute("href");
 			if (!href)
 				href = attrs.getAttribute("xlink:href");
-			
+
 			if (href)
 				fImageRef = href;
 		}
@@ -1222,13 +1225,7 @@ namespace waavs {
 		
 	};
 
-	
 
-	
-
-	
-
-	
 	//============================================================
 	//	SVGStyleNode
 	// Content node is a CDATA section that contains a style sheet
@@ -1393,7 +1390,10 @@ namespace waavs {
 		{
 			if (fVar.isNull())
 			{
-				blVarAssignWeak(&fVar, &fPaint.getVariant());
+				BLVar aVar = fPaint.getVariant();
+				fVar = aVar;
+				
+				//blVarAssignWeak(&fVar, &fPaint.getVariant());
 			}
 			
 			return fVar;
@@ -1405,7 +1405,7 @@ namespace waavs {
 
 			if (attrs.getAttribute("solid-color"))
 			{
-				fPaint.loadFromChunk(getAttribute("solid-color"));
+				fPaint.loadFromChunk(attrs.getAttribute("solid-color"));
 			}
 
 			if (attrs.getAttribute("solid-opacity"))
@@ -1414,9 +1414,7 @@ namespace waavs {
 				fPaint.setOpacity(opa);
 			}
 		}
-		
 
-	
 	};
 	
 	//============================================================
@@ -1700,13 +1698,10 @@ namespace waavs {
 			// common goodies.
 			SVGGradient::loadVisualProperties(attrs);
 
-			//if (attrs.getAttribute("x1"))
+
 				fX1.loadFromChunk(attrs.getAttribute("x1"));
-			//if (attrs.getAttribute("y1"))
 				fY1.loadFromChunk(attrs.getAttribute("y1"));
-			//if (attrs.getAttribute("x2"))
 				fX2.loadFromChunk(attrs.getAttribute("x2"));
-			//if (attrs.getAttribute("y2"))
 				fY2.loadFromChunk(attrs.getAttribute("y2"));
 
 			needsBinding(true);
@@ -1796,15 +1791,15 @@ namespace waavs {
 		{
 			SVGGradient::loadVisualProperties(attrs);
 
-			//if (attrs.getAttribute("cx"))
+
 				fCx.loadFromChunk(attrs.getAttribute("cx"));
-			//if (attrs.getAttribute("cy"))
+
 				fCy.loadFromChunk(attrs.getAttribute("cy"));
-			//if (attrs.getAttribute("r"))
+
 				fR.loadFromChunk(attrs.getAttribute("r"));
-			//if (attrs.getAttribute("fx"))
+
 				fFx.loadFromChunk(attrs.getAttribute("fx"));
-			//if (attrs.getAttribute("fy"))
+
 				fFy.loadFromChunk(attrs.getAttribute("fy"));
 
 			needsBinding(true);
@@ -2772,13 +2767,13 @@ namespace waavs {
 			//parseTransform(getAttribute("patternTransform"), fPatternTransform);
 
 			
-			fX.loadFromChunk(getAttribute("x"));
-			fY.loadFromChunk(getAttribute("y"));
-			fWidth.loadFromChunk(getAttribute("width"));
-			fHeight.loadFromChunk(getAttribute("height"));
-			fViewbox.loadFromChunk(getAttribute("viewBox"));
+			fX.loadFromChunk(attrs.getAttribute("x"));
+			fY.loadFromChunk(attrs.getAttribute("y"));
+			fWidth.loadFromChunk(attrs.getAttribute("width"));
+			fHeight.loadFromChunk(attrs.getAttribute("height"));
+			fViewbox.loadFromChunk(attrs.getAttribute("viewBox"));
 
-			fExtendMode.loadFromChunk(getAttribute("extendMode"));
+			fExtendMode.loadFromChunk(attrs.getAttribute("extendMode"));
 			
 			// See if we have a template reference
 			if (attrs.getAttribute("href"))
@@ -2922,12 +2917,12 @@ namespace waavs {
 			SVGGraphicsElement::loadVisualProperties(attrs);
 
 			
-			fViewbox.loadFromChunk(getAttribute("viewBox"));
+			fViewbox.loadFromChunk(attrs.getAttribute("viewBox"));
 
-			fDimX.loadFromChunk(getAttribute("x"));
-			fDimY.loadFromChunk(getAttribute("y"));
-			fDimWidth.loadFromChunk(getAttribute("width"));
-			fDimHeight.loadFromChunk(getAttribute("height"));
+			fDimX.loadFromChunk(attrs.getAttribute("x"));
+			fDimY.loadFromChunk(attrs.getAttribute("y"));
+			fDimWidth.loadFromChunk(attrs.getAttribute("width"));
+			fDimHeight.loadFromChunk(attrs.getAttribute("height"));
 		}
 		
 

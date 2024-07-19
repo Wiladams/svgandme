@@ -12,9 +12,6 @@
 using namespace waavs;
 
 
-
-
-
 // Reference to currently active document
 std::shared_ptr<SVGDocument> gDoc{ nullptr };
 ViewPort gViewPort{};
@@ -67,7 +64,7 @@ static void drawDocument(std::shared_ptr<SVGDocument> doc)
 	// Create a SvgDrawingContext for the canvas
 	SvgDrawingContext ctx(&gFontHandler);
 	BLContextCreateInfo ctxInfo{};
-	ctxInfo.threadCount = 4;
+	ctxInfo.threadCount = 1;
 	ctx.begin(appFrameBuffer().image(), &ctxInfo);
 
 	// setup any transform

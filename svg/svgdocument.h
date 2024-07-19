@@ -213,7 +213,6 @@ namespace waavs {
             // Setup default context
             ctx->strokeJoin(BL_STROKE_JOIN_MITER_CLIP);
             ctx->setFillRule(BL_FILL_RULE_NON_ZERO);
-            //ctx->setFillRule(BL_FILL_RULE_EVEN_ODD);
             ctx->fill(BLRgba32(0, 0, 0));
             ctx->noStroke();
             ctx->strokeWidth(1.0);

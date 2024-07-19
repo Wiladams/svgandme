@@ -217,7 +217,7 @@ namespace waavs
 
 #ifdef PATH_COMMAND_DEBUG
 			printf("// lineBy: (%f, %f), %d\n", x, y, iteration);
-			printf("apath.lineTo([%d] %f, %f);\n", res, lastPos.x + x, lastPos.y + y);
+			printf("apath.lineTo( %f, %f);\n", lastPos.x + x, lastPos.y + y);
 #endif
 			
 			iteration++;
@@ -335,6 +335,12 @@ namespace waavs
 
 			res = apath.quadTo(x1, y1, x2, y2);
 
+#ifdef PATH_COMMAND_DEBUG
+			//printf("// quadTo, iteration: %d\n", iteration);
+			printf("apath.quadTo(%f,%f, %f, %f);\n", x1, y1, x2, y2);
+#endif
+
+			
 			iteration++;
 
 			return true;
@@ -363,6 +369,11 @@ namespace waavs
 
 			res = apath.quadTo(lastPos.x + x1, lastPos.y + y1, lastPos.x + x2, lastPos.y + y2);
 
+#ifdef PATH_COMMAND_DEBUG
+			//printf("// quadTo, iteration: %d\n", iteration);
+			printf("apath.quadTo(%f,%f, %f, %f);\n", lastPos.x + x1, lastPos.y + y1, lastPos.x + x2, lastPos.y + y2);
+#endif
+			
 			iteration++;
 
 			return true;
@@ -382,6 +393,11 @@ namespace waavs
 
 			res = apath.smoothQuadTo(x2, y2);
 
+#ifdef PATH_COMMAND_DEBUG
+			//printf("// quadTo, iteration: %d\n", iteration);
+			printf("apath.smoothQuadTo(%f,%f);\n", x2, y2);
+#endif
+			
 			iteration++;
 
 			return true;
@@ -404,6 +420,11 @@ namespace waavs
 
 			res = apath.smoothQuadTo(lastPos.x + x2, lastPos.y + y2);
 
+#ifdef PATH_COMMAND_DEBUG
+			//printf("// quadTo, iteration: %d\n", iteration);
+			printf("apath.smoothQuadTo(%f,%f);\n", lastPos.x + x2, lastPos.y + y2);
+#endif
+			
 			iteration++;
 
 			return true;
@@ -474,9 +495,9 @@ namespace waavs
 			res = apath.cubicTo(lastPos.x + x1, lastPos.y + y1, lastPos.x + x2, lastPos.y + y2, lastPos.x + x3, lastPos.y + y3);
 
 #ifdef PATH_COMMAND_DEBUG
-			printf("apath.cubicBy(%f,%f,%f,%f,%f,%f);\n", x1, y1, x2, y2, x3, y3);
+			//printf("apath.cubicBy(%f,%f,%f,%f,%f,%f);\n", x1, y1, x2, y2, x3, y3);
 
-			//printf("apath.cubicTo(%f,%f,%f,%f,%f,%f);\n", lastPos.x + x1, lastPos.y + y1, lastPos.x + x2, lastPos.y + y2, lastPos.x + x3, lastPos.y + y3);
+			printf("apath.cubicTo(%f,%f,%f,%f,%f,%f);\n", lastPos.x + x1, lastPos.y + y1, lastPos.x + x2, lastPos.y + y2, lastPos.x + x3, lastPos.y + y3);
 #endif
 			
 			iteration++;
@@ -504,6 +525,10 @@ namespace waavs
 
 			res = apath.smoothCubicTo(x2, y2, x3, y3);
 
+#ifdef PATH_COMMAND_DEBUG
+			printf("apath.smoothCubicTo(%f,%f,%f,%f);\n", x2, y2, x3, y3);
+#endif
+			
 			iteration++;
 
 			return true;
@@ -533,7 +558,7 @@ namespace waavs
 			res = apath.smoothCubicTo(lastPos.x + x2, lastPos.y + y2, lastPos.x + x3, lastPos.y + y3);
 
 #ifdef PATH_COMMAND_DEBUG
-			printf("apath.smoothCubicTo([%d] %f,%f,%f,%f);\n", res, lastPos.x + x2, lastPos.y + y2, lastPos.x + x3, lastPos.y + y3);
+			printf("apath.smoothCubicTo(%f,%f,%f,%f);\n", lastPos.x + x2, lastPos.y + y2, lastPos.x + x3, lastPos.y + y3);
 #endif
 			iteration++;
 
@@ -574,6 +599,10 @@ namespace waavs
 
 			res = apath.ellipticArcTo(BLPoint(rx, ry), xrot, larc, swp, BLPoint(x, y));
 
+#ifdef PATH_COMMAND_DEBUG
+			printf("apath.ellipticArcTo(BLPoint(%f,%f) ,%f,%d, %d, BLPoint(%f, %f);\n",rx, ry, xrot, larc, swp, x, y);
+#endif
+			
 			iteration++;
 
 			return true;
@@ -615,6 +644,10 @@ namespace waavs
 
 			res = apath.ellipticArcTo(BLPoint(rx, ry), xrot, larc, swp, BLPoint(lastPos.x + x, lastPos.y + y));
 
+#ifdef PATH_COMMAND_DEBUG
+			printf("apath.ellipticArcTo(BLPoint(%f,%f) ,%f,%d, %d, BLPoint(%f, %f);\n", rx, ry, xrot, larc, swp, lastPos.x + x, lastPos.y + y);
+#endif
+			
 			iteration++;
 
 			return true;
@@ -748,7 +781,9 @@ namespace waavs
 				}
 			}
 
-			//printf("parsePath(), FINISHED\n");
+#ifdef PATH_COMMAND_DEBUG
+			printf("// parsePath(), FINISHED\n");
+#endif
 			
 			return success;
 		}

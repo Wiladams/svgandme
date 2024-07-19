@@ -219,17 +219,17 @@ namespace waavs {
 
         virtual bool loadSelfFromChunk(const ByteSpan& chunk)
         {
-            return true;
+            return false;
         }
 
         bool loadFromChunk(const ByteSpan& inChunk)
         {
-            fRawValue = chunk_trim(inChunk, xmlwsp);
-            if (!fRawValue)
-            {
-                set(false);
+            auto s = chunk_trim(inChunk, xmlwsp);
+            
+            if (!s)
                 return false;
-            }
+            
+            fRawValue = s;
 
             return loadSelfFromChunk(fRawValue);
         }
