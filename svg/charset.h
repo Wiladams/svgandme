@@ -27,6 +27,7 @@ namespace waavs {
 		std::bitset<256> bits;
 
 		// Common Constructors
+		charset() = default;
 		explicit charset(const char achar) { addChar(achar); }
 		charset(const char* chars) { addChars(chars); }
 		charset(const charset& aset) { addCharset(aset); }
@@ -99,6 +100,18 @@ namespace waavs {
 
 
 
+		// get an inverse of the set
+		charset operator~() const noexcept
+		{
+			charset result;
+			result.bits = ~bits;
+			return result;
+		}
+		
+		charset inverse() const noexcept
+		{
+			return ~(*this);
+		}
 		
 		// Checking for set membership
 		bool contains(const uint8_t idx) const noexcept { return bits[idx];}

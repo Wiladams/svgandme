@@ -815,6 +815,9 @@ namespace waavs {
 
 	static inline std::string toString(const ByteSpan& inChunk) noexcept
 	{
+		if (!inChunk)
+			return std::string();
+		
 		return std::string(inChunk.fStart, inChunk.fEnd);
 	}
 

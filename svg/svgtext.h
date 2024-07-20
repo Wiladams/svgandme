@@ -32,7 +32,7 @@ namespace waavs {
 
 			//fText = expandStandardEntities(aSpan);
 			fText = aSpan;
-			expandBasicEntities(aSpan, fText);
+			//expandBasicEntities(aSpan, fText);
 		}
 
 		void draw(IRenderSVG* ctx) override

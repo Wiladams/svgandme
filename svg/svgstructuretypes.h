@@ -148,9 +148,15 @@ namespace waavs {
             loadSelfFromXmlElement(elem);
         }
         
-        virtual void loadFromXmlIterator(XmlElementIterator& iter)
+        virtual void loadSelfFromXmlIterator(XmlElementIterator& iter)
         {
             loadFromXmlElement(*iter);
+        }
+        
+        virtual void loadFromXmlIterator(XmlElementIterator& iter)
+        {
+            loadSelfFromXmlIterator(iter);
+
             iter++;
         }
     };
@@ -918,14 +924,67 @@ namespace waavs {
             }
         }
 
+        /*
+        virtual void loadFromXmlIterator(XmlElementIterator& iter) override
+        {
+
+            loadSelfFromXmlIterator(iter);
+
+            while (iter.next())
+            {
+                const XmlElement& elem = *iter;
+
+                // BUGBUG - debug
+                //printXmlElement(elem);
+
+                if (!elem)
+                    break;
 
 
+                if (elem.isSelfClosing()) {
+                    loadSelfClosingNode(elem);
+                }
+                else if (elem.isStart())
+                {
+                    loadCompoundNode(iter);
+                }
+                else if (elem.isEnd())
+                {
+                    // Close the current element
+                    //buildState = BUILD_STATE_CLOSE;
+                    //loadEndTag(elem);
+                }
+                else if (elem.isContent())
+                {
+                    loadContentNode(elem);
+                }
+                else if (elem.isCData())
+                {
+                    loadCDataNode(elem);
+                }
+                else if (elem.isComment())
+                {
+                    loadComment(elem);
+                }
+                else
+                {
+                    // Ignore anything else
+                    printf("SVGGraphicsElement::loadFromXmlIterator ==> IGNORING kind(%d) name:", elem.kind());
+                    printChunk(elem.nameSpan());
+                    printChunk(elem.data());
+                    //printXmlElement(elem);
+                }
+
+            }
+        }
+        */
+            
+        ///*
         virtual void loadFromXmlIterator(XmlElementIterator& iter) override
         {
             // First, loadFromXmlElement because we're sitting on our opening element
             // and we need to gather our own attributes
-            loadFromXmlElement(*iter);
-
+            loadSelfFromXmlIterator(iter);
 
             buildState = BUILD_STATE_OPEN;
 
@@ -983,7 +1042,11 @@ namespace waavs {
                     else
                     {
                         // Ignore anything else
-                        printf("SVGGraphicsElement::loadFromXmlIterator ==> IGNORING: %s\n", elem.name().c_str());
+                        printf("SVGGraphicsElement::loadFromXmlIterator ==> IGNORING kind(%d) name:", elem.kind());
+                        printChunk(elem.nameSpan());
+                        printChunk(elem.data());
+                        
+                        //printf("SVGGraphicsElement::loadFromXmlIterator ==> IGNORING: %s\n", elem.name().c_str());
                         //printXmlElement(elem);
                     }
                 }
@@ -994,6 +1057,7 @@ namespace waavs {
 
             }
         }
+        //*/
 
     };
 }

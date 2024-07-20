@@ -68,7 +68,7 @@ namespace waavs {
     // It also handles numeric entities
     // It does not handle any other entities
     //
-    static size_t expandBasicEntities(const ByteSpan& inSpan, ByteSpan& outSpan)
+    static size_t expandBasicEntities(const ByteSpan& inSpan, ByteSpan& outSpan) noexcept
     {
         ByteSpan outCursor = outSpan;
         
@@ -106,7 +106,8 @@ namespace waavs {
 
                         std::string hexStr(next3, end);
                         int hexVal = std::stoi(hexStr, nullptr, 16);
-                        *outCursor = (char)hexVal;
+                        //*outCursor = (char)hexVal;
+                        outCursor[0] = (char)hexVal;
                         outCursor++;
 
                         it = end;
@@ -125,7 +126,8 @@ namespace waavs {
 
                         std::string decStr(next2, end);
                         int decVal = std::stoi(decStr, nullptr, 10);
-                        *outCursor = (char)decVal;
+                        //*outCursor = (char)decVal;
+						outCursor[0] = (char)decVal;
                         outCursor++;
                         
                         it = end;
@@ -186,7 +188,7 @@ namespace waavs {
     // Do basic XML entity expansion
     // BUGBUG - It should use a ByteSpan for output instead of 
     // a std::string.  Return value can be the size of the output
-	static std::string expandStandardEntities(const ByteSpan &inSpan)
+	static std::string expandStandardEntities(const ByteSpan &inSpan) noexcept
 	{
         std::ostringstream oss;
         
@@ -292,7 +294,7 @@ namespace waavs {
 	// Read a first quote, then use that as the delimiter
     // to read to the end of the string
     //
-    static bool readQuoted(ByteSpan &src, ByteSpan &dataChunk)
+    static bool readQuoted(ByteSpan &src, ByteSpan &dataChunk) noexcept
     {
         uint8_t* beginattrValue = nullptr;
         uint8_t* endattrValue = nullptr;
@@ -331,7 +333,7 @@ namespace waavs {
     // readCData()
     //============================================================
 
-    static bool readCData(ByteSpan& src, ByteSpan& dataChunk)
+    static bool readCData(ByteSpan& src, ByteSpan& dataChunk) noexcept
     {
         // Skip past the <![CDATA[
         src += 8;
@@ -354,7 +356,7 @@ namespace waavs {
     //============================================================
     // readComment()
     //============================================================
-    static bool readComment(ByteSpan &src, ByteSpan &dataChunk)
+    static bool readComment(ByteSpan &src, ByteSpan &dataChunk) noexcept
 	{
 		// Skip past the <!--
 		src += 4;
@@ -380,7 +382,7 @@ namespace waavs {
     // !ENTITY  name 'quoted value' >
     // Return a name and value
 	//============================================================
-    static bool readEntityDeclaration(ByteSpan& src, ByteSpan& name, ByteSpan &value)
+    static bool readEntityDeclaration(ByteSpan& src, ByteSpan& name, ByteSpan &value) noexcept
     {
         // Skip past the !ENTITY
 		src += 7;
@@ -409,7 +411,7 @@ namespace waavs {
     // fSource is currently sitting at the beginning of !DOCTYPE
     // Note: https://www.tutorialspoint.com/xml/xml_dtds.htm
     //============================================================
-    static bool readDoctype(ByteSpan& src, ByteSpan& dataChunk)
+    static bool readDoctype(ByteSpan& src, ByteSpan& dataChunk) noexcept
     {
         // skip past the !DOCTYPE to the first whitespace character
         while (src && !xmlwsp[*src])
@@ -525,7 +527,7 @@ namespace waavs {
     // readTag()
     //============================================================
 
-    static bool readTag(ByteSpan& src, ByteSpan& dataChunk)
+    static bool readTag(ByteSpan& src, ByteSpan& dataChunk) noexcept
     {
         dataChunk = src;
         dataChunk.fEnd = src.fStart;
@@ -546,7 +548,7 @@ namespace waavs {
     // either "'" or '"'
     // alters the src so it points past the end of the retrieved value
     // Typical of xml attributes
-    static bool nextAttributeKeyValue(ByteSpan& src, ByteSpan& key, ByteSpan& value)
+    static bool nextAttributeKeyValue(ByteSpan& src, ByteSpan& key, ByteSpan& value) noexcept
     {
         // Zero these out in case there is failure
         key = {};
@@ -623,6 +625,7 @@ namespace waavs {
         return true;
     }
     
+    /*
 	static bool gatherXmlAttributes(const ByteSpan& inChunk, std::unordered_map<std::string, ByteSpan>& outAttributes)
 	{
 		ByteSpan src = inChunk;
@@ -637,6 +640,7 @@ namespace waavs {
 
 		return true;
 	}
+    */
 }
 
 
@@ -656,7 +660,9 @@ struct XmlName {
         reset(inChunk);
     }
 
-    XmlName(const XmlName& other) :fNamespace(other.fNamespace), fName(other.fName) {}
+    XmlName(const XmlName& other) 
+        :fNamespace(other.fNamespace), 
+        fName(other.fName) {}
 
     XmlName& operator =(const XmlName& rhs)
     {
@@ -677,6 +683,10 @@ struct XmlName {
         return *this;
     }
 
+    // fqname
+    // Fully Qualified Name
+    // This is the namespace, plus the basic name
+    // as a std::string
     std::string fqname() const {
 		if (fNamespace.size() > 0)
 			return std::string((const char*)fNamespace.fStart, fNamespace.size()) + ":" + std::string((const char*)fName.fStart, fName.size());
@@ -684,8 +694,8 @@ struct XmlName {
 			return std::string((const char*)fName.fStart, fName.size());
     }
     
-    ByteSpan name() const { return fName; }
-    ByteSpan ns() const { return fNamespace; }
+    ByteSpan name() const { return fName; }         // The name
+    ByteSpan ns() const { return fNamespace; }      // The namespace
 };
 }
 
@@ -718,7 +728,17 @@ namespace waavs {
         
         bool scanAttributes(const ByteSpan& inChunk)
         {
-            return gatherXmlAttributes(inChunk, fAttributes);
+            ByteSpan src = inChunk;
+            ByteSpan key;
+            ByteSpan value;
+
+            while (nextAttributeKeyValue(src, key, value))
+            {
+                std::string keyStr((const char*)key.fStart, key.size());
+                fAttributes[keyStr] = value;
+            }
+
+            return true;
         }
         
         bool hasAttribute(const std::string& inName) const

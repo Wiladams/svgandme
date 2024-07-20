@@ -50,7 +50,7 @@ namespace waavs {
         
         // We only have a single root 'SVGSVGElement' for the whole document
         std::shared_ptr<SVGSVGElement> fSVGNode = nullptr;
-        //std::shared_ptr<SVGVisualNode> fSVGNode = nullptr;
+
         
         // We need a style sheet for the entire document
 		std::shared_ptr<CSSStyleSheet> fStyleSheet = nullptr;
@@ -197,20 +197,10 @@ namespace waavs {
             fEntities[name] = expansion;
         }
 
-        void update() override
-        {
-			if (fSVGNode)
-				fSVGNode->update();
-        }
         
         void draw(IRenderSVG * ctx) override
         {
-            if (nullptr == fSVGNode)
-                return;
-
-            double startTime = seconds();
-
-            // Setup default context
+            // Setup default values for a SVG context
             ctx->strokeJoin(BL_STROKE_JOIN_MITER_CLIP);
             ctx->setFillRule(BL_FILL_RULE_NON_ZERO);
             ctx->fill(BLRgba32(0, 0, 0));
@@ -220,27 +210,17 @@ namespace waavs {
             ctx->textFamily("Arial");
             ctx->textSize(16);
 
-            
-            fSVGNode->draw(ctx);
-			double endTime = seconds();
-
-			//printf("Drawing Duration: %f\n", endTime - startTime);
+            SVGGraphicsElement::draw(ctx);
         }
         
-        BLRect sceneFrame() const
-        {
-            if (nullptr == fSVGNode)
-                return BLRect();
-            
-            return fSVGNode->frame();
-        }
-
+        
         
         bool addNode(std::shared_ptr < SVGVisualNode > node) override
         {            
 			if (!SVGGraphicsElement::addNode(node))
                 return false;
 
+            
             if (node->name() == "svg")
             {
 
@@ -248,23 +228,19 @@ namespace waavs {
                 {
                     fSVGNode = std::dynamic_pointer_cast<SVGSVGElement>(node);
                     
-                    //BLRect vport = fSVGNode->viewport();
-                    //fCanvasWidth = vport.w;
-                    //fCanvasHeight = vport.h;
-
-                    fSVGNode->bindToGroot(this);
-
-                    // now get the document width from the bound viewport
-					//fDocumentWidth = fSVGNode->width();
-					//fDocumentHeight = fSVGNode->height();
 				}
 
             }
-
+            
             return true;
         }
         
+		void loadSelfFromXmlIterator(XmlElementIterator& iter) override
+		{
+            // do nothing here
+		}
         
+        ///*
         // Load the document from an XML Iterator
         // Since this is the top level document, we just want to kick
         // off loading the root node 'svg', and we're done 
@@ -298,18 +274,28 @@ namespace waavs {
                 }
             }
         }
+        //*/
         
         
 		// Assuming we've already got a file mapped into memory, load the document
         bool loadFromChunk(const ByteSpan &srcChunk)
         {
             // create a memBuff from srcChunk
+            // since we use memory references, we need
+            // to keep the memory around for the duration of the 
+            // document's life
             fSourceMem.initFromSpan(srcChunk);
             
+			// Create the XML Iterator we're going to use to parse the document
             XmlElementIterator iter(fSourceMem.span(), true);
 
             loadFromXmlIterator(iter);
-
+			
+            // Bind to Graphics Root here
+            // This binding could happen at draw time instead
+            // for maximum flexibility
+            bindToGroot(this);
+            
             return true;
         }
 

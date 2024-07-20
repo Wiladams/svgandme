@@ -2530,7 +2530,8 @@ namespace waavs {
 		SVGDimension fHeight{};
 		SVGPatternExtendMode fExtendMode{nullptr };
 
-		SVGPatternNode(IAmGroot* aroot) :SVGGraphicsElement(aroot) 
+		SVGPatternNode(IAmGroot* aroot) 
+			:SVGGraphicsElement(aroot) 
 		{
 			fPattern.setExtendMode(BL_EXTEND_MODE_PAD);
 			fPatternTransform = BLMatrix2D::makeIdentity();
@@ -2697,8 +2698,24 @@ namespace waavs {
 						// and use that as the width, and then calculate the percentage of that
 						if (fWidth.units() == SVGDimensionUnits::SVG_UNITS_USER)
 						{
-							iWidth = (int)fWidth.calculatePixels();
-							iHeight = (int)fHeight.calculatePixels();
+							if (fWidth.value() < 1.0)
+							{
+								iWidth = (int)(bbox.w * fWidth.value());
+							}
+							else
+							{
+								iWidth = (int)fWidth.value();
+							}
+							if (fHeight.value() < 1.0)
+							{
+								iHeight = (int)(bbox.h * fHeight.value());
+							}
+							else
+							{
+								iHeight = (int)fHeight.value();
+							}
+							//iWidth = (int)fWidth.calculatePixels(iWidth,0,dpi);
+							//iHeight = (int)fHeight.calculatePixels(iHeight,0,dpi);
 						}
 						else {
 							//iWidth = (int)fWidth.calculatePixels();
@@ -2764,7 +2781,7 @@ namespace waavs {
 		{
 			SVGGraphicsElement::loadVisualProperties(attrs);
 
-			//parseTransform(getAttribute("patternTransform"), fPatternTransform);
+			parseTransform(getAttribute("patternTransform"), fPatternTransform);
 
 			
 			fX.loadFromChunk(attrs.getAttribute("x"));
@@ -2828,22 +2845,6 @@ namespace waavs {
 			return BLRect(fX, fY, fWidth, fHeight);
 		}
 		
-		/*
-		BLRect viewport() const { 
-			if (fViewbox.isSet()) {
-				return fViewbox.fRect;
-			}
-			
-			// BUGBUG - Right here we need to use IAmGroot to get the size of the window
-			if (fDimWidth.isSet() && fDimHeight.isSet()) {
-				return BLRect(0, 0, fDimWidth.calculatePixels(), fDimHeight.calculatePixels());
-			}
-			
-			// If no viewbox, width, or height, then we need to use the calculated 
-			// bounding box of the document
-			return frame();
-		}
-		*/
 		
 		void bindSelfToGroot(IAmGroot* groot) override
 		{

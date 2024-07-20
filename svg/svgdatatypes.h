@@ -1076,6 +1076,10 @@ namespace waavs
     static bool parseTransform(const ByteSpan& inChunk, BLMatrix2D& xform)
     {        
         ByteSpan s = inChunk;
+        s = chunk_skip_wsp(s);
+        if (!s)
+            return false;
+        
         xform = BLMatrix2D::makeIdentity();
         
         bool isSet = false;

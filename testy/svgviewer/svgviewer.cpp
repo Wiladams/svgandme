@@ -64,15 +64,20 @@ static void drawDocument(std::shared_ptr<SVGDocument> doc)
 	// Create a SvgDrawingContext for the canvas
 	SvgDrawingContext ctx(&gFontHandler);
 	BLContextCreateInfo ctxInfo{};
-	ctxInfo.threadCount = 1;
+	ctxInfo.threadCount = 0;
 	ctx.begin(appFrameBuffer().image(), &ctxInfo);
 
 	// setup any transform
 	ctx.setTransform(gViewPort.sceneToSurfaceTransform());
 
+	//double startTime = seconds();
+
 	// draw the document into the ctx
 	doc->draw(&ctx);
 	ctx.flush();
+	
+	//double endTime = seconds();
+	//printf("Drawing Duration: %f\n", endTime - startTime);
 }
 
 static void refreshDoc()
@@ -107,11 +112,10 @@ static void onFileDrop(const FileDropEvent& fde)
 
 		if (gDoc != nullptr)
 		{
-
-			
 			resetView();
 
-			auto objFr = gDoc->sceneFrame();
+			//auto objFr = gDoc->sceneFrame();
+			auto objFr = gDoc->frame();
 			
 			// Set the initial viewport
 			gViewPort.surfaceFrame({ 0, 0, (double)canvasWidth, (double)canvasHeight });
