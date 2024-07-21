@@ -522,12 +522,19 @@ namespace waavs {
 
             while (iter.next())
             {
-                std::string name = std::string((*iter).first.fStart, (*iter).first.fEnd);
-                if (!name.empty() && (*iter).second)
+                if ((*iter).first && (*iter).second)
                 {
-                    auto value = (*iter).second;
-					styleAttributes.addAttribute(name, value);
+                    // add raw attribute value to collection
+                    styleAttributes.addAttribute((*iter).first, (*iter).second);
                 }
+
+
+                //std::string name = std::string((*iter).first.fStart, (*iter).first.fEnd);
+                //if (!name.empty() && (*iter).second)
+                //{
+                //    auto value = (*iter).second;
+				//	styleAttributes.addAttribute(name, value);
+                //}
             }
         }
 

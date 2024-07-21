@@ -931,7 +931,7 @@ namespace waavs {
 
 		
 		std::shared_ptr<SVGViewable> fWrappedNode{nullptr};
-		std::string fWrappedID{};
+		ByteSpan fWrappedID{};
 
 		double x{ 0 };
 		double y{ 0 };
@@ -995,7 +995,7 @@ namespace waavs {
 			
 			
 			// Use the root to lookup the wrapped node
-			if (groot != nullptr && !fWrappedID.empty())
+			if (groot != nullptr && fWrappedID)
 			{
 				fWrappedNode = groot->getElementById(fWrappedID);
 
@@ -1045,7 +1045,7 @@ namespace waavs {
 			if (href && *href == '#')
 			{
 				href++;
-				fWrappedID = toString(href);
+				fWrappedID = href;
 			}
 
 
@@ -1459,22 +1459,21 @@ namespace waavs {
 		{
 			ByteSpan str = inChunk;
 
-			auto id = chunk_trim(str, xmlwsp);
+			auto idValue = chunk_trim(str, xmlwsp);
 			
 			// The first character could be '.' or '#'
 			// so we need to skip past that
-			if (*id == '.' || *id == '#')
-				id++;
+			if (*idValue == '.' || *idValue == '#')
+				idValue++;
 
-			if (!id)
+			if (!idValue)
 				return;
 
 			// lookup the thing we're referencing
-			std::string idStr = toString(id);
 
 			if (root() != nullptr)
 			{
-				auto node = groot->getElementById(idStr);
+				auto node = groot->getElementById(idValue);
 
 				
 				// pull out the color value
@@ -1588,7 +1587,7 @@ namespace waavs {
 			//printXmlElement(elem);
 			if (elem.name() != "stop")
 			{
-				printf("SVGGradientNode::loadSelfClosingNode, unknown node type: %s\n", elem.name().c_str());
+				printf("SVGGradientNode::loadSelfClosingNode, unknown node type: %s\n", toString(elem.name()).c_str());
 				return;
 			}
 			
@@ -2428,9 +2427,9 @@ namespace waavs {
 		}
 		
 		
-		std::string fSystemLanguage;
+		ByteSpan fSystemLanguage;
 
-		std::unordered_map<std::string, std::shared_ptr<SVGVisualNode>> fLanguageNodes{};
+		std::unordered_map<ByteSpan, std::shared_ptr<SVGVisualNode>, ByteSpanHash> fLanguageNodes{};
 		std::shared_ptr<SVGVisualNode> fDefaultNode{ nullptr };
 		std::shared_ptr<SVGVisualNode> fSelectedNode{ nullptr };
 
@@ -2468,8 +2467,7 @@ namespace waavs {
 			// If the node has a language attribute, add it to the language map
 			auto lang = node->getVisualProperty("systemLanguage");
 			if (lang) {
-				std::string langStr = toString(lang->rawValue());
-				fLanguageNodes[langStr] = node;
+				fLanguageNodes[lang->rawValue()] = node;
 			}
 			else {
 				fDefaultNode = node;
@@ -2584,10 +2582,10 @@ namespace waavs {
 				return;
 
 			// lookup the thing we're referencing
-			std::string idStr = toString(id);
+			//std::string idStr = toString(id);
 
 
-			auto node = groot->getElementById(idStr);
+			auto node = groot->getElementById(id);
 
 			// return early if we could not lookup the node
 			if (nullptr == node)

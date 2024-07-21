@@ -66,8 +66,8 @@ namespace waavs {
 		double fDocumentHeight{};
         
         
-        std::unordered_map<std::string, std::shared_ptr<SVGViewable>> fDefinitions{};
-        std::unordered_map<std::string, ByteSpan> fEntities{};
+        std::unordered_map<ByteSpan, std::shared_ptr<SVGViewable>, ByteSpanHash> fDefinitions{};
+        std::unordered_map<ByteSpan, ByteSpan, ByteSpanHash> fEntities{};
         
         
         //==========================================
@@ -108,12 +108,12 @@ namespace waavs {
 		//=================================================================
         // Expand text that may have entities in it
         // return true if there were any entities
-        bool expandText(const ByteSpan& txt, std::ostringstream& oss)
-        {
-            return false;
-        }
+        //bool expandText(const ByteSpan& txt, std::ostringstream& oss)
+        //{
+        //    return false;
+        //}
         
-        std::shared_ptr<SVGViewable> getElementById(const std::string& name) override
+        std::shared_ptr<SVGViewable> getElementById(const ByteSpan& name) override
         {
             // BUGBUG - this is the older more wasteful way
             //	if (fDefinitions.find(name) != fDefinitions.end())
@@ -124,7 +124,7 @@ namespace waavs {
 			if (it != fDefinitions.end())
 				return it->second;
 
-            printf("SVGDocument::getElementById, FAIL: %s\n", name.c_str());
+            printf("SVGDocument::getElementById, FAIL: %s\n", toString(name).c_str());
             
 			return nullptr;
 		}
@@ -148,9 +148,9 @@ namespace waavs {
                 return nullptr;
 
             // lookup the thing we're referencing
-            std::string idStr = toString(id);
+            //std::string idStr = toString(id);
 
-            return getElementById(idStr);
+            return getElementById(id);
         }
 
         // Load a URL reference, including the 'url(' function indicator
@@ -174,25 +174,23 @@ namespace waavs {
             return findNodeByHref(id);
         }
         
-        ByteSpan findEntity(const std::string& name) override
+        ByteSpan findEntity(const ByteSpan& name) override
         {
-			//if (fEntities.find(name) != fEntities.end())
-			//	return fEntities[name];
 			auto it = fEntities.find(name);
 			if (it != fEntities.end())
 				return it->second;
             
-			printf("SVGDocument::findEntity(), FAIL: %s\n", name.c_str());
+			printf("SVGDocument::findEntity(), FAIL: %s\n", toString(name).c_str());
             
 			return ByteSpan{};
         }
         
-        void addDefinition(const std::string& name, std::shared_ptr<SVGViewable> obj)
+        void addDefinition(const ByteSpan & name, std::shared_ptr<SVGViewable> obj)
         {
             fDefinitions[name] = obj;
         }
         
-        virtual void addEntity(const std::string& name, ByteSpan expansion)
+        virtual void addEntity(const ByteSpan & name, ByteSpan expansion)
         {
             fEntities[name] = expansion;
         }

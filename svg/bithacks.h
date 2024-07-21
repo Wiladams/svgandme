@@ -365,6 +365,45 @@ static INLINE double fixedToFloat(const uint64_t vint, const int scale) noexcept
 
 } // namespace
 
+
+namespace waavs {
+  // Byte Hashing - FNV-1a
+// http://www.isthe.com/chongo/tech/comp/fnv/
+// 
+// 32-bit FNV-1a constants
+	constexpr uint32_t FNV1A_32_INIT = 0x811c9dc5;
+	constexpr uint32_t FNV1A_32_PRIME = 0x01000193;
+    
+	// 64-bit FNV-1a constants
+	constexpr uint64_t FNV1A_64_INIT = 0xcbf29ce484222325ULL;
+	constexpr uint64_t FNV1A_64_PRIME = 0x100000001b3ULL;
+    
+	// 32-bit FNV-1a hash
+	static INLINE uint32_t fnv1a_32(const void* data, const size_t size) noexcept
+	{
+		const uint8_t* bytes = (const uint8_t*)data;
+		uint32_t hash = FNV1A_32_INIT;
+		for (size_t i = 0; i < size; i++) {
+			hash ^= bytes[i];
+			hash *= FNV1A_32_PRIME;
+		}
+		return hash;
+	}
+
+	// 64-bit FNV-1a hash
+	static INLINE uint64_t fnv1a_64(const void* data, const size_t size) noexcept
+	{
+		const uint8_t* bytes = (const uint8_t*)data;
+		uint64_t hash = FNV1A_64_INIT;
+		for (size_t i = 0; i < size; i++) {
+			hash ^= bytes[i];
+			hash *= FNV1A_64_PRIME;
+		}
+		return hash;
+	}
+}
+
+// String Hashing borrowed from LuaJIT
 namespace waavs {
 #define bh_hashrot(x, k) (((x) << (k)) | ((x) >> (32 - (k))))
 #define bh_getu32(p) ((uint32_t)(p)[0] | ((uint32_t)(p)[1] << 8) | ((uint32_t)(p)[2] << 16) | ((uint32_t)(p)[3] << 24))

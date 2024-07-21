@@ -54,12 +54,11 @@ namespace waavs {
     // Something that can be drawn in the user interface
     struct IViewable : public IPlaceable, public ISVGDrawable
     {
-        std::string fName{};
+        ByteSpan fName{};
 
-        void name(const ByteSpan& aname) { if (!aname) return;  fName = toString(aname); }
-        void name(const char* aname) { fName = aname; }
-        void name(const std::string& aname) { fName = aname; }
-        const std::string& name() const { return fName; }
+        void name(const ByteSpan& aname) { fName = aname; }
+        //void name(const char* aname) { fName = aname; }
+        const ByteSpan& name() const { return fName; }
     };
 }
 
@@ -107,14 +106,14 @@ namespace waavs {
     struct SVGViewable : public SVGObject, public IViewable, public XmlAttributeCollection
     {
         bool fIsVisible{ true };
-        std::string fId{};      // The id of the element
+        ByteSpan fId{};      // The id of the element
 
         
         
         SVGViewable(IAmGroot* groot) :SVGObject(groot) {}
 
-        const std::string& id() const { return fId; }
-        void id(const std::string& aid) { fId = aid; }
+        const ByteSpan& id() const { return fId; }
+        void id(const ByteSpan& aid) { fId = aid; }
         
         
         const bool visible() const { return fIsVisible; }
@@ -139,11 +138,12 @@ namespace waavs {
         virtual void loadFromXmlElement(const XmlElement& elem)
         {
             scanAttributes(elem.data());
+
+            // Save the name if we've got one
             name(elem.name());
             
-            auto idchunk = getAttribute("id");
-            if (idchunk)
-                id(std::string(idchunk.fStart, idchunk.fEnd));
+            // save the id if we've got an id attribute
+            id(getAttribute("id"));
 
             loadSelfFromXmlElement(elem);
         }
@@ -166,20 +166,20 @@ namespace waavs {
     // for the purpose of looking up nodes, but also for style sheets
     struct IAmGroot
     {
-        virtual std::shared_ptr<SVGViewable> getElementById(const std::string& name) = 0;
+        virtual std::shared_ptr<SVGViewable> getElementById(const ByteSpan& name) = 0;
         virtual std::shared_ptr<SVGViewable> findNodeByHref(const ByteSpan& href) = 0;
         virtual std::shared_ptr<SVGViewable> findNodeByUrl(const ByteSpan& inChunk) = 0;
-        virtual ByteSpan findEntity(const std::string& name) = 0;
+        virtual ByteSpan findEntity(const ByteSpan& name) = 0;
 
         virtual FontHandler* fontHandler() const = 0;
 
         virtual std::shared_ptr<CSSStyleSheet> styleSheet() = 0;
         virtual void styleSheet(std::shared_ptr<CSSStyleSheet> sheet) = 0;
 
-        virtual void addDefinition(const std::string& name, std::shared_ptr<SVGViewable> obj) = 0;
-        virtual void addEntity(const std::string& name, ByteSpan expansion) = 0;
+        virtual void addDefinition(const ByteSpan& name, std::shared_ptr<SVGViewable> obj) = 0;
+        virtual void addEntity(const ByteSpan& name, ByteSpan expansion) = 0;
 
-        virtual std::string systemLanguage() { return "en"; } // BUGBUG - What a big cheat!!
+        virtual ByteSpan systemLanguage() { return "en"; } // BUGBUG - What a big cheat!!
 
         virtual double canvasWidth() const = 0;
         virtual double canvasHeight() const = 0;
@@ -259,10 +259,10 @@ namespace waavs {
 
     };
 
-    static std::map<std::string, std::function<std::shared_ptr<SVGVisualProperty>(const ByteSpan&)>> gSVGAttributeCreation;
-    static std::map<std::string, std::function<std::shared_ptr<SVGVisualProperty>(IAmGroot* aroot, const XmlAttributeCollection&)>> gSVGPropertyCreation;
+    static std::unordered_map<ByteSpan, std::function<std::shared_ptr<SVGVisualProperty>(const ByteSpan&)>> gSVGAttributeCreation;
+    static std::unordered_map<ByteSpan, std::function<std::shared_ptr<SVGVisualProperty>(IAmGroot* aroot, const XmlAttributeCollection&)>> gSVGPropertyCreation;
     
-	static void registerSVGAttribute(const std::string& name, std::function<std::shared_ptr<SVGVisualProperty>(const ByteSpan&)> func)
+	static void registerSVGAttribute(const ByteSpan& name, std::function<std::shared_ptr<SVGVisualProperty>(const ByteSpan&)> func)
 	{
 		gSVGAttributeCreation[name] = func;
 	}
@@ -281,7 +281,7 @@ namespace waavs {
     struct SVGVisualNode : public SVGViewable
     {
         // Xml Node stuff
-        std::unordered_map<std::string, std::shared_ptr<SVGVisualProperty>> fVisualProperties{};
+        std::unordered_map<ByteSpan, std::shared_ptr<SVGVisualProperty>, ByteSpanHash> fVisualProperties{};
 
         bool fIsStructural{ true };
 
@@ -381,8 +381,8 @@ namespace waavs {
             while (classChunk)
             {
                 // peel a word off the front
-                auto aWord = chunk_token(classChunk, xmlwsp);
-                auto classId = toString(aWord);
+                auto classId = chunk_token(classChunk, xmlwsp);
+                //auto classId = toString(aWord);
 
                 auto csel = root()->styleSheet()->getClassSelector(classId);
                 if (csel != nullptr)
@@ -390,7 +390,7 @@ namespace waavs {
                     loadVisualProperties(csel->attributes());
 				}
                 else {
-                    printf("SVGVisualNode::bindPropertiesToGroot, ERROR - NO CLASS SELECTOR FOR %s\n", classId.c_str());
+                    printf("SVGVisualNode::bindPropertiesToGroot, ERROR - NO CLASS SELECTOR FOR %s\n", toString(classId).c_str());
                 }
             }
             
@@ -413,14 +413,17 @@ namespace waavs {
 			auto id = getAttribute("id");
 			if (id)
 			{
-				auto idsel = root()->styleSheet()->getIDSelector(toString(id));
+				auto idsel = root()->styleSheet()->getIDSelector(id);
 				if (idsel != nullptr)
 				{
 					loadVisualProperties(idsel->attributes());
 				}
 			}
             
-            
+            // Do the local style sheet properties last as they
+            // override any that came from global style sheets
+            // 
+     
             // Bind all the accumulated visual properties
 			for (auto& prop : fVisualProperties)
 			{
@@ -435,7 +438,8 @@ namespace waavs {
             needsBinding(false);
         }
 
-        std::shared_ptr<SVGVisualProperty> getVisualProperty(const std::string& name)
+        //std::shared_ptr<SVGVisualProperty> getVisualProperty(const std::string& name)
+        std::shared_ptr<SVGVisualProperty> getVisualProperty(const ByteSpan& name)
         {
             auto it = fVisualProperties.find(name);
             if (it != fVisualProperties.end())
@@ -451,7 +455,7 @@ namespace waavs {
         // The 'name', is the name of the attribute to be set
         // the 'value', is a span, that contains a raw string to be parsed to set the value
         //
-        virtual void setAttribute(const std::string& name, const ByteSpan& value)
+        virtual void setAttribute(const ByteSpan& name, const ByteSpan& value)
         {
             // If the value is nothing, then don't set it
             if (!value)
@@ -611,10 +615,11 @@ namespace waavs {
 
 namespace waavs {
     // compound node creation dispatch - 'g', 'symbol', 'pattern', 'linearGradient', 'radialGradient', 'conicGradient', 'image', 'style', 'text', 'tspan', 'use'
-    static std::map<std::string, std::function<std::shared_ptr<SVGVisualNode>(IAmGroot* aroot, XmlElementIterator& iter)>> gSVGGraphicsElementCreation{};
+    static std::unordered_map<ByteSpan, std::function<std::shared_ptr<SVGVisualNode>(IAmGroot* aroot, XmlElementIterator& iter)>, ByteSpanHash> gSVGGraphicsElementCreation{};
 
     // Geometry node creation dispatch
-    static std::map<std::string, std::function<std::shared_ptr<SVGVisualNode>(IAmGroot* root, const XmlElement& elem)>> gShapeCreationMap{};
+    // Creating from a singular element
+    static std::unordered_map<ByteSpan, std::function<std::shared_ptr<SVGVisualNode>(IAmGroot* root, const XmlElement& elem)>, ByteSpanHash> gShapeCreationMap{};
 }
 
 
@@ -870,7 +875,7 @@ namespace waavs {
                 addNode(node);
             }
             else {
-                printf("SVGGraphicsElement::loadSelfClosingNode UNKNOWN[%s]\n", elem.name().c_str());
+                printf("SVGGraphicsElement::loadSelfClosingNode UNKNOWN[%s]\n", toString(elem.name()).c_str());
                 //printXmlElement(elem);
             }
         }
@@ -915,7 +920,7 @@ namespace waavs {
                 addNode(node);
             }
             else {
-                printf("SVGGraphicsElement::loadCompoundNode == UNKNOWN ==> '%s'\n", aname.c_str());
+                printf("SVGGraphicsElement::loadCompoundNode == UNKNOWN ==> '%s'\n", toString(aname).c_str());
                 //printXmlElement(elem);
                 auto node = gSVGGraphicsElementCreation["g"](root(), iter);
                 // don't add the node to the tree as we don't

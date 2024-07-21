@@ -93,8 +93,8 @@ namespace waavs
             value = chunk_trim(value, csswsp);
 
             // add the attribute to the map
-			auto name = std::string(prop.begin(), prop.end());
-            attributes.addAttribute(name, value);
+			//auto name = std::string(prop.begin(), prop.end());
+            attributes.addAttribute(prop, value);
         }
 
         return true;
@@ -115,7 +115,7 @@ namespace waavs
         CSSSelectorKind fKind{ CSSSelectorKind::CSS_SELECTOR_INVALID };
         ByteSpan fData{};
         XmlAttributeCollection fAttributes{};
-        std::string fName{};
+        ByteSpan fName{};
         
         
         CSSSelector() = default;
@@ -128,7 +128,7 @@ namespace waavs
 		{
 		}
         
-        CSSSelector(CSSSelectorKind kind, std::string& name, const waavs::ByteSpan& inChunk)
+        CSSSelector(CSSSelectorKind kind, ByteSpan& name, const waavs::ByteSpan& inChunk)
             :fKind(kind),
             fName(name),
             fData(inChunk)
@@ -140,7 +140,7 @@ namespace waavs
         }
 
         CSSSelectorKind kind() const { return fKind; }
-        const std::string& name() const { return fName; }
+        const ByteSpan& name() const { return fName; }
 		ByteSpan data() const { return fData; }
         
         const XmlAttributeCollection& attributes() const { return fAttributes; }
@@ -190,10 +190,10 @@ namespace waavs
 			gatherCssAttributes(inChunk, fAttributes);
 		}
         
-        waavs::ByteSpan getAttribute(const std::string &&name) const
+        //waavs::ByteSpan getAttribute(const std::string &&name) const
+        waavs::ByteSpan getAttribute(const ByteSpan &name) const
         {
             return fAttributes.getAttribute(name);
-            
         }
     };
 
@@ -332,7 +332,7 @@ namespace waavs
                         // skip the selector kind
                         selectorChunk = chunk_skip(selectorChunk, 1);
                     }
-                    std::string selectorName(selectorChunk.begin(), selectorChunk.end());
+                    ByteSpan selectorName = selectorChunk;
 
                     ByteSpan content = nextToken(fSource, "}");
                     content = chunk_trim(content, csswsp);
@@ -363,10 +363,10 @@ namespace waavs
     {
         waavs::ByteSpan fSource{};
 
-        std::map<std::string, std::shared_ptr<CSSSelector>> fIDSelectors{};
-        std::map<std::string, std::shared_ptr<CSSSelector>> fClassSelectors{};
-        std::map<std::string, std::shared_ptr<CSSSelector>> fElementSelectors{};
-        std::map<std::string, std::shared_ptr<CSSSelector>> fAnimationSelectors{};
+        std::unordered_map<ByteSpan, std::shared_ptr<CSSSelector>, ByteSpanHash> fIDSelectors{};
+        std::unordered_map<ByteSpan, std::shared_ptr<CSSSelector>, ByteSpanHash> fClassSelectors{};
+        std::unordered_map<ByteSpan, std::shared_ptr<CSSSelector>, ByteSpanHash> fElementSelectors{};
+        std::unordered_map<ByteSpan, std::shared_ptr<CSSSelector>, ByteSpanHash> fAnimationSelectors{};
         //std::vector<std::shared_ptr<CSSSelector>> fUniversalSelectors{};
 
         CSSStyleSheet() = default;
@@ -376,37 +376,9 @@ namespace waavs
             loadFromSpan(inSpan);
         }
         
-        std::shared_ptr<CSSSelector> getSelector(const std::string& name, CSSSelectorKind kind)
+        std::shared_ptr<CSSSelector> getSelector(const ByteSpan& name, CSSSelectorKind kind)
         {
-            
-            /*
-			switch (kind)
-			{
-			case CSSSelectorKind::CSS_SELECTOR_ID:
-                if (fIDSelectors.find(name) != fIDSelectors.end())
-                    return fIDSelectors.at(name);
-                else
-                    return nullptr;
-			case CSSSelectorKind::CSS_SELECTOR_CLASS:
-				if (fClassSelectors.find(name) != fClassSelectors.end())
-					return fClassSelectors.at(name);
-				else
-					return nullptr;
-			case CSSSelectorKind::CSS_SELECTOR_ATRULE:
-                if (fAnimationSelectors.find(name) != fAnimationSelectors.end())
-                    return fAnimationSelectors.at(name);
-                else
-                    return nullptr;
-            case CSSSelectorKind::CSS_SELECTOR_ELEMENT:
-                if (fElementSelectors.find(name) != fElementSelectors.end())
-                    return fElementSelectors.at(name);
-                else
-                    return nullptr;
-                
-			default:
-				return nullptr;
-			}
-            */
+     
             
             switch (kind)
             {
@@ -447,28 +419,28 @@ namespace waavs
         }
 
 
-		std::shared_ptr<CSSSelector> getIDSelector(const std::string& name)
+		std::shared_ptr<CSSSelector> getIDSelector(const ByteSpan& name)
         { 
             return getSelector(name, CSSSelectorKind::CSS_SELECTOR_ID);
         }
         
-        std::shared_ptr<CSSSelector> getElementSelector(const std::string& name)
+        std::shared_ptr<CSSSelector> getElementSelector(const ByteSpan& name)
 		{
             return getSelector(name, CSSSelectorKind::CSS_SELECTOR_ELEMENT);
 		}
         
-        std::shared_ptr<CSSSelector> getClassSelector(const std::string& name)
+        std::shared_ptr<CSSSelector> getClassSelector(const ByteSpan& name)
 		{
             return getSelector(name, CSSSelectorKind::CSS_SELECTOR_CLASS);
 		}
         
-        std::shared_ptr<CSSSelector> getAnimationSelector(const std::string& name)
+        std::shared_ptr<CSSSelector> getAnimationSelector(const ByteSpan& name)
         {
             return getSelector(name, CSSSelectorKind::CSS_SELECTOR_ATRULE);
         }
         
         
-		void addSelectorToMap(std::map<std::string, std::shared_ptr<CSSSelector>> &amap, std::shared_ptr<CSSSelector> selector)
+		void addSelectorToMap(std::unordered_map<ByteSpan, std::shared_ptr<CSSSelector>, ByteSpanHash> &amap, std::shared_ptr<CSSSelector> selector)
 		{
 			if (amap.find(selector->name()) != amap.end())
 			{

@@ -42,7 +42,7 @@ namespace waavs {
         void loadCDataNode(const XmlElement& elem) override
         {
             fScript = elem.data();
-			writeChunkToFile(fScript, "script.js");
+			//writeChunkToFile(fScript, "script.js");
         }
     };
 }

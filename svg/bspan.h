@@ -323,6 +323,15 @@ namespace std {
 	};
 }
 
+namespace waavs {
+	struct ByteSpanHash {
+		size_t operator()(const ByteSpan& span) const noexcept {
+			return waavs::fnv1a_32(span.data(), span.size());
+		}
+	};
+	
+	using bytesHash = std::hash<ByteSpan>;
+}
 
 // Functions that are implemented here
 namespace waavs {
