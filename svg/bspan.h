@@ -13,8 +13,12 @@ namespace waavs {
 
 
 	//
-	// A core type for representing a contiguous sequence of bytes
-	// As of C++ 20, there is std::span, but it is not yet widely supported
+	// ByteSpan
+	// 
+	// A core type for representing a contiguous sequence of bytes.
+	// As of C++ 20, there is std::span<>, and that would be a good 
+	// choice, but it is not yet widely supported, and forces a jump
+	// to C++20 besides.
 	// 
 	// The ByteSpan is used in everything from networking
 	// to graphics bitmaps to audio buffers.
@@ -22,8 +26,11 @@ namespace waavs {
 	// allows for easy interoperability between different
 	// subsystems.  
 	// 
-	// It also allows us to eliminate disparate implementations that
-	// are used for the same purpose.
+	// The ByteSpan, is just like 'span' and 'view' objects
+	// it does not "own" the memory, it just points at it.
+	// It is used as a stand-in for various data representations
+	// as well as acting like a 'cursor', when trying to traverse
+	// a sequence of bytes.
 
 	struct ByteSpan
 	{
@@ -68,10 +75,35 @@ namespace waavs {
 		const unsigned char* data() const noexcept { return (unsigned char*)fStart; }
 		const unsigned char* begin() const noexcept { return fStart; }
 		const unsigned char* end() const noexcept { return fEnd; }
-		size_t size()  const noexcept { return fEnd - fStart; }
+		size_t size()  const noexcept { ptrdiff_t sz = fEnd - fStart; if (sz < 0) return 0; return sz;}
 		const bool empty() const noexcept { return fStart == fEnd; }
 
 		void setAll(unsigned char c) noexcept { memset((uint8_t*)fStart, c, size()); }
+		
+		// Create a bytespan that is a subspan of another bytespan
+		ByteSpan subSpan(const size_t startAt, const size_t sz) const noexcept
+		{
+			const uint8_t* start = fStart;
+			const uint8_t* end = fEnd;
+			if (startAt < size())
+			{
+				start += startAt;
+				if (start + sz < end)
+					end = start + sz;
+				else
+					end = fEnd;
+			}
+			else
+			{
+				start = end;
+			}
+			return { start, end };
+		}
+
+		ByteSpan take(const ByteSpan& dc, size_t n) const noexcept
+		{
+			return subSpan(0, n);
+		}
 		
 		//
 		// Note:  For the various 'as_xxx' routines, there is no size
@@ -306,22 +338,17 @@ namespace waavs {
 
 // Implementation of hash function for ByteSpan
 // so it can be used in 'map' collections
+
 namespace std {
 	template<>
 	struct hash<waavs::ByteSpan> {
-		size_t operator()(const waavs::ByteSpan& span) const {
-			size_t ahash = waavs::bh_hashkey((const char*)span.data(), span.size());
-			return ahash;
-			
-			//size_t hash = 0;
-			
-			//for (const unsigned char* p = span.fStart; p != span.fEnd; ++p) {
-			//	hash = hash * 31 + *p;
-			//}
-			//return hash;
+		size_t operator()(const waavs::ByteSpan& span) const 
+		{
+			return waavs::fnv1a_32(span.data(), span.size());
 		}
 	};
 }
+
 
 namespace waavs {
 	struct ByteSpanHash {
@@ -329,15 +356,14 @@ namespace waavs {
 			return waavs::fnv1a_32(span.data(), span.size());
 		}
 	};
-	
-	using bytesHash = std::hash<ByteSpan>;
+
 }
 
 // Functions that are implemented here
 namespace waavs {
 
-	static inline ByteSpan chunk_subchunk(const ByteSpan& a, const size_t start, const size_t sz) noexcept;
-	static inline ByteSpan chunk_take(const ByteSpan& dc, size_t n) noexcept;
+	//static inline ByteSpan chunk_subchunk(const ByteSpan& a, const size_t start, const size_t sz) noexcept;
+	//static inline ByteSpan chunk_take(const ByteSpan& dc, size_t n) noexcept;
 
 	//static void writeChunkToFile(const ByteSpan& chunk, const char* filename) noexcept;
 	static void writeChunk(const ByteSpan& chunk) noexcept;
@@ -385,34 +411,6 @@ namespace waavs
 }
 
 
-namespace waavs {
-
-	// Create a bytespan that is a subspan of another bytespan
-	static inline ByteSpan chunk_subchunk(const ByteSpan& a, const size_t startAt, const size_t sz) noexcept
-	{
-		const uint8_t* start = a.fStart;
-		const uint8_t* end = a.fEnd;
-		if (startAt < chunk_size(a))
-		{
-			start += startAt;
-			if (start + sz < end)
-				end = start + sz;
-			else
-				end = a.fEnd;
-		}
-		else
-		{
-			start = end;
-		}
-		return { start, end };
-	}
-
-
-	static inline ByteSpan chunk_take(const ByteSpan& dc, size_t n) noexcept
-	{
-		return chunk_subchunk(dc, 0, n);
-	}
-}
 
 namespace waavs {
 	/*
@@ -480,9 +478,9 @@ namespace waavs
 	{
 		const uint8_t* start = a.fStart;
 		const uint8_t* end = a.fEnd;
-		while (start < end && skippable(*start))
+		while (start < a.fEnd && skippable(*start))
 			++start;
-		return { start, end };
+		return { start, a.fEnd };
 	}
 
 	// trim the right side of skippable characters
@@ -521,7 +519,7 @@ namespace waavs
 
 	static inline bool chunk_starts_with(const ByteSpan& a, const ByteSpan& b) noexcept
 	{
-		return chunk_is_equal(chunk_subchunk(a, 0, chunk_size(b)), b);
+		return chunk_is_equal(a.subSpan(0, chunk_size(b)), b);
 	}
 
 	static inline bool chunk_starts_with_char(const ByteSpan& a, const uint8_t b) noexcept
@@ -536,7 +534,7 @@ namespace waavs
 
 	static inline bool chunk_ends_with(const ByteSpan& a, const ByteSpan& b) noexcept
 	{
-		return chunk_is_equal(chunk_subchunk(a, chunk_size(a) - chunk_size(b), chunk_size(b)), b);
+		return chunk_is_equal(a.subSpan(chunk_size(a) - chunk_size(b), chunk_size(b)), b);
 	}
 
 	static inline bool chunk_ends_with_char(const ByteSpan& a, const uint8_t b) noexcept

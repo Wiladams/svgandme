@@ -120,7 +120,7 @@ namespace waavs {
 		bool operator [](const size_t idx) const noexcept { return bits[idx]; }
 
 		// This one makes it look like a function
-		bool operator ()(const size_t idx) const noexcept {return bits[idx];}
+		constexpr bool operator ()(const size_t idx) const noexcept {return bits[idx];}
 		
 		// operator^ is the union of two sets
 		charset operator^(const charset& other) const { charset result(*this); result.bits |= other.bits; return result; }

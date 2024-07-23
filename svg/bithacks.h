@@ -403,6 +403,7 @@ namespace waavs {
 	}
 }
 
+/*
 // String Hashing borrowed from LuaJIT
 namespace waavs {
 #define bh_hashrot(x, k) (((x) << (k)) | ((x) >> (32 - (k))))
@@ -432,3 +433,4 @@ namespace waavs {
     }
     
 }
+*/

@@ -76,7 +76,9 @@ namespace waavs {
 
 		for (const auto& attr : attrColl.attributes())
 		{
-			printf("    %s: ", attr.first.c_str());
+			printf("  ");
+			writeChunk(attr.first);
+			printf("   = ");
 			printChunk(attr.second);
 		}
 	}

@@ -64,7 +64,7 @@ static void drawDocument(std::shared_ptr<SVGDocument> doc)
 	// Create a SvgDrawingContext for the canvas
 	SvgDrawingContext ctx(&gFontHandler);
 	BLContextCreateInfo ctxInfo{};
-	ctxInfo.threadCount = 4;
+	ctxInfo.threadCount = 8;
 	ctx.begin(appFrameBuffer().image(), &ctxInfo);
 
 	// setup any transform

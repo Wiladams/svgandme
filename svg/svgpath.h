@@ -13,7 +13,7 @@
 //	waavs::blpathparser::parsePath(span, path);
 //
 
-#include <map>
+
 #include <functional>
 #include <cstdint>
 
@@ -21,16 +21,16 @@
 
 
 #include "bspan.h"
-#include "maths.h"
+
 
 // uncomment the following to print diagnostics
 //#define PATH_COMMAND_DEBUG 1
 
 /*
 // Old reference
-// A dispatch std::map that matches the command character to the
+		// A dispatch std::map that matches the command character to the
 		// appropriate parse function
-		static std::map<SegmentCommand, std::function<bool(ByteSpan&, BLPath&, int&)>> parseMap = {
+		static std::unordered_map<SegmentCommand, std::function<bool(ByteSpan&, BLPath&, int&)>> parseMap = {
 			{SegmentCommand::MoveTo, parseMoveTo},				// M
 			{SegmentCommand::MoveBy, parseMoveBy},				// m
 			{SegmentCommand::LineTo, parseLineTo},				// L
@@ -54,6 +54,35 @@
 		};
 */
 
+/*
+		switch (currentCommand)
+		{
+			case SegmentCommand::MoveTo: pFunc = parseMoveTo; break;
+			case SegmentCommand::MoveBy: pFunc = parseMoveBy; break;
+			case SegmentCommand::LineTo: pFunc = parseLineTo; break;
+			case SegmentCommand::LineBy: pFunc = parseLineBy; break;
+			case SegmentCommand::HLineTo: pFunc = parseHLineTo; break;
+			case SegmentCommand::HLineBy: pFunc = parseHLineBy; break;
+			case SegmentCommand::VLineTo: pFunc = parseVLineTo; break;
+			case SegmentCommand::VLineBy: pFunc = parseVLineBy; break;
+			case SegmentCommand::CubicTo: pFunc = parseCubicTo; break;
+			case SegmentCommand::CubicBy: pFunc = parseCubicBy; break;
+			case SegmentCommand::SCubicTo: pFunc = parseSmoothCubicTo; break;
+			case SegmentCommand::SCubicBy: pFunc = parseSmoothCubicBy; break;
+			case SegmentCommand::QuadTo: pFunc = parseQuadTo; break;
+			case SegmentCommand::QuadBy: pFunc = parseQuadBy; break;
+			case SegmentCommand::SQuadTo: pFunc = parseSmoothQuadTo; break;
+			case SegmentCommand::SQuadBy: pFunc = parseSmoothQuadBy; break;
+			case SegmentCommand::ArcTo: pFunc = parseArcTo; break;
+			case SegmentCommand::ArcBy: pFunc = parseArcBy; break;
+			case SegmentCommand::CloseTo: pFunc = parseClose; break;
+			case SegmentCommand::CloseBy: pFunc = parseClose; break;
+
+			default:
+				printf("parsePath: INVALID COMMAND: %c\n", *s);
+				return false;
+		}
+		*/
 
 namespace waavs {
 
@@ -64,9 +93,9 @@ namespace waavs {
     // Q - quad       (Q, q, T, t)
     // A - ellipticArc  (A, a)
     // Z - close        (Z, z)
-    enum class SegmentCommand : uint8_t
+    enum SegmentCommand : uint8_t
     {
-        INVALID = 0
+        INVALID = 255
         , MoveTo = 'M'
         , MoveBy = 'm'
         , LineTo = 'L'
@@ -88,6 +117,18 @@ namespace waavs {
         , CloseTo = 'Z'
         , CloseBy = 'z'
     };
+
+	static constexpr int svgPathCommandHash(const uint8_t cmd) {
+		if (cmd >= 'A' && cmd <= 'Z') {
+			return cmd - 'A';
+		}
+		else if (cmd >= 'a' && cmd <= 'z') {
+			return 26 + (cmd - 'a');
+		}
+		else {
+			return 255; // Invalid command
+		}
+	}
 }
 
 
@@ -110,6 +151,9 @@ namespace waavs
 		static charset numberChars("0123456789.+-eE");         // digits, symbols, and letters found in numbers
 		static charset leadingChars("0123456789.+-");          // digits, symbols, and letters found at start of numbers
 
+
+		// Command parse function pointer
+		using SVGPathCommandParseFunction = std::function<bool(ByteSpan&, BLPath&, int&)>;
 
 		
 		static bool parseMoveTo(ByteSpan& s, BLPath& apath, int& iteration) noexcept
@@ -691,20 +735,85 @@ namespace waavs
 
 
 
+		
+		// Static array to store function pointers
+		// We use this because it's the fastest way to connect a command
+		// to the function pointer to parse it.  This should be faster
+		// that a switch statement or a map lookup
+		static SVGPathCommandParseFunction SVGPathCommandParseFunctions[] = {
+			/* A */ parseArcTo,
+			/* B */ nullptr,
+			/* C */ parseCubicTo,
+			/* D */ nullptr,
+			/* E */ nullptr,
+			/* F */ nullptr,
+			/* G */ nullptr,
+			/* H */ parseHLineTo,
+			/* I */ nullptr,
+			/* J */ nullptr,
+			/* K */ nullptr,
+			/* L */ parseLineTo,
+			/* M */ parseMoveTo,
+			/* N */ nullptr,
+			/* O */ nullptr,
+			/* P */ nullptr,
+			/* Q */ parseQuadTo,
+			/* R */ nullptr,
+			/* S */ parseSmoothCubicTo,
+			/* T */ parseSmoothQuadTo,
+			/* U */ nullptr,
+			/* V */ parseVLineTo,
+			/* W */ nullptr,
+			/* X */ nullptr,
+			/* Y */ nullptr,
+			/* Z */ parseClose,
+			/* a */ parseArcBy,
+			/* b */ nullptr,
+			/* c */ parseCubicBy,
+			/* d */ nullptr,
+			/* e */ nullptr,
+			/* f */ nullptr,
+			/* g */ nullptr,
+			/* h */ parseHLineBy,
+			/* i */ nullptr,
+			/* j */ nullptr,
+			/* k */ nullptr,
+			/* l */ parseLineBy,
+			/* m */ parseMoveBy,
+			/* n */ nullptr,
+			/* o */ nullptr,
+			/* p */ nullptr,
+			/* q */ parseQuadBy,
+			/* r */ nullptr,
+			/* s */ parseSmoothCubicBy,
+			/* t */ parseSmoothQuadBy,
+			/* u */ nullptr,
+			/* v */ parseVLineBy,
+			/* w */ nullptr,
+			/* x */ nullptr,
+			/* y */ nullptr,
+			/* z */ parseClose
+		};
 
+		// parsePath()
+		// parse a path string, filling in a BLPath object
+		// along the way.
+		// Return 'false' if there are any errors
+		//
+		// Note:  Most SVG objects of significance will have a lot
+		// of paths, so we want to make this as fast as possible.
 		static bool parsePath(const waavs::ByteSpan& inSpan, BLPath& apath) noexcept
 		{
 			// Use a ByteSpan as a cursor on the input
 			ByteSpan s = inSpan;
 			SegmentCommand currentCommand = SegmentCommand::INVALID;
 			int iteration = 0;
-			std::function<bool(ByteSpan&, BLPath&, int&)> pFunc{ nullptr };
+			SVGPathCommandParseFunction pFunc{ nullptr };
 			bool success = false;
 			
 			while (s)
 			{
 
-				
 				// always ignore leading whitespace
 				s = chunk_ltrim(s, chrWspChars);
 
@@ -713,64 +822,25 @@ namespace waavs
 				if (!s)
 					break;
 
-				if (pathCmdChars[*s])
+				// Check to see if it's one of our path commands
+				// We can do this by performing the hash function
+				// and looking up a function pointer
+				int cmdIndex = svgPathCommandHash(*s);
+				if (cmdIndex >= 0 && cmdIndex < 52)
 				{
-					// we have a command
-					currentCommand = SegmentCommand(*s);
+					// We have a valid command, so set the function pointer
+					pFunc = SVGPathCommandParseFunctions[cmdIndex];
 
-					// reset iteration counter
+					currentCommand = static_cast<SegmentCommand>(*s);
 					iteration = 0;
-
-					// move past the command character
 					s++;
 				}
-				else {
-					// The tricky part here is, the character we're sitting
-					// on is not a valid command character, so we're either
-					// sitting at the beginning of a number, or we're sitting
-					// at an invalid command.
-					// We'll just assume we're sitting at a number, and 
-					// process it as if it's a continuation of the last command
-			        // to be more robust, we can check whether it's the beginning
-					// of a number or not.  If not, then return false
-					//if (!leadingChars[*s])
-					// {
-					//	 return false;
-					// }
-				}
+				
 				
 #ifdef PATH_COMMAND_DEBUG
 				//printf("// Command: %c [%d]\n", currentCommand, iteration);
 #endif
-				
-				switch (currentCommand)
-				{
-					case SegmentCommand::MoveTo: pFunc = parseMoveTo; break;
-					case SegmentCommand::MoveBy: pFunc = parseMoveBy; break;
-					case SegmentCommand::LineTo: pFunc = parseLineTo; break;
-					case SegmentCommand::LineBy: pFunc = parseLineBy; break;
-					case SegmentCommand::HLineTo: pFunc = parseHLineTo; break;
-					case SegmentCommand::HLineBy: pFunc = parseHLineBy; break;
-					case SegmentCommand::VLineTo: pFunc = parseVLineTo; break;
-					case SegmentCommand::VLineBy: pFunc = parseVLineBy; break;
-					case SegmentCommand::CubicTo: pFunc = parseCubicTo; break;
-					case SegmentCommand::CubicBy: pFunc = parseCubicBy; break;
-					case SegmentCommand::SCubicTo: pFunc = parseSmoothCubicTo; break;
-					case SegmentCommand::SCubicBy: pFunc = parseSmoothCubicBy; break;
-					case SegmentCommand::QuadTo: pFunc = parseQuadTo; break;
-					case SegmentCommand::QuadBy: pFunc = parseQuadBy; break;
-					case SegmentCommand::SQuadTo: pFunc = parseSmoothQuadTo; break;
-					case SegmentCommand::SQuadBy: pFunc = parseSmoothQuadBy; break;
-					case SegmentCommand::ArcTo: pFunc = parseArcTo; break;
-					case SegmentCommand::ArcBy: pFunc = parseArcBy; break;
-					case SegmentCommand::CloseTo: pFunc = parseClose; break;
-					case SegmentCommand::CloseBy: pFunc = parseClose; break;
-						
-					default:
-						printf("parsePath: INVALID COMMAND: %c\n", *s);
-						return false;
-				}
-				
+
 				if (pFunc != nullptr)
 					success = pFunc(s, apath, iteration);
 				

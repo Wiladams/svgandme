@@ -225,7 +225,7 @@ namespace waavs {
 
         virtual void loadXmlDecl(XmlElementIterator& iter, IAmDocument& doc)
         {
-            printf("SVGNode::loadXmlDecl()[%s]\n", iter->name().c_str());
+            //printf("SVGNode::loadXmlDecl()[%s]\n", toString(iter->name()).c_str());
             //printXmlElement(*iter);
         }
 
@@ -415,7 +415,7 @@ namespace waavs {
         // Overrides of node construction
         void loadXmlDecl(XmlElementIterator& iter, IAmDocument& doc) override
         {
-            printf("SVGDOMDocument::loadXmlDecl()[%s]\n", iter->name().c_str());
+            printf("SVGDOMDocument::loadXmlDecl()[%s]\n", toString(iter->name()).c_str());
             printXmlElement(*iter);
             addAttributes(iter->data());
         }

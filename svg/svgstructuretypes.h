@@ -14,6 +14,7 @@
 
 #include "irendersvg.h"
 #include "uievent.h"
+#include "collections.h"
 
 
 
@@ -625,8 +626,6 @@ namespace waavs {
 
 namespace waavs {
 
-
-
     //================================================
     // SVGGraphicsElement
     //================================================
@@ -637,7 +636,7 @@ namespace waavs {
         static constexpr int BUILD_STATE_CLOSE = 2;
 
 
-        std::shared_ptr<SVGGraphicsElement> fParent{ nullptr };
+        //std::shared_ptr<SVGGraphicsElement> fParent{ nullptr };
         std::vector<std::shared_ptr<SVGVisualNode>> fNodes{};
 
         int buildState = BUILD_STATE_OPEN;
