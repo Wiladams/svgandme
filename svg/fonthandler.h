@@ -170,6 +170,8 @@ namespace waavs {
         // with defaults of 'normal'
 		bool selectFontFamily(const ByteSpan& names, BLFontFace& face, uint32_t style= BL_FONT_STYLE_NORMAL, uint32_t weight= BL_FONT_WEIGHT_NORMAL, uint32_t stretch= BL_FONT_STRETCH_NORMAL) const
 		{
+            static charset fontWsp = chrWspChars + ',';
+            
             charset delims(",");
             charset quoteChars("'\"");
 
@@ -183,7 +185,7 @@ namespace waavs {
             // nammes are quoted, or separated by commas
             while (s.size() > 0)
             {
-                s = chunk_ltrim(s, chrWspChars);
+                s = chunk_ltrim(s, fontWsp);
                 ByteSpan name = chunk_token(s, delims);
                 name = chunk_trim(name, quoteChars);
 

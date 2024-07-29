@@ -129,7 +129,7 @@ namespace waavs {
 	};
 	
 	// Some common character sets
-	static charset chrWspChars(",\t\n\f\r ");          // whitespace characters
+	static charset chrWspChars("\t\n\f\r ");          // whitespace characters
 	static charset chrAlphaChars("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
 	static charset chrDecDigits("0123456789");
 	static charset chrHexDigits("0123456789ABCDEFabcdef");

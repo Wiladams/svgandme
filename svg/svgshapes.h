@@ -737,18 +737,18 @@ namespace waavs {
 			// if not, then we should error out
 			// and mark this as not visible
 			BLPoint pt{};
-			if (!parseNextNumber(points, pt.x))
+			if (!readNextNumber(points, pt.x))
 				return;
-			if (!parseNextNumber(points, pt.y))
+			if (!readNextNumber(points, pt.y))
 				return;
 
 			fPath.moveTo(pt);
 
 			while (points)
 			{
-				if (!parseNextNumber(points, pt.x))
+				if (!readNextNumber(points, pt.x))
 					break;
-				if (!parseNextNumber(points, pt.y))
+				if (!readNextNumber(points, pt.y))
 					break;
 
 				fPath.lineTo(pt);
@@ -799,17 +799,17 @@ namespace waavs {
 			auto points = attrs.getAttribute("points");
 
 			BLPoint pt{};
-			parseNextNumber(points, pt.x);
-			parseNextNumber(points, pt.y);
+			readNextNumber(points, pt.x);
+			readNextNumber(points, pt.y);
 
 
 			fPath.moveTo(pt);
 
 			while (points)
 			{
-				if (!parseNextNumber(points, pt.x))
+				if (!readNextNumber(points, pt.x))
 					break;
-				if (!parseNextNumber(points, pt.y))
+				if (!readNextNumber(points, pt.y))
 					break;
 
 				fPath.lineTo(pt);
@@ -866,9 +866,10 @@ namespace waavs {
 		*/
 		
 		/*
+		
 		void loadVisualProperties(const XmlAttributeCollection& attrs) override
 		{
-			SVGGeometryElement::loadVisualProperties(attrs);
+			//SVGGeometryElement::loadVisualProperties(attrs);
 		
 			auto d = attrs.getAttribute("d");
 			if (d) {

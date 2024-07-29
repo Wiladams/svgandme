@@ -200,6 +200,7 @@ namespace waavs {
         {
             // Setup default values for a SVG context
             ctx->strokeJoin(BL_STROKE_JOIN_MITER_CLIP);
+            ctx->strokeMiterLimit(4);
             ctx->setFillRule(BL_FILL_RULE_NON_ZERO);
             ctx->fill(BLRgba32(0, 0, 0));
             ctx->noStroke();

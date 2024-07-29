@@ -1311,13 +1311,13 @@ namespace waavs {
             if (!s)
                 return false;
             
-            if (!parseNextNumber(s, fRect.x))
+            if (!readNextNumber(s, fRect.x))
                 return false;
-            if (!parseNextNumber(s, fRect.y))
+            if (!readNextNumber(s, fRect.y))
                 return false;
-            if (!parseNextNumber(s, fRect.w))
+            if (!readNextNumber(s, fRect.w))
                 return false;
-            if (!parseNextNumber(s, fRect.h))
+            if (!readNextNumber(s, fRect.h))
                 return false;
 
 			set(true);

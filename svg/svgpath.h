@@ -12,6 +12,8 @@
 //	waavs::ByteSpan span(pathString);
 //	waavs::blpathparser::parsePath(span, path);
 //
+// Noted:
+// A convenient visualtion tool can be found here: https://svg-path-visualizer.netlify.app/
 
 
 #include <functional>
@@ -25,6 +27,8 @@
 
 // uncomment the following to print diagnostics
 //#define PATH_COMMAND_DEBUG 1
+
+
 
 /*
 // Old reference
@@ -118,6 +122,11 @@ namespace waavs {
         , CloseBy = 'z'
     };
 
+	// svgPathCommandHash
+	// Turn a single character that represents one of the SVG path commands
+	// into a hash value between 0 and 51 inclusive.
+	// A value of 255 indicates "INVALID", meaning, the command is 
+	// not one of the SVG Path commands.
 	static constexpr int svgPathCommandHash(const uint8_t cmd) {
 		if (cmd >= 'A' && cmd <= 'Z') {
 			return cmd - 'A';
@@ -125,9 +134,8 @@ namespace waavs {
 		else if (cmd >= 'a' && cmd <= 'z') {
 			return 26 + (cmd - 'a');
 		}
-		else {
-			return 255; // Invalid command
-		}
+
+		return 255; // Invalid command
 	}
 }
 
@@ -162,9 +170,9 @@ namespace waavs
 			double y{ 0 };
 			BLResult res = BL_SUCCESS;
 			
-			if (!parseNextNumber(s, x))
+			if (!readNextNumber(s, x))
 				return false;
-			if (!parseNextNumber(s, y))
+			if (!readNextNumber(s, y))
 				return false;
 
 			if (iteration == 0) {
@@ -192,9 +200,9 @@ namespace waavs
 			double y{ 0 };
 			BLResult res = BL_SUCCESS;
 			
-			if (!parseNextNumber(s, x))
+			if (!readNextNumber(s, x))
 				return false;
-			if (!parseNextNumber(s, y))
+			if (!readNextNumber(s, y))
 				return false;
 
 			BLPoint lastPos{};
@@ -227,9 +235,9 @@ namespace waavs
 			double y{ 0 };
 			BLResult res = BL_SUCCESS;
 			
-			if (!parseNextNumber(s, x))
+			if (!readNextNumber(s, x))
 				return false;
-			if (!parseNextNumber(s, y))
+			if (!readNextNumber(s, y))
 				return false;
 
 			res = apath.lineTo(x, y);
@@ -249,9 +257,9 @@ namespace waavs
 			double y{ 0 };
 			BLResult res = BL_SUCCESS;
 			
-			if (!parseNextNumber(s, x))
+			if (!readNextNumber(s, x))
 				return false;
-			if (!parseNextNumber(s, y))
+			if (!readNextNumber(s, y))
 				return false;
 
 			BLPoint lastPos{};
@@ -275,7 +283,7 @@ namespace waavs
 			double x{ 0 };
 			BLResult res = BL_SUCCESS;
 			
-			if (!parseNextNumber(s, x))
+			if (!readNextNumber(s, x))
 				return false;
 
 			BLPoint lastPos{};
@@ -297,7 +305,7 @@ namespace waavs
 			double x{ 0 };
 			BLResult res = BL_SUCCESS;
 			
-			if (!parseNextNumber(s, x))
+			if (!readNextNumber(s, x))
 				return false;
 
 			BLPoint lastPos{};
@@ -320,7 +328,7 @@ namespace waavs
 			double y{ 0 };
 			BLResult res = BL_SUCCESS;
 			
-			if (!parseNextNumber(s, y))
+			if (!readNextNumber(s, y))
 				return false;
 
 			BLPoint lastPos{};
@@ -343,7 +351,7 @@ namespace waavs
 			double y{ 0 };
 			BLResult res = BL_SUCCESS;
 			
-			if (!parseNextNumber(s, y))
+			if (!readNextNumber(s, y))
 				return false;
 
 			BLPoint lastPos{};
@@ -368,13 +376,13 @@ namespace waavs
 			double y2{ 0 };
 			BLResult res = BL_SUCCESS;
 			
-			if (!parseNextNumber(s, x1))
+			if (!readNextNumber(s, x1))
 				return false;
-			if (!parseNextNumber(s, y1))
+			if (!readNextNumber(s, y1))
 				return false;
-			if (!parseNextNumber(s, x2))
+			if (!readNextNumber(s, x2))
 				return false;
-			if (!parseNextNumber(s, y2))
+			if (!readNextNumber(s, y2))
 				return false;
 
 			res = apath.quadTo(x1, y1, x2, y2);
@@ -399,13 +407,13 @@ namespace waavs
 			double y2{ 0 };
 			BLResult res = BL_SUCCESS;
 			
-			if (!parseNextNumber(s, x1))
+			if (!readNextNumber(s, x1))
 				return false;
-			if (!parseNextNumber(s, y1))
+			if (!readNextNumber(s, y1))
 				return false;
-			if (!parseNextNumber(s, x2))
+			if (!readNextNumber(s, x2))
 				return false;
-			if (!parseNextNumber(s, y2))
+			if (!readNextNumber(s, y2))
 				return false;
 
 			BLPoint lastPos{};
@@ -430,9 +438,9 @@ namespace waavs
 			double y2{ 0 };
 			BLResult res = BL_SUCCESS;
 			
-			if (!parseNextNumber(s, x2))
+			if (!readNextNumber(s, x2))
 				return false;
-			if (!parseNextNumber(s, y2))
+			if (!readNextNumber(s, y2))
 				return false;
 
 			res = apath.smoothQuadTo(x2, y2);
@@ -454,9 +462,9 @@ namespace waavs
 			double y2{ 0 };
 			BLResult res = BL_SUCCESS;
 			
-			if (!parseNextNumber(s, x2))
+			if (!readNextNumber(s, x2))
 				return false;
-			if (!parseNextNumber(s, y2))
+			if (!readNextNumber(s, y2))
 				return false;
 
 			BLPoint lastPos{};
@@ -485,17 +493,17 @@ namespace waavs
 			double y3{ 0 };
 			BLResult res = BL_SUCCESS;
 			
-			if (!parseNextNumber(s, x1))
+			if (!readNextNumber(s, x1))
 				return false;
-			if (!parseNextNumber(s, y1))
+			if (!readNextNumber(s, y1))
 				return false;
-			if (!parseNextNumber(s, x2))
+			if (!readNextNumber(s, x2))
 				return false;
-			if (!parseNextNumber(s, y2))
+			if (!readNextNumber(s, y2))
 				return false;
-			if (!parseNextNumber(s, x3))
+			if (!readNextNumber(s, x3))
 				return false;
-			if (!parseNextNumber(s, y3))
+			if (!readNextNumber(s, y3))
 				return false;
 
 			res = apath.cubicTo(x1, y1, x2, y2, x3, y3);
@@ -520,17 +528,17 @@ namespace waavs
 			double y3{ 0 };
 			BLResult res = BL_SUCCESS;
 			
-			if (!parseNextNumber(s, x1))
+			if (!readNextNumber(s, x1))
 				return false;
-			if (!parseNextNumber(s, y1))
+			if (!readNextNumber(s, y1))
 				return false;
-			if (!parseNextNumber(s, x2))
+			if (!readNextNumber(s, x2))
 				return false;
-			if (!parseNextNumber(s, y2))
+			if (!readNextNumber(s, y2))
 				return false;
-			if (!parseNextNumber(s, x3))
+			if (!readNextNumber(s, x3))
 				return false;
-			if (!parseNextNumber(s, y3))
+			if (!readNextNumber(s, y3))
 				return false;
 
 			BLPoint lastPos{};
@@ -539,7 +547,7 @@ namespace waavs
 			res = apath.cubicTo(lastPos.x + x1, lastPos.y + y1, lastPos.x + x2, lastPos.y + y2, lastPos.x + x3, lastPos.y + y3);
 
 #ifdef PATH_COMMAND_DEBUG
-			//printf("apath.cubicBy(%f,%f,%f,%f,%f,%f);\n", x1, y1, x2, y2, x3, y3);
+			printf("// apath.cubicBy(%f,%f,%f,%f,%f,%f);\n", x1, y1, x2, y2, x3, y3);
 
 			printf("apath.cubicTo(%f,%f,%f,%f,%f,%f);\n", lastPos.x + x1, lastPos.y + y1, lastPos.x + x2, lastPos.y + y2, lastPos.x + x3, lastPos.y + y3);
 #endif
@@ -558,13 +566,13 @@ namespace waavs
 			double y3{ 0 };
 			BLResult res = BL_SUCCESS;
 			
-			if (!parseNextNumber(s, x2))
+			if (!readNextNumber(s, x2))
 				return false;
-			if (!parseNextNumber(s, y2))
+			if (!readNextNumber(s, y2))
 				return false;
-			if (!parseNextNumber(s, x3))
+			if (!readNextNumber(s, x3))
 				return false;
-			if (!parseNextNumber(s, y3))
+			if (!readNextNumber(s, y3))
 				return false;
 
 			res = apath.smoothCubicTo(x2, y2, x3, y3);
@@ -587,13 +595,13 @@ namespace waavs
 			double y3{ 0 };
 			BLResult res = BL_SUCCESS;
 			
-			if (!parseNextNumber(s, x2))
+			if (!readNextNumber(s, x2))
 				return false;
-			if (!parseNextNumber(s, y2))
+			if (!readNextNumber(s, y2))
 				return false;
-			if (!parseNextNumber(s, x3))
+			if (!readNextNumber(s, x3))
 				return false;
-			if (!parseNextNumber(s, y3))
+			if (!readNextNumber(s, y3))
 				return false;
 
 			BLPoint lastPos{};
@@ -622,19 +630,19 @@ namespace waavs
 			double y{ 0 };
 			BLResult res = BL_SUCCESS;
 			
-			if (!parseNextNumber(s, rx))
+			if (!readNextNumber(s, rx))
 				return false;
-			if (!parseNextNumber(s, ry))
+			if (!readNextNumber(s, ry))
 				return false;
-			if (!parseNextNumber(s, xAxisRotation))
+			if (!readNextNumber(s, xAxisRotation))
 				return false;
-			if (!parseNextNumber(s, largeArcFlag))
+			if (!readNextFlag(s, largeArcFlag))
 				return false;
-			if (!parseNextNumber(s, sweepFlag))
+			if (!readNextFlag(s, sweepFlag))
 				return false;
-			if (!parseNextNumber(s, x))
+			if (!readNextNumber(s, x))
 				return false;
-			if (!parseNextNumber(s, y))
+			if (!readNextNumber(s, y))
 				return false;
 
 			bool larc = largeArcFlag > 0.5f;
@@ -664,19 +672,19 @@ namespace waavs
 			double y{ 0 };
 			BLResult res = BL_SUCCESS;
 			
-			if (!parseNextNumber(s, rx))
+			if (!readNextNumber(s, rx))
 				return false;
-			if (!parseNextNumber(s, ry))
+			if (!readNextNumber(s, ry))
 				return false;
-			if (!parseNextNumber(s, xAxisRotation))
+			if (!readNextNumber(s, xAxisRotation))
 				return false;
-			if (!parseNextNumber(s, largeArcFlag))
+			if (!readNextFlag(s, largeArcFlag))
 				return false;
-			if (!parseNextNumber(s, sweepFlag))
+			if (!readNextFlag(s, sweepFlag))
 				return false;
-			if (!parseNextNumber(s, x))
+			if (!readNextNumber(s, x))
 				return false;
-			if (!parseNextNumber(s, y))
+			if (!readNextNumber(s, y))
 				return false;
 
 			bool larc = largeArcFlag > 0.5f;
@@ -737,62 +745,74 @@ namespace waavs
 
 		
 		// Static array to store function pointers
-		// We use this because it's the fastest way to connect a command
-		// to the function pointer to parse it.  This should be faster
-		// that a switch statement or a map lookup
+		// This should be a very fast way to connect a single character command
+		// to the function pointer to parse it.  
+		// In addition to being relatively fast, it also does not required the use
+		// of any std library collections.
+		// An alternative is to use a simple switch statement to quickly
+		// do the same.
+		// I like this lookup method, although it requires some extra memory
+		// and a hash function (svgPathCommandHash) to generate the index.
+		//
+		// Encoding command parameters
+		// c - coordimate, floating point number
+		// r - rotation, floating point number, in degrees
+		// f - flag, a single character
+		//
+		
 		static SVGPathCommandParseFunction SVGPathCommandParseFunctions[] = {
-			/* A */ parseArcTo,
+			parseArcTo,				// A	'rrffcc'
 			/* B */ nullptr,
-			/* C */ parseCubicTo,
+			parseCubicTo,			// C	'cccccc'
 			/* D */ nullptr,
 			/* E */ nullptr,
 			/* F */ nullptr,
 			/* G */ nullptr,
-			/* H */ parseHLineTo,
+			parseHLineTo,			// H	'c'
 			/* I */ nullptr,
 			/* J */ nullptr,
 			/* K */ nullptr,
-			/* L */ parseLineTo,
-			/* M */ parseMoveTo,
+			parseLineTo,			// L	'cc'
+			parseMoveTo,			// M	'cc'
 			/* N */ nullptr,
 			/* O */ nullptr,
 			/* P */ nullptr,
-			/* Q */ parseQuadTo,
+			parseQuadTo,			// Q	'cccc'
 			/* R */ nullptr,
-			/* S */ parseSmoothCubicTo,
-			/* T */ parseSmoothQuadTo,
+			parseSmoothCubicTo,		// S	'cccc'
+			parseSmoothQuadTo,		// T	'cc'
 			/* U */ nullptr,
-			/* V */ parseVLineTo,
+			parseVLineTo,			// V	'c'
 			/* W */ nullptr,
 			/* X */ nullptr,
 			/* Y */ nullptr,
-			/* Z */ parseClose,
-			/* a */ parseArcBy,
+			parseClose,				// Z	''
+			parseArcBy,				// a	'rrffcc'
 			/* b */ nullptr,
-			/* c */ parseCubicBy,
+			parseCubicBy,			// c	'cccccc'
 			/* d */ nullptr,
 			/* e */ nullptr,
 			/* f */ nullptr,
 			/* g */ nullptr,
-			/* h */ parseHLineBy,
+			parseHLineBy,			// h	'c'
 			/* i */ nullptr,
 			/* j */ nullptr,
 			/* k */ nullptr,
-			/* l */ parseLineBy,
-			/* m */ parseMoveBy,
+			parseLineBy,			// l	'cc'
+			parseMoveBy,			// m	'cc'
 			/* n */ nullptr,
 			/* o */ nullptr,
 			/* p */ nullptr,
-			/* q */ parseQuadBy,
+			parseQuadBy,			// q	'cccc'
 			/* r */ nullptr,
-			/* s */ parseSmoothCubicBy,
-			/* t */ parseSmoothQuadBy,
+			parseSmoothCubicBy,		// s	'cccc'
+			parseSmoothQuadBy,		// t	'cc'
 			/* u */ nullptr,
-			/* v */ parseVLineBy,
+			parseVLineBy,			// v  'c'
 			/* w */ nullptr,
 			/* x */ nullptr,
 			/* y */ nullptr,
-			/* z */ parseClose
+			parseClose				// z  ''
 		};
 
 		// parsePath()
@@ -804,6 +824,8 @@ namespace waavs
 		// of paths, so we want to make this as fast as possible.
 		static bool parsePath(const waavs::ByteSpan& inSpan, BLPath& apath) noexcept
 		{
+			charset pathWsp = chrWspChars + ',';
+				
 			// Use a ByteSpan as a cursor on the input
 			ByteSpan s = inSpan;
 			SegmentCommand currentCommand = SegmentCommand::INVALID;
@@ -815,7 +837,7 @@ namespace waavs
 			{
 
 				// always ignore leading whitespace
-				s = chunk_ltrim(s, chrWspChars);
+				s = chunk_ltrim(s, pathWsp);
 
 				// If we've gotten to the end, we're done
 				// so just return
