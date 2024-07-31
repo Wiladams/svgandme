@@ -36,7 +36,7 @@
 #include "svgfilter.h"
 #include "svgcss.h"
 #include "svgdrawingcontext.h"
-
+//#include "svgwaavs.h"
 
 
 namespace waavs {
@@ -106,31 +106,19 @@ namespace waavs {
         //=================================================================
 		// IAmGroot
 		//=================================================================
-        // Expand text that may have entities in it
-        // return true if there were any entities
-        //bool expandText(const ByteSpan& txt, std::ostringstream& oss)
-        //{
-        //    return false;
-        //}
+
         
         std::shared_ptr<SVGViewable> getElementById(const ByteSpan& name) override
-        {
-            // BUGBUG - this is the older more wasteful way
-            //	if (fDefinitions.find(name) != fDefinitions.end())
-            //      return fDefinitions[name];
-
-            
+        {   
             auto it = fDefinitions.find(name);
 			if (it != fDefinitions.end())
 				return it->second;
 
             printf("SVGDocument::getElementById, FAIL: %s\n", toString(name).c_str());
             
-			return nullptr;
+            return {};
 		}
         
-
-
 
         // Load a URL Reference
         std::shared_ptr<SVGViewable> findNodeByHref(const ByteSpan& inChunk) override
@@ -239,10 +227,13 @@ namespace waavs {
             // do nothing here
 		}
         
-        ///*
+
+        // loadFromXmlIterator
+        // 
         // Load the document from an XML Iterator
-        // Since this is the top level document, we just want to kick
-        // off loading the root node 'svg', and we're done 
+        // Since this is the top level document, it will hold all the sub-elements.
+        // This document also acts as the "groot" (graphics root).  That means you 
+        // have to call bindToGroot() after successfully loading the document.
         void loadFromXmlIterator(XmlElementIterator& iter) override
         {
 
@@ -270,10 +261,48 @@ namespace waavs {
                     else {
                         printf("SVGDocument.loadFromXmlIterator : ERROR - could not create SVG node\n");
                     }
+				}
+				else if (elem.isDoctype()) {
+
+                    printf(" ====  DOCTYPE ====\n");
+                    // create an xmlelementiterator on the elem.data() 
+                    // and iterate over the entities if they are there
+                    // adding them to our entity collection
+                    XmlElementIterator entityIter(elem.data());
+                    while (entityIter.next())
+                    {
+                        const XmlElement& entityElem = *entityIter;
+						if (entityElem.isEntityDeclaration())
+						{
+                            ByteSpan name;
+                            ByteSpan value;
+                            ByteSpan content = chunk_ltrim(entityElem.data(), xmlwsp);
+
+
+                            // Get the name of the entity
+                            name = chunk_token(content, xmlwsp);
+
+                            // Skip past the whitespace
+                            content = chunk_ltrim(content, xmlwsp);
+
+							// Get the value of the entity
+                            readQuoted(content, value);
+
+
+							if (name && value)
+							{
+								addEntity(name, value);
+							}
+						}
+                    }
+				}
+                else {
+                    printf("SVGDocument.loadFromXmlIterator : ERROR - unexpected element: %s\n", toString(elem.tagName()).c_str());
+                    printChunk(elem.data());
                 }
             }
         }
-        //*/
+
         
         
 		// Assuming we've already got a file mapped into memory, load the document
@@ -290,10 +319,6 @@ namespace waavs {
 
             loadFromXmlIterator(iter);
 			
-            // Bind to Graphics Root here
-            // This binding could happen at draw time instead
-            // for maximum flexibility
-            bindToGroot(this);
             
             return true;
         }
@@ -303,7 +328,8 @@ namespace waavs {
         static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, FontHandler* fh, const double w, const double h, const double ppi)
         {
             auto doc = std::make_shared<SVGDocument>(fh, w, h, ppi);
-            doc->loadFromChunk(srcChunk);
+            if (!doc->loadFromChunk(srcChunk))
+                return {};
 
             return doc;
         }
@@ -314,6 +340,7 @@ namespace waavs {
 namespace waavs {
     struct SVGFactory
     {
+        
         SVGFactory()
         {
             // Register attributes
@@ -410,6 +437,7 @@ namespace waavs {
             SVGTitleNode::registerFactory();            // 'title'
 
 
+            //DisplayCaptureElement::registerFactory();
         }
 
     };

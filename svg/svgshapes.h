@@ -186,8 +186,13 @@ namespace waavs {
 		// This does not include the stroke width
 		BLRect frame() const override
 		{
+			// get bounding box, then apply transform
+			// BLRect fr = getBBox();
+			
 			BLBox bbox{};
 			fPath.getBoundingBox(&bbox);
+
+			
 			if (fHasTransform) {
 				auto leftTop = fTransform.mapPoint(bbox.x0, bbox.y0);
 				auto rightBottom = fTransform.mapPoint(bbox.x1, bbox.y1);
@@ -205,11 +210,13 @@ namespace waavs {
 			// if we have markers turned on, add in the bounding
 			// box of the markers
 			
-			if (fHasTransform) {
-				auto leftTop = fTransform.mapPoint(bbox.x0, bbox.y0);
-				auto rightBottom = fTransform.mapPoint(bbox.x1, bbox.y1);
-				return BLRect(leftTop.x, leftTop.y, (rightBottom.x - leftTop.x), (rightBottom.y - leftTop.y));
-			}
+			// BUGBUG - according to SVG spec, the bounding box does
+			// not apply any of the transforms
+			//if (fHasTransform) {
+			//	auto leftTop = fTransform.mapPoint(bbox.x0, bbox.y0);
+			//	auto rightBottom = fTransform.mapPoint(bbox.x1, bbox.y1);
+			//	return BLRect(leftTop.x, leftTop.y, (rightBottom.x - leftTop.x), (rightBottom.y - leftTop.y));
+			//}
 
 			return BLRect(bbox.x0, bbox.y0, (bbox.x1 - bbox.x0), (bbox.y1 - bbox.y0));
 		}
@@ -656,11 +663,10 @@ namespace waavs {
 	struct SVGEllipseElement : public SVGGeometryElement
 	{
 		static void registerFactory() {
-			gShapeCreationMap["ellipse"] = [](IAmGroot* root, const XmlElement& elem) {
+			registerSVGSingularNode("ellipse", [](IAmGroot* root, const XmlElement& elem) {
 				auto node = std::make_shared<SVGEllipseElement>(root);
 				node->loadFromXmlElement(elem);
-				return node;
-			};
+				return node; });
 		}
 
 		SVGDimension fCx{};
@@ -798,24 +804,22 @@ namespace waavs {
 
 			auto points = attrs.getAttribute("points");
 
-			BLPoint pt{};
-			readNextNumber(points, pt.x);
-			readNextNumber(points, pt.y);
-
-
-			fPath.moveTo(pt);
-
-			while (points)
+			double args[2]{ 0 };
+			
+			if (readNumericArguments(points, "cc", args))
 			{
-				if (!readNextNumber(points, pt.x))
-					break;
-				if (!readNextNumber(points, pt.y))
-					break;
+				fPath.moveTo(args[0], args[1]);
 
-				fPath.lineTo(pt);
+				while (points)
+				{
+					if (!readNumericArguments(points, "cc", args))
+						break;
+
+					fPath.lineTo(args[0], args[1]);
+				}
+				fPath.close();
 			}
-			fPath.close();
-
+			
 			needsBinding(true);
 		}
 		
@@ -1588,7 +1592,7 @@ namespace waavs {
 			//printXmlElement(elem);
 			if (elem.name() != "stop")
 			{
-				printf("SVGGradientNode::loadSelfClosingNode, unknown node type: %s\n", toString(elem.name()).c_str());
+				//printf("SVGGradientNode::loadSelfClosingNode, unknown node type: %s\n", toString(elem.name()).c_str());
 				return;
 			}
 			
@@ -1980,12 +1984,9 @@ namespace waavs {
 		{
 			//printf("SVGSymbolNode::loadSelfClosingNode: \n");
 			//printXmlElement(elem);
-
-			auto it = gShapeCreationMap.find(elem.name());
-			if (it != gShapeCreationMap.end())
-			{
-				auto node = it->second(root(), elem);
-				addNode(node);
+			auto anode = createSingularNode(elem, root());
+			if (anode != nullptr) {
+				addNode(anode);
 			}
 
 		}

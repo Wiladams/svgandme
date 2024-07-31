@@ -46,7 +46,7 @@ namespace waavs {
 
 
 		// Type conversions
-		explicit operator bool() const { return (fEnd - fStart) > 0; };
+		explicit constexpr operator bool() const { return (fEnd - fStart) > 0; };
 
 
 		// Array access
@@ -649,9 +649,11 @@ namespace waavs
 	// characters after the number
 	static inline uint64_t chunk_to_u64(ByteSpan& s) noexcept
 	{
+		static const std::bitset<256> decDigits = chrDecDigits.bits;
+		
 		uint64_t v = 0;
 
-		while (s && chrDecDigits(*s))
+		while (s && decDigits[*s])
 		{
 			v = v * 10 + (uint64_t)(*s - '0');
 			s++;

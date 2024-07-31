@@ -89,7 +89,7 @@ struct PixelArray : public IContainPixels
 
         // Create blend2d image
         fImage.reset();
-		BLResult br = fImage.createFromData(w, h, BL_FORMAT_PRGB32, fData, fStride);
+        BLResult br = fImage.createFromData(w, h, BL_FORMAT_PRGB32, fData, fStride);
 
         //printf("Result createfromData(): %d\n", br);
     }

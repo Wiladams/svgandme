@@ -16,8 +16,13 @@ using namespace waavs;
 waavs::FontHandler gFontHandler{};
 APP_EXTERN waavs::Recorder gRecorder{ nullptr };
 
+static VOIDROUTINE gSetupHandler = nullptr;
+
 // Create one of these first, so factory constructor will run
-SVGFactory gSVG;
+static SVGFactory gSVG;
+
+
+
 
 
 // Typography
@@ -74,3 +79,32 @@ static bool loadFontFiles(std::vector<const char*> filenames)
 	return true;
 }
 
+static void registerAppHandlers()
+{
+	// we're going to look within our own module
+	// to find handler functions.  This is because the user's application should
+	// be compiled with the application, so the exported functions should
+	// be attainable using 'GetProcAddress()'
+
+	HMODULE hInst = ::GetModuleHandleA(NULL);
+
+
+	// Get the general app routines
+	// onLoad()
+	gSetupHandler = (VOIDROUTINE)::GetProcAddress(hInst, "setup");
+
+}
+
+void onLoad()
+{
+	printf("onLoad\n");
+
+	registerAppHandlers();
+
+	// if setup() exists, call that
+	if (gSetupHandler != nullptr)
+		gSetupHandler();
+
+	// Refresh the screen at least once
+	screenRefresh();
+}

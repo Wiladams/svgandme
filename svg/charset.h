@@ -117,7 +117,7 @@ namespace waavs {
 		bool contains(const uint8_t idx) const noexcept { return bits[idx];}
 
 		// This one makes it look like an array
-		bool operator [](const size_t idx) const noexcept { return bits[idx]; }
+		constexpr bool operator [](const size_t idx) const noexcept { return bits[idx]; }
 
 		// This one makes it look like a function
 		constexpr bool operator ()(const size_t idx) const noexcept {return bits[idx];}
@@ -133,4 +133,6 @@ namespace waavs {
 	static charset chrAlphaChars("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
 	static charset chrDecDigits("0123456789");
 	static charset chrHexDigits("0123456789ABCDEFabcdef");
+
+	static constexpr INLINE bool is_digit(unsigned char c) noexcept { return (uint8_t)(c - '0') <= 9; }
 }

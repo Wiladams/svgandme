@@ -18,18 +18,47 @@
 
 
 namespace waavs {
-    // parseNumber()
+    
+    static INLINE bool read_u64(ByteSpan& s, uint64_t &v) noexcept
+    {
+		v = 0;
+        const unsigned char * sStart = s.fStart;
+        const unsigned char * sEnd = s.fEnd;
+        
+        while ((sStart < sEnd) && is_digit(*sStart))
+        {
+            v = (v * 10) + (uint64_t)(*sStart - '0');
+            sStart++;
+        }
+
+		s.fStart = sStart;
+        
+        return true;
+    }
+    
+    // readNumber()
     //
-    // Parse a number from the given chunk, advancing the chunk
-    // to beyond where we found the number.
-    // Assumption:  We're sitting at beginning of a number,
-    // with no whitespace
-    static bool parseNumber(ByteSpan& s, double &value) noexcept
+    // Parse a double number from the given ByteSpan, advancing the start
+    // of the ByteSpan to beyond where we found the last character of the number.
+    // Assumption:  We're sitting at beginning of a number, all whitespace handling
+    // has already occured.
+    static bool INLINE readNumber(ByteSpan& s, double &value) noexcept
     {
         double sign = 1.0;
         double res = 0.0;
-        long long intPart = 0;
+
+        // integer part
+        uint64_t intPart = 0;
+        
+        // fractional part
         uint64_t fracPart = 0;
+        uint64_t fracBase = 1;
+        
+        // exponent parts
+        uint64_t expPart = 0;
+        double expSign = 1.0;
+
+        
         bool hasIntPart = false;
         bool hasFracPart = false;
 
@@ -43,40 +72,41 @@ namespace waavs {
         }
 
         // Parse integer part
-        if (chrDecDigits[*s]) {
-
-            intPart = chunk_to_u64(s);
-
-            res = (double)intPart;
-            hasIntPart = true;
+        if (is_digit(*s))
+        {
+			hasIntPart = true;
+			read_u64(s, intPart);
+            res = static_cast<double>(intPart);
         }
 
         // Parse fractional part.
-        if (*s == '.') {
+        if (s && (*s == '.')) 
+        {
+            hasFracPart = true;
             s++; // Skip '.'
-            auto sentinel = s.fStart;
 
-            if (chrDecDigits(*s)) {
-                fracPart = chunk_to_u64(s);
-                auto ending = s.fStart;
-
-                ptrdiff_t diff = ending - sentinel;
-                res = res + ((double)fracPart) / (double)powd((double)10, double(diff));
-                hasFracPart = true;
+            fracBase = 1;
+            
+            // Add the fraction portion without calling out to powd
+            while (s && is_digit(*s)) {
+                fracPart = fracPart * 10 + static_cast<uint64_t>(*s - '0');
+                fracBase *= 10;
+                s++;
             }
+            res += (static_cast<double>(fracPart) / static_cast<double>(fracBase));
+
         }
 
-        // A valid number should have integer or fractional part.
-        if (!hasIntPart && !hasFracPart)
-            return false;
-
-
+        // If we don't have an integer or fractional
+        // part, then just return false
+		if (!hasIntPart && !hasFracPart)
+			return false;
+        
         // Parse optional exponent
-        if (*s == 'e' || *s == 'E') {
-            long long expPart = 0;
+        // mostly we don't see this, so it's ok to be slower
+        if (s && ((*s == 'e') || (*s == 'E'))) 
+        {
             s++; // skip 'E'
-
-            double expSign = 1.0;
             if (*s == '+') {
                 s++;
             }
@@ -85,8 +115,8 @@ namespace waavs {
                 s++;
             }
 
-            if (chrDecDigits[*s]) {
-                expPart = chunk_to_u64(s);
+            if (is_digit(*s)) {
+                read_u64(s, expPart);
                 res = res * powd(10, double(expSign * double(expPart)));
             }
         }
@@ -107,12 +137,14 @@ namespace waavs {
     static inline bool readNextNumber(ByteSpan& s, double& outNumber) noexcept
     {
         // typical whitespace found in lists of numbers, like on paths and polylines
-        static charset whitespaceChars(",\t\n\f\r ");          
+        static const charset nextNumWsp(",+\t\n\f\r ");          
 
         // clear up leading whitespace, including ','
-        s = chunk_ltrim(s, whitespaceChars);
+        s = chunk_ltrim(s, nextNumWsp);
+        if (!s)
+            return false;
 
-		return parseNumber(s, outNumber);
+		return readNumber(s, outNumber);
     }
 
     static inline bool readNextFlag(ByteSpan& s, double& outNumber) noexcept
@@ -134,6 +166,43 @@ namespace waavs {
 		return false;
 
     }
+
+    // readNumericArguments()
+//
+    static bool readNumericArguments(ByteSpan& s, const char* argTypes, double* outArgs) noexcept
+    {
+        // typical whitespace found in lists of numbers, like on paths and polylines
+        static charset segWspChars(",\t\n\f\r ");
+
+
+        for (int i = 0; argTypes[i]; i++)
+        {
+            switch (argTypes[i])
+            {
+            case 'c':		// read a coordinate
+            case 'r':		// read a radius
+            {
+
+                if (!readNextNumber(s, outArgs[i]))
+                    return false;
+            } break;
+
+            case 'f':		// read a flag
+            {
+                if (!readNextFlag(s, outArgs[i]))
+                    return false;
+            } break;
+
+            default:
+            {
+                return false;
+            }
+            }
+        }
+
+        return true;
+    }
+    
 }
 
 
@@ -176,7 +245,7 @@ namespace waavs
         if (!s)
             return false;
 
-		if (!parseNumber(s, value))
+		if (!readNumber(s, value))
 			return false;
         
         units = parseAngleUnits(s);
@@ -441,7 +510,7 @@ namespace waavs
                 return false;
 
             
-            if (!parseNumber(s, fValue))
+            if (!readNumber(s, fValue))
                 return false;
             
             fUnits = parseDimensionUnits(s);

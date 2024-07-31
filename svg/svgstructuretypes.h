@@ -65,8 +65,10 @@ namespace waavs {
 
 
 namespace waavs {
-    struct IAmGroot;    // forward declaration
-
+    struct IAmGroot;        // forward declaration
+    struct IResolveThings;  // forward declaration
+    
+    
     struct SVGObject
     {
     protected:
@@ -165,6 +167,19 @@ namespace waavs {
     // Interface Am Graphics Root (IAmGroot) 
     // Core interface to hold document level state, primarily
     // for the purpose of looking up nodes, but also for style sheets
+    struct IResolveThings
+    {
+        virtual std::shared_ptr<SVGViewable> getElementById(const ByteSpan& name) = 0;
+        virtual std::shared_ptr<SVGViewable> findNodeByHref(const ByteSpan& href) = 0;
+        virtual std::shared_ptr<SVGViewable> findNodeByUrl(const ByteSpan& inChunk) = 0;
+        virtual ByteSpan findEntity(const ByteSpan& name) = 0;
+
+        virtual void addDefinition(const ByteSpan& name, std::shared_ptr<SVGViewable> obj) = 0;
+        virtual void addEntity(const ByteSpan& name, ByteSpan expansion) = 0;
+
+    };
+    
+    
     struct IAmGroot
     {
         virtual std::shared_ptr<SVGViewable> getElementById(const ByteSpan& name) = 0;
@@ -385,7 +400,7 @@ namespace waavs {
                 auto classId = chunk_token(classChunk, xmlwsp);
                 //auto classId = toString(aWord);
 
-                auto csel = root()->styleSheet()->getClassSelector(classId);
+                auto csel = groot->styleSheet()->getClassSelector(classId);
                 if (csel != nullptr)
                 {
                     loadVisualProperties(csel->attributes());
@@ -402,7 +417,7 @@ namespace waavs {
             // so put it back there if this doesn't work out
             if (!name().empty())
             {
-                auto esel = root()->styleSheet()->getElementSelector(name());
+                auto esel = groot->styleSheet()->getElementSelector(name());
                 if (esel != nullptr)
                 {
                     loadVisualProperties(esel->attributes());
@@ -414,7 +429,7 @@ namespace waavs {
 			auto id = getAttribute("id");
 			if (id)
 			{
-				auto idsel = root()->styleSheet()->getIDSelector(id);
+				auto idsel = groot->styleSheet()->getIDSelector(id);
 				if (idsel != nullptr)
 				{
 					loadVisualProperties(idsel->attributes());
@@ -621,6 +636,23 @@ namespace waavs {
     // Geometry node creation dispatch
     // Creating from a singular element
     static std::unordered_map<ByteSpan, std::function<std::shared_ptr<SVGVisualNode>(IAmGroot* root, const XmlElement& elem)>, ByteSpanHash> gShapeCreationMap{};
+
+    static void registerSVGSingularNode(const ByteSpan& name, std::function<std::shared_ptr<SVGVisualNode>(IAmGroot* root, const XmlElement& elem)> func)
+    {
+        gShapeCreationMap[name] = func;
+        //printf("gShapeCreationMap.size(%d)\n", gShapeCreationMap.size());
+    }
+    
+	static std::shared_ptr<SVGVisualNode> createSingularNode(const XmlElement& elem, IAmGroot* root)
+	{
+        ByteSpan aname = elem.name();
+		auto it = gShapeCreationMap.find(aname);
+		if (it != gShapeCreationMap.end())
+		{
+			return it->second(root, elem);
+		}
+		return nullptr;
+	}
 }
 
 
@@ -867,14 +899,12 @@ namespace waavs {
         {
             //printf("SVGGraphicsElement::loadSelfClosingNode: \n");
 
-            auto it = gShapeCreationMap.find(elem.name());
-            if (it != gShapeCreationMap.end())
-            {
-                auto node = it->second(root(), elem);
-                addNode(node);
+            auto anode = createSingularNode(elem, root());
+            if (anode != nullptr) {
+                addNode(anode);
             }
             else {
-                printf("SVGGraphicsElement::loadSelfClosingNode UNKNOWN[%s]\n", toString(elem.name()).c_str());
+                //printf("SVGGraphicsElement::loadSelfClosingNode UNKNOWN[%s]\n", toString(elem.name()).c_str());
                 //printXmlElement(elem);
             }
         }
@@ -919,7 +949,7 @@ namespace waavs {
                 addNode(node);
             }
             else {
-                printf("SVGGraphicsElement::loadCompoundNode == UNKNOWN ==> '%s'\n", toString(aname).c_str());
+                //printf("SVGGraphicsElement::loadCompoundNode == UNKNOWN ==> '%s'\n", toString(aname).c_str());
                 //printXmlElement(elem);
                 auto node = gSVGGraphicsElementCreation["g"](root(), iter);
                 // don't add the node to the tree as we don't

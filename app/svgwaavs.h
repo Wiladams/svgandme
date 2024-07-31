@@ -1,6 +1,6 @@
 #pragma once
 
-#include "svg/svgstructuretypes.h"
+#include "svgstructuretypes.h"
 
 #include "screensnapshot.h"
 #include "gmonitor.h"
@@ -21,11 +21,12 @@ namespace waavs {
 	struct DisplayCaptureElement : public SVGVisualNode
 	{
 		static void registerFactory() {
-			gShapeCreationMap["displayCapture"] = [](IAmGroot* root, const XmlElement& elem) {
-				auto node = std::make_shared<DisplayCaptureElement>(root);
-				node->loadFromXmlElement(elem);
-				return node;
-			};
+			registerSVGSingularNode("displayCapture",
+				[](IAmGroot* root, const XmlElement& elem) {
+					auto node = std::make_shared<DisplayCaptureElement>(root);
+					node->loadFromXmlElement(elem);
+					return node;
+				});
 		}
 
 
@@ -82,8 +83,9 @@ namespace waavs {
 				auto displayName = toString(fSrcSpan);
 
 				// Setup the screen snapper
-				auto dc = DisplayMonitor::createDC(displayName.c_str());
-
+				HDC dc = DisplayMonitor::createDC(displayName.c_str());
+				//HDC dc = nullptr;
+				
 				// BUGBUG
 				// If capture width has not been set, then get it from 
 				// the DC
@@ -108,7 +110,7 @@ namespace waavs {
 		{
 			SVGVisualNode::loadVisualProperties(attrs);
 
-			if (attrs.getAttribute("src"))
+			//if (attrs.getAttribute("src"))
 				fSrcSpan = attrs.getAttribute("src");
 
 			if (attrs.getAttribute("capX"))
@@ -120,13 +122,13 @@ namespace waavs {
 			if (attrs.getAttribute("capHeight"))
 				fCapHeight = toInteger(attrs.getAttribute("capHeight"));
 
-			if (attrs.getAttribute("x"))
+			//if (attrs.getAttribute("x"))
 				fDimX.loadFromChunk(attrs.getAttribute("x"));
-			if (attrs.getAttribute("y"))
+			//if (attrs.getAttribute("y"))
 				fDimY.loadFromChunk(attrs.getAttribute("y"));
-			if (attrs.getAttribute("width"))
+			//if (attrs.getAttribute("width"))
 				fDimWidth.loadFromChunk(attrs.getAttribute("width"));
-			if (attrs.getAttribute("height"))
+			//if (attrs.getAttribute("height"))
 				fDimHeight.loadFromChunk(attrs.getAttribute("height"));
 
 		}
@@ -138,6 +140,8 @@ namespace waavs {
 		
 		void drawSelf(IRenderSVG *ctx)
 		{
+			fSnapper.update();
+			
 			int lWidth = (int)fSnapper.width();
 			int lHeight = (int)fSnapper.height();
 

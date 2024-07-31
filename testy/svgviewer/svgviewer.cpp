@@ -7,7 +7,7 @@
 
 #include "mappedfile.h"
 #include "svguiapp.h"
-
+//#include "svgwaavs.h"
 
 using namespace waavs;
 
@@ -25,7 +25,8 @@ static vec2f gDragPos{ 0,0 };
 static double gZoomFactor = 0.1;
 
 
-
+// Animation management
+bool gAnimate = false;
 
 
 
@@ -46,7 +47,10 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 	
 	ByteSpan aspan(mapped->data(), mapped->size());
 	std::shared_ptr<SVGDocument> aDoc = SVGDocument::createFromChunk(aspan, &gFontHandler, canvasWidth, canvasHeight, systemPpi);
-
+	if (aDoc != nullptr) {
+		SVGDocument * groot = aDoc.get();
+		aDoc->bindToGroot(groot);
+	}
 	
 	return aDoc;
 }
@@ -134,7 +138,15 @@ static void onFrameEvent(const FrameCountEvent& fe)
 {
 	//printf("frameEvent: %d\n", (int)fe.frameCount);
 	//appFrameBuffer().setAllPixels(vec4b{ 0x00,0xff,0x00,0xff });
-	
+	// update current document
+	if (gDoc != nullptr)
+	{
+		if (gAnimate)
+		{
+			gDoc->update();
+			refreshDoc();
+		}
+	}
 	screenRefresh();
 
 
@@ -271,13 +283,12 @@ static void onKeyboardEvent(const KeyboardEvent& ke)
 }
 
 // called once before main loop is running
-void onLoad()
+static void setup()
 {
-    printf("onLoad\n");
+    printf("setup()\n");
     
 	
-	// Load extension elements
-	
+
 	
 	frameRate(15);
 	
@@ -307,5 +318,7 @@ void onLoad()
 	// Set the initial viewport
 	gViewPort.surfaceFrame({0, 0, (double)canvasWidth, (double)canvasHeight});
 	
-
+	// Load extension elements
+	//DisplayCaptureElement::registerFactory();
+	//SVGScriptElement::registerFactory();
 }

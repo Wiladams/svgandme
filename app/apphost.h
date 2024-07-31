@@ -9,7 +9,7 @@
 	topics, that other modules can subscribe to.
 
 	A 'main()' is provided, so a compiled application has a minimal runtime environment
-	when it starts.  The user's app can implement a 'setup()' function,
+	when it starts.  The user's app can implement a 'onLoad()' function,
 	and not have to worry about whether it is a console or Window target.
 
 	All other aspects of the application are up to the application environment,

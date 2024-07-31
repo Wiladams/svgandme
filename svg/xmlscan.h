@@ -31,8 +31,6 @@
 
 
 #include <string>
-//#include <sstream>
-//#include <optional>
 
 #include "bspan.h"
 
@@ -381,23 +379,18 @@ namespace waavs {
     // !ENTITY  name 'quoted value' >
     // Return a name and value
 	//============================================================
-    static bool readEntityDeclaration(ByteSpan& src, ByteSpan& name, ByteSpan &value) noexcept
+    static bool readEntityDeclaration(ByteSpan& src, ByteSpan& dataChunk) noexcept
     {
         // Skip past the !ENTITY
 		src += 7;
 
-		// Get the name of the entity
-		name = chunk_token(src, xmlwsp);
-        
-		// Skip past the whitespace
-		src = chunk_ltrim(src, xmlwsp);
+        dataChunk = src;
 
-		// Get the value of the entity from a quoted string
-		readQuoted(src, value);
-        
 		// skip until we see the closing '>' character
 		src = chunk_find_char(src, '>');
-        
+
+        dataChunk.fEnd = src.fStart;
+
         // skip past that character and return
 		src++;
 
@@ -801,7 +794,7 @@ namespace waavs {
         ByteSpan name() const { return fXmlName.name(); }
 
         int kind() const { return fElementKind; }
-        void setKind(int kind) { fElementKind = kind; }
+        void setKind(const int kind) { fElementKind = kind; }
 
         ByteSpan data() const { return fData; }
 
@@ -816,7 +809,7 @@ namespace waavs {
         bool isContent() const { return fElementKind == XML_ELEMENT_TYPE_CONTENT; }
         bool isCData() const { return fElementKind == XML_ELEMENT_TYPE_CDATA; }
         bool isDoctype() const { return fElementKind == XML_ELEMENT_TYPE_DOCTYPE; }
-
+		bool isEntityDeclaration() const { return fElementKind == XML_ELEMENT_TYPE_ENTITY; }
     };
 }
 
@@ -931,6 +924,11 @@ namespace waavs {
                 {
                     kind = XML_ELEMENT_TYPE_CDATA;
                     readCData(st.fSource, elementChunk);
+                }
+                else if (chunk_starts_with_cstr(st.fSource, "!ENTITY"))
+                {
+                    kind = XML_ELEMENT_TYPE_ENTITY;
+                    readEntityDeclaration(st.fSource, elementChunk);
                 }
                 else if (chunk_starts_with_cstr(st.fSource, "/"))
                 {
