@@ -86,11 +86,11 @@ namespace waavs
         while (s.size() > 0)
         {
             // get the name of the attribute
-            auto prop = waavs::nextToken(s, charset(':'));
+            auto prop = chunk_token(s, charset(':'));
             prop = chunk_trim(prop, csswsp);
 
             // get the value of the attribute
-            auto value = waavs::nextToken(s, charset(';'));
+            auto value = chunk_token(s, charset(';'));
             value = chunk_trim(value, csswsp);
 
             // add the attribute to the map
@@ -168,7 +168,7 @@ namespace waavs
         // to ours, replacing any that are already there
 		CSSSelector& mergeProperties(const CSSSelector& other)
 		{
-			fAttributes.mergeProperties(other.fAttributes);
+			fAttributes.mergeAttributes(other.fAttributes);
 
 			return *this;
 		}
@@ -238,10 +238,10 @@ namespace waavs
 
             if (fSource)
             {
-				fCurrentName = nextToken(fSource, charset(":"));
+				fCurrentName = chunk_token(fSource, charset(":"));
 				fCurrentName = chunk_trim(fCurrentName, csswsp);
                 
-				fCurrentValue = nextToken(fSource, charset(";"));
+				fCurrentValue = chunk_token(fSource, charset(";"));
                 fCurrentValue = chunk_trim(fCurrentValue, csswsp);
 
                 return (bool)fCurrentName && (bool)fCurrentValue;
@@ -258,38 +258,49 @@ namespace waavs
     };
 
 
-
+    // CSSSelectorIterator
+    // 
 	// Given a whole style sheet, iterate over the selectors
-	// individual selectors are indicated by <selector> { <properties> }
+	// individual selectors are indicated by <selector>[, <selector>]* { <properties> }
+    // Since there can be multiple selectors, we need to come back again and again
+    //
     struct CSSSelectorIterator
     {
         ByteSpan fSource{};
         ByteSpan fMark{};
+
+        
+        ByteSpan fSelectorNames{};
+        ByteSpan fSelectorContent{};
+
         CSSSelector fCurrentItem{};
 
         CSSSelectorIterator(const ByteSpan& inChunk)
             :fSource(inChunk),
 			fMark(inChunk)
         {
+            // don't call next() in here.  Allow the app to 
+            // decide when they want to move the iterator
             //next();
         }
 
         explicit operator bool() const { return (bool)fCurrentItem; }
 
-        bool next()
+        // Queue up the next selection, skipping past comments
+        // and whatnot
+        bool advanceSelection()
         {
+            // Skip whitespace
             fSource = chunk_ltrim(fSource, csswsp);
-
-            fCurrentItem = CSSSelector();
-
+            if (fSource.size() == 0)
+                return false;
+            
+            // skip 'C' style single line, and multi-line comments
+            // we do this in a loop, because there can be multiple
+            // comment blocks before we get to actual content
             while (fSource)
             {
-                // Skip whitespace
-                fSource = chunk_ltrim(fSource, csswsp);
-                if (fSource.size() == 0)
-                    break;
 
-                // skip 'C' style single line, and multi-line comments
                 if (fSource.size() > 2 && fSource[0] == '/' && fSource[1] == '*')
                 {
                     // skip past the /* asterisk */ style comment
@@ -298,7 +309,7 @@ namespace waavs
                         fSource += 1;
                     if (fSource.size() > 1)
                         fSource += 2;
-                    
+
                     // start from the top again, if there are consecutive comments
                     continue;
                 }
@@ -306,43 +317,51 @@ namespace waavs
                 {
                     // skip past the // double slash style of comment
                     fSource += 2;
-                    while (fSource.size() > 0 && fSource[0] != '\n')
-                        fSource += 1;
+                    fSource = chunk_skip_until_char(fSource, '\n');
 
                     // start from the top again, if there are consecutive comments
                     continue;
                 }
 
+                // separate out the select name list from the content
+				fSelectorNames = chunk_token_char(fSource, '{');
+                fSelectorNames = chunk_trim(fSelectorNames, csswsp);
+
+                if (!fSelectorNames)
+                    return false;
+
+                // Isolate the content portion
+                fSelectorContent = chunk_token_char(fSource, '}');
+                fSelectorContent = chunk_trim(fSelectorContent, csswsp);
+
+                break;
+            }
+
+            return true;
+        }
+        
+        bool next()
+        {
+			if (!fSelectorNames)
+			{
+				if (!advanceSelection())
+					return false;
+			}
+            
+            fCurrentItem = CSSSelector();
+
+            // pull off the next name delimeted by a comma
+            ByteSpan selectorName = chunk_token(fSelectorNames, ",");
+			fSelectorNames = chunk_trim(fSelectorNames, csswsp);
+            
+            // determine what kind of selector we have
+            auto selectorKind = parseSimpleSelectorKind(selectorName);
+            
+            if (selectorKind != CSSSelectorKind::CSS_SELECTOR_INVALID) {
+                selectorName++; // skip the first character of the name
                 
-                // Look for the next selector, which should be a string
-                // followed by a '{', with optional whitespace in between
-                // terminated with a '}'
-                ByteSpan selectorChunk = chunk_token(fSource, "{");
-                selectorChunk = chunk_trim(selectorChunk, csswsp);
-
-                if (selectorChunk)
-                {
-                    // fSource is positioned right after the opening '{', so we can
-                    // look for the closing '}', and then trim the whitespace
-                    // BUGBUG - need to do a lot more work to create selector list
-                    auto selectorKind = parseSimpleSelectorKind(selectorChunk);
-
-                    // If it's not element, trim the first character to get the raw name
-                    if (selectorKind != CSSSelectorKind::CSS_SELECTOR_ELEMENT)
-                    {
-                        // skip the selector kind
-                        selectorChunk = chunk_skip(selectorChunk, 1);
-                    }
-                    ByteSpan selectorName = selectorChunk;
-
-                    ByteSpan content = nextToken(fSource, "}");
-                    content = chunk_trim(content, csswsp);
-
-                    if (selectorKind != CSSSelectorKind::CSS_SELECTOR_INVALID) {
-                        fCurrentItem = CSSSelector(selectorKind, selectorName, content);
-                        return true;
-                    }
-                }
+                fCurrentItem = CSSSelector(selectorKind, selectorName, fSelectorContent);
+                return true;
             }
 
             return false;
@@ -443,16 +462,18 @@ namespace waavs
         
 		void addSelectorToMap(std::unordered_map<ByteSpan, std::shared_ptr<CSSSelector>, ByteSpanHash> &amap, std::shared_ptr<CSSSelector> selector)
 		{
-			if (amap.find(selector->name()) != amap.end())
+            ByteSpan aname = selector->name();
+            
+			auto it = amap.find(aname);
+			if (it != amap.end())
 			{
-				// If the selector already exists, we need to merge the properties
-				// into the existing selector
-				auto & existing = amap[selector->name()];
-				existing->mergeProperties(*selector);
+				// merge the two selectors
+                // newer stuff replaces older stuff
+				it->second->mergeProperties(*selector);
 			}
 			else
 			{
-				amap[selector->name()] = selector;
+				amap[aname] = selector;
 			}
             
 		}
@@ -490,8 +511,6 @@ namespace waavs
             {
 				auto sel = std::make_shared<CSSSelector>(*iter);
 				addSelector(sel);
-                
-                //++iter;
             }
 
             return true;

@@ -200,19 +200,19 @@ namespace waavs {
 // Return various forms of pow(2,bitnum)
 // There are different ones, which allow the user to specify how
 // many bits they want
-static INLINE uint8_t BIT8(size_t bitnum) noexcept {return (uint8_t)1 << bitnum; }
-static INLINE uint16_t BIT16(size_t bitnum) noexcept {return (uint16_t)1 << bitnum; }
-static INLINE uint32_t BIT32(size_t bitnum) noexcept {return (uint32_t)1 << bitnum; }
-static INLINE uint64_t BIT64(size_t bitnum) noexcept {return (uint64_t)1 << bitnum; }
+static INLINE constexpr uint8_t BIT8(size_t bitnum) noexcept {return (uint8_t)1 << bitnum; }
+static INLINE constexpr uint16_t BIT16(size_t bitnum) noexcept {return (uint16_t)1 << bitnum; }
+static INLINE constexpr uint32_t BIT32(size_t bitnum) noexcept {return (uint32_t)1 << bitnum; }
+static INLINE constexpr uint64_t BIT64(size_t bitnum) noexcept {return (uint64_t)1 << bitnum; }
 
 // One general purpose which will default to BIT64
 //static inline uint64_t BIT(unsigned int bitnum) {return BIT64(bitnum);}
 
 // return true if the specified bit is set in the value
-static INLINE bool isset(const uint64_t value, const size_t bitnum) noexcept {return (value & BIT64(bitnum)) > 0; }
+static INLINE constexpr bool isset(const uint64_t value, const size_t bitnum) noexcept {return (value & BIT64(bitnum)) > 0; }
 
 // set a specific bit within a value
-static INLINE uint64_t setbit(const uint64_t value, const size_t bitnum) noexcept {return (value | BIT64(bitnum));}
+static INLINE constexpr uint64_t setbit(const uint64_t value, const size_t bitnum) noexcept {return (value | BIT64(bitnum));}
 
 // BITMASK64
 // A bitmask is an integer where all the bits from the 

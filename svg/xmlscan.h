@@ -180,6 +180,7 @@ namespace waavs {
         return outSpan.size();
     }
     
+    /*
     // 
     // expandStandardEntities()
     // Do basic XML entity expansion
@@ -283,7 +284,8 @@ namespace waavs {
 
 		return oss.str();
 	}
-    
+    */
+
     //
     // readQuoted()
     // 
@@ -406,8 +408,8 @@ namespace waavs {
     static bool readDoctype(ByteSpan& src, ByteSpan& dataChunk) noexcept
     {
         // skip past the !DOCTYPE to the first whitespace character
-        while (src && !xmlwsp[*src])
-            src++;
+        src += 8;
+
 
         // Skip past the whitespace
         // to get to the beginning of things
@@ -439,7 +441,7 @@ namespace waavs {
         // If we've gotten here, we have an 'external' DTD
 		// It can either be a SYSTEM or PUBLIC DTD
         // First check for a PUBLIC DTD
-		if (chunk_starts_with(src, "PUBLIC"))
+		if (src.startsWith("PUBLIC"))
 		{
 			// Skip past the PUBLIC
 			src += 6;
@@ -457,6 +459,9 @@ namespace waavs {
 			if (*src == '>')
 			{
 				src++;
+                dataChunk.fStart = src.fStart;
+				dataChunk.fEnd = src.fStart;
+                
 				return true;
 			}
 
@@ -476,7 +481,7 @@ namespace waavs {
 				return true;
 			}
 		}
-		else if (chunk_starts_with(src, "SYSTEM"))
+		else if (src.startsWith("SYSTEM"))
 		{
 			// Skip past the SYSTEM
 			src += 6;
@@ -521,17 +526,22 @@ namespace waavs {
 
     static bool readTag(ByteSpan& src, ByteSpan& dataChunk) noexcept
     {
+        const unsigned char* srcPtr = src.fStart;
+		const unsigned char* endPtr = src.fEnd;
+        
         dataChunk = src;
         dataChunk.fEnd = src.fStart;
 
-        while (src && *src != '>')
-            src++;
-
-        dataChunk.fEnd = src.fStart;
+		while ((srcPtr < endPtr) && (*srcPtr != '>'))
+			srcPtr++;
+        
+        dataChunk.fEnd = srcPtr;
         dataChunk = chunk_rtrim(dataChunk, xmlwsp);
 
         // Get past the '>' if it was there
-        src++;
+        srcPtr++;
+        src.fStart = srcPtr;
+
 
         return true;
     }
@@ -572,7 +582,8 @@ namespace waavs {
         }
 
         // Find end of the attrib name.
-        auto attrNameChunk = chunk_token(src, equalChars);
+        //auto attrNameChunk = chunk_token(src, equalChars);
+        auto attrNameChunk = chunk_token_char(src, '=');
         key = chunk_trim(attrNameChunk, xmlwsp);
 
         // Skip stuff past '=' until we see one of our quoteChars
@@ -595,8 +606,7 @@ namespace waavs {
         // to mark the end of the value
         // don't use quoteChars here, because it's valid to 
         // embed the other quote within the value
-        while (src && *src != quote)
-            src++;
+		src = chunk_skip_until_char(src, quote);
 
         // If we still have input, it means we found
         // the quote character, so mark the end of the
@@ -654,7 +664,7 @@ struct XmlName {
     {
         fName = inChunk;
         fNamespace = chunk_token(fName, charset(':'));
-        if (chunk_size(fName) < 1)
+        if (fName.size() < 1)
         {
             fName = fNamespace;
             fNamespace = {};
@@ -900,37 +910,37 @@ namespace waavs {
                 elementChunk.fEnd = st.fSource.fStart;
                 int kind = XML_ELEMENT_TYPE_START_TAG;
 
-                if (chunk_starts_with_cstr(st.fSource, "?xml"))
+                if (st.fSource.startsWith("?xml"))
                 {
                     kind = XML_ELEMENT_TYPE_XMLDECL;
                     readTag(st.fSource, elementChunk);
                 }
-                else if (chunk_starts_with_cstr(st.fSource, "?"))
+                else if (st.fSource.startsWith("?"))
                 {
                     kind = XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION;
                     readTag(st.fSource, elementChunk);
                 }
-                else if (chunk_starts_with_cstr(st.fSource, "!DOCTYPE"))
+                else if (st.fSource.startsWith("!DOCTYPE"))
                 {
                     kind = XML_ELEMENT_TYPE_DOCTYPE;
                     readDoctype(st.fSource, elementChunk);
                 }
-                else if (chunk_starts_with_cstr(st.fSource, "!--"))
+                else if (st.fSource.startsWith("!--"))
                 {
                     kind = XML_ELEMENT_TYPE_COMMENT;
                     readComment(st.fSource, elementChunk);
                 }
-                else if (chunk_starts_with_cstr(st.fSource, "![CDATA["))
+                else if (st.fSource.startsWith("![CDATA["))
                 {
                     kind = XML_ELEMENT_TYPE_CDATA;
                     readCData(st.fSource, elementChunk);
                 }
-                else if (chunk_starts_with_cstr(st.fSource, "!ENTITY"))
+                else if (st.fSource.startsWith("!ENTITY"))
                 {
                     kind = XML_ELEMENT_TYPE_ENTITY;
                     readEntityDeclaration(st.fSource, elementChunk);
                 }
-                else if (chunk_starts_with_cstr(st.fSource, "/"))
+                else if (st.fSource.startsWith("/"))
                 {
                     kind = XML_ELEMENT_TYPE_END_TAG;
                     readTag(st.fSource, elementChunk);

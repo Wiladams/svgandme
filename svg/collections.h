@@ -44,8 +44,6 @@ namespace waavs {
 
             while (nextAttributeKeyValue(src, key, value))
             {
-                //std::string keyStr((const char*)key.fStart, key.size());
-                //fAttributes[keyStr] = value;
                 fAttributes[key] = value;
             }
 
@@ -79,7 +77,7 @@ namespace waavs {
         }
 
 
-        XmlAttributeCollection& mergeProperties(const XmlAttributeCollection& other)
+        XmlAttributeCollection& mergeAttributes(const XmlAttributeCollection& other)
         {
             for (auto& attr : other.fAttributes)
             {

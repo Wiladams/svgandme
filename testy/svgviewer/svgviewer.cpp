@@ -27,7 +27,7 @@ static double gZoomFactor = 0.1;
 
 // Animation management
 bool gAnimate = false;
-
+bool gPerformTransform = true;
 
 
 
@@ -49,7 +49,7 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 	std::shared_ptr<SVGDocument> aDoc = SVGDocument::createFromChunk(aspan, &gFontHandler, canvasWidth, canvasHeight, systemPpi);
 	if (aDoc != nullptr) {
 		SVGDocument * groot = aDoc.get();
-		aDoc->bindToGroot(groot);
+		aDoc->bindToGroot(groot, nullptr);
 	}
 	
 	return aDoc;
@@ -72,12 +72,13 @@ static void drawDocument(std::shared_ptr<SVGDocument> doc)
 	ctx.begin(appFrameBuffer().image(), &ctxInfo);
 
 	// setup any transform
-	ctx.setTransform(gViewPort.sceneToSurfaceTransform());
+	if (gPerformTransform)
+		ctx.setTransform(gViewPort.sceneToSurfaceTransform());
 
 	//double startTime = seconds();
 
 	// draw the document into the ctx
-	doc->draw(&ctx);
+	doc->draw(&ctx, doc.get());
 	ctx.flush();
 	
 	//double endTime = seconds();
@@ -143,7 +144,7 @@ static void onFrameEvent(const FrameCountEvent& fe)
 	{
 		if (gAnimate)
 		{
-			gDoc->update();
+			gDoc->update(gDoc.get());
 			refreshDoc();
 		}
 	}
@@ -278,6 +279,14 @@ static void onKeyboardEvent(const KeyboardEvent& ke)
 				gRecorder.toggleRecording();
 			break;			
 
+			case 'A':
+				gAnimate = !gAnimate;
+				break;
+				
+			case 'T':
+				gPerformTransform = !gPerformTransform;
+				refreshDoc();
+				break;
 		}
 	}
 }

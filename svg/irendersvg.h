@@ -408,22 +408,6 @@ namespace waavs
 
     };
 
-    // DrawRoutine
-    // A convenience for passing to the exec() call.
-    using SVGDrawRoutine = std::function<void(IRenderSVG* ctx)>;
 
-    // IDrawable
-    // Basically a DrawRoutine, in a struct interface, for sub-classing.  It can
-    // still act as a general DrawRoutine, because of the operator() overload.
-    //
-    struct ISVGDrawable
-    {
-        virtual ~ISVGDrawable() {}
-
-        virtual void update() { ; }
-        virtual void draw(IRenderSVG* ctx) = 0;
-
-        void operator()(IRenderSVG* ctx) { draw(ctx); }
-    };
 }
 

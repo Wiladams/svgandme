@@ -146,7 +146,7 @@ struct PixelAccessor : public PixelArray
         return &((TP*)rowPointer(y))[x];
     }
     
-    const TP* pixelPointer(const int x, const int y) const
+    const INLINE TP* pixelPointer(const int x, const int y) const
     {
         return &((TP*)rowPointer(y))[x];
     }

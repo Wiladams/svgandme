@@ -42,7 +42,7 @@
 namespace waavs {
 
     //
-    struct SVGDocument : public  SVGGraphicsElement, public IAmGroot
+    struct SVGDocument : public  SVGGraphicsElement, public IAmGroot //, public IManageReferences
     {
         MemBuff fSourceMem{};
         
@@ -65,9 +65,6 @@ namespace waavs {
         double fDocumentWidth{};
 		double fDocumentHeight{};
         
-        
-        std::unordered_map<ByteSpan, std::shared_ptr<SVGViewable>, ByteSpanHash> fDefinitions{};
-        std::unordered_map<ByteSpan, ByteSpan, ByteSpanHash> fEntities{};
         
         
         //==========================================
@@ -101,90 +98,9 @@ namespace waavs {
 
         // retrieve root svg node
 		std::shared_ptr<SVGSVGElement> documentElement() const { return fSVGNode; }
-        
-
-        //=================================================================
-		// IAmGroot
-		//=================================================================
 
         
-        std::shared_ptr<SVGViewable> getElementById(const ByteSpan& name) override
-        {   
-            auto it = fDefinitions.find(name);
-			if (it != fDefinitions.end())
-				return it->second;
-
-            printf("SVGDocument::getElementById, FAIL: %s\n", toString(name).c_str());
-            
-            return {};
-		}
-        
-
-        // Load a URL Reference
-        std::shared_ptr<SVGViewable> findNodeByHref(const ByteSpan& inChunk) override
-        {
-            ByteSpan str = inChunk;
-
-            auto id = chunk_trim(str, xmlwsp);
-
-            // The first character could be '.' or '#'
-            // so we need to skip past that
-            if (*id == '.' || *id == '#')
-                id++;
-
-            if (!id)
-                return nullptr;
-
-            // lookup the thing we're referencing
-            //std::string idStr = toString(id);
-
-            return getElementById(id);
-        }
-
-        // Load a URL reference, including the 'url(' function indicator
-        std::shared_ptr<SVGViewable> findNodeByUrl(const ByteSpan& inChunk)
-        {
-            ByteSpan str = inChunk;
-
-            // the id we want should look like this
-            // url(#id)
-            // so we need to skip past the 'url(#'
-            // and then find the closing ')'
-            // and then we have the id
-            auto url = chunk_token(str, "(");
-            auto id = chunk_trim(chunk_token(str, ")"), xmlwsp);
-
-			// sometimes the id is quoted
-            // so trim that as well
-			id = chunk_trim(id, "\"");
-			id = chunk_trim(id, "'");
-            
-            return findNodeByHref(id);
-        }
-        
-        ByteSpan findEntity(const ByteSpan& name) override
-        {
-			auto it = fEntities.find(name);
-			if (it != fEntities.end())
-				return it->second;
-            
-			printf("SVGDocument::findEntity(), FAIL: %s\n", toString(name).c_str());
-            
-			return ByteSpan{};
-        }
-        
-        void addDefinition(const ByteSpan & name, std::shared_ptr<SVGViewable> obj)
-        {
-            fDefinitions[name] = obj;
-        }
-        
-        virtual void addEntity(const ByteSpan & name, ByteSpan expansion)
-        {
-            fEntities[name] = expansion;
-        }
-
-        
-        void draw(IRenderSVG * ctx) override
+        void draw(IRenderSVG * ctx, IAmGroot* groot) override
         {
             // Setup default values for a SVG context
             ctx->strokeJoin(BL_STROKE_JOIN_MITER_CLIP);
@@ -197,14 +113,14 @@ namespace waavs {
             ctx->textFamily("Arial");
             ctx->textSize(16);
 
-            SVGGraphicsElement::draw(ctx);
+            SVGGraphicsElement::draw(ctx, groot);
         }
         
         
         
-        bool addNode(std::shared_ptr < SVGVisualNode > node) override
+        bool addNode(std::shared_ptr < SVGVisualNode > node, IAmGroot* groot) override
         {            
-			if (!SVGGraphicsElement::addNode(node))
+			if (!SVGGraphicsElement::addNode(node, groot))
                 return false;
 
             
@@ -222,7 +138,7 @@ namespace waavs {
             return true;
         }
         
-		void loadSelfFromXmlIterator(XmlElementIterator& iter) override
+		void loadSelfFromXmlIterator(XmlElementIterator& iter, IAmGroot* groot) override
 		{
             // do nothing here
 		}
@@ -234,7 +150,7 @@ namespace waavs {
         // Since this is the top level document, it will hold all the sub-elements.
         // This document also acts as the "groot" (graphics root).  That means you 
         // have to call bindToGroot() after successfully loading the document.
-        void loadFromXmlIterator(XmlElementIterator& iter) override
+        void loadFromXmlIterator(XmlElementIterator& iter, IAmGroot* groot) override
         {
 
             // skip past any elements that come before the 'svg' element
@@ -255,8 +171,8 @@ namespace waavs {
                     auto node = std::make_shared<SVGSVGElement>(this);
                     
                     if (nullptr != node) {
-                        node->loadFromXmlIterator(iter);
-                        addNode(node);
+                        node->loadFromXmlIterator(iter, groot);
+                        addNode(node, groot);
                     }
                     else {
                         printf("SVGDocument.loadFromXmlIterator : ERROR - could not create SVG node\n");
@@ -265,9 +181,15 @@ namespace waavs {
 				else if (elem.isDoctype()) {
 
                     printf(" ====  DOCTYPE ====\n");
+                    // BUGBUG - We need more information on what kind
+                    // of DOCTYPE it was.
+                    // We only need to create an iterator if there is style information
+                    // or a set of entities.
+                    // 
                     // create an xmlelementiterator on the elem.data() 
                     // and iterate over the entities if they are there
                     // adding them to our entity collection
+                    /*
                     XmlElementIterator entityIter(elem.data());
                     while (entityIter.next())
                     {
@@ -295,6 +217,7 @@ namespace waavs {
 							}
 						}
                     }
+                    */
 				}
                 else {
                     printf("SVGDocument.loadFromXmlIterator : ERROR - unexpected element: %s\n", toString(elem.tagName()).c_str());
@@ -317,8 +240,8 @@ namespace waavs {
 			// Create the XML Iterator we're going to use to parse the document
             XmlElementIterator iter(fSourceMem.span(), true);
 
-            loadFromXmlIterator(iter);
-			
+            loadFromXmlIterator(iter, this);
+            //resolveReferences(this);
             
             return true;
         }
@@ -358,7 +281,7 @@ namespace waavs {
             
             SVGOpacity::registerFactory();
             
-            SVGRawAttribute::registerFactory();
+            //SVGRawAttribute::registerFactory();
             
             SVGStrokeLineCap::registerFactory();
             SVGStrokeLineJoin::registerFactory();

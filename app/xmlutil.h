@@ -1,8 +1,11 @@
 #pragma once
 
-#include "xmlscan.h"
+
 
 #include <map>
+
+#include "xmlscan.h"
+#include "collections.h"
 
 namespace waavs {
 

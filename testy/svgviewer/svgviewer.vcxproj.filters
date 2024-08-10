@@ -83,9 +83,6 @@
     <ClInclude Include="..\..\svg\svgfont.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\app\filestreamer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\app\mappedfile.h">
       <Filter>Header Files</Filter>
     </ClInclude>

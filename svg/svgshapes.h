@@ -25,9 +25,10 @@ namespace waavs {
 	{
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["marker"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGMarkerNode>(aroot);
-				node->loadFromXmlIterator(iter);
+			gSVGGraphicsElementCreation["marker"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGMarkerNode>(groot);
+				node->loadFromXmlIterator(iter, groot);
+				
 				return node;
 			};
 		}
@@ -56,7 +57,7 @@ namespace waavs {
 		const SVGOrient& orientation() const { return fOrientation; }
 
 		
-		void bindSelfToGroot(IAmGroot* groot) override
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
 			
 			if (fDimMarkerWidth.isSet())
@@ -75,9 +76,9 @@ namespace waavs {
 				fRefX = fViewbox.x();
 		}
 		
-		void applyAttributes(IRenderSVG* ctx) override
+		void applyAttributes(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-			SVGGraphicsElement::applyAttributes(ctx);
+			SVGGraphicsElement::applyAttributes(ctx, groot);
 
 			double sWidth = ctx->strokeWidth();
 			double scaleX = 1.0;
@@ -105,7 +106,7 @@ namespace waavs {
 			ctx->translate(-fDimRefX.calculatePixels(), -fDimRefY.calculatePixels());
 		}
 
-		void drawChildren(IRenderSVG* ctx) override
+		void drawChildren(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 			ctx->push();
 			
@@ -116,14 +117,14 @@ namespace waavs {
 			ctx->strokeWidth(1.0);
 			ctx->setStrokeJoin(BLStrokeJoin::BL_STROKE_JOIN_MITER_BEVEL);
 			
-			SVGGraphicsElement::drawChildren(ctx);
+			SVGGraphicsElement::drawChildren(ctx, groot);
 			
 			ctx->pop();
 		}
 		
-		void loadVisualProperties(const XmlAttributeCollection& attrs) override
+		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
 		{
-			SVGGraphicsElement::loadVisualProperties(attrs);
+			SVGGraphicsElement::loadVisualProperties(attrs, groot);
 			
 			auto preserveAspectRatio = attrs.getAttribute("preserveAspectRatio");
 
@@ -220,32 +221,10 @@ namespace waavs {
 
 			return BLRect(bbox.x0, bbox.y0, (bbox.x1 - bbox.x0), (bbox.y1 - bbox.y0));
 		}
-		
-		bool contains(double x, double y) override
-		{
-			BLPoint localPoint(x, y);
-			
-			// check to see if we have a transform property
-			// if we do, transform the points through that transform
-			// then check to see if the point is inside the transformed path
-			if (fHasTransform)
-			{
-				// get the inverse transform
-				auto inverse = fTransform;
-				inverse.invert();
-				localPoint = inverse.mapPoint(localPoint);
-			}
 
-		
-			
-			// BUGBUG - should use the fill-rule attribute that will actually apply
-			BLHitTest ahit = fPath.hitTest(localPoint, BLFillRule::BL_FILL_RULE_NON_ZERO);
-			return (ahit == BLHitTest::BL_HIT_TEST_IN);
-		}
-
-		void bindPropertiesToGroot(IAmGroot* groot) override
+		void bindPropertiesToGroot(IAmGroot* groot, SVGViewable* container) override
 		{
-			SVGGraphicsElement::bindPropertiesToGroot(groot);
+			SVGGraphicsElement::bindPropertiesToGroot(groot, container);
 			
 			if (((fVisualProperties.find("marker-start") != fVisualProperties.end()) && fVisualProperties["marker-start"]->isSet()) ||
 				((fVisualProperties.find("marker-mid") != fVisualProperties.end()) && fVisualProperties["marker-mid"]->isSet()) ||
@@ -258,7 +237,7 @@ namespace waavs {
 			needsBinding(false);
 		}
 		
-		bool drawMarker(IRenderSVG* ctx, std::shared_ptr<SVGVisualProperty> prop, MarkerPosition pos, const BLPoint &p1, const BLPoint &p2)
+		bool drawMarker(IRenderSVG* ctx, std::shared_ptr<SVGVisualProperty> prop, MarkerPosition pos, const BLPoint &p1, const BLPoint &p2, IAmGroot* groot)
 		{
 			// cast the prop to a SVGMarkerAttribute
 			auto marker = std::dynamic_pointer_cast<SVGMarkerAttribute>(prop);
@@ -301,7 +280,7 @@ namespace waavs {
 			ctx->rotate(rads);
 			
 			// draw the marker
-			markerNode->draw(ctx);
+			markerNode->draw(ctx, groot);
 
 				
 			ctx->pop();
@@ -325,12 +304,12 @@ namespace waavs {
 		
 		// traverse the points of the path
 		// drawing a marker at each point
-		void drawMarkers(IRenderSVG* ctx)
+		void drawMarkers(IRenderSVG* ctx, IAmGroot* groot)
 		{
 			// get general marker if it exists
 			auto marker = getVisualProperty("marker");
 			if (marker!=nullptr && marker->needsBinding())
-				marker->bindToGroot(root());
+				marker->bindToGroot(groot, this);
 			
 			// draw first marker
 			auto markerStart = getVisualProperty("marker-start");
@@ -338,14 +317,14 @@ namespace waavs {
 			{
 				// do the binding if necessary
 				if (markerStart->needsBinding())
-					markerStart->bindToGroot(root());
+					markerStart->bindToGroot(groot, this);
 
 				// get the first couple of points
 				// and draw the single marker
 				BLPoint p1 = fPath.vertexData()[0];
 				BLPoint p2 = fPath.vertexData()[1];
 				
-				drawMarker(ctx, markerStart, MarkerPosition::MARKER_POSITION_START, p1, p2);
+				drawMarker(ctx, markerStart, MarkerPosition::MARKER_POSITION_START, p1, p2, groot);
 			}
 
 			
@@ -356,7 +335,7 @@ namespace waavs {
 			{
 				// do the binding if necessary
 				if (markerMid->needsBinding())
-					markerMid->bindToGroot(root());
+					markerMid->bindToGroot(groot, this);
 
 				for (int i = 1; i < fPath.size() - 1; i++)
 				{
@@ -364,7 +343,7 @@ namespace waavs {
 					BLPoint p1 = fPath.vertexData()[i - 1];
 					BLPoint p2 = fPath.vertexData()[i];
 
-					drawMarker(ctx, markerMid, MarkerPosition::MARKER_POSITION_MIDDLE, p1, p2);
+					drawMarker(ctx, markerMid, MarkerPosition::MARKER_POSITION_MIDDLE, p1, p2, groot);
 				}
 			}
 			
@@ -375,18 +354,18 @@ namespace waavs {
 			{
 				// do the binding if necessary
 				if (markerEnd->needsBinding())
-					markerEnd->bindToGroot(root());
+					markerEnd->bindToGroot(groot, this);
 
 				// Get the last two points
 				BLPoint p1 = fPath.vertexData()[fPath.size() - 2];
 				BLPoint p2 = fPath.vertexData()[fPath.size() - 1];
 				
-				drawMarker(ctx, markerEnd, MarkerPosition::MARKER_POSITION_END, p1, p2);
+				drawMarker(ctx, markerEnd, MarkerPosition::MARKER_POSITION_END, p1, p2, groot);
 			}
 			
 		}
 		
-		void drawSelf(IRenderSVG *ctx) override
+		void drawSelf(IRenderSVG *ctx, IAmGroot* groot) override
 		{
 			// The paint-order attribute can change which
 			// order these are done in
@@ -399,7 +378,7 @@ namespace waavs {
 			
 			// draw markers if we have any
 			if (fHasMarkers)
-				drawMarkers(ctx);
+				drawMarkers(ctx, groot);
 		}
 		
 	};
@@ -409,9 +388,9 @@ namespace waavs {
 	struct SVGLineElement : public SVGGeometryElement
 	{
 		static void registerFactory() {
-			gShapeCreationMap["line"] = [](IAmGroot* root, const XmlElement& elem) {
-				auto node = std::make_shared<SVGLineElement>(root);
-				node->loadFromXmlElement(elem);
+			gShapeCreationMap["line"] = [](IAmGroot* groot, const XmlElement& elem) {
+				auto node = std::make_shared<SVGLineElement>(groot);
+				node->loadFromXmlElement(elem, groot);
 				return node;
 			};
 		}
@@ -428,7 +407,7 @@ namespace waavs {
 			:SVGGeometryElement(iMap) {}
 		
 	
-		void bindSelfToGroot(IAmGroot* groot) override
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{	
 			BLLine geom{};
 			double dpi = 96;
@@ -464,9 +443,9 @@ namespace waavs {
 			fPath.addLine(geom);
 		}
 		
-		void loadVisualProperties(const XmlAttributeCollection& attrs) override
+		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
 		{
-			SVGGeometryElement::loadVisualProperties(attrs);
+			SVGGeometryElement::loadVisualProperties(attrs, groot);
 
 			fDimX1.loadFromChunk(attrs.getAttribute("x1"));
 			fDimY1.loadFromChunk(attrs.getAttribute("y1"));
@@ -481,17 +460,18 @@ namespace waavs {
 	struct SVGRectElement : public SVGGeometryElement
 	{
 		static void registerSingular() {
-			gShapeCreationMap["rect"] = [](IAmGroot* root, const XmlElement& elem) {
-				auto node = std::make_shared<SVGRectElement>(root);
-				node->loadFromXmlElement(elem);
+			gShapeCreationMap["rect"] = [](IAmGroot* groot, const XmlElement& elem) {
+				auto node = std::make_shared<SVGRectElement>(groot);
+				node->loadFromXmlElement(elem, groot);
 				return node;
 			};
 		}
 		
 		static void registerFactory() {
-			gSVGGraphicsElementCreation["rect"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGRectElement>(aroot);
-				node->loadFromXmlIterator(iter);
+			gSVGGraphicsElementCreation["rect"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGRectElement>(groot);
+				node->loadFromXmlIterator(iter, groot);
+				
 				return node;
 				};
 
@@ -508,7 +488,7 @@ namespace waavs {
 		
 		SVGRectElement(IAmGroot* iMap) :SVGGeometryElement(iMap) {}
 		
-		void bindSelfToGroot(IAmGroot* groot) override
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
 			
 			BLRoundRect geom{};
@@ -577,9 +557,9 @@ namespace waavs {
 			//}
 		}
 		
-		void loadVisualProperties(const XmlAttributeCollection& attrs) override
+		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
 		{
-			SVGGeometryElement::loadVisualProperties(attrs);
+			SVGGeometryElement::loadVisualProperties(attrs, groot);
 
 
 				fX.loadFromChunk(attrs.getAttribute("x"));
@@ -598,17 +578,18 @@ namespace waavs {
 	struct SVGCircleElement : public SVGGeometryElement
 	{
 		static void registerSingular() {
-			gShapeCreationMap["circle"] = [](IAmGroot* root, const XmlElement& elem) {
-				auto node = std::make_shared<SVGCircleElement>(root);
-				node->loadFromXmlElement(elem);
+			gShapeCreationMap["circle"] = [](IAmGroot* groot, const XmlElement& elem) {
+				auto node = std::make_shared<SVGCircleElement>(groot);
+				node->loadFromXmlElement(elem, groot);
 				return node;
 				};
 		}
 
 		static void registerFactory() {
-			gSVGGraphicsElementCreation["circle"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGCircleElement>(aroot);
-				node->loadFromXmlIterator(iter);
+			gSVGGraphicsElementCreation["circle"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGCircleElement>(groot);
+				node->loadFromXmlIterator(iter, groot);
+				
 				return node;
 				};
 
@@ -624,7 +605,7 @@ namespace waavs {
 		
 		SVGCircleElement(IAmGroot* iMap) :SVGGeometryElement(iMap) {}
 
-		void bindSelfToGroot(IAmGroot *groot) override
+		void resolvePosition(IAmGroot *groot, SVGViewable* container) override
 		{
 
 			BLCircle geom{};
@@ -646,9 +627,9 @@ namespace waavs {
 			fPath.addCircle(geom);
 		}
 		
-		void loadVisualProperties(const XmlAttributeCollection& attrs) override
+		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
 		{
-			SVGGeometryElement::loadVisualProperties(attrs);
+			SVGGeometryElement::loadVisualProperties(attrs, groot);
 		
 			fCx.loadFromChunk(attrs.getAttribute("cx"));
 			fCy.loadFromChunk(attrs.getAttribute("cy"));
@@ -663,9 +644,10 @@ namespace waavs {
 	struct SVGEllipseElement : public SVGGeometryElement
 	{
 		static void registerFactory() {
-			registerSVGSingularNode("ellipse", [](IAmGroot* root, const XmlElement& elem) {
-				auto node = std::make_shared<SVGEllipseElement>(root);
-				node->loadFromXmlElement(elem);
+			registerSVGSingularNode("ellipse", [](IAmGroot* groot, const XmlElement& elem) {
+				auto node = std::make_shared<SVGEllipseElement>(groot);
+				node->loadFromXmlElement(elem, groot);
+				
 				return node; });
 		}
 
@@ -678,7 +660,7 @@ namespace waavs {
 			:SVGGeometryElement(iMap) {}
 		
 
-		void bindSelfToGroot(IAmGroot* groot) override
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
 
 			double dpi = 96;
@@ -703,9 +685,9 @@ namespace waavs {
 
 		}
 
-		void loadVisualProperties(const XmlAttributeCollection& attrs) override
+		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
 		{
-			SVGGeometryElement::loadVisualProperties(attrs);
+			SVGGeometryElement::loadVisualProperties(attrs, groot);
 
 
 			fCx.loadFromChunk(attrs.getAttribute("cx"));
@@ -722,9 +704,10 @@ namespace waavs {
 	struct SVGPolylineElement : public SVGGeometryElement
 	{
 		static void registerFactory() {
-			gShapeCreationMap["polyline"] = [](IAmGroot* root, const XmlElement& elem) {
-				auto node = std::make_shared<SVGPolylineElement>(root);
-				node->loadFromXmlElement(elem);
+			gShapeCreationMap["polyline"] = [](IAmGroot* groot, const XmlElement& elem) {
+				auto node = std::make_shared<SVGPolylineElement>(groot);
+				node->loadFromXmlElement(elem, groot);
+				
 				return node;
 			};
 		}
@@ -763,9 +746,9 @@ namespace waavs {
 			needsBinding(true);
 		}
 		
-		void loadVisualProperties(const XmlAttributeCollection& attrs) override
+		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
 		{
-			SVGGeometryElement::loadVisualProperties(attrs);
+			SVGGeometryElement::loadVisualProperties(attrs, groot);
 
 			loadPoints(attrs.getAttribute("points"));
 		}
@@ -778,17 +761,18 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			gShapeCreationMap["polygon"] = [](IAmGroot* root, const XmlElement& elem) {
-				auto node = std::make_shared<SVGPolygonElement>(root);
-				node->loadFromXmlElement(elem);
+			gShapeCreationMap["polygon"] = [](IAmGroot* groot, const XmlElement& elem) {
+				auto node = std::make_shared<SVGPolygonElement>(groot);
+				node->loadFromXmlElement(elem, groot);
 				return node;
 				};
 		}
 
 		static void registerFactory() {
-			gSVGGraphicsElementCreation["polygon"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGPolygonElement>(aroot);
-				node->loadFromXmlIterator(iter);
+			gSVGGraphicsElementCreation["polygon"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGPolygonElement>(groot);
+				node->loadFromXmlIterator(iter, groot);
+				
 				return node;
 				};
 
@@ -798,9 +782,9 @@ namespace waavs {
 		
 		SVGPolygonElement(IAmGroot* iMap) :SVGGeometryElement(iMap) {}
 		
-		void loadVisualProperties(const XmlAttributeCollection& attrs) override
+		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
 		{
-			SVGGeometryElement::loadVisualProperties(attrs);
+			SVGGeometryElement::loadVisualProperties(attrs, groot);
 
 			auto points = attrs.getAttribute("points");
 
@@ -834,18 +818,20 @@ namespace waavs {
 	struct SVGPathElement : public SVGGeometryElement
 	{
 		static void registerSingularNode() {
-			gShapeCreationMap["path"] = [](IAmGroot* root, const XmlElement& elem) {
-				auto node = std::make_shared<SVGPathElement>(root);
-				node->loadFromXmlElement(elem);
+			gShapeCreationMap["path"] = [](IAmGroot* groot, const XmlElement& elem) {
+				auto node = std::make_shared<SVGPathElement>(groot);
+				node->loadFromXmlElement(elem, groot);
+				
 				return node;
 			};
 		}
 
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["path"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGPathElement>(aroot);
-				node->loadFromXmlIterator(iter);
+			gSVGGraphicsElementCreation["path"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGPathElement>(groot);
+				node->loadFromXmlIterator(iter, groot);
+				
 				return node;
 			};
 
@@ -887,7 +873,7 @@ namespace waavs {
 		*/
 		
 		///*
-		void loadSelfFromXmlElement(const XmlElement& elem) override
+		void loadSelfFromXmlElement(const XmlElement& elem, IAmGroot* groot) override
 		{	
 			auto d = getAttribute("d");
 			if (!d)
@@ -916,27 +902,28 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			gShapeCreationMap["use"] = [](IAmGroot* aroot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGUseElement>(aroot);
-				node->loadFromXmlElement(elem);
+			gShapeCreationMap["use"] = [](IAmGroot* groot, const XmlElement& elem) {
+				auto node = std::make_shared<SVGUseElement>(groot);
+				node->loadFromXmlElement(elem, groot);
 				return node;
 			};
 		}
 
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["use"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGUseElement>(aroot);
-				node->loadFromXmlIterator(iter);
+			gSVGGraphicsElementCreation["use"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGUseElement>(groot);
+				node->loadFromXmlIterator(iter, groot);
 				return node;
 			};
 
 			registerSingularNode();
 		}
 
-		
-		std::shared_ptr<SVGViewable> fWrappedNode{nullptr};
+
 		ByteSpan fWrappedID{};
+		std::shared_ptr<SVGViewable> fWrappedNode{nullptr};
+
 
 		double x{ 0 };
 		double y{ 0 };
@@ -950,12 +937,9 @@ namespace waavs {
 
 		
 		SVGUseElement(const SVGUseElement& other) = delete;
-		
 		SVGUseElement(IAmGroot* aroot) : SVGGraphicsElement(aroot) {}
 
-		
-		
-		const BLVar& getVariant() override
+		const BLVar getVariant() override
 		{
 			if (fWrappedNode)
 				return fWrappedNode->getVariant();
@@ -974,7 +958,9 @@ namespace waavs {
 			return BLRect{ };
 		}
 		
-		void bindSelfToGroot(IAmGroot* groot) override
+
+		
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
 			
 			double dpi = 96;
@@ -998,25 +984,22 @@ namespace waavs {
 			if (fDimHeight.isSet())
 				height = fDimHeight.calculatePixels(h, 0, dpi);
 			
-			
 			// Use the root to lookup the wrapped node
-			if (groot != nullptr && fWrappedID)
-			{
-				fWrappedNode = groot->getElementById(fWrappedID);
+			fWrappedNode = groot->getElementById(fWrappedID);
 
-				if (fWrappedNode)
-				{
-					fWrappedNode->bindToGroot(groot);
-				}
+			if (fWrappedNode)
+			{
+				fWrappedNode->bindToGroot(groot, container);
 			}
+
 			
 			needsBinding(false);
 		}
 
 		// Apply locally generated attributes
-		void applyAttributes(IRenderSVG* ctx) override
+		void applyAttributes(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-			SVGGraphicsElement::applyAttributes(ctx);
+			SVGGraphicsElement::applyAttributes(ctx, groot);
 			
 			// perform transform if we have one
 
@@ -1034,9 +1017,9 @@ namespace waavs {
 
 		}
 
-		void loadVisualProperties(const XmlAttributeCollection& attrs) override
+		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
 		{
-			SVGGraphicsElement::loadVisualProperties(attrs);
+			SVGGraphicsElement::loadVisualProperties(attrs, groot);
 
 
 			// look for the href, or xlink:href attribute
@@ -1062,13 +1045,15 @@ namespace waavs {
 			needsBinding(true);
 		}
 		
-		void drawSelf(IRenderSVG* ctx) override
+		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{
+			if (fWrappedNode == nullptr)
+				return;
+			
 			ctx->push();
 			
 			// Draw the wrapped graphic
-			if (fWrappedNode != nullptr)
-				fWrappedNode->draw(ctx);
+			fWrappedNode->draw(ctx, groot);
 		
 			ctx->pop();
 		}
@@ -1084,18 +1069,20 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			gShapeCreationMap["image"] = [](IAmGroot* aroot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGImageNode>(aroot);
-				node->loadFromXmlElement(elem);
+			gShapeCreationMap["image"] = [](IAmGroot* groot, const XmlElement& elem) {
+				auto node = std::make_shared<SVGImageNode>(groot);
+				node->loadFromXmlElement(elem, groot);
+				
 				return node;
 			};
 		}
 
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["image"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGImageNode>(aroot);
-				node->loadFromXmlIterator(iter);
+			gSVGGraphicsElementCreation["image"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGImageNode>(groot);
+				node->loadFromXmlIterator(iter, groot);
+				
 				return node;
 			};
 
@@ -1104,7 +1091,8 @@ namespace waavs {
 
 		
 		BLImage fImage{};
-		ByteSpan fImageRef;
+		ByteSpan fImageRef{};
+		BLVar fImageVar{};
 		
 		double fX{ 0 };
 		double fY{ 0 };
@@ -1132,17 +1120,17 @@ namespace waavs {
 			return BLRect(fX, fY, fWidth,fHeight);
 		}
 		
-		const BLVar& getVariant() override
+		const BLVar getVariant() override
 		{
-			if (fVar.isNull())
-			{
-				fVar.assign(fImage);
-			}
+			//if (fImageVar.isNull())
+			//{
+			//	fImageVar = fImage;
+			//}
 
-			return fVar;
+			return fImageVar;
 		}
 
-		void bindSelfToGroot(IAmGroot* groot) override
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
 			double dpi = 96;
 			double w = 1.0;
@@ -1175,9 +1163,9 @@ namespace waavs {
 			}
 			
 			// BUGBUG - sanity check of image data
-			BLImageData imgData{};
+			//BLImageData imgData{};
 			
-			fImage.getData(&imgData);
+			//fImage.getData(&imgData);
 			
 			//printf("imgData: %d x %d  depth: %d\n", imgData.size.w, imgData.size.h, fImage.depth());
 			
@@ -1195,12 +1183,12 @@ namespace waavs {
 			if (fDimHeight.isSet())
 				fHeight = fDimHeight.calculatePixels(h, 0, dpi);
 			
-
+			fImageVar = fImage;
 		}
 
-		virtual void loadVisualProperties(const XmlAttributeCollection& attrs)
+		virtual void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot)
 		{
-			SVGGraphicsElement::loadVisualProperties(attrs);
+			SVGGraphicsElement::loadVisualProperties(attrs, groot);
 
 
 			fDimX.loadFromChunk(attrs.getAttribute("x"));
@@ -1217,7 +1205,7 @@ namespace waavs {
 				fImageRef = href;
 		}
 
-		void drawSelf(IRenderSVG* ctx) override
+		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 			if (fImage.empty())
 				return;
@@ -1243,9 +1231,9 @@ namespace waavs {
 	{
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["style"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGStyleNode>(aroot);
-				node->loadFromXmlIterator(iter);
+			gSVGGraphicsElementCreation["style"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGStyleNode>(groot);
+				node->loadFromXmlIterator(iter, groot);
 				return node;
 			};
 		}
@@ -1256,16 +1244,16 @@ namespace waavs {
 			isStructural(false);
 		}
 		
-		void loadContentNode(const XmlElement& elem) override
+		void loadContentNode(const XmlElement& elem, IAmGroot* groot) override
 		{
-			loadCDataNode(elem);
+			loadCDataNode(elem, groot);
 		}
 		
-		void loadCDataNode(const XmlElement& elem) override
+		void loadCDataNode(const XmlElement& elem, IAmGroot* groot) override
 		{
-			if (root())
+			if (groot)
 			{
-				root()->styleSheet()->loadFromSpan(elem.data());
+				groot->styleSheet()->loadFromSpan(elem.data());
 			}
 		}
 	};
@@ -1300,9 +1288,9 @@ namespace waavs {
 		double opacity() const { return fOpacity; }
 		BLRgba32 color() const { return fColor; }
 		
-		void loadFromXmlElement(const XmlElement& elem) override
+		void loadFromXmlElement(const XmlElement& elem, IAmGroot* groot) override
 		{	
-			SVGViewable::loadFromXmlElement(elem);
+			SVGViewable::loadFromXmlElement(elem, groot);
 			
 			// Get the offset
 			SVGDimension dim{};
@@ -1313,7 +1301,7 @@ namespace waavs {
 			}
 			
 			SVGDimension dimOpacity{};
-			SVGPaint paint(root());
+			SVGPaint paint(groot);
 			
 			// We'll get the paint either from a style attribute
 			// or from stop-color and stop-opacity attributes
@@ -1379,9 +1367,10 @@ namespace waavs {
 	struct SVGSolidColorElement : public SVGVisualNode
 	{
 		static void registerFactory() {
-			gShapeCreationMap["solidColor"] = [](IAmGroot* root, const XmlElement& elem) {
-				auto node = std::make_shared<SVGSolidColorElement>(root);
-				node->loadFromXmlElement(elem);
+			gShapeCreationMap["solidColor"] = [](IAmGroot* groot, const XmlElement& elem) {
+				auto node = std::make_shared<SVGSolidColorElement>(groot);
+				node->loadFromXmlElement(elem, groot);
+				
 				return node;
 			};
 		}
@@ -1391,22 +1380,14 @@ namespace waavs {
 		SVGSolidColorElement(IAmGroot* aroot) :SVGVisualNode(aroot) {}
 
 
-		const BLVar& getVariant() override
+		const BLVar getVariant() override
 		{
-			if (fVar.isNull())
-			{
-				BLVar aVar = fPaint.getVariant();
-				fVar = aVar;
-				
-				//blVarAssignWeak(&fVar, &fPaint.getVariant());
-			}
-			
-			return fVar;
+			return fPaint.getVariant();
 		}
 		
-		void loadVisualProperties(const XmlAttributeCollection& attrs) override
+		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
 		{
-			SVGVisualNode::loadVisualProperties(attrs);
+			SVGVisualNode::loadVisualProperties(attrs, groot);
 
 			if (attrs.getAttribute("solid-color"))
 			{
@@ -1418,6 +1399,8 @@ namespace waavs {
 				double opa = toDouble(attrs.getAttribute("solid-opacity"));
 				fPaint.setOpacity(opa);
 			}
+
+
 		}
 
 	};
@@ -1442,52 +1425,49 @@ namespace waavs {
 			:SVGGraphicsElement(aroot) 
 		{
 			fGradient.setExtendMode(BL_EXTEND_MODE_PAD);
-			//visible(true);
 			isStructural(false);
 		}
 		SVGGradient(const SVGGradient& other) = delete;
+		
 		SVGGradient operator=(const SVGGradient& other) = delete;
 		
-		const BLVar& getVariant() override
+		const BLVar getVariant() override
 		{	
-			if (fGradientVar.isNull())
-			{
-				fGradientVar = fGradient;
-				//blVarAssignWeak(&fGradientVar, &fGradient);
-			}
-			
 			return fGradientVar;
 		}
 		
 		// Load a URL Reference
-		void resolveReferences(IAmGroot* groot, const ByteSpan& inChunk)
+		void resolveStyle(IAmGroot* groot, SVGViewable *container) override
 		{
-			ByteSpan str = inChunk;
-
-			auto idValue = chunk_trim(str, xmlwsp);
+			// if there's no manager
+			// or there's no template to look
+			// return immediately
+			//if (refManager == nullptr || !fTemplateReference)
+			//	return;
 			
-			// The first character could be '.' or '#'
-			// so we need to skip past that
-			if (*idValue == '.' || *idValue == '#')
-				idValue++;
-
-			if (!idValue)
-				return;
-
-			// lookup the thing we're referencing
-
-			if (root() != nullptr)
+			if (fTemplateReference)
 			{
+				auto idValue = chunk_trim(fTemplateReference, xmlwsp);
+
+				// The first character could be '.' or '#'
+				// so we need to skip past that
+				if (*idValue == '.' || *idValue == '#')
+					idValue++;
+
+				if (!idValue)
+					return;
+
+				// lookup the thing we're referencing
 				auto node = groot->getElementById(idValue);
 
-				
 				// pull out the color value
 				if (node != nullptr)
 				{
 					// That node itself might need to be bound
-					if (node->needsBinding())
-						node->bindToGroot(groot);
-					
+					//if (node->needsBinding())
+					//	node->bindToGroot(groot);
+					node->bindToGroot(groot, container);
+
 					const BLVar& aVar = node->getVariant();
 
 					if (aVar.isGradient())
@@ -1496,11 +1476,11 @@ namespace waavs {
 						// the right stuff based on what kind of gradient
 						// we are.
 						// Start with just assigning the stops
-						const BLGradient & tmpGradient = aVar.as<BLGradient>();
-						
+						const BLGradient& tmpGradient = aVar.as<BLGradient>();
+
 						// assign stops from tmpGradient
 						fGradient.assignStops(tmpGradient.stops(), tmpGradient.size());
-						
+
 						// transform matrix if it already exists and
 						// we had set a new one as well
 						// otherwise, just set the new one
@@ -1521,19 +1501,22 @@ namespace waavs {
 						{
 							fGradient.setTransform(fGradientTransform);
 						}
-						
+
 					}
 				}
 			}
-			else {
-				printf("SVGGradient::resolveReferences, NO ROOT!!\n");
+			else if (fHasGradientTransform) {
+				fGradient.setTransform(fGradientTransform);
 			}
+			
+			fGradientVar = fGradient;
+
 		}
-		
+		/*
 		void bindSelfToGroot(IAmGroot* groot) override
 		{	
 			if (fTemplateReference) {
-				resolveReferences(groot, fTemplateReference);
+				//resolveReferences(groot, fTemplateReference);
 			}
 			else if (fHasGradientTransform)
 			{
@@ -1542,10 +1525,17 @@ namespace waavs {
 			
 			needsBinding(false);
 		}
+		*/
+
+		//void bindToGroot(IAmGroot* groot) override
+		//{
+		//	SVGGraphicsElement::bindToGroot(groot);
+			// don't do anything by default
+		//}
 		
-		void loadVisualProperties(const XmlAttributeCollection& attrs) override
+		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
 		{
-			SVGGraphicsElement::loadVisualProperties(attrs);
+			SVGGraphicsElement::loadVisualProperties(attrs, groot);
 
 			// See if we have a template reference
 			if (attrs.getAttribute("href"))
@@ -1553,6 +1543,9 @@ namespace waavs {
 			else if (attrs.getAttribute("xlink:href"))
 				fTemplateReference = attrs.getAttribute("xlink:href");
 
+			//if (fTemplateReference)
+			//	needsResolving(true);
+			
 			// Whether we've loaded a template or not
 			// load the common attributes for gradients
 			BLExtendMode extendMode{ BL_EXTEND_MODE_PAD };
@@ -1586,7 +1579,7 @@ namespace waavs {
 		//
 		// The only nodes here should be stop nodes
 		//
-		void loadSelfClosingNode(const XmlElement& elem) override
+		void loadSelfClosingNode(const XmlElement& elem, IAmGroot* groot) override
 		{
 			//printf("SVGGradientNode::loadSelfClosingNode()\n");
 			//printXmlElement(elem);
@@ -1596,8 +1589,8 @@ namespace waavs {
 				return;
 			}
 			
-			SVGStopNode stop(root());
-			stop.loadFromXmlElement(elem);
+			SVGStopNode stop(groot);
+			stop.loadFromXmlElement(elem, groot);
 			
 			auto offset = stop.offset();
 			auto acolor = stop.color();
@@ -1612,30 +1605,34 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			gShapeCreationMap["linearGradient"] = [](IAmGroot* aroot, const XmlElement& elem)  {
-				auto node = std::make_shared<SVGLinearGradient>(aroot);
-				node->loadFromXmlElement(elem);
+			gShapeCreationMap["linearGradient"] = [](IAmGroot* groot, const XmlElement& elem)  {
+				auto node = std::make_shared<SVGLinearGradient>(groot);
+				node->loadFromXmlElement(elem, groot);
+				
 				return node;
 			};
 		}
 		
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["linearGradient"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGLinearGradient>(aroot);
-				node->loadFromXmlIterator(iter);
+			gSVGGraphicsElementCreation["linearGradient"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGLinearGradient>(groot);
+				node->loadFromXmlIterator(iter, groot);
+				
 				return node;
 			};
 
 			registerSingularNode();
 		}
 		
-
-		SVGDimension fX1{0,SVG_UNITS_USER};
+		int fGradientUnits{ userSpaceOnUse };
+		
+		SVGDimension fX1{ 0,SVG_UNITS_USER};
 		SVGDimension fY1{ 0,SVG_UNITS_USER };
 		SVGDimension fX2{ 100,SVG_UNITS_PERCENT};
 		SVGDimension fY2{ 0,SVG_UNITS_PERCENT};
-		int fGradientUnits{ userSpaceOnUse };
+		
+
 		
 		SVGLinearGradient(IAmGroot* aroot) :SVGGradient(aroot) 
 		{
@@ -1643,9 +1640,9 @@ namespace waavs {
 			fGradient.setType(BL_GRADIENT_TYPE_LINEAR);
 		}
 		
-		void bindSelfToGroot(IAmGroot* groot) override
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
-			SVGGradient::bindSelfToGroot(groot);
+			SVGGradient::resolvePosition(groot, container);
 
 			double dpi = 96;
 			double w = 1.0;
@@ -1688,6 +1685,7 @@ namespace waavs {
 			
 
 			fGradient.setValues(values);
+			fGradientVar = fGradient;
 			
 			needsBinding(false);
 		}
@@ -1696,17 +1694,17 @@ namespace waavs {
 		// By implementing this here, we'll get called to load attributes
 		// from anywhere, whether presentation properties, inline css or stylesheet
 		// This goes beyond what the spec supports
-		void loadVisualProperties(const XmlAttributeCollection& attrs) override
+		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
 		{
 			// Make sure to load superclass first to get all the
 			// common goodies.
-			SVGGradient::loadVisualProperties(attrs);
+			SVGGradient::loadVisualProperties(attrs, groot);
 
 
-				fX1.loadFromChunk(attrs.getAttribute("x1"));
-				fY1.loadFromChunk(attrs.getAttribute("y1"));
-				fX2.loadFromChunk(attrs.getAttribute("x2"));
-				fY2.loadFromChunk(attrs.getAttribute("y2"));
+			fX1.loadFromChunk(attrs.getAttribute("x1"));
+			fY1.loadFromChunk(attrs.getAttribute("y1"));
+			fX2.loadFromChunk(attrs.getAttribute("x2"));
+			fY2.loadFromChunk(attrs.getAttribute("y2"));
 
 			needsBinding(true);
 		}
@@ -1715,27 +1713,28 @@ namespace waavs {
 	
 	//==================================
 	// Radial Gradient
-				// The radial gradient has a center point (cx, cy), a radius (r), and a focal point (fx, fy)
-			// The center point is the center of the circle that the gradient is drawn on
-			// The radius is the radius of that outer circle
-			// The focal point is the point within, or on the circle that the gradient is focused on
+	// The radial gradient has a center point (cx, cy), a radius (r), and a focal point (fx, fy)
+	// The center point is the center of the circle that the gradient is drawn on
+	// The radius is the radius of that outer circle
+	// The focal point is the point within, or on the circle that the gradient is focused on
 	//==================================
 	struct SVGRadialGradient : public SVGGradient
 	{
 		static void registerSingularNode()
 		{
-			gShapeCreationMap["radialGradient"] = [](IAmGroot* aroot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGRadialGradient>(aroot);
-				node->loadFromXmlElement(elem);
+			gShapeCreationMap["radialGradient"] = [](IAmGroot* groot, const XmlElement& elem) {
+				auto node = std::make_shared<SVGRadialGradient>(groot);
+				node->loadFromXmlElement(elem, groot);
+				
 				return node;
 			};
 		}
 
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["radialGradient"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGRadialGradient>(aroot);
-				node->loadFromXmlIterator(iter);
+			gSVGGraphicsElementCreation["radialGradient"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGRadialGradient>(groot);
+				node->loadFromXmlIterator(iter, groot);
 				return node;
 			};
 
@@ -1755,9 +1754,9 @@ namespace waavs {
 			
 		}
 
-		void bindSelfToGroot(IAmGroot* groot)
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
-			SVGGradient::bindSelfToGroot(groot);
+			SVGGradient::resolvePosition(groot, container);
 
 			double dpi = 96;
 			double w = 1.0;
@@ -1791,42 +1790,43 @@ namespace waavs {
 			needsBinding(false);
 		}
 		
-		void loadVisualProperties(const XmlAttributeCollection& attrs) override
+		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
 		{
-			SVGGradient::loadVisualProperties(attrs);
+			SVGGradient::loadVisualProperties(attrs, groot);
 
 
-				fCx.loadFromChunk(attrs.getAttribute("cx"));
-
-				fCy.loadFromChunk(attrs.getAttribute("cy"));
-
-				fR.loadFromChunk(attrs.getAttribute("r"));
-
-				fFx.loadFromChunk(attrs.getAttribute("fx"));
-
-				fFy.loadFromChunk(attrs.getAttribute("fy"));
+			fCx.loadFromChunk(attrs.getAttribute("cx"));
+			fCy.loadFromChunk(attrs.getAttribute("cy"));
+			fR.loadFromChunk(attrs.getAttribute("r"));
+			fFx.loadFromChunk(attrs.getAttribute("fx"));
+			fFy.loadFromChunk(attrs.getAttribute("fy"));
 
 			needsBinding(true);
 		}
 
 	};
 
+	//
+	// Conic Gradient
+	//
 	struct SVGConicGradient : public SVGGradient
 	{
 		static void registerSingularNode()
 		{
-			gShapeCreationMap["conicGradient"] = [](IAmGroot* aroot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGConicGradient>(aroot);
-				node->loadFromXmlElement(elem);
+			gShapeCreationMap["conicGradient"] = [](IAmGroot* groot, const XmlElement& elem) {
+				auto node = std::make_shared<SVGConicGradient>(groot);
+				node->loadFromXmlElement(elem, groot);
+				
 				return node;
 			};
 		}
 
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["conicGradient"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGConicGradient>(aroot);
-				node->loadFromXmlIterator(iter);
+			gSVGGraphicsElementCreation["conicGradient"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGConicGradient>(groot);
+				node->loadFromXmlIterator(iter, groot);
+				
 				return node;
 			};
 
@@ -1845,9 +1845,9 @@ namespace waavs {
 		}
 
 
-		void bindSelfToGroot(IAmGroot* groot)
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
-			SVGGradient::bindSelfToGroot(groot);
+			SVGGradient::resolvePosition(groot, container);
 
 			double dpi = 96;
 			double w = 1.0;
@@ -1860,6 +1860,7 @@ namespace waavs {
 				h = groot->canvasHeight();
 			}
 			
+			/*
 			BLConicGradientValues values = fGradient.conic();
 
 			if (x0.isSet())
@@ -1882,7 +1883,8 @@ namespace waavs {
 					parseAngle(angAttr, values.angle, units);
 				}
 			}
-			
+			*/
+			/*
 			// If there is a specified repeat, then use that
 			// otherwise, if the current value is zero, then 
 			// set it to one
@@ -1894,21 +1896,77 @@ namespace waavs {
 			
 
 			fGradient.setValues(values);
-
+			*/
 			
 			needsBinding(false);
 		}
 
 		
-		void loadVisualProperties(const XmlAttributeCollection& attrs) override
+		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
 		{
-			SVGGradient::loadVisualProperties(attrs);
+			SVGGradient::loadVisualProperties(attrs, groot);
 			
-			x0.loadFromChunk(attrs.getAttribute("x1"));
-			y0.loadFromChunk(attrs.getAttribute("y1"));
-			angle.loadFromChunk(attrs.getAttribute("angle"));
-			repeat.loadFromChunk(attrs.getAttribute("repeat"));
+			double dpi = 96;
+			double w = 1.0;
+			double h = 1.0;
 			
+			BLConicGradientValues values = fGradient.conic();
+
+			
+			if (attrs.hasAttribute("x1")) {
+				x0.loadFromChunk(attrs.getAttribute("x1"));
+				values.x0 = x0.calculatePixels(w, 0, dpi);
+			}
+			
+			if (attrs.hasAttribute("y1")) {
+				y0.loadFromChunk(attrs.getAttribute("y1"));
+				values.y0 = y0.calculatePixels(h, 0, dpi);
+			}
+
+			if (attrs.hasAttribute("angle")) {
+				// treat the angle as an angle type
+				ByteSpan angAttr = getAttribute("angle");
+				if (angAttr)
+				{
+					SVGAngleUnits units;
+					parseAngle(angAttr, values.angle, units);
+				}
+			}
+			
+			if (attrs.hasAttribute("repeat")) {
+				repeat.loadFromChunk(attrs.getAttribute("repeat"));
+				values.repeat = repeat.calculatePixels(1.0, 0, dpi);
+			}
+			
+			fGradient.setValues(values);
+			
+			//x0.loadFromChunk(attrs.getAttribute("x1"));
+			//y0.loadFromChunk(attrs.getAttribute("y1"));
+			//angle.loadFromChunk(attrs.getAttribute("angle"));
+			//repeat.loadFromChunk(attrs.getAttribute("repeat"));
+			/*
+			if (x0.isSet())
+			{
+				values.x0 = x0.calculatePixels(w, 0, dpi);
+			}
+
+			if (y0.isSet())
+			{
+				values.y0 = y0.calculatePixels(h, 0, dpi);
+			}
+
+			if (angle.isSet())
+			{
+				// treat the angle as an angle type
+				ByteSpan angAttr = getAttribute("angle");
+				if (angAttr)
+				{
+					SVGAngleUnits units;
+					parseAngle(angAttr, values.angle, units);
+				}
+			}
+			*/
+				
 			needsBinding(true);
 		}
 	};
@@ -1927,9 +1985,10 @@ namespace waavs {
 	{
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["symbol"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGSymbolNode>(aroot); 
-				node->loadFromXmlIterator(iter); 
+			gSVGGraphicsElementCreation["symbol"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGSymbolNode>(groot); 
+				node->loadFromXmlIterator(iter, groot); 
+				
 				return node; 
 			};
 		}
@@ -1947,9 +2006,9 @@ namespace waavs {
 			isStructural(false);
 		}
 
-		void applyAttributes(IRenderSVG* ctx) override
+		void applyAttributes(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-			SVGGraphicsElement::applyAttributes(ctx);
+			SVGGraphicsElement::applyAttributes(ctx, groot);
 			
 			auto localSize = ctx->localSize();
 			
@@ -1980,20 +2039,20 @@ namespace waavs {
 			}
 		}
 
-		void loadSelfClosingNode(const XmlElement& elem) override
+		void loadSelfClosingNode(const XmlElement& elem, IAmGroot* groot) override
 		{
 			//printf("SVGSymbolNode::loadSelfClosingNode: \n");
 			//printXmlElement(elem);
-			auto anode = createSingularNode(elem, root());
+			auto anode = createSingularNode(elem, groot);
 			if (anode != nullptr) {
-				addNode(anode);
+				addNode(anode, groot);
 			}
 
 		}
 
-		void loadVisualProperties(const XmlAttributeCollection& attrs) override
+		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
 		{
-			SVGGraphicsElement::loadVisualProperties(attrs);
+			SVGGraphicsElement::loadVisualProperties(attrs, groot);
 
 			fViewbox.loadFromChunk(attrs.getAttribute("viewBox"));
 			fRefX.loadFromChunk(attrs.getAttribute("refX"));
@@ -2017,9 +2076,9 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			gShapeCreationMap["title"] = [](IAmGroot* aroot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGTitleNode>(aroot);
-				node->loadFromXmlElement(elem);
+			gShapeCreationMap["title"] = [](IAmGroot* groot, const XmlElement& elem) {
+				auto node = std::make_shared<SVGTitleNode>(groot);
+				node->loadFromXmlElement(elem, groot);
 				node->visible(false);
 				
 				return node;
@@ -2029,9 +2088,9 @@ namespace waavs {
 		// Static constructor to register factory method in map
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["title"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGTitleNode>(aroot);
-				node->loadFromXmlIterator(iter);
+			gSVGGraphicsElementCreation["title"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGTitleNode>(groot);
+				node->loadFromXmlIterator(iter, groot);
 				node->visible(false);
 				
 				return node;
@@ -2046,16 +2105,16 @@ namespace waavs {
 			: SVGGraphicsElement(aroot) {}
 
 		// Load the text content if it exists
-		void loadContentNode(const XmlElement& elem) override
+		void loadContentNode(const XmlElement& elem, IAmGroot* groot) override
 		{
 			//printf("SVGTitleNode\n");
 			//printXmlElement(elem);
 			
 			// Create a text content node and 
 			// add it to our node set
-			auto node = std::make_shared<SVGTextContentNode>(root());
+			auto node = std::make_shared<SVGTextContentNode>(groot);
 			node->text(elem.data());
-			addNode(node);
+			addNode(node, groot);
 		}
 	};
 	
@@ -2063,9 +2122,9 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			gShapeCreationMap["desc"] = [](IAmGroot* aroot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGDescNode>(aroot);
-				node->loadFromXmlElement(elem);
+			gShapeCreationMap["desc"] = [](IAmGroot* groot, const XmlElement& elem) {
+				auto node = std::make_shared<SVGDescNode>(groot);
+				node->loadFromXmlElement(elem, groot);
 
 				return node;
 			};
@@ -2074,9 +2133,9 @@ namespace waavs {
 		// Static constructor to register factory method in map
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["desc"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGDescNode>(aroot);
-				node->loadFromXmlIterator(iter);
+			gSVGGraphicsElementCreation["desc"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGDescNode>(groot);
+				node->loadFromXmlIterator(iter, groot);
 
 				return node;
 			};
@@ -2094,16 +2153,16 @@ namespace waavs {
 		}
 
 		// Load the text content if it exists
-		void loadContentNode(const XmlElement& elem) override
+		void loadContentNode(const XmlElement& elem, IAmGroot* groot) override
 		{
 			//printf("SVGTitleNode\n");
 			//printXmlElement(elem);
 
 			// Create a text content node and 
 			// add it to our node set
-			auto node = std::make_shared<SVGTextContentNode>(root());
+			auto node = std::make_shared<SVGTextContentNode>(groot);
 			node->text(elem.data());
-			addNode(node);
+			addNode(node, groot);
 		}
 	};
 	
@@ -2115,9 +2174,10 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			gShapeCreationMap["a"] = [](IAmGroot* aroot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGAElement>(aroot);
-				node->loadFromXmlElement(elem);
+			gShapeCreationMap["a"] = [](IAmGroot* groot, const XmlElement& elem) {
+				auto node = std::make_shared<SVGAElement>(groot);
+				node->loadFromXmlElement(elem, groot);
+				
 				return node;
 			};
 		}
@@ -2125,9 +2185,10 @@ namespace waavs {
 		// Static constructor to register factory method in map
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["a"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGAElement>(aroot);
-				node->loadFromXmlIterator(iter);
+			gSVGGraphicsElementCreation["a"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGAElement>(groot);
+				node->loadFromXmlIterator(iter, groot);
+				
 				return node;
 			};
 
@@ -2150,9 +2211,10 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			gShapeCreationMap["mask"] = [](IAmGroot* aroot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGMaskNode>(aroot);
-				node->loadFromXmlElement(elem);
+			gShapeCreationMap["mask"] = [](IAmGroot* groot, const XmlElement& elem) {
+				auto node = std::make_shared<SVGMaskNode>(groot);
+				node->loadFromXmlElement(elem, groot);
+				
 				return node;
 			};
 		}
@@ -2160,9 +2222,10 @@ namespace waavs {
 		// Static constructor to register factory method in map
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["mask"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGMaskNode>(aroot);
-				node->loadFromXmlIterator(iter);
+			gSVGGraphicsElementCreation["mask"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGMaskNode>(groot);
+				node->loadFromXmlIterator(iter, groot);
+				
 				return node;
 			};
 
@@ -2171,15 +2234,15 @@ namespace waavs {
 
 
 		// Instance Constructor
-		SVGMaskNode(IAmGroot* aroot)
-			: SVGGraphicsElement(aroot) 
+		SVGMaskNode(IAmGroot* groot)
+			: SVGGraphicsElement(groot) 
 		{
 			isStructural(false);
 			//fUseCacheIsolation = true;
 		}
 
 
-		void drawSelf(IRenderSVG* ctx) override
+		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 			//The parent graphic should be stuffed into a BLPattern
 			// and set as a fill style, then we can 
@@ -2201,9 +2264,10 @@ namespace waavs {
 	{	
 		static void registerSingularNode()
 		{
-			gShapeCreationMap["g"] = [](IAmGroot* aroot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGGElement>(aroot);
-				node->loadFromXmlElement(elem);
+			gShapeCreationMap["g"] = [](IAmGroot* groot, const XmlElement& elem) {
+				auto node = std::make_shared<SVGGElement>(groot);
+				node->loadFromXmlElement(elem, groot);
+				
 				return node;
 			};
 		}
@@ -2211,9 +2275,10 @@ namespace waavs {
 		// Static constructor to register factory method in map
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["g"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGGElement>(aroot);
-				node->loadFromXmlIterator(iter);
+			gSVGGraphicsElementCreation["g"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGGElement>(groot);
+				node->loadFromXmlIterator(iter, groot);
+				
 				return node;
 			};
 
@@ -2240,9 +2305,10 @@ namespace waavs {
 	{
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["foreignObject"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGForeignObjectElement>(aroot);
-				node->loadFromXmlIterator(iter);
+			gSVGGraphicsElementCreation["foreignObject"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGForeignObjectElement>(groot);
+				node->loadFromXmlIterator(iter, groot);
+				
 				return node;
 			};
 
@@ -2264,7 +2330,7 @@ namespace waavs {
 		SVGForeignObjectElement(IAmGroot* aroot)
 			: SVGGraphicsElement(aroot) {}
 		
-		void bindSelfToGroot(IAmGroot* groot) override
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
 
 			double dpi = 96;
@@ -2287,9 +2353,9 @@ namespace waavs {
 		}
 		
 		
-		void loadVisualProperties(const XmlAttributeCollection& attrs) override
+		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
 		{
-			SVGGraphicsElement::loadVisualProperties(attrs);
+			SVGGraphicsElement::loadVisualProperties(attrs, groot);
 
 
 
@@ -2309,9 +2375,9 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			gShapeCreationMap["defs"] = [](IAmGroot* aroot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGDefsNode>(aroot);
-				node->loadFromXmlElement(elem);
+			gShapeCreationMap["defs"] = [](IAmGroot* groot, const XmlElement& elem) {
+				auto node = std::make_shared<SVGDefsNode>(groot);
+				node->loadFromXmlElement(elem, groot);
 				//node->visible(false);
 				
 				return node;
@@ -2321,9 +2387,9 @@ namespace waavs {
 		// Static constructor to register factory method in map
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["defs"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGDefsNode>(aroot);
-				node->loadFromXmlIterator(iter);
+			gSVGGraphicsElementCreation["defs"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGDefsNode>(groot);
+				node->loadFromXmlIterator(iter, groot);
 				//node->visible(false);
 				
 				return node;
@@ -2340,7 +2406,7 @@ namespace waavs {
 			visible(false);
 		}
 
-		void drawSelf(IRenderSVG* ctx) override
+		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 			printf("==== ERROR ERROR SVGDefsNode::drawSelf ====\n");
 		}
@@ -2361,9 +2427,10 @@ namespace waavs {
 		// Static constructor to register factory method in map
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["clipPath"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGClipPath>(aroot);
-				node->loadFromXmlIterator(iter);
+			gSVGGraphicsElementCreation["clipPath"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGClipPath>(groot);
+				node->loadFromXmlIterator(iter, groot);
+				
 				return node;
 			};
 		}
@@ -2377,7 +2444,10 @@ namespace waavs {
 			isStructural(false);
 		}
 		
-		const BLVar& getVariant() override
+		// 
+		// BUGBUG - this needs to happen in resolvePaint, or bingToGroot()
+		//
+		const BLVar getVariant() override
 		{
 			if (!fVar.isNull())
 				return fVar;
@@ -2393,14 +2463,14 @@ namespace waavs {
 
 				// Draw our content into the image
 				{
-					IRenderSVG ctx(root()->fontHandler());
+					IRenderSVG ctx(nullptr);
 					ctx.begin(fImage);
 
 					ctx.setCompOp(BL_COMP_OP_SRC_COPY);
 					ctx.clearAll();
 					ctx.setFillStyle(BLRgba32(0xffffffff));
 					ctx.translate(-extent.x, -extent.y);
-					draw(&ctx);
+					draw(&ctx, nullptr);
 					ctx.flush();
 				}
 				
@@ -2421,9 +2491,10 @@ namespace waavs {
 	{
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["switch"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGSwitchElement>(aroot);
-				node->loadFromXmlIterator(iter);
+			gSVGGraphicsElementCreation["switch"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGSwitchElement>(groot);
+				node->loadFromXmlIterator(iter, groot);
+				
 				return node;
 			};
 		}
@@ -2438,7 +2509,7 @@ namespace waavs {
 		SVGSwitchElement(IAmGroot* root) : SVGGraphicsElement(root) {}
 
 
-		void bindSelfToGroot(IAmGroot* groot) override
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
 
 			// Get the system language
@@ -2454,17 +2525,17 @@ namespace waavs {
 			}
 			
 			if (nullptr != fSelectedNode)
-				fSelectedNode->bindToGroot(groot);
+				fSelectedNode->bindToGroot(groot, container);
 		}
 		
-		void drawSelf(IRenderSVG* ctx) override
+		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 			if (fSelectedNode) {
-				fSelectedNode->draw(ctx);
+				fSelectedNode->draw(ctx, groot);
 			}
 		}
 
-		bool addNode(std::shared_ptr<SVGVisualNode> node) override
+		bool addNode(std::shared_ptr<SVGVisualNode> node, IAmGroot* groot) override
 		{
 			// If the node has a language attribute, add it to the language map
 			auto lang = node->getVisualProperty("systemLanguage");
@@ -2491,9 +2562,9 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			gShapeCreationMap["pattern"] = [](IAmGroot* aroot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGPatternNode>(aroot);
-				node->loadFromXmlElement(elem);
+			gShapeCreationMap["pattern"] = [](IAmGroot* groot, const XmlElement& elem) {
+				auto node = std::make_shared<SVGPatternNode>(groot);
+				node->loadFromXmlElement(elem, groot);
 				return node;
 			};
 		}
@@ -2501,9 +2572,9 @@ namespace waavs {
 		
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["pattern"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGPatternNode>(aroot);
-				node->loadFromXmlIterator(iter);
+			gSVGGraphicsElementCreation["pattern"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGPatternNode>(groot);
+				node->loadFromXmlIterator(iter, groot);
 				return node;
 			};
 
@@ -2548,7 +2619,7 @@ namespace waavs {
 			return { 0, 0, fWidth.calculatePixels(), fHeight.calculatePixels() };
 		}
 		
-		const BLVar& getVariant() override
+		const BLVar getVariant() override
 		{
 			// This should be called
 			if (fVar.isNull())
@@ -2584,9 +2655,6 @@ namespace waavs {
 				return;
 
 			// lookup the thing we're referencing
-			//std::string idStr = toString(id);
-
-
 			auto node = groot->getElementById(id);
 
 			// return early if we could not lookup the node
@@ -2599,7 +2667,7 @@ namespace waavs {
 
 			// That node itself might need to be bound
 			if (node->needsBinding())
-				node->bindToGroot(groot);
+				node->bindToGroot(groot, this);
 
 			const BLVar& aVar = node->getVariant();
 
@@ -2636,7 +2704,7 @@ namespace waavs {
 		// Resolve template reference
 		// fix coordinate system
 		//
-		void bindSelfToGroot(IAmGroot* groot) override
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
 			if (nullptr == groot)
 				return;
@@ -2744,7 +2812,7 @@ namespace waavs {
 				ctx.noStroke();
 				//ctx.setTransform(fPatternTransform);
 				
-				draw(&ctx);
+				draw(&ctx, groot);
 				ctx.flush();
 
 				// apply the patternTransform
@@ -2777,9 +2845,9 @@ namespace waavs {
 			// do it in the getVariant() call
 		}
 
-		void loadVisualProperties(const XmlAttributeCollection& attrs) override
+		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
 		{
-			SVGGraphicsElement::loadVisualProperties(attrs);
+			SVGGraphicsElement::loadVisualProperties(attrs, groot);
 
 			parseTransform(getAttribute("patternTransform"), fPatternTransform);
 
@@ -2811,9 +2879,10 @@ namespace waavs {
 	{
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["svg"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGSVGElement>(aroot);
-				node->loadFromXmlIterator(iter);
+			gSVGGraphicsElementCreation["svg"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGSVGElement>(groot);
+				node->loadFromXmlIterator(iter, groot);
+				
 				return node;
 			};
 
@@ -2846,7 +2915,7 @@ namespace waavs {
 		}
 		
 		
-		void bindSelfToGroot(IAmGroot* groot) override
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
 			// We need to resolve the size of the user space
 			// start out with some information from groot
@@ -2891,7 +2960,7 @@ namespace waavs {
 
 		}
 		
-		void draw(IRenderSVG *ctx) override
+		void draw(IRenderSVG *ctx, IAmGroot* groot) override
 		{
 			ctx->push();
 
@@ -2900,22 +2969,22 @@ namespace waavs {
 			
 			// Apply attributes that have been gathered
 			// in the case of the root node, it's mostly the viewport
-			applyAttributes(ctx);
+			applyAttributes(ctx, groot);
 
 			// Apply scaling transform based on viewbox
 			//ctx->setTransform(fViewport.sceneToSurfaceTransform());
 			ctx->translate(fX, fY);
 			
 			// Draw the children
-			drawChildren(ctx);
+			drawChildren(ctx, groot);
 
 			
 			ctx->pop();
 		}
 
-		void loadVisualProperties(const XmlAttributeCollection& attrs) override
+		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
 		{
-			SVGGraphicsElement::loadVisualProperties(attrs);
+			SVGGraphicsElement::loadVisualProperties(attrs, groot);
 
 			
 			fViewbox.loadFromChunk(attrs.getAttribute("viewBox"));

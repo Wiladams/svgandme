@@ -303,21 +303,7 @@ namespace waavs
 		SVG_LENGTH_ABSOLUTE_Q       // quarter-millimeters
     };
     
-	enum SVGLengthUnits
-	{
-		SVG_LENGTHTYPE_UNKNOWN = 0,
-		SVG_LENGTHTYPE_USER = 1,
-		SVG_LENGTHTYPE_PERCENTAGE,
-		SVG_LENGTHTYPE_CM,
-        SVG_LENGTHTYPE_EMS,
-        SVG_LENGTHTYPE_EXS,
-        SVG_LENGTHTYPE_IN,
-		SVG_LENGTHTYPE_MM,
-        SVG_LENGTHTYPE_PC,
-		SVG_LENGTHTYPE_PT,
-        SVG_LENGTHTYPE_PX,
-	};
-
+    
     enum SVGDimensionUnits
     {
 		SVG_UNITS_UNKNOWN = 0,
@@ -346,8 +332,8 @@ namespace waavs
 	// in
     //		SVG_LENGTHTYPE_UNKNOWN = 0,
 
-        
-    static bool parseLengthUnits(ByteSpan& s, SVGLengthUnits &units) noexcept
+        /*
+    static bool parseDimensionUnits(ByteSpan& s, SVGLengthUnits &units) noexcept
     {
 		// If no units specified, then it is a number
         // in user units
@@ -401,14 +387,14 @@ namespace waavs
         return true;
 
     }
-
+    */
     
     //==============================================================================
     // SVGDimension
     // used for length, time, frequency, resolution, location
     //==============================================================================
 
-
+    
     // Turn a units indicator into an enum
     static SVGDimensionUnits parseDimensionUnits(const ByteSpan& units)
     {
@@ -437,7 +423,7 @@ namespace waavs
 
         return SVG_UNITS_USER;
     }
-
+    
     
     struct SVGDimension 
     {
@@ -445,18 +431,9 @@ namespace waavs
         SVGDimensionUnits fUnits{ SVGDimensionUnits::SVG_UNITS_USER };
         bool fHasValue{ false };
 
-        SVGDimension() = default;
-        //    : fValue(0.0f)
-        //    , fUnits(SVGDimensionUnits::SVG_UNITS_USER)
-        //{
-        //}
-
         SVGDimension(const SVGDimension& other) = delete;
-        //    :fValue(other.fValue)
-        //    , fUnits(other.fUnits)
-		//	, fIsSet(other.fIsSet)
-        //{}
-
+        
+        SVGDimension() = default;
 		SVGDimension(double value, SVGDimensionUnits units, bool setValue = true)
             : fValue(value)
             , fUnits(units)
@@ -481,15 +458,15 @@ namespace waavs
         double calculatePixels(double length = 1.0, double orig = 0, double dpi = 96) const
         {
             switch (fUnits) {
-            case SVG_UNITS_USER:		return fValue;
-            case SVG_UNITS_PX:			return fValue;
+            case SVG_UNITS_USER:		return fValue;                  // User units and PX units are the same
+            case SVG_UNITS_PX:			return fValue;                  // User units and px units are the same
             case SVG_UNITS_PT:			return fValue / 72.0f * dpi;
             case SVG_UNITS_PC:			return fValue / 6.0f * dpi;
             case SVG_UNITS_MM:			return fValue / 25.4f * dpi;
             case SVG_UNITS_CM:			return fValue / 2.54f * dpi;
             case SVG_UNITS_IN:			return fValue * dpi;
-            case SVG_UNITS_EM:			return fValue * length;                 // attr.fontSize;
-                //case SVG_UNITS_EX:			return fValue * attr.fontSize * 0.52f; // x-height of Helvetica.
+            case SVG_UNITS_EM:			return fValue * length;         // length should represent 'em' height of font                 
+            case SVG_UNITS_EX:		    return fValue * 0.52f;          // x-height, fontHeight * 0.52.
             case SVG_UNITS_PERCENT:	
                 double clampedVal = waavs::clamp(fValue, 0.0, 100.0);
                 return orig + ((clampedVal / 100.0f) * length);
@@ -604,7 +581,6 @@ namespace waavs {
         
         if (styleChunk) {
             // use CSSInlineIterator to iterate through the key value pairs
-            // creating a visual attribute, using the gSVGPropertyCreation map
             CSSInlineStyleIterator iter(styleChunk);
 
             while (iter.next())
@@ -614,14 +590,6 @@ namespace waavs {
                     // add raw attribute value to collection
                     styleAttributes.addAttribute((*iter).first, (*iter).second);
                 }
-
-
-                //std::string name = std::string((*iter).first.fStart, (*iter).first.fEnd);
-                //if (!name.empty() && (*iter).second)
-                //{
-                //    auto value = (*iter).second;
-				//	styleAttributes.addAttribute(name, value);
-                //}
             }
         }
 
@@ -806,7 +774,7 @@ namespace waavs {
     {
         // skip past the leading "rgb("
         ByteSpan s = inChunk;
-        auto leading = chunk_token(s, "(");
+        auto leading = chunk_token_char(s, '(');
 
         // s should now point to the first number
         // and 'leading' should contain 'rgb'
@@ -814,7 +782,7 @@ namespace waavs {
         // but we'll just assume it is for now
 
         // get the numbers by separating at the ')'
-        auto nums = chunk_token(s, ")");
+        auto nums = chunk_token_char(s, ')');
 
         // So, now nums contains the individual numeric values, separated by ','
         // The individual numeric values are either
@@ -826,8 +794,8 @@ namespace waavs {
 
         // Get the first token, which is red
         // if it's not there, then return gray
-        auto num = chunk_token(nums, ",");
-        if (chunk_size(num) < 1)
+        auto num = chunk_token_char(nums, ',');
+        if (num.size() < 1)
         {
             //aColor.reset(128, 128, 128, 0);
             aColor.reset(255, 255, 0, 255);
@@ -855,7 +823,7 @@ namespace waavs {
                     rgbi[i] = (uint8_t)waavs::clamp(cv.value(),0.0,255.0);
             }
             i++;
-            num = chunk_token(nums, ",");
+            num = chunk_token_char(nums, ',');
         }
 
         if (i == 4)
@@ -918,6 +886,51 @@ namespace waavs {
         return success;
     }
 }
+
+namespace waavs {
+    // Could be used as bitfield
+    enum MarkerPosition {
+
+        MARKER_POSITION_START = 0,
+        MARKER_POSITION_MIDDLE = 1,
+        MARKER_POSITION_END = 2,
+        MARKER_POSITION_ALL = 3
+    };
+
+    // determines the orientation of a marker
+    enum class MarkerOrientation
+    {
+        MARKER_ORIENT_AUTO,
+        MARKER_ORIENT_AUTOSTARTREVERSE,
+        MARKER_ORIENT_ANGLE,
+        MARKER_ORIENT_INVALID = 255,
+    };
+
+    static bool parseMarkerOrientation(const ByteSpan& inChunk, MarkerOrientation& orient)
+    {
+
+        if (inChunk == "auto")
+        {
+            orient = MarkerOrientation::MARKER_ORIENT_AUTO;
+            return true;
+        }
+        else if (inChunk == "auto-start-reverse")
+        {
+            orient = MarkerOrientation::MARKER_ORIENT_AUTOSTARTREVERSE;
+            return true;
+        }
+        else // if (inChunk == "angle")
+        {
+            orient = MarkerOrientation::MARKER_ORIENT_ANGLE;
+            return true;
+        }
+
+
+        return false;
+    }
+}
+
+
 
 namespace waavs {
     //
@@ -1002,6 +1015,9 @@ namespace waavs
     //
     static ByteSpan parseTransformArgs(const ByteSpan& inChunk, double* args, int maxNa, int& na)
     {
+        // Now we're ready to parse the individual numbers
+        static const charset numDelims = xmlwsp + ',';
+        
         na = 0;
 
         ByteSpan s = inChunk;
@@ -1048,8 +1064,7 @@ namespace waavs
         // needs to use it next is ready to go.
         s++;
 
-        // Now we're ready to parse the individual numbers
-        auto numDelims = xmlwsp + ',';
+
 
         while (item) {
             if (na >= maxNa)
