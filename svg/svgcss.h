@@ -358,7 +358,10 @@ namespace waavs
             auto selectorKind = parseSimpleSelectorKind(selectorName);
             
             if (selectorKind != CSSSelectorKind::CSS_SELECTOR_INVALID) {
-                selectorName++; // skip the first character of the name
+                if (selectorKind != CSSSelectorKind::CSS_SELECTOR_ELEMENT)
+                {
+                    selectorName++; // skip the first character of the name
+                }
                 
                 fCurrentItem = CSSSelector(selectorKind, selectorName, fSelectorContent);
                 return true;

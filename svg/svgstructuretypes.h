@@ -93,15 +93,6 @@ namespace waavs {
         
         virtual void draw(IRenderSVG* ctx, IAmGroot* groot) {  return; }
 
-        
-        //virtual void loadFromXmlAttributes(const XmlAttributeCollection& attrs, IAmGroot* groot)
-        //{
-            // save the id if we've got an id attribute
-        //    id(getAttribute("id"));
-        //}
-        
-        virtual void loadSelfFromXmlElement(const XmlElement& elem, IAmGroot* groot) { ; }
-
         virtual void loadFromXmlElement(const XmlElement& elem, IAmGroot* groot)
         {
             scanAttributes(elem.data());
@@ -111,8 +102,6 @@ namespace waavs {
             
             // Save the name if we've got one
             name(elem.name());
-
-            loadSelfFromXmlElement(elem, groot);
         }
         
         virtual void loadSelfFromXmlIterator(XmlElementIterator& iter, IAmGroot* groot)
@@ -391,7 +380,9 @@ namespace waavs {
         
         void bindToGroot(IAmGroot* groot, SVGViewable *container) override
         {
-
+			if (!needsBinding())
+				return;
+            
             resolvePosition(groot, container);
             resolveStyle(groot, container);
             
@@ -495,8 +486,16 @@ namespace waavs {
         }
         
 
-        void resolveStyle(IAmGroot* groot, SVGViewable* container) override
+
+        // Assuming we've already scanned our attributes
+        // do further processing with them
+        void loadCommonVisualProperties(IAmGroot* groot)
         {
+            // BUGBUG - need to decide order of precedence for presentation attributes
+            // load the common stuff that doesn't require
+            // any additional processing
+            loadVisualProperties(*this, groot);
+
             // Handle the class attribute if there is one
             // The class attribute can be a whitespace separated list
             // of class names, so we need to lookup each selector
@@ -555,16 +554,6 @@ namespace waavs {
                 parseStyleAttribute(styleChunk, styleAttributes);
                 loadVisualProperties(styleAttributes, groot);
             }
-        }
-
-        // Assuming we've already scanned our attributes
-        // do further processing with them
-        void loadCommonVisualProperties(IAmGroot* groot)
-        {
-            // BUGBUG - need to decide order of precedence for presentation attributes
-            // load the common stuff that doesn't require
-            // any additional processing
-            loadVisualProperties(*this, groot);
         }
 
 
@@ -666,13 +655,15 @@ namespace waavs {
 
         int buildState = BUILD_STATE_OPEN;
         
+
+        BLVar fVar{};
+        
         // Dealing with a cached image
         //bool fUseCacheIsolation{ false };
         bool fImageIsCached{ false };
-        BLRect fBBox{};
         BLImage fCachedImage{};
         //double fOpacity{ 1.0 };
-        BLVar fVar{};
+
         
         SVGGraphicsElement(IAmGroot* aroot)
             :SVGVisualNode(aroot) {}
@@ -690,15 +681,6 @@ namespace waavs {
 			return true;
         }
         
-		//virtual void resolveReferences(IAmGroot* groot)
-		//{
-        //    SVGVisualNode::resolveReferences(groot);
-            
-		//	for (auto& node : fNodes)
-		//	{
-		//		node->resolveReferences(groot);
-		//	}
-		//}
         
         virtual void bindChildrenToGroot(IAmGroot* groot, SVGViewable* container)
         {
@@ -708,10 +690,6 @@ namespace waavs {
 			}
         }
         
-        //virtual void bindSelfToGroot(IAmGroot* groot)
-        //{
-            // don't do anything by default
-        //}
         
         // For compound nodes (which have children) we want to 
         // do the base stuff (binding properties) then bind the children
@@ -805,9 +783,9 @@ namespace waavs {
         {
             // get the bounding box to determine how big
             // the cache should be
-            fBBox = frame();
-            int iWidth = (int)fBBox.w;
-            int iHeight = (int)fBBox.h;
+            BLRect bbox = frame();
+            int iWidth = (int)bbox.w;
+            int iHeight = (int)bbox.h;
 
             // Create a new image with the same size as the bounding box
             fCachedImage.create(iWidth, iHeight, BLFormat::BL_FORMAT_PRGB32);
@@ -819,7 +797,7 @@ namespace waavs {
             //cachectx.fillAll(BLRgba32(0xFFffffffu));
             cachectx.setCompOp(BL_COMP_OP_SRC_COPY);
             cachectx.noStroke();
-            cachectx.translate(-fBBox.x, -fBBox.y);
+            cachectx.translate(-bbox.x, -bbox.y);
 
 
             // Render out content into the backing buffer
@@ -840,7 +818,7 @@ namespace waavs {
             //if (fUseCacheIsolation && fImageIsCached && !fCachedImage.empty())
             //{
             //    ctx->setGlobalAlpha(fOpacity);
-            //    ctx->blitImage(fBBox, fCachedImage);
+            //    ctx->blitImage(getBBox(), fCachedImage);
             //}
             //else 
             {

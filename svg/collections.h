@@ -42,9 +42,9 @@ namespace waavs {
             ByteSpan key;
             ByteSpan value;
 
-            while (nextAttributeKeyValue(src, key, value))
+            while (readNextKeyValue(src, key, value))
             {
-                fAttributes[key] = value;
+                addAttribute(key, value);
             }
 
             return true;

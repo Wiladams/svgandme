@@ -14,7 +14,7 @@
 // The routines here may not be the fastest vectorized versions, but they are simple
 // and easily portable.
 
-#define BASE64_ENCODE_OUT_SIZE(s) ((unsigned int)((((s) + 2) / 3) * 4 + 1))
+//#define BASE64_ENCODE_OUT_SIZE(s) ((unsigned int)((((s) + 2) / 3) * 4 + 1))
 //#define BASE64_DECODE_OUT_SIZE(s) ((unsigned int)(((s) / 4) * 3))
 
 
@@ -79,15 +79,20 @@ namespace waavs {
 	struct base64 {
 		// Given an input buffer size, getDecodeOutputSize() returns the size
 		// of buffer needed to contain the decoded data.
-		static unsigned int getDecodeOutputSize(const size_t inputSize)
+		static unsigned int getDecodeOutputSize(const size_t inputSize) noexcept
 		{
 			return ((unsigned int)(((inputSize) / 4) * 3));
 		}
-			
+		
+		static unsigned int getEncodeOutputSize(const size_t inputSize) noexcept
+		{
+			return ((unsigned int)((((inputSize)+2) / 3) * 4 + 1));
+		}
+		
 		// base64_encode
 		// out is null-terminated encode string.
 		// return values is out length, excluding the terminating `\0'
-		static unsigned int encode(const unsigned char* in, unsigned int inlen, char* out)
+		static unsigned int encode(const unsigned char* in, unsigned int inlen, char* out) noexcept
 		{
 			int s;
 			unsigned int i;
@@ -141,15 +146,12 @@ namespace waavs {
 		// the return value of the function is the number of bytes that
 		// are in the 'out' buffer
 		// skip over whitespace, ignore invalid characters
-		static size_t decode(const char* in, size_t inlen, unsigned char* out)
+		static size_t decode(const char* in, size_t inlen, unsigned char* out) noexcept
 		{
-			unsigned int i;	// i - tracks the input location
+			size_t i{ 0 };	// i - tracks the input location
 			unsigned int j;
 			unsigned char c;
 
-			//if (inlen & 0x3) {
-			//	return 0;
-			//}
 
 			i = 0;
 			j = 0;

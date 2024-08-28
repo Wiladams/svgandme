@@ -18,10 +18,24 @@
 
 #define WAAVS_NOMINMAX 1
 
+
+
+
 #ifdef _MSC_VER
+#ifndef INLINE
 #define INLINE __forceinline
+#endif
+#ifndef unlikely
+#define unlikely(x) x
+#endif // unlikely
 #else
-#define INLINE static inline
+#ifndef INLINE
+#define INLINE __attribute__((always_inline)) inline
+#endif // really_inline
+
+#ifndef unlikely
+#define unlikely(x) __builtin_expect(!!(x), 0)
+#endif // unlikely
 #endif
 
 // MSVC++ has #defines for min/max that break various things

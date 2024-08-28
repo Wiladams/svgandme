@@ -48,6 +48,33 @@ static void setupFonts()
 
 }
 
+/*
+static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
+{
+	auto mapped = waavs::MappedFile::create_shared(filename);
+
+	// if the mapped file does not exist, return
+	if (mapped == nullptr)
+	{
+		printf("File not found: %s\n", filename);
+		return nullptr;
+	}
+
+
+	ByteSpan aspan(mapped->data(), mapped->size());
+	std::shared_ptr<SVGDocument> aDoc = SVGDocument::createFromChunk(aspan, &gFontHandler, canvasWidth, canvasHeight, systemPpi);
+	if (aDoc != nullptr) {
+		SVGDocument* groot = aDoc.get();
+		aDoc->bindToGroot(groot, nullptr);
+	}
+
+	return aDoc;
+}
+*/
+
+#define CAN_WIDTH 640
+#define CAN_HEIGHT 480
+
 int main(int argc, char **argv)
 {
     if (argc < 2)
@@ -55,6 +82,8 @@ int main(int argc, char **argv)
         printf("Usage: svgimage <xml file>  [output file]\n");
         return 1;
     }
+	
+	setupFonts();
 
     // create an mmap for the specified file
     const char* filename = argv[1];
@@ -69,50 +98,48 @@ int main(int argc, char **argv)
 	}
     
 	ByteSpan mappedSpan(mapped->data(), mapped->size());
-    gDoc = SVGDocument::createFromChunk(mappedSpan, &gFontHandler);
-
+    gDoc = SVGDocument::createFromChunk(mappedSpan, &gFontHandler, CAN_WIDTH, CAN_HEIGHT, 96);
 
     if (gDoc == nullptr)
         return 1;
 
-	auto rootNode = gDoc->documentElement();
-    
-    if (rootNode == nullptr)
-        return 1;
 
-    setupFonts();
-
+	
 
 	// Get the viewport size so we can create an image
 	// This is not the best thing to do, as viewport can be very large or small
-	BLRect r = rootNode->viewport();
-	printf("viewport: %3.0f %3.0f %3.0f %3.0f\n", r.x, r.y, r.w, r.h);
-
-			
-	auto objFr = gDoc->sceneFrame();
-	printf("gDoc::sceneFrame: %f,%f %f,%f\n", objFr.x, objFr.y, objFr.w, objFr.h);
+	BLRect sceneFrame = gDoc->frame();
+	printf("viewport: %3.0f %3.0f %3.0f %3.0f\n", sceneFrame.x, sceneFrame.y, sceneFrame.w, sceneFrame.h);
 	
 
-	// Setup a viewport to match the document size
-	ViewPort vp{ 0,0,r.w, r.h };
+	ViewPort vp{};
+
+	// Create a frame the size we want to render at
+	BLRect surfaceFrame{ 0, 0, CAN_WIDTH, CAN_HEIGHT };
 	
-	// Play with changing the viewport here
-	// You can translate, scale, and rotate
-	//vp.scaleBy(1.0/2.0, 1.0/2.0, r.w / 2.0, r.h / 2.0);
-	//vp.rotateBy(radians(90.0), r.w / 2.0, r.h / 2.0);
-	
+	vp.sceneFrame(sceneFrame);
+	vp.surfaceFrame(surfaceFrame);
+
+
 	// Create a drawing context to render into
-	BLImage img(r.w, r.h, BL_FORMAT_PRGB32);
-	IRenderSVG ctx(&gFontHandler);
+	SvgDrawingContext ctx(&gFontHandler);
+	BLImage img(surfaceFrame.w, surfaceFrame.h, BL_FORMAT_PRGB32);
+	
 	ctx.begin(img);
+	ctx.clearAll();
+	//ctx.fillAll(BLRgba32(0xFFFFFFFF));
 	
 	// apply the viewport's sceneToSurface transform to the context
-	ctx.setTransform(vp.surfaceToSceneTransform());
-	
-	// Render the document into the context
-	gDoc->draw(&ctx);
+	ctx.setTransform(vp.sceneToSurfaceTransform());
 
-			
+	// Render the document into the context
+	gDoc->draw(&ctx, gDoc.get());
+	//ctx.setStrokeStyle(BLRgba32(0xFFff0000));
+	//ctx.setStrokeWidth(2.0);
+	//ctx.strokeLine(0, 0, 640, 640);
+	ctx.flush();
+	ctx.end();
+	
 	// Save the image from the drawing context out to a file
 	const char* outfilename = nullptr;
 	printf("argc: %d\n", argc);

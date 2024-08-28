@@ -1,0 +1,1467 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0-rtm.5.json",
+  "runs": [
+    {
+      "results": [
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'BLStrokeOptionsCore::<unnamed-tag>::<unnamed-tag>::startCap' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///D:/repos/svgandme/blend2d/blend2d/path.h"
+                },
+                "region": {
+                  "startLine": 369,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "BLStrokeOptionsCore::{ctor}",
+                  "decoratedName": "??0BLStrokeOptionsCore@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "BLStrokeOptionsCore::<unnamed-tag>::<unnamed-tag>::startCap"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'BLStrokeOptionsCore::<unnamed-tag>::<unnamed-tag>::endCap' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///D:/repos/svgandme/blend2d/blend2d/path.h"
+                },
+                "region": {
+                  "startLine": 369,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "BLStrokeOptionsCore::{ctor}",
+                  "decoratedName": "??0BLStrokeOptionsCore@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "BLStrokeOptionsCore::<unnamed-tag>::<unnamed-tag>::endCap"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'BLStrokeOptionsCore::<unnamed-tag>::<unnamed-tag>::join' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///D:/repos/svgandme/blend2d/blend2d/path.h"
+                },
+                "region": {
+                  "startLine": 369,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "BLStrokeOptionsCore::{ctor}",
+                  "decoratedName": "??0BLStrokeOptionsCore@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "BLStrokeOptionsCore::<unnamed-tag>::<unnamed-tag>::join"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'BLStrokeOptionsCore::<unnamed-tag>::<unnamed-tag>::transformOrder' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///D:/repos/svgandme/blend2d/blend2d/path.h"
+                },
+                "region": {
+                  "startLine": 369,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "BLStrokeOptionsCore::{ctor}",
+                  "decoratedName": "??0BLStrokeOptionsCore@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "BLStrokeOptionsCore::<unnamed-tag>::<unnamed-tag>::transformOrder"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'BLStrokeOptionsCore::<unnamed-tag>::<unnamed-tag>::reserved' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///D:/repos/svgandme/blend2d/blend2d/path.h"
+                },
+                "region": {
+                  "startLine": 369,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "BLStrokeOptionsCore::{ctor}",
+                  "decoratedName": "??0BLStrokeOptionsCore@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "BLStrokeOptionsCore::<unnamed-tag>::<unnamed-tag>::reserved"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'BLStrokeOptionsCore::<unnamed-tag>::caps' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///D:/repos/svgandme/blend2d/blend2d/path.h"
+                },
+                "region": {
+                  "startLine": 369,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "BLStrokeOptionsCore::{ctor}",
+                  "decoratedName": "??0BLStrokeOptionsCore@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "BLStrokeOptionsCore::<unnamed-tag>::caps"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'BLStrokeOptionsCore::<unnamed-tag>::hints' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///D:/repos/svgandme/blend2d/blend2d/path.h"
+                },
+                "region": {
+                  "startLine": 369,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "BLStrokeOptionsCore::{ctor}",
+                  "decoratedName": "??0BLStrokeOptionsCore@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "BLStrokeOptionsCore::<unnamed-tag>::hints"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'BLStrokeOptionsCore::width' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///D:/repos/svgandme/blend2d/blend2d/path.h"
+                },
+                "region": {
+                  "startLine": 369,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "BLStrokeOptionsCore::{ctor}",
+                  "decoratedName": "??0BLStrokeOptionsCore@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "BLStrokeOptionsCore::width"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'BLStrokeOptionsCore::miterLimit' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///D:/repos/svgandme/blend2d/blend2d/path.h"
+                },
+                "region": {
+                  "startLine": 369,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "BLStrokeOptionsCore::{ctor}",
+                  "decoratedName": "??0BLStrokeOptionsCore@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "BLStrokeOptionsCore::miterLimit"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'BLStrokeOptionsCore::dashOffset' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///D:/repos/svgandme/blend2d/blend2d/path.h"
+                },
+                "region": {
+                  "startLine": 369,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "BLStrokeOptionsCore::{ctor}",
+                  "decoratedName": "??0BLStrokeOptionsCore@@QEAA@XZ",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "BLStrokeOptionsCore::dashOffset"
+          }
+        },
+        {
+          "ruleId": "C6001",
+          "message": {
+            "text": "Using uninitialized memory 'style'."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///D:/repos/svgandme/blend2d/blend2d/context.h"
+                },
+                "region": {
+                  "startLine": 885,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "BLInternal::makeInlineStyle",
+                  "decoratedName": "?makeInlineStyle@BLInternal@@YA?AUBLVarCore@@AEBUBLRgba32@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///D:/repos/svgandme/blend2d/blend2d/context.h"
+                          },
+                          "region": {
+                            "startLine": 884,
+                            "startColumn": 13
+                          }
+                        },
+                        "message": {
+                          "text": "'style' is not initialized"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ],
+                      "importance": "essential"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///D:/repos/svgandme/blend2d/blend2d/context.h"
+                          },
+                          "region": {
+                            "startLine": 885,
+                            "startColumn": 22
+                          }
+                        },
+                        "message": {
+                          "text": "'style' is an Output from 'BLObjectDetail::initRgba32' (declared at d:\\repos\\svgandme\\blend2d\\blend2d\\object.h:714)"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///D:/repos/svgandme/blend2d/blend2d/context.h"
+                          },
+                          "region": {
+                            "startLine": 886,
+                            "startColumn": 3
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///D:/repos/svgandme/blend2d/blend2d/context.h"
+                          },
+                          "region": {
+                            "startLine": 885,
+                            "startColumn": 3
+                          }
+                        },
+                        "message": {
+                          "text": "'style' is used, but may not have been initialized"
+                        }
+                      },
+                      "kinds": [
+                        "usage"
+                      ],
+                      "importance": "essential"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "C6001",
+          "message": {
+            "text": "Using uninitialized memory 'style'."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///D:/repos/svgandme/blend2d/blend2d/context.h"
+                },
+                "region": {
+                  "startLine": 891,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "BLInternal::makeInlineStyle",
+                  "decoratedName": "?makeInlineStyle@BLInternal@@YA?AUBLVarCore@@AEBUBLRgba64@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///D:/repos/svgandme/blend2d/blend2d/context.h"
+                          },
+                          "region": {
+                            "startLine": 890,
+                            "startColumn": 13
+                          }
+                        },
+                        "message": {
+                          "text": "'style' is not initialized"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ],
+                      "importance": "essential"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///D:/repos/svgandme/blend2d/blend2d/context.h"
+                          },
+                          "region": {
+                            "startLine": 891,
+                            "startColumn": 22
+                          }
+                        },
+                        "message": {
+                          "text": "'style' is an Output from 'BLObjectDetail::initRgba64' (declared at d:\\repos\\svgandme\\blend2d\\blend2d\\object.h:721)"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///D:/repos/svgandme/blend2d/blend2d/context.h"
+                          },
+                          "region": {
+                            "startLine": 892,
+                            "startColumn": 3
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///D:/repos/svgandme/blend2d/blend2d/context.h"
+                          },
+                          "region": {
+                            "startLine": 891,
+                            "startColumn": 3
+                          }
+                        },
+                        "message": {
+                          "text": "'style' is used, but may not have been initialized"
+                        }
+                      },
+                      "kinds": [
+                        "usage"
+                      ],
+                      "importance": "essential"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "C6001",
+          "message": {
+            "text": "Using uninitialized memory 'style'."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///D:/repos/svgandme/blend2d/blend2d/context.h"
+                },
+                "region": {
+                  "startLine": 902,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "BLInternal::makeInlineStyle",
+                  "decoratedName": "?makeInlineStyle@BLInternal@@YA?AUBLVarCore@@AEBUBLRgba@@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///D:/repos/svgandme/blend2d/blend2d/context.h"
+                          },
+                          "region": {
+                            "startLine": 896,
+                            "startColumn": 12
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///D:/repos/svgandme/blend2d/blend2d/context.h"
+                          },
+                          "region": {
+                            "startLine": 897,
+                            "startColumn": 12
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///D:/repos/svgandme/blend2d/blend2d/context.h"
+                          },
+                          "region": {
+                            "startLine": 898,
+                            "startColumn": 12
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///D:/repos/svgandme/blend2d/blend2d/context.h"
+                          },
+                          "region": {
+                            "startLine": 899,
+                            "startColumn": 12
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///D:/repos/svgandme/blend2d/blend2d/context.h"
+                          },
+                          "region": {
+                            "startLine": 901,
+                            "startColumn": 13
+                          }
+                        },
+                        "message": {
+                          "text": "'style' is not initialized"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ],
+                      "importance": "essential"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///D:/repos/svgandme/blend2d/blend2d/context.h"
+                          },
+                          "region": {
+                            "startLine": 902,
+                            "startColumn": 21
+                          }
+                        },
+                        "message": {
+                          "text": "'style' is an Output from 'BLObjectDetail::initU32x4' (declared at d:\\repos\\svgandme\\blend2d\\blend2d\\object.h:745)"
+                        }
+                      },
+                      "kinds": [
+                        "declaration"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///D:/repos/svgandme/blend2d/blend2d/context.h"
+                          },
+                          "region": {
+                            "startLine": 903,
+                            "startColumn": 3
+                          }
+                        }
+                      },
+                      "importance": "unimportant"
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "file:///D:/repos/svgandme/blend2d/blend2d/context.h"
+                          },
+                          "region": {
+                            "startLine": 902,
+                            "startColumn": 3
+                          }
+                        },
+                        "message": {
+                          "text": "'style' is used, but may not have been initialized"
+                        }
+                      },
+                      "kinds": [
+                        "usage"
+                      ],
+                      "importance": "essential"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "C26813",
+          "message": {
+            "text": "Use 'bitwise and' to check if a flag is set."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///D:/repos/svgandme/svg/svgattributes.h"
+                },
+                "region": {
+                  "startLine": 1230,
+                  "startColumn": 17,
+                  "endLine": 1230,
+                  "endColumn": 52
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "waavs::SVGOrient::calculateRadians",
+                  "decoratedName": "?calculateRadians@SVGOrient@waavs@@QEBANW4MarkerPosition@2@AEBUBLPoint@@1@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'waavs::SVGFontNode::fVertOriginY' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///D:/repos/svgandme/svg/svgfont.h"
+                },
+                "region": {
+                  "startLine": 59,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "waavs::SVGFontNode::{ctor}",
+                  "decoratedName": "??0SVGFontNode@waavs@@QEAA@PEAUIAmGroot@1@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "waavs::SVGFontNode::fVertOriginY"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'waavs::SVGFontNode::fVertOriginX' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///D:/repos/svgandme/svg/svgfont.h"
+                },
+                "region": {
+                  "startLine": 59,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "waavs::SVGFontNode::{ctor}",
+                  "decoratedName": "??0SVGFontNode@waavs@@QEAA@PEAUIAmGroot@1@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "waavs::SVGFontNode::fVertOriginX"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'waavs::SVGFontNode::fVertAdvY' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///D:/repos/svgandme/svg/svgfont.h"
+                },
+                "region": {
+                  "startLine": 59,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "waavs::SVGFontNode::{ctor}",
+                  "decoratedName": "??0SVGFontNode@waavs@@QEAA@PEAUIAmGroot@1@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "waavs::SVGFontNode::fVertAdvY"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'waavs::SVGFontNode::fHorizAdvX' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///D:/repos/svgandme/svg/svgfont.h"
+                },
+                "region": {
+                  "startLine": 59,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "waavs::SVGFontNode::{ctor}",
+                  "decoratedName": "??0SVGFontNode@waavs@@QEAA@PEAUIAmGroot@1@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "waavs::SVGFontNode::fHorizAdvX"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'waavs::SVGFontNode::fHorizOriginY' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///D:/repos/svgandme/svg/svgfont.h"
+                },
+                "region": {
+                  "startLine": 59,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "waavs::SVGFontNode::{ctor}",
+                  "decoratedName": "??0SVGFontNode@waavs@@QEAA@PEAUIAmGroot@1@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "waavs::SVGFontNode::fHorizOriginY"
+          }
+        },
+        {
+          "ruleId": "C26495",
+          "message": {
+            "text": "Variable 'waavs::SVGFontNode::fHorizOriginX' is uninitialized. Always initialize a member variable (type.6)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///D:/repos/svgandme/svg/svgfont.h"
+                },
+                "region": {
+                  "startLine": 59,
+                  "startColumn": 3
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "waavs::SVGFontNode::{ctor}",
+                  "decoratedName": "??0SVGFontNode@waavs@@QEAA@PEAUIAmGroot@1@@Z",
+                  "kind": "function"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "targetSymbol": "waavs::SVGFontNode::fHorizOriginX"
+          }
+        }
+      ],
+      "tool": {
+        "driver": {
+          "name": "PREfast",
+          "fullName": "PREfast Code Analysis",
+          "version": "14.38.33135.0",
+          "informationUri": "https://aka.ms/cpp/ca"
+        }
+      },
+      "invocations": [
+        {
+          "executionSuccessful": true
+        }
+      ],
+      "artifacts": [
+        {
+          "location": {
+            "uri": "file:///D:/repos/svgandme/blend2d/blend2d/path.h"
+          },
+          "roles": [
+            "resultFile"
+          ],
+          "hashes": {
+            "sha-256": "8cbac1766a1d1bc609a06d6e04e111f3663bf272402333008351534f88c049dd"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///D:/repos/svgandme/blend2d/blend2d/context.h"
+          },
+          "roles": [
+            "resultFile"
+          ],
+          "hashes": {
+            "sha-256": "86a7d3645da9d613b9c8abdaa4bd08eca166de049cb7a74557fe8e56c39f0337"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///D:/repos/svgandme/svg/svgattributes.h"
+          },
+          "roles": [
+            "resultFile"
+          ],
+          "hashes": {
+            "sha-256": "4cd5586b0eb18d9a6058ca6de370b5a598bee6b690937360628647f17668382f"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///D:/repos/svgandme/svg/svgfont.h"
+          },
+          "roles": [
+            "resultFile"
+          ],
+          "hashes": {
+            "sha-256": "afb786f1035612d603dc784c56465a06029579faadfc6500fee5cf38b543e961"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/app/svguiapp.cpp"
+          },
+          "roles": [
+            "analysisTarget"
+          ],
+          "hashes": {
+            "sha-256": "50a6b16615bbf5b3fa1b8878d372885c37dfe5159cbb238438f23552eea4ce7c"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/app/svguiapp.h"
+          },
+          "hashes": {
+            "sha-256": "d5826a5dbef4477dbd7394eaa59893f31be36ec23560c10fddff6a75f901edf1"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/app/apphost.h"
+          },
+          "hashes": {
+            "sha-256": "e64c12cd08c36cdeecf15ea49e7ea7d3cf84d34bed1af336b251085b7446f869"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/svg/definitions.h"
+          },
+          "hashes": {
+            "sha-256": "7048f900dcb112c04e6a52f61235b1d11a005afa395b6d0695d209f204ded3d8"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d.h"
+          },
+          "hashes": {
+            "sha-256": "f5e394f1bca1aadfe01e54b148572c58890ea9edeaaa41f69bba77324f87b2a7"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/api.h"
+          },
+          "hashes": {
+            "sha-256": "882794d25c161ddbf1088fe104fa45931be956a0fce6e4547a313762c6eaff16"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/array.h"
+          },
+          "hashes": {
+            "sha-256": "f6fde4ff35a2b0e76d4f000abfe568e40a5842f6a5e08c178c7f665a699500e2"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/object.h"
+          },
+          "hashes": {
+            "sha-256": "54a43827677c67063e94904b6fcf9c0f8f965bb35c239f701efcf557d52bb294"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/rgba.h"
+          },
+          "hashes": {
+            "sha-256": "6367298116537f8c30b22c48fb6d68ecc132521ecd2a7aaeec0a0a24f4e44fb2"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/bitarray.h"
+          },
+          "hashes": {
+            "sha-256": "098460e289585cb9269a3536ed6397440d77e20a4841760f5b5998c72beacba2"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/bitset.h"
+          },
+          "hashes": {
+            "sha-256": "3aba4bd90d270c9c4eef3435d67e5a1fac21119e7c63afb60715abb4acece4f1"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/font.h"
+          },
+          "hashes": {
+            "sha-256": "6d02f13403167332559c744db995f06dc826b29e8eedccd2b52ea25289c5f93f"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/filesystem.h"
+          },
+          "hashes": {
+            "sha-256": "5ca6c327beeef33f04c46bd4688b3fd5dbc9d209dc428d2dd2eb72df42660c89"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/fontdata.h"
+          },
+          "hashes": {
+            "sha-256": "d5c48b7d359fb50d0cec693907a1e53b3a268bcca144f99c9f83995a2a62d4ac"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/fontdefs.h"
+          },
+          "hashes": {
+            "sha-256": "f2cd833fbbda0e53ed40e5223f866e276f10d20939fe40ed909e77b815933405"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/geometry.h"
+          },
+          "hashes": {
+            "sha-256": "07bd9195bbb67c6f5fd1ae8f32ca6cdc982384813b994de55737f1ad5e8bf0db"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/string.h"
+          },
+          "hashes": {
+            "sha-256": "fc3261f09cc259cd6ffc718429a20aebdaab792f78a61e2948ee502b7e25fcdc"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/fontface.h"
+          },
+          "hashes": {
+            "sha-256": "decf7d369e73e9e974da8ff8818833872abb53149d07314de0a8be7e2476dcaa"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/glyphbuffer.h"
+          },
+          "hashes": {
+            "sha-256": "abc201e927deda02bc97f817a28f658609f6ba32e26b2529282071a58fa450a6"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/glyphrun.h"
+          },
+          "hashes": {
+            "sha-256": "4be812493416ad0a3bfcd5967d5b49ce4bf7e183a5d44b4bb0b95d02b4867cde"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/fontfeaturesettings.h"
+          },
+          "hashes": {
+            "sha-256": "03f4115cb85a1deab2f99a3f8bf2b1838f424453bd01655365d87c0965504880"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/fontvariationsettings.h"
+          },
+          "hashes": {
+            "sha-256": "e4275b3058394bd478321dca6eec321e4956f83bd721a9a0036783883700368f"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/gradient.h"
+          },
+          "hashes": {
+            "sha-256": "db53f12858734fd1b214649d7840ed2b1c5a54acb4ded974e4f4adfe2bbb586f"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/matrix.h"
+          },
+          "hashes": {
+            "sha-256": "d4d874eca89e6e935f7407024c2c76ecda48832d1c5ad2696e46a3871beff69b"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/image.h"
+          },
+          "hashes": {
+            "sha-256": "ece85f6f3447472f5ba0e12293cae6e347f33f81c5cc31d11748025b0a69e6bb"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/format.h"
+          },
+          "hashes": {
+            "sha-256": "0845bfba0f04d71dfc84641691aa6b976f4223d5f8ba58641a3fcd08f9528313"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/imagecodec.h"
+          },
+          "hashes": {
+            "sha-256": "55866424afdc87bd66b7a1695de3fe37cd66ed609e54c72abdeace38923de85a"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/pattern.h"
+          },
+          "hashes": {
+            "sha-256": "ca2cba5fee959c877220150a2b6fa1d82c5d1fe4f0ee2b8c0bccd75c41a89f16"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/var.h"
+          },
+          "hashes": {
+            "sha-256": "11f66aa1617f157dfac7a3ce9b192f536c379e15e35843e6d69f73d10ddde038"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/fontmanager.h"
+          },
+          "hashes": {
+            "sha-256": "ce38740019ab870f01d2bcebf7b202c0745495c3a8ed61f88d414cb0e6b01358"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/imagedecoder.h"
+          },
+          "hashes": {
+            "sha-256": "3fc6c6a1b494dfe77bd6b4d16e42ec4a658b4009815b38a57f162e79d22b8c17"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/imageencoder.h"
+          },
+          "hashes": {
+            "sha-256": "bc3236f5777603c25b8ca931e3ac36698a477950120ac26ea5cd536aa906cef0"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/pixelconverter.h"
+          },
+          "hashes": {
+            "sha-256": "ebbeabd436556988c19fe4fbdb4e7b768a5e4a2416d3b3d4613d1b332f31b260"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/random.h"
+          },
+          "hashes": {
+            "sha-256": "9c22c53b98d7bd1df7d39b5f9fbf7898f65d7c3d8e23ddd02430255ebbb0f195"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/runtime.h"
+          },
+          "hashes": {
+            "sha-256": "b547ea80e960a5a6a1b0c6ccf559722f08496a5925a5d6f0c9a5ebb46c69cd68"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/blend2d/blend2d/runtimescope.h"
+          },
+          "hashes": {
+            "sha-256": "b2849e4452fdb2b28d008449ed452fdd0ace905f19660e012152290032376d62"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/svg/maths.h"
+          },
+          "hashes": {
+            "sha-256": "f36349c3334d95c51ae5abde58fc0a6a2d108648ce7fb8b3590c11adf65fc3dd"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/svg/bithacks.h"
+          },
+          "hashes": {
+            "sha-256": "cdcdb9d9a3af559b5f296601e401586fbe88ccc82ce02a3b1d7a4b5193c16317"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/app/pubsub.h"
+          },
+          "hashes": {
+            "sha-256": "94cd8c5cf693beb5bd966cfce9a8c205e993107d8891077b06ce232f2d555994"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/app/nativewindow.h"
+          },
+          "hashes": {
+            "sha-256": "dac850ec9a147df8cf1ee5f9b25e89e41651e4a3e91d40def95948170742ea1e"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/svg/uievent.h"
+          },
+          "hashes": {
+            "sha-256": "054f50ddaada14ba104e6ea09f079147df4d2bc1ee0c681cb595924af1595d06"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/app/joystick.h"
+          },
+          "hashes": {
+            "sha-256": "c626e35b2f22591f64772fa6a4a88a919f86cdc8aec3ab44bda061f058142134"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/app/network.h"
+          },
+          "hashes": {
+            "sha-256": "461bae35fd7bdc592cac78a690b53a2387a8795367a051a859bacd2dd7cda4d3"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/app/user32pixelmap.h"
+          },
+          "hashes": {
+            "sha-256": "b700d162d165f5499f6bffa62024aef3994a91dc56805560d63306cd308b8828"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/app/pixelaccessor.h"
+          },
+          "hashes": {
+            "sha-256": "6bbb8db9801bcacacd05a692d1bf74ec46a2705f6588a295559cc3e39e2cb2e9"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/svg/svg.h"
+          },
+          "hashes": {
+            "sha-256": "e95b7136d1181025441560b8c325e1f8ba731889238a9473bbed9a109933d95a"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/svg/irendersvg.h"
+          },
+          "hashes": {
+            "sha-256": "1b2e22165f595dd4ecaf2595701808f8fbd837776ed4e27cdb2c3c80364fe58a"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/svg/fonthandler.h"
+          },
+          "hashes": {
+            "sha-256": "c53fe7459ce608155027b4b51d9b9a083ff05f8d3dbc6f2a938c43a9abae6b03"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/svg/bspan.h"
+          },
+          "hashes": {
+            "sha-256": "6e548e3aac46ece72923a95139d1a1699b1788079d15c27a36d91ac3701303c9"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/svg/charset.h"
+          },
+          "hashes": {
+            "sha-256": "d23737e9dbb3ae67d4972f6ffcc98c0fb7aeffa116c37f570c919e171af1182c"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/svg/svgcolors.h"
+          },
+          "hashes": {
+            "sha-256": "a93ccf826f9dc5a1514c17c1d44b4a7c0628e23da827dd23b293169964cdd180"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/svg/svgcss.h"
+          },
+          "hashes": {
+            "sha-256": "ae3ff41485ad1e9a7c1784054a93d7c8ce0b728a01580f08850005e2bbd6d4e7"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/svg/xmlscan.h"
+          },
+          "hashes": {
+            "sha-256": "134ec016e8eb3a7346bbc637d7805fdaab5c326d4e22c4d4d1ffccbaa615ca4f"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/svg/collections.h"
+          },
+          "hashes": {
+            "sha-256": "4e39d29d676236482b3895fbd4928199f2c860dab66bc7d1f153d92db1d6ff84"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/svg/svgstructuretypes.h"
+          },
+          "hashes": {
+            "sha-256": "34d8bb56c651a58bad6cea109d413ff44a16c39443e1c42a000994f53af23cf8"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/svg/svgdatatypes.h"
+          },
+          "hashes": {
+            "sha-256": "3d9e2c0c1987b86477284155a37c930402dc0f8cb60eaa712335927d24665719"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/svg/base64.h"
+          },
+          "hashes": {
+            "sha-256": "f4e3370030ceb56e4074cd39bf87a85caa5fb1eb3efcb34b762698d6f7a90d88"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/svg/svgshapes.h"
+          },
+          "hashes": {
+            "sha-256": "c8ed14b4e473d3f9fc9f53bf27205157328974932a2849b62faeccae4a07961d"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/svg/svgpath.h"
+          },
+          "hashes": {
+            "sha-256": "2909e9669e42f112efa794acc0b7279ef72c3303c70ef06f4513a9f63280408b"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/svg/svgtext.h"
+          },
+          "hashes": {
+            "sha-256": "258e976f78e8aac6147f6f39fe4aa70ca502e53adcab5091f7398519b2f41dec"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/svg/viewport.h"
+          },
+          "hashes": {
+            "sha-256": "69625ce122adf195e0e1cfd04cdc69fee4548b6869e0a9382f5ea6f0607f0a6e"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/svg/svgdocument.h"
+          },
+          "hashes": {
+            "sha-256": "a0cab1ceaa3a788f40f5c39ee49d8f8af67a570c12cda1a671152b82e4332b5f"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/svg/svgfilter.h"
+          },
+          "hashes": {
+            "sha-256": "ef9fe227bcf5eb0e91abfe10f880919b97d0582dd6b8bad9e441b92b7a4ee089"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/svg/svgdrawingcontext.h"
+          },
+          "hashes": {
+            "sha-256": "82764a044000c63cb52f6be139254f390c3e6c01a6b411f47311607f4cdf821d"
+          }
+        },
+        {
+          "location": {
+            "uri": "file:///d:/repos/svgandme/app/recorder.h"
+          },
+          "hashes": {
+            "sha-256": "512f8118ef1311ab64ca5ac81bc76c04c2a22d001239da4bfb54ef0e0f11c839"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -62,9 +62,10 @@ namespace waavs {
 			isStructural(false);
 		}
 
-		void loadSelfFromXmlElement(const XmlElement& elem, IAmGroot* groot) override
+		//void loadSelfFromXmlElement(const XmlElement& elem, IAmGroot* groot) override
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
-			SVGGraphicsElement::loadSelfFromXmlElement(elem, groot);
+			//SVGGraphicsElement::loadSelfFromXmlElement(elem, groot);
 
 
 			// get horiz-adv-x as a numeric value if it exists
@@ -161,9 +162,10 @@ namespace waavs {
 
 		SVGFontFaceNode(IAmGroot* iMap) :SVGGraphicsElement(iMap) {}
 
-		void loadSelfFromXmlElement(const XmlElement& elem, IAmGroot* groot) override
+		//void loadSelfFromXmlElement(const XmlElement& elem, IAmGroot* groot) override
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
-			SVGGraphicsElement::loadSelfFromXmlElement(elem, groot);
+			//SVGGraphicsElement::loadSelfFromXmlElement(elem, groot);
 
 			auto fontFamily = getAttribute("font-family");
 			auto fontStyle = getAttribute("font-style");
@@ -218,9 +220,10 @@ namespace waavs {
 		{
 		}
 
-		void loadSelfFromXmlElement(const XmlElement& elem, IAmGroot* groot) override
+		//void loadSelfFromXmlElement(const XmlElement& elem, IAmGroot* groot) override
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
-			SVGGraphicsElement::loadSelfFromXmlElement(elem, groot);
+			//SVGGraphicsElement::loadSelfFromXmlElement(elem, groot);
 
 			auto horizAdvX = getAttribute("horiz-adv-x");
 			auto vertAdvY = getAttribute("vert-adv-y");
@@ -252,7 +255,7 @@ namespace waavs {
 	// SVGGlyph
 	// Support the 'glyph' found in the 'font' element
 	//====================================
-	struct SVGGlyphNode : public SVGGeometryElement
+	struct SVGGlyphNode : public SVGPathBasedGeometry
 	{
 		static void registerFactory() {
 			gShapeCreationMap["glyph"] = [](IAmGroot* groot, const XmlElement& elem) {
@@ -274,11 +277,11 @@ namespace waavs {
 		GLYPH_ARABIC_FORM arabicForm{ GLYPH_ARABIC_FORM_ISOLATED };
 		ByteSpan fLang{};
 
-		SVGGlyphNode(IAmGroot* iMap) :SVGGeometryElement(iMap) {}
+		SVGGlyphNode(IAmGroot* iMap) :SVGPathBasedGeometry(iMap) {}
 
-		void loadSelfFromXmlElement(const XmlElement& elem, IAmGroot* groot) override
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
-			SVGGeometryElement::loadSelfFromXmlElement(elem, groot);
+			//SVGGeometryElement::loadSelfFromXmlElement(elem, groot);
 
 			// load unicode property
 			// just store the raw ByteSpan
@@ -305,7 +308,6 @@ namespace waavs {
 			auto success = blpathparser::parsePath(d, fPath);
 			fPath.shrink();
 
-			needsBinding(false);
 		}
 
 	};
@@ -364,7 +366,8 @@ namespace waavs {
 			return fFaceName;
 		}
 		
-		void loadSelfFromXmlElement(const XmlElement& elem, IAmGroot* groot) override
+		//void loadSelfFromXmlElement(const XmlElement& elem, IAmGroot* groot) override
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
 			auto aname = getAttribute("name");
 			if (aname)

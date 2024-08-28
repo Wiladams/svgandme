@@ -7,7 +7,7 @@
 
 #include "bithacks.h"
 #include "charset.h"
-//#include "maths.h"
+
 
 namespace waavs {
 
@@ -197,7 +197,10 @@ namespace waavs {
 
 
 	// ByteSpan routines
-	static INLINE ByteSpan chunk_from_cstr(const char* data) noexcept { return ByteSpan{ (uint8_t*)data, (uint8_t*)data + strlen(data) }; }
+	static INLINE ByteSpan chunk_from_cstr(const char* data) noexcept 
+	{ 
+		return ByteSpan{ (uint8_t*)data, (uint8_t*)data + strlen(data) }; 
+	}
 
 
 	//static inline size_t chunk_size(const ByteSpan& a) noexcept { return a.size(); }
@@ -209,13 +212,13 @@ namespace waavs {
 		return maxBytes;
 	}
 
-	static inline int compare(const ByteSpan& a, const ByteSpan& b) noexcept
+	static INLINE int compare(const ByteSpan& a, const ByteSpan& b) noexcept
 	{
 		size_t maxBytes = a.size() < b.size() ? a.size() : b.size();
 		return memcmp(a.fStart, b.fStart, maxBytes);
 	}
 
-	static inline int comparen(const ByteSpan& a, const ByteSpan& b, int n) noexcept
+	static INLINE int comparen(const ByteSpan& a, const ByteSpan& b, int n) noexcept
 	{
 		size_t maxBytes = a.size() < b.size() ? a.size() : b.size();
 		if (maxBytes > n)
@@ -223,29 +226,31 @@ namespace waavs {
 		return memcmp(a.fStart, b.fStart, maxBytes);
 	}
 
-	static inline int comparen_cstr(const ByteSpan& a, const char* b, int n) noexcept
+	static INLINE int comparen_cstr(const ByteSpan& a, const char* b, int n) noexcept
 	{
 		size_t maxBytes = a.size() < n ? a.size() : n;
+		
 		return memcmp(a.fStart, b, maxBytes);
 	}
 
 
 
-	static inline bool chunk_is_equal_cstr(const ByteSpan& a, const char* cstr) noexcept
+	static INLINE bool chunk_is_equal_cstr(const ByteSpan& a, const char* cstr) noexcept
 	{
 		size_t len = strlen(cstr);
 		if (a.size() != len)
 			return false;
+		
 		return memcmp(a.fStart, cstr, len) == 0;
 	}
 
 
-	static inline void chunk_truncate(ByteSpan& dc) noexcept
+	static INLINE void chunk_truncate(ByteSpan& dc) noexcept
 	{
 		dc.fEnd = dc.fStart;
 	}
 
-	static inline ByteSpan& chunk_skip(ByteSpan& dc, size_t n) noexcept
+	static INLINE ByteSpan& chunk_skip(ByteSpan& dc, size_t n) noexcept
 	{
 		if (n > dc.size())
 			n = dc.size();
@@ -254,7 +259,7 @@ namespace waavs {
 		return dc;
 	}
 
-	static inline ByteSpan& chunk_skip_to_end(ByteSpan& dc) noexcept { dc.fStart = dc.fEnd; }
+	static INLINE ByteSpan& chunk_skip_to_end(ByteSpan& dc) noexcept { dc.fStart = dc.fEnd; }
 
 
 	
@@ -301,38 +306,38 @@ namespace waavs {
 
 namespace waavs
 {
-	static inline uint64_t chunk_to_u64(ByteSpan& s) noexcept;
-	static inline int64_t chunk_to_i64(ByteSpan& s) noexcept;
+	static INLINE uint64_t chunk_to_u64(ByteSpan& s) noexcept;
+	static INLINE int64_t chunk_to_i64(ByteSpan& s) noexcept;
 
 	// simple type parsing
 	//static inline int64_t toInteger(const ByteSpan& inChunk) noexcept;
 	//static inline double toNumber(const ByteSpan& inChunk) noexcept;
 	//static inline double toDouble(const ByteSpan& inChunk) noexcept;
-	static inline std::string toString(const ByteSpan& inChunk) noexcept;
+	static INLINE std::string toString(const ByteSpan& inChunk) noexcept;
 	//static inline int toBoolInt(const ByteSpan& inChunk) noexcept;
 
 	// Number Conversions
-	static inline double chunk_to_double(const ByteSpan& inChunk) noexcept;
+	static INLINE double chunk_to_double(const ByteSpan& inChunk) noexcept;
 }
 
 namespace waavs
 {
-	static inline size_t copy_to_cstr(char* str, size_t len, const ByteSpan& a) noexcept;
-	static inline ByteSpan chunk_ltrim(const ByteSpan& a, const charset& skippable) noexcept;
-	static inline ByteSpan chunk_rtrim(const ByteSpan& a, const charset& skippable) noexcept;
-	static inline ByteSpan chunk_trim(const ByteSpan& a, const charset& skippable) noexcept;
-	static inline ByteSpan chunk_skip_wsp(const ByteSpan& a) noexcept;
+	static INLINE size_t copy_to_cstr(char* str, size_t len, const ByteSpan& a) noexcept;
+	static INLINE ByteSpan chunk_ltrim(const ByteSpan& a, const charset& skippable) noexcept;
+	static INLINE ByteSpan chunk_rtrim(const ByteSpan& a, const charset& skippable) noexcept;
+	static INLINE ByteSpan chunk_trim(const ByteSpan& a, const charset& skippable) noexcept;
+	static INLINE ByteSpan chunk_skip_wsp(const ByteSpan& a) noexcept;
 
 
-	static inline bool chunk_starts_with_char(const ByteSpan& a, const uint8_t b) noexcept;
-	static inline bool chunk_starts_with_cstr(const ByteSpan& a, const char* b) noexcept;
+	static INLINE bool chunk_starts_with_char(const ByteSpan& a, const uint8_t b) noexcept;
+	static INLINE bool chunk_starts_with_cstr(const ByteSpan& a, const char* b) noexcept;
 
 
 	static INLINE bool chunk_ends_with_char(const ByteSpan& a, const uint8_t b) noexcept;
 	static INLINE bool chunk_ends_with_cstr(const ByteSpan& a, const char* b) noexcept;
 
-	static inline ByteSpan chunk_token(ByteSpan& a, const charset& delims) noexcept;
-	static inline ByteSpan chunk_find_char(const ByteSpan& a, char c) noexcept;
+	static INLINE ByteSpan chunk_token(ByteSpan& a, const charset& delims) noexcept;
+	static INLINE ByteSpan chunk_find_char(const ByteSpan& a, char c) noexcept;
 
 
 
@@ -345,7 +350,7 @@ namespace waavs
 
 namespace waavs
 {
-	static inline size_t copy_to_cstr(char* str, size_t len, const ByteSpan& a) noexcept
+	static INLINE size_t copy_to_cstr(char* str, size_t len, const ByteSpan& a) noexcept
 	{
 		size_t maxBytes = a.size() < len ? a.size() : len;
 		memcpy(str, a.fStart, maxBytes);
@@ -355,17 +360,18 @@ namespace waavs
 	}
 
 	// Trim the left side of skippable characters
-	static inline ByteSpan chunk_ltrim(const ByteSpan& a, const charset& skippable) noexcept
+	static INLINE ByteSpan chunk_ltrim(const ByteSpan& a, const charset& skippable) noexcept
 	{
-		const uint8_t* start = a.fStart;
-		const uint8_t* end = a.fEnd;
-		while (start < a.fEnd && skippable(*start))
-			++start;
-		return { start, a.fEnd };
+		const uint8_t* startAt = a.fStart;
+		const uint8_t* endAt = a.fEnd;
+		while (startAt < endAt && skippable(*startAt))
+			++startAt;
+		
+		return { startAt, endAt };
 	}
 
 	// trim the right side of skippable characters
-	static inline ByteSpan chunk_rtrim(const ByteSpan& a, const charset& skippable) noexcept
+	static INLINE ByteSpan chunk_rtrim(const ByteSpan& a, const charset& skippable) noexcept
 	{
 		const uint8_t* start = a.fStart;
 		const uint8_t* end = a.fEnd;
@@ -376,23 +382,30 @@ namespace waavs
 	}
 
 	// trim the left and right side of skippable characters
-	static inline ByteSpan chunk_trim(const ByteSpan& a, const charset& skippable) noexcept
+	static INLINE ByteSpan chunk_trim(const ByteSpan& a, const charset& skippable) noexcept
 	{
 		const uint8_t* start = a.fStart;
 		const uint8_t* end = a.fEnd;
+
+		// trim from the beginning
 		while (start < end && skippable(*start))
 			++start;
+		
+		// trim from the end
 		while (start < end && skippable(*(end - 1)))
 			--end;
+		
 		return { start, end };
 	}
 
-	static inline ByteSpan chunk_skip_wsp(const ByteSpan& a) noexcept
+	static INLINE ByteSpan chunk_skip_wsp(const ByteSpan& a) noexcept
 	{
 		const uint8_t* start = a.fStart;
 		const uint8_t* end = a.fEnd;
+		
 		while (start < end&& chrWspChars(*start))
 			++start;
+		
 		return { start, end };
 	}
 
@@ -412,13 +425,23 @@ namespace waavs
 	}
 
 	static INLINE bool chunk_starts_with_char(const ByteSpan& a, const uint8_t b) noexcept
-	{
-		return a.size() > 0 && a.fStart[0] == b;
+	{	
+		return (a.size() > 0) && (a.fStart[0] == b);
 	}
 
 	static INLINE bool chunk_starts_with_cstr(const ByteSpan& a, const char* b) noexcept
 	{
-		return a.startsWith(ByteSpan(b));
+		// see if the null terminated string is at the beginning of the bytespan
+		const uint8_t* start = a.fStart;
+		const uint8_t* end = a.fEnd;
+		while (*b && start < end && *start == *b)
+		{
+			++start;
+			++b;
+		}
+		return *b == 0;
+		
+		//return a.startsWith(ByteSpan(b));
 	}
 
 	static INLINE bool chunk_ends_with(const ByteSpan& a, const ByteSpan& b) noexcept
@@ -497,6 +520,89 @@ namespace waavs
 		return chunk_token(a, delims);
 	}
 
+	// readNextKeyValue()
+	// 
+	// Attributes are separated by '=' and values are quoted with 
+	// either "'" or '"'
+	// Ex: <tagname attr1='first value'  attr2="second value" />
+	// The src so it points past the end of the retrieved value
+	static bool readNextKeyValue(ByteSpan& src, ByteSpan& key, ByteSpan& value) noexcept
+	{
+		// Zero these out in case there is failure
+		key = {};
+		value = {};
+
+		static charset equalChars("=");
+		static charset quoteChars("\"'");
+
+		bool start = false;
+		bool end = false;
+		uint8_t quote{};
+
+		uint8_t* beginattrValue = nullptr;
+		uint8_t* endattrValue = nullptr;
+
+
+		// Skip leading white space before the key name
+		src = chunk_ltrim(src, chrWspChars);
+
+		if (!src)
+			return false;
+
+		// Special case of running into an end tag
+		if (*src == '/') {
+			end = true;
+			return false;
+		}
+
+		// Find end of the attrib name.
+		//auto attrNameChunk = chunk_token(src, equalChars);
+		auto attrNameChunk = chunk_token_char(src, '=');
+		key = chunk_trim(attrNameChunk, chrWspChars);
+
+		// Skip stuff past '=' until we see one of our quoteChars
+		while (src && !quoteChars[*src])
+			src++;
+
+		// If we've run out of input, return false
+		if (!src)
+			return false;
+
+		// capture the quote character
+		quote = *src;
+
+		// move past the beginning of the quote
+		// and mark the beginning of the value portion
+		src++;
+		beginattrValue = (uint8_t*)src.fStart;
+
+		// Skip anything that is not the quote character
+		// to mark the end of the value
+		// don't use quoteChars here, because it's valid to 
+		// embed the other quote within the value
+		src = chunk_skip_until_char(src, quote);
+
+		// If we still have input, it means we found
+		// the quote character, so mark the end of the
+		// value
+		if (src)
+		{
+			endattrValue = (uint8_t*)src.fStart;
+			src++;
+		}
+		else {
+			// We did not find the closing quote
+			// so we don't have a valid value
+			return false;
+		}
+
+
+		// Store only well formed attributes
+		value = { beginattrValue, endattrValue };
+
+		return true;
+	}
+	
 	// Given an input chunk
 	// find the first instance of a specified character
 	// return the chunk preceding the found character
@@ -826,16 +932,25 @@ namespace waavs {
 	
 	struct MemBuff final 
 	{
-		uint8_t* fData{};
-		ptrdiff_t fSize{};
+		uint8_t* fData{nullptr};
+		ptrdiff_t fSize{0};
 
-		MemBuff() {}
+		// No default constructor
+		MemBuff() = default;
 		
-		MemBuff(size_t sz)
+		MemBuff(const size_t sz)
 		{
-			initSize(sz);
+			fData = new uint8_t[sz];
+			fSize = sz;
 		}
 
+		MemBuff(const ByteSpan& chunk)
+		{
+			fSize = chunk.size();
+			fData = new uint8_t[fSize];
+			memcpy(fData, chunk.data(), fSize);
+		}
+		
 		~MemBuff()
 		{
 			if (fData != nullptr)
@@ -847,17 +962,17 @@ namespace waavs {
 
 		// initSize
 		// Initialize the memory buffer with a given size
-		bool initSize(const size_t sz)
-		{
-			fData = new uint8_t[sz];
-			fSize = sz;
-
-			return true;
-		}
+		//bool initSize(const size_t sz)
+		//{
+		//	fData = new uint8_t[sz];
+		//	fSize = sz;
+		//	return true;
+		//}
 		
 		// initFromSpan
 		// copy the data from the input span into the memory buffer
 		//
+		
 		bool initFromSpan(const ByteSpan& srcSpan)
 		{
 			if (fData != nullptr)
@@ -871,11 +986,14 @@ namespace waavs {
 			return true;
 		}
 		
+		
 
 		// create a ByteSpan from the memory buffer
 		// The lifetime of the ByteSpan that is returned it not governed
 		// by the MemBuff object.  This is something the caller must manage.
 		ByteSpan span() const { return ByteSpan(fData, fData + fSize); }
+
+
 
 	};
 }

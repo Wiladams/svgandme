@@ -39,16 +39,19 @@ namespace waavs {
     // tohex32
     // Take a 32-bit number and return the hex representation of the same
     // The buffer passed in needs to be at least 8 bytes long
-    //
+    // 
     // Return:
     //  The number of bytes actually written
     //  0 upon error
-    //  Really the only error that can occur is if the buffLen is less than 8
-    static INLINE int tohex32(uint32_t a, char* buff, size_t buffLen)
+    //  there arw two errors that can occur
+    // 1) the buffLen is less than 8
+    //
+    static INLINE int tohex32(const uint32_t inNumber, char* buff, size_t buffLen)
     {
         if (buffLen < 8)
             return 0;
 
+        uint32_t a = inNumber;
         int i;
         int n = 8;
 
@@ -82,8 +85,8 @@ namespace waavs {
 
     // 16-bit versions
     //
-    static INLINE uint16_t bnot16(uint16_t a) { return ~a; }
-    static INLINE uint16_t band16(uint16_t a, uint16_t b) { return a & b; }
+    static INLINE uint16_t bnot16(uint16_t a) noexcept { return ~a; }
+    static INLINE uint16_t band16(uint16_t a, uint16_t b) noexcept { return a & b; }
     static INLINE uint16_t bor16(uint16_t a, uint16_t b) { return a | b; }
     static INLINE uint16_t bxor16(uint16_t a, uint16_t b) { return a ^ b; }
     static INLINE uint16_t lshift16(uint16_t a, unsigned int nbits) { return a << nbits; }
@@ -233,7 +236,7 @@ static INLINE constexpr uint64_t setbit(const uint64_t value, const size_t bitnu
 //  mask <<= low;   // shift up to proper position
 //  return mask;
 
-static INLINE uint64_t BITMASK64(const size_t low, const size_t high) noexcept {return ((((uint64_t)1ULL << (high-low)) << 1) - 1) << low;}
+static INLINE constexpr uint64_t BITMASK64(const size_t low, const size_t high) noexcept {return ((((uint64_t)1ULL << (high-low)) << 1) - 1) << low;}
 
 static INLINE uint8_t BITMASK8(const size_t low, const size_t high) noexcept {return (uint8_t)BITMASK64(low, high);}
 static INLINE uint16_t BITMASK16(const size_t low, const size_t high) noexcept {return (uint16_t)BITMASK64(low,high);}
@@ -244,22 +247,25 @@ static INLINE uint32_t BITMASK32(const size_t low, const size_t high) noexcept {
 
 // BITSVALUE
 // Retrieve a value from a lowbit highbit pair
-static INLINE  uint64_t BITSVALUE(uint64_t src, size_t lowbit, size_t highbit) noexcept
+static INLINE  constexpr uint64_t BITSVALUE(uint64_t src, size_t lowbit, size_t highbit) noexcept
 {
     return ((src & BITMASK64(lowbit, highbit)) >> lowbit);
 }
 
+//
+// getbitbyteoffset()
+// 
 // Given a bit number, calculate which byte
 // it would be in, and which bit within that
 // byte.
-static INLINE void getbitbyteoffset(size_t bitnumber, size_t &byteoffset, size_t &bitoffset) noexcept
+static INLINE constexpr void getbitbyteoffset(size_t bitnumber, size_t &byteoffset, size_t &bitoffset) noexcept
 {
     byteoffset = (int)(bitnumber / 8);
     bitoffset = bitnumber % 8;
 }
 
 
-static INLINE uint64_t bitsValueFromBytes(const uint8_t *bytes, const size_t startbit, const size_t bitcount, bool bigendian = false) noexcept
+static INLINE constexpr uint64_t bitsValueFromBytes(const uint8_t *bytes, const size_t startbit, const size_t bitcount, bool bigendian = false) noexcept
 {
     // Sanity check
     if (nullptr == bytes)
@@ -302,7 +308,7 @@ static INLINE uint64_t bitsValueFromBytes(const uint8_t *bytes, const size_t sta
     (((0x00000000000000ffull & (x)) << 010) |  \
      ((0x000000000000ff00ull & (x)) >> 010))
 
-static INLINE uint16_t swapUInt16(const uint16_t num) noexcept
+static INLINE constexpr uint16_t swapUInt16(const uint16_t num) noexcept
 {
     return (((num & 0x00ff) << 8) | ((num & 0xff00) >> 8));
 }
@@ -314,7 +320,7 @@ static INLINE uint16_t swapUInt16(const uint16_t num) noexcept
    ((0x0000000000ff0000ull & (x)) >> 010) | \
    ((0x00000000ff000000ull & (x)) >> 030))
 
-static INLINE uint32_t swapUInt32(const uint32_t num) noexcept
+static INLINE constexpr uint32_t swapUInt32(const uint32_t num) noexcept
 {
     uint32_t x = (num & 0x0000FFFF) << 16 | (num & 0xFFFF0000) >> 16;
     x = (x & 0x00FF00FF) << 8 | (x & 0xFF00FF00) >> 8;
@@ -333,7 +339,7 @@ static INLINE uint32_t swapUInt32(const uint32_t num) noexcept
    ((0x00ff000000000000ull & (x)) >> 050) | \
    ((0xff00000000000000ull & (x)) >> 070))
 
-static INLINE uint64_t swapUInt64(const uint64_t num) noexcept
+static INLINE constexpr uint64_t swapUInt64(const uint64_t num) noexcept
 {
     return  (num >> 56) |
           ((num<<40) & 0x00FF000000000000) |
@@ -345,17 +351,19 @@ static INLINE uint64_t swapUInt64(const uint64_t num) noexcept
           (num << 56);
 }
 
-static INLINE int GetAlignedByteCount(const int width, const int bitsperpixel, const int alignment) noexcept
+static INLINE constexpr int GetAlignedByteCount(const int width, const int bitsperpixel, const int alignment) noexcept
 {
     return (((width * (bitsperpixel / 8)) + (alignment - 1)) & ~(alignment - 1));
 }
 
+// fixedToFloat
+// 
 // Convert a fixed point number into a floating point number
 // the fixed number can be up to 64-bits in size
 // the 'scale' says where the decimal point is, starting from 
 // the least significant bit
 // so; 0x13 (0b0001.0011) ,4  == 1.1875
-static INLINE double fixedToFloat(const uint64_t vint, const int scale) noexcept
+static INLINE constexpr double fixedToFloat(const uint64_t vint, const int scale) noexcept
 {
     double whole = (double)waavs::BITSVALUE(vint, scale, 63);
     double frac = (double)waavs::BITSVALUE(vint, 0, ((size_t)scale - 1));
@@ -367,10 +375,10 @@ static INLINE double fixedToFloat(const uint64_t vint, const int scale) noexcept
 
 
 namespace waavs {
-  // Byte Hashing - FNV-1a
-// http://www.isthe.com/chongo/tech/comp/fnv/
-// 
-// 32-bit FNV-1a constants
+    // Byte Hashing - FNV-1a
+    // http://www.isthe.com/chongo/tech/comp/fnv/
+    // 
+    // 32-bit FNV-1a constants
 	constexpr uint32_t FNV1A_32_INIT = 0x811c9dc5;
 	constexpr uint32_t FNV1A_32_PRIME = 0x01000193;
     
@@ -379,7 +387,7 @@ namespace waavs {
 	constexpr uint64_t FNV1A_64_PRIME = 0x100000001b3ULL;
     
 	// 32-bit FNV-1a hash
-	static INLINE uint32_t fnv1a_32(const void* data, const size_t size) noexcept
+	static INLINE constexpr uint32_t fnv1a_32(const void* data, const size_t size) noexcept
 	{
 		const uint8_t* bytes = (const uint8_t*)data;
 		uint32_t hash = FNV1A_32_INIT;
@@ -391,7 +399,7 @@ namespace waavs {
 	}
 
 	// 64-bit FNV-1a hash
-	static INLINE uint64_t fnv1a_64(const void* data, const size_t size) noexcept
+	static INLINE constexpr uint64_t fnv1a_64(const void* data, const size_t size) noexcept
 	{
 		const uint8_t* bytes = (const uint8_t*)data;
 		uint64_t hash = FNV1A_64_INIT;
@@ -405,6 +413,7 @@ namespace waavs {
 
 /*
 // String Hashing borrowed from LuaJIT
+// This has too much collision at the higher bytes
 namespace waavs {
 #define bh_hashrot(x, k) (((x) << (k)) | ((x) >> (32 - (k))))
 #define bh_getu32(p) ((uint32_t)(p)[0] | ((uint32_t)(p)[1] << 8) | ((uint32_t)(p)[2] << 16) | ((uint32_t)(p)[3] << 24))

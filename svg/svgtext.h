@@ -12,7 +12,7 @@ namespace waavs {
 	struct SVGFontSelection : public SVGVisualProperty
 	{
 		BLFont fFont;
-
+		
 		std::string fFamilyName{};
 		SVGFontSize fFontSize;
 		uint32_t fFontStyle = BL_FONT_STYLE_NORMAL;
@@ -59,6 +59,7 @@ namespace waavs {
 			bool success = fh->selectFont(fFamilyName.c_str(), fFont, (float)fsize, fFontStyle, fFontWeight, fFontStretch);
 			if (success)
 				set(true);
+			
 		}
 
 		void loadFromXmlAttributes(const XmlAttributeCollection& elem, IAmGroot* groot)
@@ -101,6 +102,22 @@ namespace waavs {
 			}
 		}
 
+		BLPoint textMeasure(const ByteSpan& txt) const
+		{
+			BLTextMetrics tm;
+			BLGlyphBuffer gb;
+
+			gb.setUtf8Text(txt.data(), txt.size());
+			fFont.shape(gb);
+			fFont.getTextMetrics(gb, tm);
+
+			float cx = (float)(tm.boundingBox.x1 - tm.boundingBox.x0);
+			//float cy = fFont.size();
+			float cy = fFont.metrics().ascent + fFont.metrics().descent;
+
+			return BLPoint(cx, cy);
+		}
+		
 		void draw(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 			// BUGBUG - not quite sure if we need both checks
@@ -111,39 +128,7 @@ namespace waavs {
 	};
 }
 
-namespace waavs {
-	//
-	// SVGTextcontentNode
-	// Not strictly a part of the DOM, but a useful representation 
-	// of text content.  This is the node that actually displays text
-	// They are contained as child nodes either of the 'text' or 'tspan'
-	// elements.
-	struct SVGTextContentNode : public SVGVisualNode
-	{
-		ByteSpan fText{};
 
-		SVGTextContentNode(IAmGroot* root)
-			: SVGVisualNode(root)
-		{
-			name("text");
-		}
-
-		void text(const ByteSpan& aSpan)
-		{
-			// BUGBUG - We still want to represent the text as a ByteSpan
-			// So we can use the BLStringView when we eventually draw the text
-
-			//fText = expandStandardEntities(aSpan);
-			fText = aSpan;
-			//expandBasicEntities(aSpan, fText);
-		}
-
-		void draw(IRenderSVG* ctx, IAmGroot* groot) override
-		{
-			ctx->text(fText);
-		}
-	};
-}
 
 namespace waavs {
 	// SVGTextRun
@@ -154,20 +139,14 @@ namespace waavs {
 	struct SVGTextRun : public SVGGraphicsElement
 	{
 		ByteSpan fText{};
-		
-		//BLPoint fPosition{};
-		//BLFontMetrics fMetrics{};
-		//BLTextMetrics fTextMetrics{};
+		BLPoint fTextSize{};
+		BLPoint fPosition{};
+
 		
 		SVGFontSelection fFontSelection{ nullptr };
 		
-		double fXOffset = 0;
-		double fYOffset = 0;
 		
-		SVGDimension fX{};
-		SVGDimension fY{};
-		SVGDimension fDy{};
-		SVGDimension fDx{};
+
 		
 		
 		SVGTextRun(const ByteSpan &txt, IAmGroot* groot)
@@ -176,12 +155,18 @@ namespace waavs {
 			, fFontSelection(groot)
 		{
 			name("textrun");
+			needsBinding(true);
 		}
 
-
+		BLPoint textSize() const { return fTextSize; }
+		
 		void resolveStyle(IAmGroot* groot, SVGViewable* container) override
 		{
+			fFontSelection.loadFromXmlAttributes(*this, groot);
 			fFontSelection.bindToGroot(groot, container);
+
+			// Measure the text to see how big it is
+			fTextSize = fFontSelection.textMeasure(fText);
 		}
 		
 
@@ -194,10 +179,20 @@ namespace waavs {
 			if (nullptr != groot)
 			{
 				dpi = groot->dpi();
-				w = groot->canvasWidth();
-				h = groot->canvasHeight();
 			}
 
+			if (nullptr != container)
+			{
+				BLRect cFrame = container->frame();
+				w = cFrame.w;
+				h = cFrame.h;
+			}
+
+			SVGDimension fX{};
+			SVGDimension fY{};
+			SVGDimension fDy{};
+			SVGDimension fDx{};
+			
 			fX.loadFromChunk(getAttribute("x"));
 			fY.loadFromChunk(getAttribute("y"));
 			fDy.loadFromChunk(getAttribute("dy"));
@@ -205,20 +200,21 @@ namespace waavs {
 			
 			
 			if (fX.isSet())
-				fXOffset = fX.calculatePixels(w, 0, 96);
+				fPosition.x = fX.calculatePixels(w, 0, 96);
 			if (fY.isSet())
-				fYOffset = fY.calculatePixels(h, 0, 96);
+				fPosition.y = fY.calculatePixels(h, 0, 96);
 			if (fDx.isSet())
-				fXOffset += fDx.calculatePixels(w, 0, 96);
+				fPosition.x += fDx.calculatePixels(w, 0, 96);
 			if (fDy.isSet())
-				fYOffset += fDy.calculatePixels(h, 0, 96);
+				fPosition.y += fDy.calculatePixels(h, 0, 96);
+
 
 		}
 
 		
 		void draw(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-			ctx->textPosition(fXOffset, fYOffset);
+			ctx->textPosition(fPosition.x, fPosition.y);
 			fFontSelection.draw(ctx, groot);
 
 			ctx->text(fText);
@@ -244,95 +240,15 @@ namespace waavs {
 				};
 		}
 
-		double fXOffset = 0;
-		double fYOffset = 0;
 
-		SVGDimension fX{};
-		SVGDimension fY{};
-		SVGDimension fDy{};
-		SVGDimension fDx{};
-		SVGFontSelection fFontSelection{ nullptr };
-
-
-		SVGTSpanNode(IAmGroot* aroot) :SVGGraphicsElement(aroot) {}
-
-		//void fontSelection(const SVGFontSelection& aSelection)
-		//{
-		//	fFontSelection = aSelection;
-		//}
-
-		/*
-		void applyAttributes(IRenderSVG* ctx, IAmGroot* groot) override
+		SVGTSpanNode(IAmGroot* aroot) :SVGGraphicsElement(aroot) 
 		{
-			SVGGraphicsElement::applyAttributes(ctx, groot);
-
-			//if (fX.isSet())
-			//	ctx->textPosition(fXOffset, fYOffset);
-
-			//fFontSelection.draw(ctx, groot);
-		}
-		*/
-		/*
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
-		{
-			double dpi = 96;
-			double w = 1.0;
-			double h = 1.0;
-
-			if (nullptr != groot)
-			{
-				dpi = groot->dpi();
-				w = groot->canvasWidth();
-				h = groot->canvasHeight();
-			}
-
-
-			if (fX.isSet())
-				fXOffset = fX.calculatePixels(w, 0, 96);
-			if (fY.isSet())
-				fYOffset = fY.calculatePixels(h, 0, 96);
-			if (fDx.isSet())
-				fXOffset += fDx.calculatePixels(w, 0, 96);
-			if (fDy.isSet())
-				fYOffset += fDy.calculatePixels(h, 0, 96);
-
-			if (fFontSelection.isSet())
-				fFontSelection.bindToGroot(groot, container);
-
-			needsBinding(false);
-		}
-		*/
-		/*
-		void resolveStyle(IAmGroot* groot, SVGViewable* container) override
-		{
-			SVGGraphicsElement::resolveStyle(groot, container);
-
-			fFontSelection.loadFromXmlAttributes(*this, groot);
-
-			if (fFontSelection.isSet())
-				fFontSelection.bindToGroot(groot, container);
-		}
-		*/
-		/*
-		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
-		{
-			SVGGraphicsElement::loadVisualProperties(attrs, groot);
-
-			if (attrs.getAttribute("x"))
-				fX.loadFromChunk(attrs.getAttribute("x"));
-			if (attrs.getAttribute("y"))
-				fY.loadFromChunk(attrs.getAttribute("y"));
-			if (attrs.getAttribute("dx"))
-				fDx.loadFromChunk(attrs.getAttribute("dx"));
-			if (attrs.getAttribute("dy"))
-				fDy.loadFromChunk(attrs.getAttribute("dy"));
-
 			needsBinding(true);
 		}
-		*/
+
 
 		// Load the text content if it exists
-				// Load the text content if it exists
+		// Load the text content if it exists
 		void loadContentNode(const XmlElement& elem, IAmGroot* groot) override
 		{
 			// Create a text content node and 
@@ -354,7 +270,6 @@ namespace waavs {
 		void loadSelfClosingNode(const XmlElement& elem, IAmGroot* groot) override
 		{
 			auto node = std::make_shared<SVGTSpanNode>(groot);
-			//node->fontSelection(fFontSelection);
 
 			node->loadFromXmlElement(elem, groot);
 			addNode(node, groot);
@@ -367,7 +282,6 @@ namespace waavs {
 			if ((*iter).tagName() == "tspan")
 			{
 				auto node = std::make_shared<SVGTSpanNode>(groot);
-				//node->fontSelection(fFontSelection);
 
 				node->loadFromXmlIterator(iter, groot);
 				addNode(node, groot);
@@ -401,11 +315,69 @@ namespace waavs {
 				};
 		}
 
+		BLPoint fPosition{};	// The next position where text will be drawn
+		
+
 		SVGTextNode(IAmGroot* aroot) 
 			:SVGGraphicsElement(aroot)
 		{
+			needsBinding(true);
 		}
 
+
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		{
+			double dpi = 96;
+			double w = 1.0;
+			double h = 1.0;
+
+			if (nullptr != groot)
+			{
+				dpi = groot->dpi();
+			}
+
+			if (nullptr != container)
+			{
+				BLRect cFrame = container->frame();
+				w = cFrame.w;
+				h = cFrame.h;
+			}
+
+			SVGDimension fX{};
+			SVGDimension fY{};
+			SVGDimension fDy{};
+			SVGDimension fDx{};
+			
+			fX.loadFromChunk(getAttribute("x"));
+			fY.loadFromChunk(getAttribute("y"));
+			fDy.loadFromChunk(getAttribute("dy"));
+			fDx.loadFromChunk(getAttribute("dx"));
+
+
+			if (fX.isSet())
+				fPosition.x = fX.calculatePixels(w, 0, 96);
+			if (fY.isSet())
+				fPosition.y = fY.calculatePixels(h, 0, 96);
+			if (fDx.isSet())
+				fPosition.x += fDx.calculatePixels(w, 0, 96);
+			if (fDy.isSet())
+				fPosition.y += fDy.calculatePixels(h, 0, 96);
+
+		}
+
+		
+		void bindToGroot(IAmGroot* groot, SVGViewable* container) override
+		{
+			resolvePosition(groot, container);
+			resolveStyle(groot, container);
+			
+			bindPropertiesToGroot(groot, container);
+			
+			bindChildrenToGroot(groot, container);
+
+			needsBinding(false);
+		}
+		
 		void applyAttributes(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 			// BUGBUG - kind of  a hack
@@ -418,7 +390,7 @@ namespace waavs {
 			SVGGraphicsElement::applyAttributes(ctx, groot);
 		}
 
-		// Load the text content if it exists
+		// Load some text content
 		void loadContentNode(const XmlElement& elem, IAmGroot* groot) override
 		{
 			// Create a text content node and 
@@ -464,6 +436,33 @@ namespace waavs {
 				SVGGraphicsElement::loadCompoundNode(iter, groot);
 			}
 		}
+
+		void drawChildren(IRenderSVG* ctx, IAmGroot* groot) override
+		{
+			for (auto& node : fNodes) {
+
+
+				// dynamic cast the node to a SVGTextRun if possible
+				auto textNode = std::dynamic_pointer_cast<SVGTextRun>(node);
+				if (nullptr != textNode)
+				{
+					printf("TEXT SIZE: %f %f\n", textNode->textSize().x, textNode->textSize().y);
+					ctx->textPosition(fPosition.x, fPosition.y);
+					textNode->draw(ctx, groot);
+				}
+				else
+				{
+					// dynamic cast the node to a SVGTSpanNode if possible
+					auto tspanNode = std::dynamic_pointer_cast<SVGTSpanNode>(node);
+					if (nullptr != tspanNode)
+					{
+						tspanNode->draw(ctx, groot);
+					}
+				}
+
+			}
+		}
+		
 
 	};
 }

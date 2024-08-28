@@ -8,9 +8,18 @@
 APP_EXTERN waavs::FontHandler gFontHandler;
 APP_EXTERN waavs::Recorder gRecorder;
 
-bool loadDefaultFonts() noexcept;
-bool loadFont(const char* filename, BLFontFace& ff) noexcept;
-bool loadFontDirectory(const char* dir) noexcept;
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+APP_EXPORT bool loadDefaultFonts() noexcept;
+APP_EXPORT bool loadFont(const char* filename, BLFontFace& ff) noexcept;
+APP_EXPORT bool loadFontDirectory(const char* dir) noexcept;
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #ifdef __cplusplus
 extern "C" {

@@ -40,7 +40,9 @@ namespace waavs {
     static charset xmlwsp(" \t\r\n\f\v");
     static charset xmlalpha("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
     static charset xmldigit("0123456789");
+}
 
+namespace waavs {
     
     enum XML_ELEMENT_TYPE {
         XML_ELEMENT_TYPE_INVALID = 0
@@ -535,10 +537,17 @@ namespace waavs {
 		while ((srcPtr < endPtr) && (*srcPtr != '>'))
 			srcPtr++;
         
+		// if we get to the end of the input, before seeing the closing '>'
+        // the we return false, indicating we did not read
+        if (srcPtr == endPtr)
+			return false;
+        
+        // we did see the closing, so capture the name into 
+        // the data chunk, and trim whitespace off the end.
         dataChunk.fEnd = srcPtr;
         dataChunk = chunk_rtrim(dataChunk, xmlwsp);
 
-        // Get past the '>' if it was there
+        // move past the '>'
         srcPtr++;
         src.fStart = srcPtr;
 
@@ -546,88 +555,7 @@ namespace waavs {
         return true;
     }
 
-    // nextAttributeKeyValue()
-    // 
-    // Attributes are separated by '=' and values are quoted with 
-    // either "'" or '"'
-    // alters the src so it points past the end of the retrieved value
-    // Typical of xml attributes
-    static bool nextAttributeKeyValue(ByteSpan& src, ByteSpan& key, ByteSpan& value) noexcept
-    {
-        // Zero these out in case there is failure
-        key = {};
-        value = {};
 
-        static charset equalChars("=");
-        static charset quoteChars("\"'");
-
-        bool start = false;
-        bool end = false;
-        uint8_t quote{};
-
-        uint8_t* beginattrValue = nullptr;
-        uint8_t* endattrValue = nullptr;
-
-
-        // Skip leading white space before the key name
-        src = chunk_ltrim(src, xmlwsp);
-
-        if (!src)
-            return false;
-
-        // Special case of running into an end tag
-        if (*src == '/') {
-            end = true;
-            return false;
-        }
-
-        // Find end of the attrib name.
-        //auto attrNameChunk = chunk_token(src, equalChars);
-        auto attrNameChunk = chunk_token_char(src, '=');
-        key = chunk_trim(attrNameChunk, xmlwsp);
-
-        // Skip stuff past '=' until we see one of our quoteChars
-        while (src && !quoteChars[*src])
-            src++;
-
-        // If we've run out of input, return false
-        if (!src)
-            return false;
-
-        // capture the quote character
-        quote = *src;
-
-        // move past the beginning of the quote
-        // and mark the beginning of the value portion
-        src++;
-        beginattrValue = (uint8_t*)src.fStart;
-
-        // Skip anything that is not the quote character
-        // to mark the end of the value
-        // don't use quoteChars here, because it's valid to 
-        // embed the other quote within the value
-		src = chunk_skip_until_char(src, quote);
-
-        // If we still have input, it means we found
-        // the quote character, so mark the end of the
-        // value
-        if (src)
-        {
-            endattrValue = (uint8_t*)src.fStart;
-            src++;
-        }
-        else {
-            // We did not find the closing quote
-            // so we don't have a valid value
-            return false;
-        }
-
-
-        // Store only well formed attributes
-        value = { beginattrValue, endattrValue };
-
-        return true;
-    }
     
 
 }

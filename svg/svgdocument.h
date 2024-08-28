@@ -31,10 +31,21 @@
 
 #include "maths.h"
 
+#include "svgcss.h"
+
+#include "svgclip.h"
+#include "svgconditional.h"
+#include "svggradient.h"
+#include "svgimage.h"
+#include "svgmask.h"
+#include "svgstructure.h"
 #include "svgshapes.h"
+#include "svgstyle.h"
+#include "svgpattern.h"
 #include "svgfont.h"
 #include "svgfilter.h"
-#include "svgcss.h"
+#include "svghyperlink.h"
+
 #include "svgdrawingcontext.h"
 //#include "svgwaavs.h"
 
@@ -42,12 +53,15 @@
 namespace waavs {
 
     //
-    struct SVGDocument : public  SVGGraphicsElement, public IAmGroot //, public IManageReferences
+    struct SVGDocument : public  SVGGraphicsElement, public IAmGroot 
     {
         MemBuff fSourceMem{};
         
 		FontHandler* fFontHandler = nullptr;
         
+        // BUGBUG - this should go away
+        // Although there can be multiple <svg> elements in a document
+		// we track only the first one
         // We only have a single root 'SVGSVGElement' for the whole document
         std::shared_ptr<SVGSVGElement> fSVGNode = nullptr;
 
@@ -91,6 +105,10 @@ namespace waavs {
 		double canvasWidth() const override { return fCanvasWidth; }
 		double canvasHeight() const override { return fCanvasHeight; }
         
+        BLRect getBBox() const override 
+        {
+			return BLRect(0, 0, fCanvasWidth, fCanvasHeight);
+        }
         
         std::shared_ptr<CSSStyleSheet> styleSheet() override { return fStyleSheet; }
         void styleSheet(std::shared_ptr<CSSStyleSheet> sheet) override { fStyleSheet = sheet; }
@@ -138,10 +156,10 @@ namespace waavs {
             return true;
         }
         
-		void loadSelfFromXmlIterator(XmlElementIterator& iter, IAmGroot* groot) override
-		{
+		//void loadSelfFromXmlIterator(XmlElementIterator& iter, IAmGroot* groot) override
+		//{
             // do nothing here
-		}
+		//}
         
 
         // loadFromXmlIterator
@@ -241,7 +259,7 @@ namespace waavs {
             XmlElementIterator iter(fSourceMem.span(), true);
 
             loadFromXmlIterator(iter, this);
-            //resolveReferences(this);
+
             
             return true;
         }
@@ -254,6 +272,9 @@ namespace waavs {
             if (!doc->loadFromChunk(srcChunk))
                 return {};
 
+            SVGDocument* groot = doc.get();
+            doc->bindToGroot(groot, nullptr);
+            
             return doc;
         }
         
@@ -281,7 +302,6 @@ namespace waavs {
             
             SVGOpacity::registerFactory();
             
-            //SVGRawAttribute::registerFactory();
             
             SVGStrokeLineCap::registerFactory();
             SVGStrokeLineJoin::registerFactory();
@@ -309,7 +329,7 @@ namespace waavs {
             // Register Structural nodes
 			SVGAElement::registerFactory();             // 'a'
             SVGGElement::registerFactory();             // 'g'
-            SVGImageNode::registerFactory();            // 'image'
+            SVGImageElement::registerFactory();            // 'image'
             SVGSVGElement::registerFactory();           // 'svg'
             SVGStyleNode::registerFactory();            // 'style'
             SVGSwitchElement::registerFactory();        // 'switch'
@@ -319,13 +339,13 @@ namespace waavs {
             
             // Non-Structural Nodes
 			SVGSolidColorElement::registerFactory();    // 'solidColor'
-            SVGClipPath::registerFactory();             // 'clipPath'
+            SVGClipPathElement::registerFactory();             // 'clipPath'
             SVGDefsNode::registerFactory();             // 'defs'
             SVGConicGradient::registerFactory();        // 'conicGradient'
             SVGLinearGradient::registerFactory();       // 'linearGradient'
             SVGMarkerNode::registerFactory();           // 'marker'
-            SVGMaskNode::registerFactory();             // 'mask'
-            SVGPatternNode::registerFactory();          // 'pattern'
+            SVGMaskElement::registerFactory();             // 'mask'
+            SVGPatternElement::registerFactory();          // 'pattern'
             SVGRadialGradient::registerFactory();       // 'radialGradient'
             SVGSymbolNode::registerFactory();           // 'symbol'
 

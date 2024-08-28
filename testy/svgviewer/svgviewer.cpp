@@ -47,10 +47,10 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 	
 	ByteSpan aspan(mapped->data(), mapped->size());
 	std::shared_ptr<SVGDocument> aDoc = SVGDocument::createFromChunk(aspan, &gFontHandler, canvasWidth, canvasHeight, systemPpi);
-	if (aDoc != nullptr) {
-		SVGDocument * groot = aDoc.get();
-		aDoc->bindToGroot(groot, nullptr);
-	}
+	//if (aDoc != nullptr) {
+	//	SVGDocument * groot = aDoc.get();
+	//	aDoc->bindToGroot(groot, nullptr);
+	//}
 	
 	return aDoc;
 }
@@ -108,18 +108,17 @@ static void onFileDrop(const FileDropEvent& fde)
 	{
 		// Create a new SVGDocument for each file
 		// And create a window to display each document
-		double startTime = seconds();
+		//double startTime = seconds();
 		gDoc = docFromFilename(fde.filenames[i].c_str());
 
 
-		double endTime = seconds();
+		//double endTime = seconds();
 		//printf("== fileDrop: SVGDocument::createFromFilename took %f seconds\n", endTime - startTime);
 
 		if (gDoc != nullptr)
 		{
 			resetView();
 
-			//auto objFr = gDoc->sceneFrame();
 			auto objFr = gDoc->frame();
 			
 			// Set the initial viewport

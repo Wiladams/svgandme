@@ -54,7 +54,7 @@ namespace waavs {
 
 		DisplayCaptureElement(IAmGroot* aroot) :SVGVisualNode(aroot) {}
 
-		const BLVar& getVariant() override
+		const BLVar getVariant() override
 		{
 			if (fVar.isNull())
 			{
@@ -66,10 +66,48 @@ namespace waavs {
 			return fVar;
 		}
 
-
-		void bindToGroot(IAmGroot* groot) override
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
-			SVGVisualNode::bindToGroot(groot);
+			// We need to resolve the size of the user space
+			// start out with some information from groot
+			double dpi = 96;
+			double w = 1.0;
+			double h = 1.0;
+
+			// The width and height can default to the size of the canvas
+			// we are rendering to.
+			if (nullptr != groot)
+			{
+				dpi = groot->dpi();
+			}
+
+			if (nullptr != container) {
+				BLRect cFrame = container->getBBox();
+				w = cFrame.w;
+				h = cFrame.h;
+			}
+
+			
+			fSrcSpan = getAttribute("src");
+
+			if (getAttribute("capX"))
+				fCapX = toInteger(getAttribute("capX"));
+			if (getAttribute("capY"))
+				fCapY = toInteger(getAttribute("capY"));
+			if (getAttribute("capWidth"))
+				fCapWidth = toInteger(getAttribute("capWidth"));
+			if (getAttribute("capHeight"))
+				fCapHeight = toInteger(getAttribute("capHeight"));
+
+			fDimX.loadFromChunk(getAttribute("x"));
+			fDimY.loadFromChunk(getAttribute("y"));
+			fDimWidth.loadFromChunk(getAttribute("width"));
+			fDimHeight.loadFromChunk(getAttribute("height"));
+		}
+		
+		void bindToGroot(IAmGroot* groot, SVGViewable* container) override
+		{
+			SVGVisualNode::bindToGroot(groot, container);
 
 			// BUGBUG - need to get the dpi and canvas size to calculate these properly
 			fX = fDimX.calculatePixels();
@@ -106,34 +144,15 @@ namespace waavs {
 
 		}
 
-		void loadVisualProperties(const XmlAttributeCollection& attrs) override
+		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
 		{
-			SVGVisualNode::loadVisualProperties(attrs);
+			SVGVisualNode::loadVisualProperties(attrs, groot);
 
-			//if (attrs.getAttribute("src"))
-				fSrcSpan = attrs.getAttribute("src");
 
-			if (attrs.getAttribute("capX"))
-				fCapX = toInteger(attrs.getAttribute("capX"));
-			if (attrs.getAttribute("capY"))
-				fCapY = toInteger(attrs.getAttribute("capY"));
-			if (attrs.getAttribute("capWidth"))
-				fCapWidth = toInteger(attrs.getAttribute("capWidth"));
-			if (attrs.getAttribute("capHeight"))
-				fCapHeight = toInteger(attrs.getAttribute("capHeight"));
-
-			//if (attrs.getAttribute("x"))
-				fDimX.loadFromChunk(attrs.getAttribute("x"));
-			//if (attrs.getAttribute("y"))
-				fDimY.loadFromChunk(attrs.getAttribute("y"));
-			//if (attrs.getAttribute("width"))
-				fDimWidth.loadFromChunk(attrs.getAttribute("width"));
-			//if (attrs.getAttribute("height"))
-				fDimHeight.loadFromChunk(attrs.getAttribute("height"));
 
 		}
 		
-		void update() override
+		void update(IAmGroot* groot) override
 		{
 			fSnapper.update();
 		}

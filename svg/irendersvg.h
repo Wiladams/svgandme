@@ -83,6 +83,7 @@ namespace waavs
         // local width/height
 		double fLocalWidth{ 0 };
         double fLocalHeight{ 0 };
+        BLRect fLocalFrame{};
         
         
     public:
@@ -122,6 +123,10 @@ namespace waavs
         void localSize(double w, double h) { fLocalWidth = w; fLocalHeight = h; }
         BLPoint localSize() const { return BLPoint(fLocalWidth, fLocalHeight); }
         
+        void localFrame(const BLRect& r) { fLocalFrame = r; }
+		BLRect localFrame() const { return fLocalFrame; }
+        
+        
         virtual void strokeBeforeTransform(bool b) 
         {
             setStrokeTransformOrder(b ? BL_STROKE_TRANSFORM_ORDER_BEFORE : BL_STROKE_TRANSFORM_ORDER_AFTER);
@@ -158,14 +163,14 @@ namespace waavs
         }
 
         // paint for filling polygons
-        virtual void fill(const BLVar& value) { if (!value.isNull())BLContext::setFillStyle(value); }
-        virtual void fill(const BLRgba32& value) { BLContext::setFillStyle(value); };
-        virtual void fillOpacity(double o) { BLContext::setFillAlpha(o); };
+        virtual void fill(const BLVar& value) { BLContext::setFillStyle(value); }
+        virtual void fill(const BLRgba32& value) { BLContext::setFillStyle(value); }
+        virtual void fillOpacity(double o) { BLContext::setFillAlpha(o); }
 
         virtual void noFill() { BLContext::setFillStyle(BLVar::null()); }
 
         // paint for stroking lines
-        virtual void stroke(const BLVar& value) { if (!value.isNull()) BLContext::setStrokeStyle(value); }
+        virtual void stroke(const BLVar& value) { BLContext::setStrokeStyle(value); }
         virtual void stroke(const BLRgba32& value) { BLContext::setStrokeStyle(value); }
         virtual void strokeOpacity(double o) { BLContext::setStrokeAlpha(o); }
 

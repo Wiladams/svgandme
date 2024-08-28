@@ -91,7 +91,7 @@ unsigned int systemPpi = 192;   // starting pixel density
 // Stuff related to rate of displaying frames
 float fFrameRate = 1;
 float fInterval = 1000;
-float fNextMillis = 0;
+double fNextMillis = 0;
 size_t fDroppedFrames = 0;
 uint64_t fFrameCount = 0;         // how many frames drawn so far
 
@@ -165,8 +165,8 @@ static void HID_UnregisterDevice(USHORT usage)
 void frameRate(float newRate) noexcept
 {
     fFrameRate = newRate;
-    fInterval = 1000 / newRate;
-    fNextMillis = (float)gAppClock.millis() + fInterval;
+    fInterval = 1000.0 / newRate;
+    fNextMillis = gAppClock.millis() + fInterval;
 }
 
 float getFrameRate() noexcept
