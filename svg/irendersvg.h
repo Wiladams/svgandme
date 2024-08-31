@@ -209,9 +209,9 @@ namespace waavs
         // hard set a specfic pixel value
         virtual void fillRule(int rule) { BLContext::setFillRule((BLFillRule)rule); }
 
-
+        /*
         virtual void path(const BLPath& path) {
-            //BLContext::fillPath(path);
+            BLContext::fillPath(path);
             BLContext::strokePath(path);
         }
 
@@ -219,6 +219,7 @@ namespace waavs
 			BLContext::fillRect(geom);
 			BLContext::strokeRect(geom);
         }
+        */
         
         // Bitmaps
         void setFillMask(BLImageCore& mask, const BLRectI &maskArea)
@@ -243,6 +244,7 @@ namespace waavs
         }
 
         // Text Font selection
+		const BLFont& font() const { return fFont; }
         virtual void font(BLFont& afont)
         {
 			fFont = afont;

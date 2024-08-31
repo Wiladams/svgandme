@@ -7,6 +7,44 @@
 //
 // Text - text and tspan elements
 //
+namespace waavs {
+
+
+	static bool parseTextAnchor(const ByteSpan& inChunk, ALIGNMENT& value)
+	{
+		if (inChunk == "start")
+			value = ALIGNMENT::LEFT;
+		else if (inChunk == "middle")
+			value = ALIGNMENT::CENTER;
+		else if (inChunk == "end")
+			value = ALIGNMENT::RIGHT;
+		else
+			return false;
+
+		return true;
+	}
+
+	static bool parseTextAlign(const ByteSpan& inChunk, ALIGNMENT& value)
+	{
+		if (inChunk == "start")
+			value = ALIGNMENT::LEFT;
+		else if (inChunk == "middle")
+			value = ALIGNMENT::CENTER;
+		else if (inChunk == "end")
+			value = ALIGNMENT::RIGHT;
+		else
+			return false;
+
+		return true;
+	}
+
+	
+	
+}
+
+
+
+
 
 namespace waavs {
 	struct SVGFontSelection : public SVGVisualProperty
@@ -44,10 +82,17 @@ namespace waavs {
 			return *this;
 		}
 
+		const BLFont& font() const { return fFont; }
+		void font(const BLFont& aFont) { fFont = aFont; set(true); }
+		double descent() const {
+			return fFont.metrics().descent;
+		}
+			
 		void bindToGroot(IAmGroot* groot, SVGViewable* container) override
 		{
-			if (!isSet())
+			if (!isSet()) {
 				return;
+			}
 
 			FontHandler* fh = groot->fontHandler();
 
@@ -118,6 +163,67 @@ namespace waavs {
 			return BLPoint(cx, cy);
 		}
 		
+		// calcTextPosition
+// Given a piece of text, and a coordinate
+// calculate its baseline given the a specified alignment
+		BLRect calcTextPosition(const ByteSpan& txt, double x, double y, ALIGNMENT hAlignment = ALIGNMENT::LEFT, ALIGNMENT vAlignment = ALIGNMENT::BASELINE) const
+		{
+			BLPoint txtSize = textMeasure(txt);
+			double cx = txtSize.x;
+			double cy = txtSize.y;
+
+			switch (hAlignment)
+			{
+			case ALIGNMENT::LEFT:
+				// do nothing
+				// x = x;
+				break;
+			case ALIGNMENT::CENTER:
+				x = x - (cx / 2);
+				break;
+			case ALIGNMENT::RIGHT:
+				x = x - cx;
+				break;
+
+			default:
+				break;
+			}
+
+			switch (vAlignment)
+			{
+			case ALIGNMENT::TOP:
+				y = y + cy - descent();
+				break;
+			case ALIGNMENT::CENTER:
+				y = y + (cy / 2);
+				break;
+
+			case ALIGNMENT::MIDLINE:
+				//should use the design metrics xheight
+				break;
+
+			case ALIGNMENT::BASELINE:
+				// If what was passed as y is the baseline
+				// do nothing to it because blend2d draws
+				// text from baseline
+				break;
+
+			case ALIGNMENT::BOTTOM:
+				// Adjust from the bottom as blend2d
+				// prints from the baseline, so adjust
+				// by the amount of the descent
+				y = y - descent();
+				break;
+
+			default:
+				break;
+			}
+
+			return { x, y, cx, cy };
+		}
+		
+
+		
 		void draw(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 			// BUGBUG - not quite sure if we need both checks
@@ -140,85 +246,22 @@ namespace waavs {
 	{
 		ByteSpan fText{};
 		BLPoint fTextSize{};
-		BLPoint fPosition{};
 
-		
-		SVGFontSelection fFontSelection{ nullptr };
-		
-		
-
-		
 		
 		SVGTextRun(const ByteSpan &txt, IAmGroot* groot)
 			: SVGGraphicsElement(groot)
 			, fText(txt)
-			, fFontSelection(groot)
 		{
 			name("textrun");
 			needsBinding(true);
 		}
 
-		BLPoint textSize() const { return fTextSize; }
+		ByteSpan text() const { return fText; }
 		
-		void resolveStyle(IAmGroot* groot, SVGViewable* container) override
-		{
-			fFontSelection.loadFromXmlAttributes(*this, groot);
-			fFontSelection.bindToGroot(groot, container);
+		BLRect getBBox() const override { return BLRect{}; }
 
-			// Measure the text to see how big it is
-			fTextSize = fFontSelection.textMeasure(fText);
-		}
-		
-
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
-		{
-			double dpi = 96;
-			double w = 1.0;
-			double h = 1.0;
-
-			if (nullptr != groot)
-			{
-				dpi = groot->dpi();
-			}
-
-			if (nullptr != container)
-			{
-				BLRect cFrame = container->frame();
-				w = cFrame.w;
-				h = cFrame.h;
-			}
-
-			SVGDimension fX{};
-			SVGDimension fY{};
-			SVGDimension fDy{};
-			SVGDimension fDx{};
-			
-			fX.loadFromChunk(getAttribute("x"));
-			fY.loadFromChunk(getAttribute("y"));
-			fDy.loadFromChunk(getAttribute("dy"));
-			fDx.loadFromChunk(getAttribute("dx"));
-			
-			
-			if (fX.isSet())
-				fPosition.x = fX.calculatePixels(w, 0, 96);
-			if (fY.isSet())
-				fPosition.y = fY.calculatePixels(h, 0, 96);
-			if (fDx.isSet())
-				fPosition.x += fDx.calculatePixels(w, 0, 96);
-			if (fDy.isSet())
-				fPosition.y += fDy.calculatePixels(h, 0, 96);
-
-
-		}
 
 		
-		void draw(IRenderSVG* ctx, IAmGroot* groot) override
-		{
-			ctx->textPosition(fPosition.x, fPosition.y);
-			fFontSelection.draw(ctx, groot);
-
-			ctx->text(fText);
-		}
 	};
 }
 
@@ -240,13 +283,34 @@ namespace waavs {
 				};
 		}
 
+		BLPoint fTextCursor{};
+		//BLPoint fPosition{};	// The next position where text will be drawn
+		ALIGNMENT fTextHAlignment = ALIGNMENT::LEFT;
+		ALIGNMENT fTextVAlignment = ALIGNMENT::BASELINE;
 
+		SVGFontSelection fFontSelection{ nullptr };
+
+		double fX{ 0 };
+		double fY{ 0 };
+		double fDx{ 0 };
+		double fDy{ 0 };
+		
+		SVGDimension fDimX{};
+		SVGDimension fDimY{};
+		SVGDimension fDimDy{};
+		SVGDimension fDimDx{};
+
+		
 		SVGTSpanNode(IAmGroot* aroot) :SVGGraphicsElement(aroot) 
 		{
 			needsBinding(true);
 		}
 
 
+		void textCursor(const BLPoint& pos) { fTextCursor = pos; }
+		BLPoint textCursor() const { return fTextCursor; }
+		
+		
 		// Load the text content if it exists
 		// Load the text content if it exists
 		void loadContentNode(const XmlElement& elem, IAmGroot* groot) override
@@ -259,20 +323,18 @@ namespace waavs {
 			if (nullptr == node)
 				return;
 
-			// If we have the node, then tell it to load itself up
-			// based on the attributes we contain
-			node->mergeAttributes(*this);
-
 			addNode(node, groot);
 		}
 		
 		
 		void loadSelfClosingNode(const XmlElement& elem, IAmGroot* groot) override
 		{
-			auto node = std::make_shared<SVGTSpanNode>(groot);
-
-			node->loadFromXmlElement(elem, groot);
-			addNode(node, groot);
+			if (elem.tagName() == "tspan")
+			{
+				auto node = std::make_shared<SVGTSpanNode>(groot);
+				node->loadFromXmlElement(elem, groot);
+				addNode(node, groot);
+			}
 		}
 
 		void loadCompoundNode(XmlElementIterator& iter, IAmGroot* groot) override
@@ -293,38 +355,6 @@ namespace waavs {
 			}
 		}
 
-	};
-
-
-	//=====================================================
-	// SVGTextNode
-	// There is a reasonable temptation to make this a sub-class
-	// of tspan, as most of their behavior is the same.  There
-	// are subtle enough differences though that it is probably
-	// better to keep them separate, and introduce a core base
-	// class later for better factoring.
-	//=====================================================
-	struct SVGTextNode : public SVGGraphicsElement
-	{
-		static void registerFactory()
-		{
-			gSVGGraphicsElementCreation["text"] = [](IAmGroot* groot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGTextNode>(groot);
-				node->loadFromXmlIterator(iter, groot);
-				return node;
-				};
-		}
-
-		BLPoint fPosition{};	// The next position where text will be drawn
-		
-
-		SVGTextNode(IAmGroot* aroot) 
-			:SVGGraphicsElement(aroot)
-		{
-			needsBinding(true);
-		}
-
-
 		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
 			double dpi = 96;
@@ -343,102 +373,66 @@ namespace waavs {
 				h = cFrame.h;
 			}
 
-			SVGDimension fX{};
-			SVGDimension fY{};
-			SVGDimension fDy{};
-			SVGDimension fDx{};
+
+
+			fDimX.loadFromChunk(getAttribute("x"));
+			fDimY.loadFromChunk(getAttribute("y"));
+			fDimDy.loadFromChunk(getAttribute("dy"));
+			fDimDx.loadFromChunk(getAttribute("dx"));
+
+			fX = fTextCursor.x;
+			fY = fTextCursor.y;
 			
-			fX.loadFromChunk(getAttribute("x"));
-			fY.loadFromChunk(getAttribute("y"));
-			fDy.loadFromChunk(getAttribute("dy"));
-			fDx.loadFromChunk(getAttribute("dx"));
+			if (fDimX.isSet())
+				fX = fDimX.calculatePixels(w, 0, 96);
+			if (fDimY.isSet())
+				fY = fDimY.calculatePixels(h, 0, 96);
+			if (fDimDx.isSet())
+				fDx = fDimDx.calculatePixels(w, 0, 96);
+			if (fDimDy.isSet())
+				fDy = fDimDy.calculatePixels(h, 0, 96);
+
+			fTextCursor.x = fX + fDx;
+			fTextCursor.y = fY + fDy;
+
+			parseTextAnchor(getAttribute("text-anchor"), fTextHAlignment);
+			parseTextAlign(getAttribute("text-align"), fTextVAlignment);
 
 
-			if (fX.isSet())
-				fPosition.x = fX.calculatePixels(w, 0, 96);
-			if (fY.isSet())
-				fPosition.y = fY.calculatePixels(h, 0, 96);
-			if (fDx.isSet())
-				fPosition.x += fDx.calculatePixels(w, 0, 96);
-			if (fDy.isSet())
-				fPosition.y += fDy.calculatePixels(h, 0, 96);
-
+			fFontSelection.loadFromXmlAttributes(*this, groot);
+			fFontSelection.bindToGroot(groot, container);
 		}
 
-		
-		void bindToGroot(IAmGroot* groot, SVGViewable* container) override
-		{
-			resolvePosition(groot, container);
-			resolveStyle(groot, container);
-			
-			bindPropertiesToGroot(groot, container);
-			
-			bindChildrenToGroot(groot, container);
-
-			needsBinding(false);
-		}
-		
+		// Contains styling attributes
 		void applyAttributes(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-			// BUGBUG - kind of  a hack
-			// we need the alignment to start at a default, and be reset
-			// by text-align, and text-anchor.
-			// we need this here as the tspan element might have changed it
-			// and the context does not pop the text styling.
-			ctx->textAlign(ALIGNMENT::LEFT, ALIGNMENT::BASELINE);
+			// Apply transform if it's not the identity transform
+			if (fHasTransform)  //fTransform.type() != BL_MATRIX2D_TYPE_IDENTITY)
+				ctx->applyTransform(fTransform);
 
-			SVGGraphicsElement::applyAttributes(ctx, groot);
-		}
-
-		// Load some text content
-		void loadContentNode(const XmlElement& elem, IAmGroot* groot) override
-		{
-			// Create a text content node and 
-			// add it to our node set
-			auto node = std::make_shared<SVGTextRun>(elem.data(), groot);
-			
-			// fail fast if the node was not created
-			if (nullptr == node)
-				return;
-			
-			// If we have the node, then tell it to load itself up
-			// based on the attributes we contain
-			node->mergeAttributes(*this);
-			
-			addNode(node, groot);
-		}
-
-		// Typically a TSpan with no content?
-		void loadSelfClosingNode(const XmlElement& elem, IAmGroot* groot) override
-		{
-			auto node = std::make_shared<SVGTSpanNode>(nullptr);
-
-			node->loadFromXmlElement(elem, groot);
-			addNode(node, groot);
-		}
-
-		// Typically a tspan
-		void loadCompoundNode(XmlElementIterator& iter, IAmGroot* groot) override
-		{
-			// Most likely a <tspan>
-			auto& elem = *iter;
-			if ((*iter).tagName() == "tspan")
-			{
-				auto node = std::make_shared<SVGTSpanNode>(nullptr);
-
-				node->loadFromXmlIterator(iter, groot);
-				addNode(node, groot);
-			}
-			else
-			{
-				// Some compound node we don't know about
-				// just load its whole sub-tree to ignore it
-				SVGGraphicsElement::loadCompoundNode(iter, groot);
+			// BUGBUG - It might be useful to pass in the visual object
+			// as additional context for attributes such as gradients
+			// that might need that
+			for (auto& prop : fVisualProperties) {
+				if (prop.second->autoDraw() && prop.second->isSet())
+					prop.second->draw(ctx, groot);
 			}
 		}
-
+		
 		void drawChildren(IRenderSVG* ctx, IAmGroot* groot) override
 		{
+			if (!fFontSelection.isSet())
+			{
+				fFontSelection.font(ctx->font());
+			}
+
+			if (fDimX.isSet())
+				fTextCursor.x = fX;
+			if (fDimY.isSet())
+				fTextCursor.y = fY;
+			
+
+
 			for (auto& node : fNodes) {
 
 
@@ -446,23 +440,93 @@ namespace waavs {
 				auto textNode = std::dynamic_pointer_cast<SVGTextRun>(node);
 				if (nullptr != textNode)
 				{
-					printf("TEXT SIZE: %f %f\n", textNode->textSize().x, textNode->textSize().y);
-					ctx->textPosition(fPosition.x, fPosition.y);
-					textNode->draw(ctx, groot);
+					BLRect pRect = fFontSelection.calcTextPosition(textNode->text(), fTextCursor.x, fTextCursor.y, fTextHAlignment, fTextVAlignment);
+					fFontSelection.draw(ctx, groot);
+					ctx->text(textNode->text(), pRect.x, pRect.y);
+					fTextCursor.x += pRect.w;
 				}
 				else
 				{
 					// dynamic cast the node to a SVGTSpanNode if possible
 					auto tspanNode = std::dynamic_pointer_cast<SVGTSpanNode>(node);
+					
 					if (nullptr != tspanNode)
 					{
+						tspanNode->textCursor(fTextCursor);
 						tspanNode->draw(ctx, groot);
+						fTextCursor = tspanNode->textCursor();
 					}
 				}
 
 			}
+			
+			// tell the outside world where we left off
+			//fPosition = fStartPosition;
+		}
+
+		void draw(IRenderSVG* ctx, IAmGroot* groot) override
+		{
+			if (!visible())
+				return;
+
+			ctx->push();
+
+			applyAttributes(ctx, groot);
+
+			drawChildren(ctx, groot);
+
+			ctx->pop();
 		}
 		
+
+		// BUGBUG - this needs to be restructured
+// such that the css and style attributes are applied
+// and then the display properties can override them
+		void loadFromXmlElement(const XmlElement& elem, IAmGroot* groot) override
+		{
+			scanAttributes(elem.data());
+
+			// save the id if we've got an id attribute
+			id(getAttribute("id"));
+
+			// Save the name if we've got one
+			name(elem.name());
+
+
+
+
+			loadCommonVisualProperties(groot);
+		}
+	};
+
+
+	//=====================================================
+	// SVGTextNode
+	// There is a reasonable temptation to make this a sub-class
+	// of tspan, as most of their behavior is the same.  There
+	// are subtle enough differences though that it is probably
+	// better to keep them separate, and introduce a core base
+	// class later for better factoring.
+	//=====================================================
+	struct SVGTextNode : public SVGTSpanNode
+	{
+		static void registerFactory()
+		{
+			gSVGGraphicsElementCreation["text"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+				auto node = std::make_shared<SVGTextNode>(groot);
+				node->loadFromXmlIterator(iter, groot);
+				return node;
+				};
+		}
+		
+
+		SVGTextNode(IAmGroot* groot) 
+			:SVGTSpanNode(groot)
+		{
+			needsBinding(true);
+		}
+
+
 
 	};
 }

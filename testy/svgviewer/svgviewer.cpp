@@ -301,8 +301,8 @@ static void setup()
 	frameRate(15);
 	
     //loadDefaultFonts();
-	loadFontDirectory("c:\\windows\\fonts");
-	loadFontDirectory("..\\resources");
+	//loadFontDirectory("c:\\windows\\fonts");
+	//loadFontDirectory("..\\resources");
 	
     dropFiles();
 

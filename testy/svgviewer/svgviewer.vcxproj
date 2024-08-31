@@ -191,6 +191,7 @@
     <ClInclude Include="..\..\svg\svggradient.h" />
     <ClInclude Include="..\..\svg\svghyperlink.h" />
     <ClInclude Include="..\..\svg\svgimage.h" />
+    <ClInclude Include="..\..\svg\svgmarker.h" />
     <ClInclude Include="..\..\svg\svgmask.h" />
     <ClInclude Include="..\..\svg\svgpath.h" />
     <ClInclude Include="..\..\svg\svgpattern.h" />

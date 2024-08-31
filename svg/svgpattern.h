@@ -7,7 +7,6 @@
 
 
 #include <functional>
-//#include <unordered_map>
 
 #include "svgattributes.h"
 #include "viewport.h"

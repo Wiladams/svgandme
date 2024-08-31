@@ -37,6 +37,7 @@
 #include "svgconditional.h"
 #include "svggradient.h"
 #include "svgimage.h"
+#include "svgmarker.h"
 #include "svgmask.h"
 #include "svgstructure.h"
 #include "svgshapes.h"
@@ -198,7 +199,7 @@ namespace waavs {
 				}
 				else if (elem.isDoctype()) {
 
-                    printf(" ====  DOCTYPE ====\n");
+                    //printf(" ====  DOCTYPE ====\n");
                     // BUGBUG - We need more information on what kind
                     // of DOCTYPE it was.
                     // We only need to create an iterator if there is style information
@@ -238,8 +239,8 @@ namespace waavs {
                     */
 				}
                 else {
-                    printf("SVGDocument.loadFromXmlIterator : ERROR - unexpected element: %s\n", toString(elem.tagName()).c_str());
-                    printChunk(elem.data());
+                    //printf("SVGDocument.loadFromXmlIterator : ERROR - unexpected element: %s\n", toString(elem.tagName()).c_str());
+                    //printChunk(elem.data());
                 }
             }
         }
@@ -294,9 +295,10 @@ namespace waavs {
             
             SVGFillRule::registerFactory();
             
-            SVGFontFamily::registerFactory();
-            SVGFontSize::registerFactory();
-            
+            //SVGFontFamily::registerFactory();
+            //SVGFontSize::registerFactory();
+            //SVGTextAnchor::registerFactory();
+            //             
 			SVGMarkerAttribute::registerMarkerFactory();
 
             
@@ -311,7 +313,7 @@ namespace waavs {
             SVGStrokePaint::registerFactory();
 			SVGStrokeOpacity::registerFactory();
             
-			SVGTextAnchor::registerFactory();
+
             
             //SVGTransform::registerFactory();
             
@@ -343,7 +345,7 @@ namespace waavs {
             SVGDefsNode::registerFactory();             // 'defs'
             SVGConicGradient::registerFactory();        // 'conicGradient'
             SVGLinearGradient::registerFactory();       // 'linearGradient'
-            SVGMarkerNode::registerFactory();           // 'marker'
+            SVGMarkerElement::registerFactory();           // 'marker'
             SVGMaskElement::registerFactory();             // 'mask'
             SVGPatternElement::registerFactory();          // 'pattern'
             SVGRadialGradient::registerFactory();       // 'radialGradient'

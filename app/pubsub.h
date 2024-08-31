@@ -37,7 +37,7 @@ class Topic
 public:
 	// This is the form of subscriber
 	//using Subscriber = std::function<void(const Topic<T>& p, const T m)>;
-	using Subscriber = std::function<void(const T m)>;
+	using Subscriber = std::function<void(const T &m)>;
 
 private:
 	std::deque<Subscriber> fSubscribers{};
@@ -55,9 +55,9 @@ public:
 	virtual ~Topic() = default;
 
 	// Notify subscribers that an event has occured
-	virtual void notify(const T m)
+	virtual void notify(const T &m)
 	{
-		for (auto & it : fSubscribers) {
+		for (Subscriber & it : fSubscribers) {
 			//it(*this, m);
 			it(m);
 		}

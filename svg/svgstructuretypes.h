@@ -86,6 +86,7 @@ namespace waavs {
         void visible(bool visible) { fIsVisible = visible; }
 
         
+        virtual void resolveProperties(IAmGroot* groot, SVGViewable* container) {;}
         virtual void resolvePosition(IAmGroot* groot, SVGViewable *container) { ; }
         virtual void resolveStyle(IAmGroot* groot, SVGViewable *container) { ; }
         
@@ -377,12 +378,30 @@ namespace waavs {
 				prop.second->bindToGroot(groot, container);
 			}
         }
+
+		void resolveProperties(IAmGroot* groot, SVGViewable* container)
+		{
+            for (auto& attr : fAttributes)
+            {
+                // Next, see if there is a property registered for the attribute
+                auto it = gSVGAttributeCreation.find(attr.first);
+                if (it != gSVGAttributeCreation.end())
+                {
+                    auto prop = it->second(attr.second);
+                    if (prop != nullptr)
+                    {
+                        fVisualProperties[attr.first] = prop;
+                    }
+                }
+            }
+		}
         
         void bindToGroot(IAmGroot* groot, SVGViewable *container) override
         {
 			if (!needsBinding())
 				return;
             
+            resolveProperties(groot, container);
             resolvePosition(groot, container);
             resolveStyle(groot, container);
             
@@ -414,15 +433,8 @@ namespace waavs {
             if (!value)
                 return;
             
-			auto it = gSVGAttributeCreation.find(name);
-			if (it != gSVGAttributeCreation.end())
-			{
-				auto prop = it->second(value);
-				if (prop != nullptr)
-				{
-					fVisualProperties[name] = prop;
-				}
-			}
+            // First, set the raw attribute 
+            addAttribute(name, value);
         }
 
         //
@@ -515,7 +527,7 @@ namespace waavs {
                     loadVisualProperties(csel->attributes(), groot);
                 }
                 else {
-                    printf("SVGVisualNode::bindPropertiesToGroot, ERROR - NO CLASS SELECTOR FOR %s\n", toString(classId).c_str());
+                    //printf("SVGVisualNode::bindPropertiesToGroot, ERROR - NO CLASS SELECTOR FOR %s\n", toString(classId).c_str());
                 }
             }
 
@@ -598,9 +610,22 @@ namespace waavs {
             ctx->pop();
         }
 
+        // BUGBUG - this needs to be restructured
+        // such that the css and style attributes are applied
+        // and then the display properties can override them
         void loadFromXmlElement(const XmlElement & elem, IAmGroot* groot) override
         {
-			SVGViewable::loadFromXmlElement(elem, groot);
+            //SVGViewable::loadFromXmlElement(elem, groot);
+            scanAttributes(elem.data());
+
+            // save the id if we've got an id attribute
+            id(getAttribute("id"));
+
+            // Save the name if we've got one
+            name(elem.name());
+
+            
+
 
 			loadCommonVisualProperties(groot);
         }
@@ -972,9 +997,9 @@ namespace waavs {
                     else
                     {
                         // Ignore anything else
-                        printf("SVGGraphicsElement::loadFromXmlIterator ==> IGNORING kind(%d) name:", elem.kind());
-                        printChunk(elem.nameSpan());
-                        printChunk(elem.data());
+                        //printf("SVGGraphicsElement::loadFromXmlIterator ==> IGNORING kind(%d) name:", elem.kind());
+                        //printChunk(elem.nameSpan());
+                        //printChunk(elem.data());
                         
                         //printf("SVGGraphicsElement::loadFromXmlIterator ==> IGNORING: %s\n", elem.name().c_str());
                         //printXmlElement(elem);

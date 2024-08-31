@@ -9,210 +9,18 @@
 #include "svgpath.h"
 #include "svgtext.h"
 #include "viewport.h"
+#include "svgmarker.h"
+
+
+
 
 
 namespace waavs {
-	//=================================================
-	// SVGMarkerNode
-	// Reference: https://svg-art.ru/?page_id=855
-	//=================================================
-	enum MarkerUnits {
-		UserSpaceOnUse = 0,
-		StrokeWidth = 1
-	};
-
-	struct SVGMarkerNode : public SVGGraphicsElement
-	{
-		static void registerFactory()
-		{
-			gSVGGraphicsElementCreation["marker"] = [](IAmGroot* groot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGMarkerNode>(groot);
-				node->loadFromXmlIterator(iter, groot);
-				
-				return node;
-			};
-		}
-
-		// Fields
-		SVGViewbox fViewbox{};
-		SVGDimension fDimRefX{};
-		SVGDimension fDimRefY{};
-		SVGDimension fDimMarkerWidth{};
-		SVGDimension fDimMarkerHeight{};
-		uint32_t fMarkerUnits{StrokeWidth};
-		SVGOrient fOrientation{ nullptr };
-
-		// Resolved field values
-		double fRefX = 0;
-		double fRefY = 0;
-		double fMarkerWidth{ 3 };
-		double fMarkerHeight{ 3 };
-		
-		SVGMarkerNode(IAmGroot* root) 
-			: SVGGraphicsElement(root) 
-		{
-			isStructural(false);
-		}
-
-		const SVGOrient& orientation() const { return fOrientation; }
-
-		
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
-		{
-			
-			if (fDimMarkerWidth.isSet())
-				fMarkerWidth = fDimMarkerWidth.calculatePixels();
-			else if (fViewbox.isSet())
-				fMarkerWidth = fViewbox.width();
-			
-			if (fDimMarkerHeight.isSet())
-				fMarkerHeight = fDimMarkerHeight.calculatePixels();
-			else if (fViewbox.isSet())
-				fMarkerHeight = fViewbox.height();
-			
-			if (fDimRefX.isSet())
-				fRefX = fDimRefX.calculatePixels();
-			else if (fViewbox.isSet())
-				fRefX = fViewbox.x();
-		}
-		
-		void applyAttributes(IRenderSVG* ctx, IAmGroot* groot) override
-		{
-			SVGGraphicsElement::applyAttributes(ctx, groot);
-
-			double sWidth = ctx->strokeWidth();
-			double scaleX = 1.0;
-			double scaleY = 1.0;
-			
-			if (fMarkerUnits == StrokeWidth)
-			{
-				// scale == strokeWidth
-				scaleX = sWidth;
-				scaleY = sWidth;
-				ctx->scale(scaleX, scaleY);
-			}
-			else
-			{
-				if (fViewbox.isSet())
-				{
-					scaleX = fMarkerWidth / fViewbox.width();
-					scaleY = fMarkerHeight / fViewbox.height();
-					ctx->scale(scaleX, scaleY);
-				}
-				// No scaling
-			}
-
-			
-			ctx->translate(-fDimRefX.calculatePixels(), -fDimRefY.calculatePixels());
-		}
-
-		void drawChildren(IRenderSVG* ctx, IAmGroot* groot) override
-		{
-			ctx->push();
-			
-			// Setup drawing state
-			ctx->blendMode(BL_COMP_OP_SRC_OVER);
-			ctx->fill(BLRgba32(0, 0, 0));
-			ctx->noStroke();
-			ctx->strokeWidth(1.0);
-			ctx->setStrokeJoin(BLStrokeJoin::BL_STROKE_JOIN_MITER_BEVEL);
-			
-			SVGGraphicsElement::drawChildren(ctx, groot);
-			
-			ctx->pop();
-		}
-		
-		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
-		{
-			SVGGraphicsElement::loadVisualProperties(attrs, groot);
-			
-			auto preserveAspectRatio = attrs.getAttribute("preserveAspectRatio");
-
-			
-			if (attrs.getAttribute("viewBox")) {
-				fViewbox.loadFromChunk(attrs.getAttribute("viewBox"));
-			}
-
-			if (attrs.getAttribute("refX")) {
-				fDimRefX.loadFromChunk(attrs.getAttribute("refX"));
-			}
-			if (attrs.getAttribute("refY")) {
-				fDimRefY.loadFromChunk(attrs.getAttribute("refY"));
-			}
-			
-			if (attrs.getAttribute("markerWidth")) {
-				fDimMarkerWidth.loadFromChunk(attrs.getAttribute("markerWidth"));
-			}
-			
-			if (attrs.getAttribute("markerHeight")) {
-				fDimMarkerHeight.loadFromChunk(attrs.getAttribute("markerHeight"));
-			}
-
-			if (attrs.getAttribute("markerUnits")) {
-				auto units = attrs.getAttribute("markerUnits");
-				if (units == "strokeWidth") {
-					fMarkerUnits = StrokeWidth;
-				}
-				else if (units == "userSpaceOnUse") {
-					fMarkerUnits = UserSpaceOnUse;
-				}
-			}
-
-			if (attrs.getAttribute("orient")) {
-				fOrientation.loadFromChunk(attrs.getAttribute("orient"));
-			}
-
-		}
-
-
-	};
-
 	
-	//===================================================
-	// SVGGeometryElement
-	// All geometries are represented as a path.  This base
-	// class is all that is needed to represent a path
-	//===================================================
-	
-	struct SVGGeometryElement : public SVGGraphicsElement
-	{
-
-		
-		SVGGeometryElement(IAmGroot* iMap) 
-			:SVGGraphicsElement(iMap) 
-		{
-		}
-		
-		// Return bounding rectangle for shape
-		// This does not include the stroke width
-		BLRect frame() const override
-		{
-			// get bounding box, then apply transform
-			// BLRect fr = getBBox();
-			
-			BLRect boxRect = getBBox();
-
-			return boxRect;
-			
-			//if (fHasTransform) {
-			//	auto leftTop = fTransform.mapPoint(bbox.x, bbox.y);
-			//	auto rightBottom = fTransform.mapPoint(bbox.x1, bbox.y1);
-			//	return BLRect(leftTop.x, leftTop.y, rightBottom.x - leftTop.x, rightBottom.y - leftTop.y);
-			//}
-
-			//return BLRect(bbox.x0, bbox.y0, bbox.x1 - bbox.x0, bbox.y1 - bbox.y0);
-		}
-		
-
-		
-	};
-	
-
 	//====================================
 	// SVGLineElement
 	//====================================
-	
-	struct SVGLineElement : public SVGGeometryElement
+	struct SVGLineElement : public SVGGraphicsElement
 	{
 		static void registerFactory() {
 			gShapeCreationMap["line"] = [](IAmGroot* groot, const XmlElement& elem) {
@@ -226,7 +34,7 @@ namespace waavs {
 		BLLine geom{};
 
 		SVGLineElement(IAmGroot* iMap)
-			:SVGGeometryElement(iMap) {}
+			:SVGGraphicsElement(iMap) {}
 		
 		BLRect getBBox() const override
 		{
@@ -259,7 +67,7 @@ namespace waavs {
 
 			if (nullptr != container)
 			{
-				BLRect cFrame = container->frame();
+				BLRect cFrame = container->getBBox();
 				w = cFrame.w;
 				h = cFrame.h;
 			}
@@ -292,7 +100,7 @@ namespace waavs {
 	//====================================
 	// SVGRectElement
 	//====================================
-	struct SVGRectElement : public SVGGeometryElement
+	struct SVGRectElement : public SVGGraphicsElement
 	{
 		static void registerSingular() {
 			gShapeCreationMap["rect"] = [](IAmGroot* groot, const XmlElement& elem) {
@@ -317,7 +125,7 @@ namespace waavs {
 		bool fIsRound{ false };
 
 		
-		SVGRectElement(IAmGroot* iMap) :SVGGeometryElement(iMap) {}
+		SVGRectElement(IAmGroot* iMap) :SVGGraphicsElement(iMap) {}
 		
 		BLRect getBBox() const override
 		{
@@ -350,7 +158,7 @@ namespace waavs {
 			
 			if (container)
 			{
-				BLRect cFrame = container->frame();
+				BLRect cFrame = container->getBBox();
 				w = cFrame.w;
 				h = cFrame.h;
 			}
@@ -419,7 +227,7 @@ namespace waavs {
 	//====================================
 	//  SVGCircleElement 
 	//====================================
-	struct SVGCircleElement : public SVGGeometryElement
+	struct SVGCircleElement : public SVGGraphicsElement
 	{
 		static void registerSingular() {
 			gShapeCreationMap["circle"] = [](IAmGroot* groot, const XmlElement& elem) {
@@ -445,7 +253,7 @@ namespace waavs {
 
 
 		
-		SVGCircleElement(IAmGroot* iMap) :SVGGeometryElement(iMap) {}
+		SVGCircleElement(IAmGroot* iMap) :SVGGraphicsElement(iMap) {}
 
 		BLRect getBBox() const override
 		{
@@ -471,7 +279,7 @@ namespace waavs {
 			}
 			
 			if (container) {
-				BLRect cFrame = container->frame();
+				BLRect cFrame = container->getBBox();
 				w = cFrame.w;
 				h = cFrame.h;
 			}
@@ -495,7 +303,7 @@ namespace waavs {
 	//====================================
 	//	SVGEllipseElement 
 	//====================================
-	struct SVGEllipseElement : public SVGGeometryElement
+	struct SVGEllipseElement : public SVGGraphicsElement
 	{
 		static void registerFactory() {
 			registerSVGSingularNode("ellipse", [](IAmGroot* groot, const XmlElement& elem) {
@@ -510,7 +318,7 @@ namespace waavs {
 
 		
 		SVGEllipseElement(IAmGroot* iMap)
-			:SVGGeometryElement(iMap) {}
+			:SVGGraphicsElement(iMap) {}
 		
 		BLRect getBBox() const override
 		{
@@ -537,7 +345,7 @@ namespace waavs {
 			
 			if (nullptr != container)
 			{
-				BLRect cFrame = container->frame();
+				BLRect cFrame = container->getBBox();
 				w = cFrame.w;
 				h = cFrame.h;
 			}
@@ -640,7 +448,7 @@ namespace waavs {
 				return false;
 
 			// cast the node to a SVGMarkerNode
-			std::shared_ptr<SVGMarkerNode> markerNode = std::dynamic_pointer_cast<SVGMarkerNode>(aNode);
+			std::shared_ptr<SVGMarkerElement> markerNode = std::dynamic_pointer_cast<SVGMarkerElement>(aNode);
 
 
 			ctx->push();
@@ -895,33 +703,21 @@ namespace waavs {
 		{
 		}
 		
-
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		void loadPath()
 		{
-			double dpi = 96;
-			double w = 1.0;
-			double h = 1.0;
-
-			if (nullptr != groot)
-			{
-				dpi = groot->dpi();
-			}
-
-			if (nullptr != container)
-			{
-				BLRect cFrame = container->frame();
-				w = cFrame.w;
-				h = cFrame.h;
-			}
-
 			auto d = getAttribute("d");
 			if (d) {
 				auto success = blpathparser::parsePath(d, fPath);
 				fPath.shrink();
 			}
 		}
-
 		
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		{		
+			loadPath();
+		}
+
+
 	};
 
 	

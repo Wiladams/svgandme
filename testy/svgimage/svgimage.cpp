@@ -83,7 +83,7 @@ int main(int argc, char **argv)
         return 1;
     }
 	
-	setupFonts();
+	//setupFonts();
 
     // create an mmap for the specified file
     const char* filename = argv[1];
@@ -106,41 +106,41 @@ int main(int argc, char **argv)
 
 	
 
-	// Get the viewport size so we can create an image
-	// This is not the best thing to do, as viewport can be very large or small
+	// Get the frame size from the document
+	// This is the extent of the document, in user units
 	BLRect sceneFrame = gDoc->frame();
 	printf("viewport: %3.0f %3.0f %3.0f %3.0f\n", sceneFrame.x, sceneFrame.y, sceneFrame.w, sceneFrame.h);
-	
 
-	ViewPort vp{};
-
-	// Create a frame the size we want to render at
+	// Create a rectangle the size of the BLImage we want to render into
 	BLRect surfaceFrame{ 0, 0, CAN_WIDTH, CAN_HEIGHT };
 	
+	
+	// At this point, we could just do the render, but we go further
+	// and create a viewport, which will handle the scaling and translation
+	// This will essentially do a 'scale to fit'
+	ViewPort vp{};
 	vp.sceneFrame(sceneFrame);
 	vp.surfaceFrame(surfaceFrame);
 
 
-	// Create a drawing context to render into
+	// Now create a drawing context so we can
+	// do the rendering
 	SvgDrawingContext ctx(&gFontHandler);
 	BLImage img(surfaceFrame.w, surfaceFrame.h, BL_FORMAT_PRGB32);
-	
-	ctx.begin(img);
-	ctx.clearAll();
-	//ctx.fillAll(BLRgba32(0xFFFFFFFF));
 	
 	// apply the viewport's sceneToSurface transform to the context
 	ctx.setTransform(vp.sceneToSurfaceTransform());
 
+	// Attach the drawing context to the image
+	ctx.begin(img);
+	ctx.clearAll();
+	
 	// Render the document into the context
 	gDoc->draw(&ctx, gDoc.get());
-	//ctx.setStrokeStyle(BLRgba32(0xFFff0000));
-	//ctx.setStrokeWidth(2.0);
-	//ctx.strokeLine(0, 0, 640, 640);
-	ctx.flush();
 	ctx.end();
 	
 	// Save the image from the drawing context out to a file
+	// or do whatever you're going to do with it
 	const char* outfilename = nullptr;
 	printf("argc: %d\n", argc);
 	
