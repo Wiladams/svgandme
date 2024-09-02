@@ -11,6 +11,9 @@
 
 using namespace waavs;
 
+// Drawing context used for drawing document
+// 	SvgDrawingContext ctx(&gFontHandler);
+IRenderSVG gDrawingContext(nullptr);
 
 // Reference to currently active document
 std::shared_ptr<SVGDocument> gDoc{ nullptr };
@@ -33,30 +36,17 @@ bool gPerformTransform = true;
 
 void quicktest()
 {
-	ByteSpan src{ "id='23' class='classValue' name='test'" };
-	ByteSpan name{};
-	
-	bool success = chunk_find(src, "class", name);
-	
-	printf("SUCCESS: %d\n", success);
-	printChunk(name);
-	printf("\n");
-	
-	// now we know where the name of the field starts
-	// so we can call readNextKeyValue to split into key/value
-	ByteSpan key{};
-	ByteSpan value{};
-	ByteSpan rest{ name.fStart, src.fEnd };
-	success = readNextKeyValue(rest, key, value);
-		
-	printf("SUCCESS (readNextKeyValue): %d\n", success);
-	writeChunk(key);
-	printf(" = ");
-	printChunk(value);
+
 
 	
 }
 
+
+// docFromFilename
+//
+// Given a filename, parse the svg in the file, and return 
+// a shared pointer to it.
+//
 static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 {
 	auto mapped = waavs::MappedFile::create_shared(filename);
@@ -71,10 +61,6 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 	
 	ByteSpan aspan(mapped->data(), mapped->size());
 	std::shared_ptr<SVGDocument> aDoc = SVGDocument::createFromChunk(aspan, &gFontHandler, canvasWidth, canvasHeight, systemPpi);
-	//if (aDoc != nullptr) {
-	//	SVGDocument * groot = aDoc.get();
-	//	aDoc->bindToGroot(groot, nullptr);
-	//}
 	
 	return aDoc;
 }
@@ -90,30 +76,27 @@ static void drawDocument(std::shared_ptr<SVGDocument> doc)
 		return ;
 	
 	// Create a SvgDrawingContext for the canvas
-	SvgDrawingContext ctx(&gFontHandler);
-	BLContextCreateInfo ctxInfo{};
-	ctxInfo.threadCount = 0;
-	ctx.begin(appFrameBuffer().image(), &ctxInfo);
+	appFrameBuffer().setAllPixels(vec4b{ 0xff,0xff,0xff,0xff });
+
+	gDrawingContext.renew();
+
 
 	// setup any transform
 	if (gPerformTransform)
-		ctx.setTransform(gViewPort.sceneToSurfaceTransform());
+		gDrawingContext.setTransform(gViewPort.sceneToSurfaceTransform());
 
 	//double startTime = seconds();
 
 	// draw the document into the ctx
-	doc->draw(&ctx, doc.get());
-	ctx.flush();
+	doc->draw(&gDrawingContext, doc.get());
+	gDrawingContext.flush();
 	
 	//double endTime = seconds();
 	//printf("Drawing Duration: %f\n", endTime - startTime);
 }
 
 static void refreshDoc()
-{
-	// Clear the background to white
-	appFrameBuffer().setAllPixels(vec4b{ 0xff,0xff,0xff,0xff });
-	
+{	
 	drawDocument(gDoc);
 }
 
@@ -180,6 +163,7 @@ static void onFrameEvent(const FrameCountEvent& fe)
 static void onResizeEvent(const ResizeEvent& re)
 {
 	//printf("onResizeEvent: %d x %d\n", re.width, re.height);
+	gDrawingContext.begin(appFrameBuffer().image());
 	refreshDoc();
 }
 
@@ -319,6 +303,7 @@ static void setupFonts()
 	//loadDefaultFonts();
 	loadFontDirectory("c:\\windows\\fonts");
 	//loadFontDirectory("..\\resources");
+	gDrawingContext.fontHandler(&gFontHandler);
 }
 
 
@@ -354,7 +339,10 @@ static void setup()
 	
 	// clear the buffer to white to start
 	appFrameBuffer().setAllPixels(vec4b{ 0xFF,0xff,0xff,0xff });
-	
+	BLContextCreateInfo ctxInfo{};
+	ctxInfo.threadCount = 0;
+	gDrawingContext.begin(appFrameBuffer().image(), &ctxInfo);
+		
 	// Set the initial viewport
 	gViewPort.surfaceFrame({0, 0, (double)canvasWidth, (double)canvasHeight});
 	

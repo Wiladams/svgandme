@@ -28,25 +28,29 @@ namespace waavs {
 	// offset == 0
 	// color == black
 	// opacity == 1.0
-	struct SVGStopNode : public SVGViewable
+	struct SVGStopNode : public SVGObject
 	{
 		double fOffset = 0;
 		double fOpacity = 1;
 		BLRgba32 fColor{ 0xff000000 };
 
-		SVGStopNode(IAmGroot* aroot) :SVGViewable(aroot) {}
+		SVGStopNode(IAmGroot* groot) :SVGObject() {}
 
 		double offset() const { return fOffset; }
 		double opacity() const { return fOpacity; }
 		BLRgba32 color() const { return fColor; }
 
-		void loadFromXmlElement(const XmlElement& elem, IAmGroot* groot) override
+		void loadFromXmlElement(const XmlElement& elem, IAmGroot* groot)
 		{
-			SVGViewable::loadFromXmlElement(elem, groot);
-
+			// Get the attributes from the element
+			ByteSpan attrSpan = elem.data();
+			XmlAttributeCollection attrs{};
+			attrs.scanAttributes(attrSpan);
+			
+			
 			// Get the offset
 			SVGDimension dim{};
-			dim.loadFromChunk(getAttribute("offset"));
+			dim.loadFromChunk(attrs.getAttribute("offset"));
 			if (dim.isSet())
 			{
 				fOffset = dim.calculatePixels(1);
@@ -55,6 +59,36 @@ namespace waavs {
 			SVGDimension dimOpacity{};
 			SVGPaint paint(groot);
 
+			// Get the stop color
+			if (attrs.getAttribute("stop-color"))
+			{
+				paint.loadFromChunk(attrs.getAttribute("stop-color"));
+			}
+			else
+			{
+				// Default color is black
+				paint.loadFromChunk("black");
+			}
+			
+			if (attrs.getAttribute("stop-opacity"))
+			{
+				dimOpacity.loadFromChunk(attrs.getAttribute("stop-opacity"));
+			}
+			else
+			{
+				// Default opacity is 1.0
+				dimOpacity.loadFromChunk("1.0");
+			}
+			
+			if (dimOpacity.isSet())
+			{
+				fOpacity = dimOpacity.calculatePixels(1);
+			}
+
+			paint.setOpacity(fOpacity);
+
+			
+			/*
 			// We'll get the paint either from a style attribute
 			// or from stop-color and stop-opacity attributes
 			auto style = getAttribute("style");
@@ -102,6 +136,7 @@ namespace waavs {
 			}
 
 			paint.setOpacity(fOpacity);
+			*/
 			BLVar aVar = paint.getVariant();
 			uint32_t colorValue = 0;
 			auto res = blVarToRgba32(&aVar, &colorValue);

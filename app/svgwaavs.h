@@ -1,13 +1,17 @@
 #pragma once
 
+
+#include <memory>
+#include <vector>
+
+
 #include "svgstructuretypes.h"
 
 #include "screensnapshot.h"
 #include "gmonitor.h"
 
 
-#include <memory>
-#include <vector>
+
 
 
 namespace waavs {
@@ -18,7 +22,7 @@ namespace waavs {
 	// Return value as variant(), and it can be used in all 
 	// the same places a SVGImage can be used 
 	//
-	struct DisplayCaptureElement : public SVGVisualNode
+	struct DisplayCaptureElement : public SVGGraphicsElement
 	{
 		static void registerFactory() {
 			registerSVGSingularNode("displayCapture",
@@ -52,9 +56,9 @@ namespace waavs {
 
 
 
-		DisplayCaptureElement(IAmGroot* aroot) :SVGVisualNode(aroot) {}
+		DisplayCaptureElement(IAmGroot* aroot) :SVGGraphicsElement(aroot) {}
 
-		const BLVar getVariant() override
+		const BLVar getVariant() override noexcept
 		{
 			if (fVar.isNull())
 			{

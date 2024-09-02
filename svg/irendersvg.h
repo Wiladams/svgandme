@@ -47,15 +47,12 @@ namespace waavs
     */
     struct IRenderSVG : public BLContext
     {
-        // Typography
-        FontHandler* fFontHandler = nullptr;
-        BLFontFace fFontFace{};
-        BLFont fFont{};
-        //double fFontSize = 16;
+        BLVar fBackground{};
         
-        double fTextX{ 0 };
-        double fTextY{ 0 };
-        double fTextAdvance = 0;
+        // Typography
+        FontHandler* fFontHandler{ nullptr };
+        BLFont fFont{};
+
 
         // local width/height
 		double fLocalWidth{ 0 };
@@ -66,15 +63,36 @@ namespace waavs
     public:
         IRenderSVG(FontHandler* fh) :fFontHandler(fh) 
         {
-            //clearAll();
-            fillAll(BLRgba32(0xff000000u));
+			fBackground = BLRgba32(0xFFFFFFFF);
+            fontHandler(fh);
+        }
+        
+        virtual ~IRenderSVG() {}
+
+        FontHandler* fontHandler() const { return fFontHandler; }
+        void fontHandler(FontHandler* fh) { 
+            fFontHandler = fh; 
             
-            // Start with default state
+            // Select a default faunt to start
+            if (fFontHandler) {
+                bool success = fFontHandler->selectFont("Arial", fFont, 16);
+            }
+        }
+
+        // Cakk this before each frame to be drawn
+        void renew()
+        {
+            if (fBackground.isNull())
+                clearAll();
+            else
+                fillAll(fBackground);
+
+            // Setup the default drawing state
+            // to conform to what SVG expects
             setCompOp(BL_COMP_OP_SRC_OVER);
 
             //ctx->setStrokeMiterLimit(4.0);
             strokeJoin(BL_STROKE_JOIN_MITER_CLIP);
-
 
             setFillRule(BL_FILL_RULE_NON_ZERO);
 
@@ -83,17 +101,14 @@ namespace waavs
             strokeWidth(1.0);
 
             // Select a default faunt to start
-            bool success = fh->selectFont("Arial", fFont, 16);
+            fontHandler(fFontHandler);
 
-            //textFamily("Arial");
-            //textSize(16);
         }
         
-        virtual ~IRenderSVG() {}
-
-        FontHandler* fontHandler() const { return fFontHandler; }
-        void fontHandler(FontHandler* fh) { fFontHandler = fh; }
-
+        void background(const BLVar& bg) noexcept
+        {
+			blVarAssignWeak(&fBackground, &bg);
+        }
         
         // Execute generic operation on this context
         // This supports interface expansion without adding new function prototypes
@@ -229,7 +244,7 @@ namespace waavs
             BLContext::strokeUtf8Text(BLPoint(x, y), fFont, (char *)txt.data(), txt.size());
             BLContext::fillUtf8Text(BLPoint(x, y), fFont, (char *)txt.data(), txt.size());
 
-            fTextX += fTextAdvance;
+            //fTextX += fTextAdvance;
         }
         
         
@@ -240,7 +255,7 @@ namespace waavs
             BLContext::strokeUtf8Text(BLPoint(x, y), fFont, txt);
             BLContext::fillUtf8Text(BLPoint(x, y), fFont, txt);
             
-			fTextX += fTextAdvance;
+			//fTextX += fTextAdvance;
         }
 
     };
