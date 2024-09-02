@@ -128,9 +128,9 @@ namespace waavs {
             ctx->fill(BLRgba32(0, 0, 0));
             ctx->noStroke();
             ctx->strokeWidth(1.0);
-            ctx->textAlign(ALIGNMENT::LEFT, ALIGNMENT::BASELINE);
-            ctx->textFamily("Arial");
-            ctx->textSize(16);
+            //ctx->textAlign(ALIGNMENT::LEFT, ALIGNMENT::BASELINE);
+            //ctx->textFamily("Arial");
+            //ctx->textSize(16);
 
             SVGGraphicsElement::draw(ctx, groot);
         }

@@ -87,7 +87,7 @@ namespace waavs {
         
         SVGOpacity(IAmGroot* groot) :SVGVisualProperty(groot) {}
 
-        const BLVar getVariant() override { return fOpacityVar; }
+        const BLVar getVariant() noexcept override { return fOpacityVar; }
         
         
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
@@ -232,10 +232,10 @@ namespace waavs {
         
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->textSize(fValue);
+            //ctx->textSize(fValue);
         }
 
-        void bindToGroot(IAmGroot* groot, SVGViewable* container) override
+        void bindToGroot(IAmGroot* groot, SVGViewable* container) noexcept override
         {
             if (nullptr == groot)
                 return;
@@ -294,7 +294,7 @@ namespace waavs {
         
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->textFamily(fValue.c_str());
+            //ctx->textFamily(fValue.c_str());
         }
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
@@ -458,7 +458,7 @@ namespace waavs {
 
         SVGPaintAttribute(IAmGroot* groot) :SVGVisualProperty(groot) {}
 
-        const BLVar getVariant() override
+        const BLVar getVariant() noexcept override
         {
             return fPaintVar;
         }
@@ -516,7 +516,7 @@ namespace waavs {
 
 
         // called when we have a reference to something
-        void bindToGroot(IAmGroot* groot, SVGViewable* container) override
+        void bindToGroot(IAmGroot* groot, SVGViewable* container) noexcept override
         {
             if (!needsBinding()) {
                 return;
@@ -1111,7 +1111,7 @@ namespace waavs {
             return fWrappedNode;
 		}
         
-        void bindToGroot(IAmGroot* groot, SVGViewable* container) override
+        void bindToGroot(IAmGroot* groot, SVGViewable* container) noexcept override
         {
             
             if (chunk_starts_with_cstr(rawValue(), "url("))
@@ -1200,7 +1200,7 @@ namespace waavs {
         }
 
         
-		const BLVar getVariant() override
+		const BLVar getVariant() noexcept override
 		{
             if (fClipNode == nullptr)
                 return fClipVar;
@@ -1211,7 +1211,7 @@ namespace waavs {
 		}
 
         // Let's get a connection to our referenced thing
-        void bindToGroot(IAmGroot* groot, SVGViewable* container) override
+        void bindToGroot(IAmGroot* groot, SVGViewable* container) noexcept override
         {
             ByteSpan str = rawValue();
 

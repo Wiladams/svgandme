@@ -28,9 +28,10 @@ namespace waavs {
 	// 
 	// The ByteSpan, is just like 'span' and 'view' objects
 	// it does not "own" the memory, it just points at it.
-	// It is used as a stand-in for various data representations
-	// as well as acting like a 'cursor', when trying to traverse
-	// a sequence of bytes.
+	// It is used as a stand-in for various data representations.
+	// A key aspect of the ByteSpan is its ability to be used
+	// as a 'cursor' to traverse the data it points to.
+
 
 	struct ByteSpan
 	{
@@ -38,24 +39,24 @@ namespace waavs {
 		const unsigned char* fEnd{ nullptr };
 
 		// Constructors
-		ByteSpan() : fStart(nullptr), fEnd(nullptr) {}
-		ByteSpan(const unsigned char* start, const unsigned char* end) : fStart(start), fEnd(end) {}
-		ByteSpan(const char* cstr) : fStart((const unsigned char*)cstr), fEnd((const unsigned char*)cstr + strlen(cstr)) {}
-		explicit ByteSpan(const void* data, size_t sz) :fStart((const unsigned char*)data), fEnd((const unsigned char*)data + sz) {}
+		ByteSpan() noexcept : fStart(nullptr), fEnd(nullptr) {}
+		ByteSpan(const unsigned char* start, const unsigned char* end) noexcept : fStart(start), fEnd(end) {}
+		ByteSpan(const char* cstr) noexcept : fStart((const unsigned char*)cstr), fEnd((const unsigned char*)cstr + strlen(cstr)) {}
+		explicit ByteSpan(const void* data, size_t sz) noexcept :fStart((const unsigned char*)data), fEnd((const unsigned char*)data + sz) {}
 
 
 
 		// Type conversions
-		explicit constexpr operator bool() const { return (fEnd - fStart) > 0; };
+		explicit constexpr operator bool() const noexcept { return (fEnd - fStart) > 0; };
 
 
 		// Array access
-		unsigned char& operator[](size_t i) { return ((unsigned char*)fStart)[i]; }
-		const unsigned char& operator[](size_t i) const { return ((unsigned char*)fStart)[i]; }
+		unsigned char& operator[](size_t i) noexcept { return ((unsigned char*)fStart)[i]; }
+		const unsigned char& operator[](size_t i) const noexcept { return ((unsigned char*)fStart)[i]; }
 
 		// get current value from fStart, like a 'peek' operation
-		unsigned char& operator*() { static unsigned char zero = 0;  if (fStart < fEnd) return *(unsigned char*)fStart; return  zero; }
-		const uint8_t& operator*() const { static unsigned char zero = 0;  if (fStart < fEnd) return *(unsigned char*)fStart; return  zero; }
+		unsigned char& operator*() noexcept { static unsigned char zero = 0;  if (fStart < fEnd) return *(unsigned char*)fStart; return  zero; }
+		const uint8_t& operator*() const noexcept { static unsigned char zero = 0;  if (fStart < fEnd) return *(unsigned char*)fStart; return  zero; }
 
 
 		//
@@ -111,7 +112,7 @@ namespace waavs {
 		}
 
 		
-		ByteSpan& operator+= (size_t n) {
+		ByteSpan& operator+= (size_t n) noexcept {
 			if (n > size())
 				n = size();
 			fStart += n;
@@ -120,8 +121,8 @@ namespace waavs {
 		}
 
 
-		ByteSpan& operator++() { return operator+=(1); }			// prefix notation ++y
-		ByteSpan& operator++(int i) { return operator+=(1); }       // postfix notation y++
+		ByteSpan& operator++() noexcept { return operator+=(1); }			// prefix notation ++y
+		ByteSpan& operator++(int i) noexcept { return operator+=(1); }       // postfix notation y++
 
 
 
@@ -419,16 +420,18 @@ namespace waavs
 		return { start, end };
 	}
 
-	static INLINE bool chunk_starts_with(const ByteSpan& a, const ByteSpan& b) noexcept
-	{
-		return a.startsWith(b);
-	}
+
 
 	static INLINE bool chunk_starts_with_char(const ByteSpan& a, const uint8_t b) noexcept
 	{	
 		return (a.size() > 0) && (a.fStart[0] == b);
 	}
 
+	static INLINE bool chunk_starts_with(const ByteSpan& src, const ByteSpan& str) noexcept
+	{
+		return src.startsWith(str);
+	}
+	
 	static INLINE bool chunk_starts_with_cstr(const ByteSpan& a, const char* b) noexcept
 	{
 		// see if the null terminated string is at the beginning of the bytespan
@@ -439,9 +442,8 @@ namespace waavs
 			++start;
 			++b;
 		}
-		return *b == 0;
 		
-		//return a.startsWith(ByteSpan(b));
+		return *b == 0;
 	}
 
 	static INLINE bool chunk_ends_with(const ByteSpan& a, const ByteSpan& b) noexcept
@@ -529,8 +531,8 @@ namespace waavs
 	static bool readNextKeyValue(ByteSpan& src, ByteSpan& key, ByteSpan& value) noexcept
 	{
 		// Zero these out in case there is failure
-		key = {};
-		value = {};
+		//key = {};
+		//value = {};
 
 		static charset equalChars("=");
 		static charset quoteChars("\"'");
@@ -617,6 +619,47 @@ namespace waavs
 		return { start, end };
 	}
 
+	// 
+	// scan a ByteSpan 'src', looking for the search span 'str'
+	// return true if it's found, and set the 'value' ByteSpan 
+	// to the location.
+	static INLINE bool chunk_find(const ByteSpan& src, const ByteSpan &str, ByteSpan &value) noexcept
+	{
+		const uint8_t* start = src.fStart;
+		const uint8_t* end = src.fEnd;
+		const uint8_t* b = str.fStart;
+		const uint8_t* bEnd = str.fEnd;
+
+		while (start < end )
+		{
+			// find the first character of the search string in the source string
+			while (start < end && *start != *b)
+				++start;
+
+			// if we've run out of source string, we didn't find it
+			if (start == end)
+				return false;
+
+			// now that we've found a potential first character
+			// of the search string, we need to see if the rest
+			// of the search string is present
+			while (start < end && b < bEnd && *start == *b)
+			{
+				++start;
+				++b;
+			}
+
+			// if we've run out of search string, we found it
+			if (b == bEnd)
+			{
+				value = { start - str.size(), start };
+				return true;
+			}
+		}
+
+		return false;
+	}
+	
 	static INLINE ByteSpan chunk_find_cstr(const ByteSpan& a, const char* c) noexcept
 	{
 		const uint8_t* start = a.fStart;
@@ -938,27 +981,27 @@ namespace waavs {
 		// No default constructor
 		MemBuff() = default;
 		
-		MemBuff(const size_t sz)
+		MemBuff(const size_t sz) noexcept
 		{
 			fData = new uint8_t[sz];
 			fSize = sz;
 		}
 
-		MemBuff(const ByteSpan& chunk)
+		MemBuff(const ByteSpan& chunk) noexcept
 		{
 			fSize = chunk.size();
 			fData = new uint8_t[fSize];
 			memcpy(fData, chunk.data(), fSize);
 		}
 		
-		~MemBuff()
+		~MemBuff() noexcept
 		{
 			if (fData != nullptr)
 				delete[] fData;
 		}
 
-		uint8_t* data() const { return fData; }
-		size_t size() const { return fSize; }
+		uint8_t* data() const noexcept { return fData; }
+		size_t size() const noexcept { return fSize; }
 
 		// initSize
 		// Initialize the memory buffer with a given size
@@ -973,29 +1016,30 @@ namespace waavs {
 		// copy the data from the input span into the memory buffer
 		//
 		
-		bool initFromSpan(const ByteSpan& srcSpan)
+		bool initFromSpan(const ByteSpan& srcSpan) noexcept
 		{
 			if (fData != nullptr)
 				delete[] fData;
 			
+			fData = nullptr;
 			fSize = srcSpan.size();
-			fData = new uint8_t[fSize];
-
-			memcpy(fData, srcSpan.fStart, fSize);
+			
+			if (fSize > 0) {
+				fData = new uint8_t[fSize];
+				memcpy(fData, srcSpan.fStart, fSize);
+			}
 			
 			return true;
 		}
 		
 		
-
-		// create a ByteSpan from the memory buffer
+		// span()
+		// 
+		// Create a ByteSpan from the memory buffer.
+		// This is pure convenience, as a ByteSpan can easily be created
+		// from the data() and size() functions.
 		// The lifetime of the ByteSpan that is returned it not governed
 		// by the MemBuff object.  This is something the caller must manage.
-		ByteSpan span() const { return ByteSpan(fData, fData + fSize); }
-
-
-
+		ByteSpan span() const noexcept { return ByteSpan(fData, fData + fSize); }
 	};
 }
-
-

@@ -35,7 +35,7 @@ namespace waavs
         HANDLE fMapHandle{};
 
     public:
-        MappedFile(HANDLE filehandle, HANDLE maphandle, void* data, size_t length)
+        MappedFile(HANDLE filehandle, HANDLE maphandle, void* data, size_t length) noexcept
             :fData(data)
             , fSize(length)
             , fFileHandle(filehandle)
@@ -45,7 +45,7 @@ namespace waavs
         }
 
 
-        MappedFile()
+        MappedFile() noexcept
             : fData(nullptr)
             , fSize(0)
             , fIsValid(false)
@@ -53,13 +53,13 @@ namespace waavs
             , fMapHandle(nullptr)
         {}
 
-        virtual ~MappedFile() { close(); }
+        virtual ~MappedFile() noexcept { close(); }
 
-        bool isValid() const { return fIsValid; }
-        void* data() const { return fData; }
-        size_t size() const { return fSize; }
+        bool isValid() const noexcept { return fIsValid; }
+        void* data() const noexcept { return fData; }
+        size_t size() const noexcept { return fSize; }
 
-        bool close()
+        bool close() noexcept
         {
             if (fData != nullptr) {
                 ::UnmapViewOfFile(fData);
@@ -88,7 +88,7 @@ namespace waavs
         static std::shared_ptr<MappedFile> create_shared(const std::string& filename,
             uint32_t desiredAccess = GENERIC_READ,
             uint32_t shareMode = FILE_SHARE_READ,
-            uint32_t disposition = OPEN_EXISTING)
+            uint32_t disposition = OPEN_EXISTING) noexcept
         {
             uint32_t flagsAndAttributes = (FILE_ATTRIBUTE_NORMAL | FILE_FLAG_RANDOM_ACCESS);
 

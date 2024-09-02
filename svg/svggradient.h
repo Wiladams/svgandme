@@ -137,7 +137,7 @@ namespace waavs {
 
 		SVGGradient operator=(const SVGGradient& other) = delete;
 
-		const BLVar getVariant() override
+		const BLVar getVariant() noexcept override
 		{
 			return fGradientVar;
 		}
@@ -220,15 +220,16 @@ namespace waavs {
 		}
 
 
-		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
+		void resolvePosition(IAmGroot* groot, SVGViewable* container)
+		//void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
 		{
-			SVGGraphicsElement::loadVisualProperties(attrs, groot);
+			//SVGGraphicsElement::loadVisualProperties(attrs, groot);
 
 			// See if we have a template reference
-			if (attrs.getAttribute("href"))
-				fTemplateReference = attrs.getAttribute("href");
-			else if (attrs.getAttribute("xlink:href"))
-				fTemplateReference = attrs.getAttribute("xlink:href");
+			if (getAttribute("href"))
+				fTemplateReference = getAttribute("href");
+			else if (getAttribute("xlink:href"))
+				fTemplateReference = getAttribute("xlink:href");
 
 			//if (fTemplateReference)
 			//	needsResolving(true);
@@ -236,16 +237,16 @@ namespace waavs {
 			// Whether we've loaded a template or not
 			// load the common attributes for gradients
 			BLExtendMode extendMode{ BL_EXTEND_MODE_PAD };
-			if (parseSpreadMethod(attrs.getAttribute("spreadMethod"), extendMode))
+			if (parseSpreadMethod(getAttribute("spreadMethod"), extendMode))
 			{
 				fGradient.setExtendMode(extendMode);
 			}
 
 
 			// read the gradientUnits
-			if (attrs.getAttribute("gradientUnits"))
+			if (getAttribute("gradientUnits"))
 			{
-				auto units = attrs.getAttribute("gradientUnits");
+				auto units = getAttribute("gradientUnits");
 				if (units == "userSpaceOnUse")
 					fGradientUnits = userSpaceOnUse;
 				else if (units == "objectBoundingBox")
@@ -255,9 +256,9 @@ namespace waavs {
 			// Get the transform
 			// This will get applied in the resolveReferences in case
 			// the template has its own matrix
-			if (attrs.getAttribute("gradientTransform"))
+			if (getAttribute("gradientTransform"))
 			{
-				fHasGradientTransform = parseTransform(attrs.getAttribute("gradientTransform"), fGradientTransform);
+				fHasGradientTransform = parseTransform(getAttribute("gradientTransform"), fGradientTransform);
 			}
 
 			needsBinding(true);
@@ -594,23 +595,24 @@ namespace waavs {
 		SVGSolidColorElement(IAmGroot* aroot) :SVGVisualNode(aroot) {}
 
 
-		const BLVar getVariant() override
+		const BLVar getVariant() noexcept override
 		{
 			return fPaint.getVariant();
 		}
 
-		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
+		//void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
-			SVGVisualNode::loadVisualProperties(attrs, groot);
+			//SVGVisualNode::loadVisualProperties(attrs, groot);
 
-			if (attrs.getAttribute("solid-color"))
+			if (getAttribute("solid-color"))
 			{
-				fPaint.loadFromChunk(attrs.getAttribute("solid-color"));
+				fPaint.loadFromChunk(getAttribute("solid-color"));
 			}
 
-			if (attrs.getAttribute("solid-opacity"))
+			if (getAttribute("solid-opacity"))
 			{
-				double opa = toDouble(attrs.getAttribute("solid-opacity"));
+				double opa = toDouble(getAttribute("solid-opacity"));
 				fPaint.setOpacity(opa);
 			}
 

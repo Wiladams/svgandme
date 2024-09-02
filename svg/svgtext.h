@@ -38,7 +38,73 @@ namespace waavs {
 		return true;
 	}
 
+	// Text Wrap
+// 
+	enum class TEXTWRAP : unsigned
+	{
+		WORD,
+		CHAR
+	};
 	
+	// Parse the dominant-baseline attribute
+	//
+	enum class DOMINANTBASELINE
+	{
+		AUTO,
+		ALPHABETIC,
+		CENTRAL, 
+		HANGING, 
+		IDEOGRAPHIC,
+		MATHEMATICAL, 
+		MIDDLE,
+		NO_CHANGE,
+		RESET_SIZE,
+		TEXT_AFTER_EDGE,
+		TEXT_BEFORE_EDGE,
+		TEXT_BOTTOM,
+		TEXT_TOP,
+		USE_SCRIPT,
+	};
+
+	// Parse the value in the dominant-baseline attribute
+	// return false if the value is not recognized
+	static bool parseDominantBaseline(const ByteSpan& inChunk, DOMINANTBASELINE& value)
+	{
+		if (inChunk == "auto")
+			value = DOMINANTBASELINE::AUTO;
+		else if (inChunk == "alphabetic")
+			value = DOMINANTBASELINE::ALPHABETIC;
+		else if (inChunk == "central")
+			value = DOMINANTBASELINE::CENTRAL;
+		else if (inChunk == "hanging")
+			value = DOMINANTBASELINE::HANGING;
+		else if (inChunk == "ideographic")
+			value = DOMINANTBASELINE::IDEOGRAPHIC;
+		else if (inChunk == "mathematical")
+			value = DOMINANTBASELINE::MATHEMATICAL;
+		else if (inChunk == "middle")
+			value = DOMINANTBASELINE::MIDDLE;
+		else if (inChunk == "no-change")
+			value = DOMINANTBASELINE::NO_CHANGE;
+		else if (inChunk == "reset-size")
+			value = DOMINANTBASELINE::RESET_SIZE;
+		else if (inChunk == "text-after-edge")
+			value = DOMINANTBASELINE::TEXT_AFTER_EDGE;
+		else if (inChunk == "text-before-edge")
+			value = DOMINANTBASELINE::TEXT_BEFORE_EDGE;
+		else if (inChunk == "text-bottom")
+			value = DOMINANTBASELINE::TEXT_BOTTOM;
+		else if (inChunk == "text-top")
+			value = DOMINANTBASELINE::TEXT_TOP;
+		else if (inChunk == "use-script")
+			value = DOMINANTBASELINE::USE_SCRIPT;
+		else
+			return false;
+
+
+		return true;
+
+	}
 	
 }
 
@@ -87,8 +153,20 @@ namespace waavs {
 		double descent() const {
 			return fFont.metrics().descent;
 		}
-			
-		void bindToGroot(IAmGroot* groot, SVGViewable* container) override
+		
+		double emHeight() const noexcept 
+		{
+			auto size = textMeasure("M"); 
+			return size.y;
+		}
+		
+		double exHeight() const noexcept
+		{
+			auto size = textMeasure("x");
+			return size.y;
+		}
+		
+		void bindToGroot(IAmGroot* groot, SVGViewable* container) noexcept override
 		{
 			if (!isSet()) {
 				return;
@@ -166,7 +244,7 @@ namespace waavs {
 		// calcTextPosition
 // Given a piece of text, and a coordinate
 // calculate its baseline given the a specified alignment
-		BLRect calcTextPosition(const ByteSpan& txt, double x, double y, ALIGNMENT hAlignment = ALIGNMENT::LEFT, ALIGNMENT vAlignment = ALIGNMENT::BASELINE) const
+		BLRect calcTextPosition(const ByteSpan& txt, double x, double y, ALIGNMENT hAlignment = ALIGNMENT::LEFT, ALIGNMENT vAlignment = ALIGNMENT::BASELINE, DOMINANTBASELINE baseline = DOMINANTBASELINE::AUTO) const
 		{
 			BLPoint txtSize = textMeasure(txt);
 			double cx = txtSize.x;
@@ -219,6 +297,19 @@ namespace waavs {
 				break;
 			}
 
+			switch (baseline)
+			{
+				case DOMINANTBASELINE::HANGING:
+					y = y + emHeight();
+				break;
+					
+				case DOMINANTBASELINE::CENTRAL:
+				case DOMINANTBASELINE::MIDDLE:
+					// adjust by half the height
+					y = y + (exHeight()/2);
+				break;
+			}
+			
 			return { x, y, cx, cy };
 		}
 		
@@ -242,14 +333,14 @@ namespace waavs {
 	// It contains the text itself
 	// positioning information
 	// style information
-	struct SVGTextRun : public SVGGraphicsElement
+	struct SVGTextRun : public SVGVisualNode
 	{
 		ByteSpan fText{};
 		BLPoint fTextSize{};
 
 		
 		SVGTextRun(const ByteSpan &txt, IAmGroot* groot)
-			: SVGGraphicsElement(groot)
+			: SVGVisualNode(groot)
 			, fText(txt)
 		{
 			name("textrun");
@@ -284,10 +375,10 @@ namespace waavs {
 		}
 
 		BLPoint fTextCursor{};
-		//BLPoint fPosition{};	// The next position where text will be drawn
 		ALIGNMENT fTextHAlignment = ALIGNMENT::LEFT;
 		ALIGNMENT fTextVAlignment = ALIGNMENT::BASELINE;
-
+		DOMINANTBASELINE fDominantBaseline = DOMINANTBASELINE::AUTO;
+		
 		SVGFontSelection fFontSelection{ nullptr };
 
 		double fX{ 0 };
@@ -397,27 +488,12 @@ namespace waavs {
 
 			parseTextAnchor(getAttribute("text-anchor"), fTextHAlignment);
 			parseTextAlign(getAttribute("text-align"), fTextVAlignment);
+			parseDominantBaseline(getAttribute("dominant-baseline"), fDominantBaseline);
 
-
-			fFontSelection.loadFromXmlAttributes(*this, groot);
+			fFontSelection.loadFromXmlAttributes(this->fAttributes, groot);
 			fFontSelection.bindToGroot(groot, container);
 		}
 
-		// Contains styling attributes
-		void applyAttributes(IRenderSVG* ctx, IAmGroot* groot) override
-		{
-			// Apply transform if it's not the identity transform
-			if (fHasTransform)  //fTransform.type() != BL_MATRIX2D_TYPE_IDENTITY)
-				ctx->applyTransform(fTransform);
-
-			// BUGBUG - It might be useful to pass in the visual object
-			// as additional context for attributes such as gradients
-			// that might need that
-			for (auto& prop : fVisualProperties) {
-				if (prop.second->autoDraw() && prop.second->isSet())
-					prop.second->draw(ctx, groot);
-			}
-		}
 		
 		void drawChildren(IRenderSVG* ctx, IAmGroot* groot) override
 		{
@@ -440,7 +516,7 @@ namespace waavs {
 				auto textNode = std::dynamic_pointer_cast<SVGTextRun>(node);
 				if (nullptr != textNode)
 				{
-					BLRect pRect = fFontSelection.calcTextPosition(textNode->text(), fTextCursor.x, fTextCursor.y, fTextHAlignment, fTextVAlignment);
+					BLRect pRect = fFontSelection.calcTextPosition(textNode->text(), fTextCursor.x, fTextCursor.y, fTextHAlignment, fTextVAlignment, fDominantBaseline);
 					fFontSelection.draw(ctx, groot);
 					ctx->text(textNode->text(), pRect.x, pRect.y);
 					fTextCursor.x += pRect.w;
@@ -460,8 +536,6 @@ namespace waavs {
 
 			}
 			
-			// tell the outside world where we left off
-			//fPosition = fStartPosition;
 		}
 
 		void draw(IRenderSVG* ctx, IAmGroot* groot) override
@@ -477,26 +551,7 @@ namespace waavs {
 
 			ctx->pop();
 		}
-		
 
-		// BUGBUG - this needs to be restructured
-// such that the css and style attributes are applied
-// and then the display properties can override them
-		void loadFromXmlElement(const XmlElement& elem, IAmGroot* groot) override
-		{
-			scanAttributes(elem.data());
-
-			// save the id if we've got an id attribute
-			id(getAttribute("id"));
-
-			// Save the name if we've got one
-			name(elem.name());
-
-
-
-
-			loadCommonVisualProperties(groot);
-		}
 	};
 
 
@@ -523,7 +578,6 @@ namespace waavs {
 		SVGTextNode(IAmGroot* groot) 
 			:SVGTSpanNode(groot)
 		{
-			needsBinding(true);
 		}
 
 

@@ -35,10 +35,10 @@ namespace waavs {
     public:
 
         // default and copy constructor not allowed, let's see what breaks
-        SVGObject() = delete;
+        SVGObject() = default;
         SVGObject(const SVGObject& other) = delete;
         
-        SVGObject(IAmGroot* root) {}
+        //SVGObject(IAmGroot* root) noexcept {}
 
         virtual ~SVGObject() = default;
 
@@ -46,38 +46,50 @@ namespace waavs {
         SVGObject& operator=(const SVGObject& other) = delete;
 
         
-        const ByteSpan& id() const { return fId; }
-        void id(const ByteSpan& aid) { fId = aid; }
+        const ByteSpan& id() const noexcept { return fId; }
+        void id(const ByteSpan& aid) noexcept { fId = aid; }
         
        
-        bool needsBinding() const { return fNeedsBinding; }
-        void needsBinding(bool needsIt) { fNeedsBinding = needsIt; }
+        bool needsBinding() const noexcept { return fNeedsBinding; }
+        void needsBinding(bool needsIt) noexcept { fNeedsBinding = needsIt; }
 
 
-        virtual void bindToGroot(IAmGroot* groot, SVGViewable* container) {  }
+        virtual void bindToGroot(IAmGroot* groot, SVGViewable* container) noexcept {  }
 
         // sub-classes should return something interesting as BLVar
         // This can be used for styling, so images, colors, patterns, gradients, etc
-        virtual const BLVar getVariant() { return BLVar::null();}
+        virtual const BLVar getVariant() noexcept { return BLVar::null();}
 
 
     };
 
-    struct SVGViewable : public SVGObject, public XmlAttributeCollection
+    struct SVGViewable : public SVGObject //, public XmlAttributeCollection
     {
     protected:
+        XmlAttributeCollection fPresentationAttributes{};
+        XmlAttributeCollection fAttributes;
         bool fIsVisible{ true };
         ByteSpan fName{};
+        ByteSpan fAttributeSpan{};
+        ByteSpan fStyleAttribute{};
+		ByteSpan fClassAttribute{};
+
         
     public:
-        SVGViewable(IAmGroot* groot) :SVGObject(groot) {}
+        SVGViewable(IAmGroot* groot) :SVGObject() {}
 
 
         // IViewable
         void name(const ByteSpan& aname) { fName = aname; }
         const ByteSpan& name() const { return fName; }
 
-
+		ByteSpan getAttribute(const ByteSpan& key) const noexcept
+		{
+			return fAttributes.getAttribute(key);
+		}
+        
+        bool hasAttribute(const ByteSpan& key) const noexcept {return fAttributes.hasAttribute(key); }
+        
         // IPlaceable
         virtual BLRect frame() const { return BLRect(); }
         virtual BLRect getBBox() const { return BLRect{}; }
@@ -94,15 +106,48 @@ namespace waavs {
         
         virtual void draw(IRenderSVG* ctx, IAmGroot* groot) {  return; }
 
+
+        // loadFromXmlElement
+        // Here is our first chance at constructing SVG specifics
+        // from the raw XmlElement
+        // At this stage, we're interested in preserving the data associated
+        // with the attributes, but not necessarily parsing all the attributes.
+        // we need to capture the element name, and the ID field if it exists
+        // and the attribute span for later processing
         virtual void loadFromXmlElement(const XmlElement& elem, IAmGroot* groot)
         {
-            scanAttributes(elem.data());
-            
-            // save the id if we've got an id attribute
-            id(getAttribute("id"));
-            
             // Save the name if we've got one
             name(elem.name());
+
+            // Gather all the presentation attributes to start
+            fAttributeSpan = elem.data();
+            //scanAttributes(fAttributeSpan);
+            
+            // Scan the attributes, saving off the ones we think are interesting
+			ByteSpan src = elem.data();
+            ByteSpan attrName{};
+            ByteSpan attrValue{};
+            while (readNextKeyValue(src, attrName, attrValue))
+            {
+				if (attrName == "id")
+				{
+					id(attrValue);
+				}
+                else if (attrName == "style")
+                {
+					fStyleAttribute = attrValue;
+				}
+                else if (attrName == "class")
+                {
+					fClassAttribute = attrValue;
+                }
+                else {
+                    fPresentationAttributes.addAttribute(attrName, attrValue);
+                }
+            }
+            
+
+
         }
         
         virtual void loadSelfFromXmlIterator(XmlElementIterator& iter, IAmGroot* groot)
@@ -246,7 +291,7 @@ namespace waavs {
         ByteSpan fRawValue;
 
         
-        SVGVisualProperty(IAmGroot* groot) :SVGObject(groot), fIsSet(false) {}
+        SVGVisualProperty(IAmGroot* groot) :SVGObject(), fIsSet(false) {}
 
         SVGVisualProperty(const SVGVisualProperty& other) = delete;
         SVGVisualProperty& operator=(const SVGVisualProperty& rhs) = delete;
@@ -322,7 +367,6 @@ namespace waavs {
         std::unordered_map<ByteSpan, std::shared_ptr<SVGVisualProperty>, ByteSpanHash> fVisualProperties{};
 
         bool fIsStructural{ true };
-
         bool fHasTransform{ false };
         BLMatrix2D fTransform{};
 
@@ -381,7 +425,76 @@ namespace waavs {
 
 		void resolveProperties(IAmGroot* groot, SVGViewable* container)
 		{
-            for (auto& attr : fAttributes)
+            
+            // First, lookup CSS based on tagname
+            // See if there's an element selector for the current element
+            if (!name().empty())
+            {
+                auto esel = groot->styleSheet()->getElementSelector(name());
+                if (esel != nullptr)
+                {
+					fAttributes.mergeAttributes(esel->attributes());
+                }
+            }
+
+            // Lookup any attributes based on the class, if specified
+            ByteSpan classChunk = fClassAttribute;
+            while (classChunk)
+            {
+                // peel a word off the front
+                auto classId = chunk_token(classChunk, xmlwsp);
+
+                auto csel = groot->styleSheet()->getClassSelector(classId);
+                if (csel != nullptr)
+                {
+                    fAttributes.mergeAttributes(csel->attributes());
+                }
+                else {
+                    //printf("SVGVisualNode::bindPropertiesToGroot, ERROR - NO CLASS SELECTOR FOR %s\n", toString(classId).c_str());
+                }
+            }
+
+            // Upsert any of the attributes associated with 'style' attribute
+            // if they exist
+            //ByteSpan styleChunk = getAttribute("style");
+
+            if (fStyleAttribute) {
+                XmlAttributeCollection styleAttributes;
+
+                parseStyleAttribute(fStyleAttribute, styleAttributes);
+                fAttributes.mergeAttributes(styleAttributes);
+            }
+
+            // Finally, override any of the attributes already set with the 
+            // presentation attributes of the current element, if any
+            fAttributes.mergeAttributes(fPresentationAttributes);
+
+
+            // Use up some of the attributes
+            ByteSpan display = fAttributes.getAttribute("display");
+            if (display)
+            {
+                display = chunk_trim(display, xmlwsp);
+
+                if (display == "none")
+                    visible(false);
+            }
+
+            if (fAttributes.getAttribute("transform"))
+            {
+                fHasTransform = parseTransform(fAttributes.getAttribute("transform"), fTransform);
+                if (fHasTransform)
+                {
+                    // create the inverse transform for subsequent
+                    // UI interaction
+                    //fTransformInverse = fTransform;
+                    //fTransformInverse.invert();
+                }
+            }
+
+            
+            //
+            for (auto& attr : fAttributes.attributes())
             {
                 // Next, see if there is a property registered for the attribute
                 auto it = gSVGAttributeCreation.find(attr.first);
@@ -396,7 +509,7 @@ namespace waavs {
             }
 		}
         
-        void bindToGroot(IAmGroot* groot, SVGViewable *container) override
+        void bindToGroot(IAmGroot* groot, SVGViewable *container) noexcept override
         {
 			if (!needsBinding())
 				return;
@@ -420,6 +533,7 @@ namespace waavs {
             return nullptr;
         }
 
+        /*
         //
         // setAttribute
         // 
@@ -434,9 +548,11 @@ namespace waavs {
                 return;
             
             // First, set the raw attribute 
-            addAttribute(name, value);
+            fAttributes.addAttribute(name, value);
         }
-
+        */
+        
+        /*
         //
         // loadVisualProperties
         // 
@@ -480,6 +596,7 @@ namespace waavs {
 				setAttribute(attr.first, attr.second);
             }
 
+            
 			// BUGBUG - this is a hack to get the fill and stroke
             // It needs to go deeper and get the color attribute that's from the tree
             // where the current node is just the latest.
@@ -495,10 +612,11 @@ namespace waavs {
                     setAttribute("stroke", colorValue);
                 }
             }
+            
         }
-        
+        */
 
-
+        /*
         // Assuming we've already scanned our attributes
         // do further processing with them
         void loadCommonVisualProperties(IAmGroot* groot)
@@ -506,7 +624,7 @@ namespace waavs {
             // BUGBUG - need to decide order of precedence for presentation attributes
             // load the common stuff that doesn't require
             // any additional processing
-            loadVisualProperties(*this, groot);
+            loadVisualProperties(this->fAttributes, groot);
 
             // Handle the class attribute if there is one
             // The class attribute can be a whitespace separated list
@@ -567,7 +685,7 @@ namespace waavs {
                 loadVisualProperties(styleAttributes, groot);
             }
         }
-
+        */
 
         // Contains styling attributes
         virtual void applyAttributes(IRenderSVG* ctx, IAmGroot* groot)
@@ -610,26 +728,6 @@ namespace waavs {
             ctx->pop();
         }
 
-        // BUGBUG - this needs to be restructured
-        // such that the css and style attributes are applied
-        // and then the display properties can override them
-        void loadFromXmlElement(const XmlElement & elem, IAmGroot* groot) override
-        {
-            //SVGViewable::loadFromXmlElement(elem, groot);
-            scanAttributes(elem.data());
-
-            // save the id if we've got an id attribute
-            id(getAttribute("id"));
-
-            // Save the name if we've got one
-            name(elem.name());
-
-            
-
-
-			loadCommonVisualProperties(groot);
-        }
-        
 
     };
 }
@@ -722,7 +820,7 @@ namespace waavs {
         // then do your own thing.  We don't want to call a 'bindSelfToGroot'
         // here, because that complicates the interactions and sequences of things
         // so just override bindToGroot
-        void bindToGroot(IAmGroot* groot, SVGViewable* container) override
+        void bindToGroot(IAmGroot* groot, SVGViewable* container) noexcept override
         {
 			SVGVisualNode::bindToGroot(groot, container);
             
@@ -746,7 +844,7 @@ namespace waavs {
         }
 
 
-        const BLVar getVariant() override
+        const BLVar getVariant() noexcept override
         {
             // if our variant is null
             // traverse down our fNodes, until we find

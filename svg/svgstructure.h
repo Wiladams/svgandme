@@ -99,7 +99,11 @@ namespace waavs {
 			// explicitly from either width and height properties
 			// or through the viewBox
 			// or both
-
+			fDimX.loadFromChunk(getAttribute("x"));
+			fDimY.loadFromChunk(getAttribute("y"));
+			fDimWidth.loadFromChunk(getAttribute("width"));
+			fDimHeight.loadFromChunk(getAttribute("height"));
+			
 			fBBox.x = fDimX.calculatePixels(w, 0, dpi);
 			fBBox.y = fDimY.calculatePixels(h, 0, dpi);
 			fBBox.w = fDimWidth.calculatePixels(w, 0, dpi);
@@ -108,7 +112,8 @@ namespace waavs {
 			fViewport.sceneFrame(getBBox());
 			//fViewport.surfaceFrame(getBBox());
 
-
+			fViewbox.loadFromChunk(getAttribute("viewBox"));
+			
 			if (fViewbox.isSet()) {
 				fViewport.sceneFrame(fViewbox.fRect);
 
@@ -124,19 +129,6 @@ namespace waavs {
 			}
 
 			fViewport.surfaceFrame(getBBox());
-		}
-
-		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
-		{
-			SVGGraphicsElement::loadVisualProperties(attrs, groot);
-
-
-			fViewbox.loadFromChunk(attrs.getAttribute("viewBox"));
-
-			fDimX.loadFromChunk(attrs.getAttribute("x"));
-			fDimY.loadFromChunk(attrs.getAttribute("y"));
-			fDimWidth.loadFromChunk(attrs.getAttribute("width"));
-			fDimHeight.loadFromChunk(attrs.getAttribute("height"));
 		}
 
 
@@ -507,7 +499,7 @@ namespace waavs {
 		SVGUseElement(const SVGUseElement& other) = delete;
 		SVGUseElement(IAmGroot* aroot) : SVGGraphicsElement(aroot) {}
 
-		const BLVar getVariant() override
+		const BLVar getVariant() noexcept override
 		{
 			if (fWrappedNode)
 				return fWrappedNode->getVariant();

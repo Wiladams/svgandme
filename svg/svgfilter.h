@@ -118,9 +118,10 @@ namespace waavs {
 			return true;
 		}
 
-		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
+		//void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
-			SVGGraphicsElement::loadVisualProperties(attrs, groot);
+			//SVGGraphicsElement::loadVisualProperties(attrs, groot);
 
 			fX.loadFromChunk(getAttribute("x"));
 			fY.loadFromChunk(getAttribute("y"));
@@ -496,12 +497,9 @@ namespace waavs {
 			isStructural(true);
 		}
 
-		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
-			SVGGraphicsElement::loadVisualProperties(attrs, groot);
-
 			fStdDeviation.loadFromChunk(getAttribute("stdDeviation"));
-
 		}
 	};
 

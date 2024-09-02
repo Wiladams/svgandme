@@ -105,9 +105,9 @@ namespace waavs {
 			fDimHeight.loadFromChunk(getAttribute("height"));
 		}
 		
-		void bindToGroot(IAmGroot* groot, SVGViewable* container) override
+		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
-			SVGVisualNode::bindToGroot(groot, container);
+
 
 			// BUGBUG - need to get the dpi and canvas size to calculate these properly
 			fX = fDimX.calculatePixels();
@@ -144,13 +144,6 @@ namespace waavs {
 
 		}
 
-		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
-		{
-			SVGVisualNode::loadVisualProperties(attrs, groot);
-
-
-
-		}
 		
 		void update(IAmGroot* groot) override
 		{

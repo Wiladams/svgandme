@@ -48,7 +48,7 @@ namespace waavs {
 		// 
 		// BUGBUG - this needs to happen in resolvePaint, or bingToGroot()
 		//
-		const BLVar getVariant() override
+		const BLVar getVariant() noexcept override
 		{
 			if (!fVar.isNull())
 				return fVar;

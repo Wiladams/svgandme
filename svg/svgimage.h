@@ -74,7 +74,7 @@ namespace waavs {
 			return BLRect(fX, fY, fWidth, fHeight);
 		}
 		
-		const BLVar getVariant() override
+		const BLVar getVariant() noexcept override
 		{
 			return fImageVar;
 		}
@@ -101,6 +101,10 @@ namespace waavs {
 			fDimY.loadFromChunk(getAttribute("y"));
 			fDimWidth.loadFromChunk(getAttribute("width"));
 			fDimHeight.loadFromChunk(getAttribute("height"));
+
+			fImageRef = getAttribute("href");
+			if (!fImageRef)
+				fImageRef = getAttribute("xlink:href");
 
 			
 			// Parse the image so we can get its dimensions
@@ -144,18 +148,6 @@ namespace waavs {
 			fImageVar = fImage;
 		}
 
-		virtual void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot)
-		{
-			SVGGraphicsElement::loadVisualProperties(attrs, groot);
-
-			//printf("SVGImageNode: %3.0f %3.0f\n", fWidth, fHeight);
-			ByteSpan href = attrs.getAttribute("href");
-			if (!href)
-				href = attrs.getAttribute("xlink:href");
-
-			if (href)
-				fImageRef = href;
-		}
 
 		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{

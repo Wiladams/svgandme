@@ -35,7 +35,7 @@ namespace waavs {
 		std::shared_ptr<SVGVisualNode> fDefaultNode{ nullptr };
 		std::shared_ptr<SVGVisualNode> fSelectedNode{ nullptr };
 
-		SVGSwitchElement(IAmGroot* root) : SVGGraphicsElement(root) {}
+		SVGSwitchElement(IAmGroot* root) noexcept : SVGGraphicsElement(root) {}
 
 
 		void resolvePosition(IAmGroot* groot, SVGViewable* container) override

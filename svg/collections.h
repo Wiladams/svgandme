@@ -16,27 +16,27 @@ namespace waavs {
         std::unordered_map<ByteSpan, ByteSpan, ByteSpanHash> fAttributes{};
 
         XmlAttributeCollection() = default;
-        XmlAttributeCollection(const XmlAttributeCollection& other)
+        XmlAttributeCollection(const XmlAttributeCollection& other) noexcept
             :fAttributes(other.fAttributes)
         {}
 
-        XmlAttributeCollection(const ByteSpan& inChunk)
+        XmlAttributeCollection(const ByteSpan& inChunk) noexcept
         {
             scanAttributes(inChunk);
         }
 
         // Return a const attribute collection
-        const std::unordered_map<ByteSpan, ByteSpan, ByteSpanHash>& attributes() const { return fAttributes; }
+        const std::unordered_map<ByteSpan, ByteSpan, ByteSpanHash>& attributes() const noexcept { return fAttributes; }
 
-        size_t size() const { return fAttributes.size(); }
+        size_t size() const noexcept { return fAttributes.size(); }
 
-        virtual void clear() { fAttributes.clear(); }
+        void clear() noexcept { fAttributes.clear(); }
 
         // scanAttributes()
         // Given a chunk that contains attribute key value pairs
         // separated by whitespace, parse them, and store the key/value pairs 
         // in the fAttributes map
-        bool scanAttributes(const ByteSpan& inChunk)
+        bool scanAttributes(const ByteSpan& inChunk) noexcept
         {
             ByteSpan src = inChunk;
             ByteSpan key;
@@ -51,7 +51,7 @@ namespace waavs {
         }
 
         //bool hasAttribute(const std::string& inName) const
-        bool hasAttribute(const ByteSpan& inName) const
+        bool hasAttribute(const ByteSpan& inName) const noexcept
         {
             return fAttributes.find(inName) != fAttributes.end();
         }
@@ -61,14 +61,14 @@ namespace waavs {
         // if the attribute already exists, replace its value
         // with the new value
         //void addAttribute(const std::string& name, const ByteSpan& valueChunk)
-        void addAttribute(const ByteSpan& name, const ByteSpan& valueChunk)
+        void addAttribute(const ByteSpan& name, const ByteSpan& valueChunk) noexcept
         {
             fAttributes[name] = valueChunk;
         }
 
 
         //ByteSpan getAttribute(const std::string& name) const
-        ByteSpan getAttribute(const ByteSpan& name) const
+        ByteSpan getAttribute(const ByteSpan& name) const noexcept
         {
             auto it = fAttributes.find(name);
             if (it != fAttributes.end())
@@ -77,7 +77,7 @@ namespace waavs {
         }
 
 
-        XmlAttributeCollection& mergeAttributes(const XmlAttributeCollection& other)
+        XmlAttributeCollection& mergeAttributes(const XmlAttributeCollection& other) noexcept
         {
             for (auto& attr : other.fAttributes)
             {
@@ -86,6 +86,21 @@ namespace waavs {
             return *this;
         }
 
+		// Given a name, find the attribute and return its value
+        // return false if the name is not found
+        static bool getValue(const ByteSpan &inChunk, const ByteSpan& key, ByteSpan& value) noexcept
+        {
+            ByteSpan src = inChunk;
+            ByteSpan name{};
+
+            while (readNextKeyValue(src, name, value))
+            {
+                if (name == key)
+                    return true;
+            }
+
+            return false;
+        }
     };
 }
 

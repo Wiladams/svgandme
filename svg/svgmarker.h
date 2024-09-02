@@ -59,7 +59,43 @@ namespace waavs {
 
 		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
+			auto preserveAspectRatio = getAttribute("preserveAspectRatio");
 
+
+			if (getAttribute("viewBox")) {
+				fViewbox.loadFromChunk(getAttribute("viewBox"));
+			}
+
+			if (getAttribute("refX")) {
+				fDimRefX.loadFromChunk(getAttribute("refX"));
+			}
+			if (getAttribute("refY")) {
+				fDimRefY.loadFromChunk(getAttribute("refY"));
+			}
+
+			if (getAttribute("markerWidth")) {
+				fDimMarkerWidth.loadFromChunk(getAttribute("markerWidth"));
+			}
+
+			if (getAttribute("markerHeight")) {
+				fDimMarkerHeight.loadFromChunk(getAttribute("markerHeight"));
+			}
+
+			if (getAttribute("markerUnits")) {
+				auto units = getAttribute("markerUnits");
+				if (units == "strokeWidth") {
+					fMarkerUnits = StrokeWidth;
+				}
+				else if (units == "userSpaceOnUse") {
+					fMarkerUnits = UserSpaceOnUse;
+				}
+			}
+
+			if (getAttribute("orient")) {
+				fOrientation.loadFromChunk(getAttribute("orient"));
+			}
+			
+			
 			if (fDimMarkerWidth.isSet())
 				fMarkerWidth = fDimMarkerWidth.calculatePixels();
 			else if (fViewbox.isSet())
@@ -120,48 +156,6 @@ namespace waavs {
 			SVGGraphicsElement::drawChildren(ctx, groot);
 
 			ctx->pop();
-		}
-
-		void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
-		{
-			SVGGraphicsElement::loadVisualProperties(attrs, groot);
-
-			auto preserveAspectRatio = attrs.getAttribute("preserveAspectRatio");
-
-
-			if (attrs.getAttribute("viewBox")) {
-				fViewbox.loadFromChunk(attrs.getAttribute("viewBox"));
-			}
-
-			if (attrs.getAttribute("refX")) {
-				fDimRefX.loadFromChunk(attrs.getAttribute("refX"));
-			}
-			if (attrs.getAttribute("refY")) {
-				fDimRefY.loadFromChunk(attrs.getAttribute("refY"));
-			}
-
-			if (attrs.getAttribute("markerWidth")) {
-				fDimMarkerWidth.loadFromChunk(attrs.getAttribute("markerWidth"));
-			}
-
-			if (attrs.getAttribute("markerHeight")) {
-				fDimMarkerHeight.loadFromChunk(attrs.getAttribute("markerHeight"));
-			}
-
-			if (attrs.getAttribute("markerUnits")) {
-				auto units = attrs.getAttribute("markerUnits");
-				if (units == "strokeWidth") {
-					fMarkerUnits = StrokeWidth;
-				}
-				else if (units == "userSpaceOnUse") {
-					fMarkerUnits = UserSpaceOnUse;
-				}
-			}
-
-			if (attrs.getAttribute("orient")) {
-				fOrientation.loadFromChunk(attrs.getAttribute("orient"));
-			}
-
 		}
 
 

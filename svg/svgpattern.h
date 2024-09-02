@@ -294,7 +294,7 @@ namespace waavs {
 
 		}
 
-		virtual void bindToGroot(IAmGroot* groot, SVGViewable* container)
+		void bindToGroot(IAmGroot* groot, SVGViewable* container) noexcept override
 		{
 			SVGGraphicsElement::bindToGroot(groot, container);
 

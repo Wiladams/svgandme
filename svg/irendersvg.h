@@ -11,22 +11,7 @@
 
 namespace waavs
 {
-    // RectMode
-    enum class RECTMODE : unsigned
-    {
-        CORNER,
-        CORNERS,
-        CENTER,
-    };
 
-    // EllipseMode
-    enum class ELLIPSEMODE : unsigned
-    {
-        CORNER,
-        CORNERS,
-        CENTER,
-        RADIUS
-    };
 
     // Text Alignment
     enum class ALIGNMENT : unsigned
@@ -43,13 +28,7 @@ namespace waavs
 
     };
 
-    // Text Wrap
-    // 
-    enum class TEXTWRAP : unsigned
-    {
-        WORD,
-        CHAR
-    };
+
 
 
     enum class FILLRULE : unsigned
@@ -72,10 +51,8 @@ namespace waavs
         FontHandler* fFontHandler = nullptr;
         BLFontFace fFontFace{};
         BLFont fFont{};
-        double fFontSize = 16;
+        //double fFontSize = 16;
         
-        ALIGNMENT fTextHAlignment = ALIGNMENT::LEFT;
-        ALIGNMENT fTextVAlignment = ALIGNMENT::BASELINE;
         double fTextX{ 0 };
         double fTextY{ 0 };
         double fTextAdvance = 0;
@@ -104,9 +81,12 @@ namespace waavs
             fill(BLRgba32(0, 0, 0));
             noStroke();
             strokeWidth(1.0);
-            textAlign(ALIGNMENT::LEFT, ALIGNMENT::BASELINE);
-            textFamily("Arial");
-            textSize(16);
+
+            // Select a default faunt to start
+            bool success = fh->selectFont("Arial", fFont, 16);
+
+            //textFamily("Arial");
+            //textSize(16);
         }
         
         virtual ~IRenderSVG() {}
@@ -209,17 +189,7 @@ namespace waavs
         // hard set a specfic pixel value
         virtual void fillRule(int rule) { BLContext::setFillRule((BLFillRule)rule); }
 
-        /*
-        virtual void path(const BLPath& path) {
-            BLContext::fillPath(path);
-            BLContext::strokePath(path);
-        }
 
-        virtual void rect(const BLRect& geom) {
-			BLContext::fillRect(geom);
-			BLContext::strokeRect(geom);
-        }
-        */
         
         // Bitmaps
         void setFillMask(BLImageCore& mask, const BLRectI &maskArea)
@@ -249,149 +219,9 @@ namespace waavs
         {
 			fFont = afont;
         }
-        
-        virtual void textFace(const BLFontFace& face) {
-            if (face.isValid()) {
-                fFontFace = face;
-                textSize(fFontSize);
-            }
-        }
-        
-        virtual void textFamily(const char* familyName) {
-            // query the font manager
-            // set the found face as the current face
 
-            BLFontFace face{};
-			auto success = fontHandler()->selectFontFamily(familyName, face);
-            
-            //auto success = fontHandler()->selectFont (familyName, fFont, fFontSize);
-
-            if (success) {
-                fFontFace = face;
-                setFontSize(fFontSize);
-            }
-        }
-
-        // Measuring Text
-        BLRect calcTextPosition(const ByteSpan & txt, double x, double y)
-        {
-            BLPoint txtSize = textMeasure(txt);
-            double cx = txtSize.x;
-            double cy = txtSize.y;
-
-            switch (fTextHAlignment)
-            {
-            case ALIGNMENT::LEFT:
-                // do nothing
-                // x = x;
-                break;
-            case ALIGNMENT::CENTER:
-                x = x - (cx / 2);
-                break;
-            case ALIGNMENT::RIGHT:
-                x = x - cx;
-                break;
-
-            default:
-                break;
-            }
-
-            switch (fTextVAlignment)
-            {
-            case ALIGNMENT::TOP:
-                y = y + cy - fFont.metrics().descent;
-                break;
-            case ALIGNMENT::CENTER:
-                y = y + (cy / 2);
-                break;
-
-            case ALIGNMENT::MIDLINE:
-                //should use the design metrics xheight
-                break;
-
-            case ALIGNMENT::BASELINE:
-                // If what was passed as y is the baseline
-                // do nothing to it because blend2d draws
-                // text from baseline
-                break;
-
-            case ALIGNMENT::BOTTOM:
-                // Adjust from the bottom as blend2d
-                // prints from the baseline, so adjust
-                // by the amount of the descent
-                y = y - fFont.metrics().descent;
-                break;
-
-            default:
-                break;
-            }
-
-            return { x, y, cx, cy };
-        }
-
-        
-        virtual BLPoint textMeasure(const ByteSpan & txt) 
-        {
-            BLTextMetrics tm;
-            BLGlyphBuffer gb;
-
-			gb.setUtf8Text(txt.data(), txt.size());
-            fFont.shape(gb);
-            fFont.getTextMetrics(gb, tm);
-
-            float cx = (float)(tm.boundingBox.x1 - tm.boundingBox.x0);
-            float cy = fFont.size();
-
-
-            return BLPoint( cx, cy );
-        }
-        
-        virtual BLPoint textEmSize() {
-            auto size = textMeasure("M");
-            return size;
-        }
-        virtual float textAscent() { return fFont.metrics().ascent; }
-        virtual float textDescent() { return fFont.metrics().descent; }
-
-        // Text Sizing and positioning
-        void setFontSize(const double size)
-        {
-            fFont.reset();
-            fFont.createFromFace(fFontFace, (float)size);
-        }
-        
-        virtual void textAlign(ALIGNMENT horizontal, ALIGNMENT vertical)
-        {
-            fTextHAlignment = horizontal;
-            fTextVAlignment = vertical;
-        }
-        
-        virtual void textSize(double size) {
-            fFontSize = fontHandler()->getAdjustedFontSize((float)size);
-            setFontSize(fFontSize);
-        }
-        
-        virtual void textPosition(double x, double y) {
-            fTextX = x;
-            fTextY = y;
-        }
 
         // Text Drawing
-        virtual void text(const ByteSpan &txt) 
-        {
-            auto xy = calcTextPosition(txt, fTextX, fTextY);
-            fTextAdvance = xy.w;
-
-            text(txt, xy.x, xy.y);
-        }
-        
-        virtual void text(const char* txt) {
-            auto xy = calcTextPosition(txt, fTextX, fTextY);
-            fTextAdvance = xy.w;
-
-            text(txt, xy.x, xy.y);
-        }
-        
         virtual void text(const ByteSpan &txt, double x, double y)
         {
             // BUGBUG - Drawing order should be determined by 

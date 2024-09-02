@@ -31,7 +31,31 @@ bool gPerformTransform = true;
 
 
 
+void quicktest()
+{
+	ByteSpan src{ "id='23' class='classValue' name='test'" };
+	ByteSpan name{};
+	
+	bool success = chunk_find(src, "class", name);
+	
+	printf("SUCCESS: %d\n", success);
+	printChunk(name);
+	printf("\n");
+	
+	// now we know where the name of the field starts
+	// so we can call readNextKeyValue to split into key/value
+	ByteSpan key{};
+	ByteSpan value{};
+	ByteSpan rest{ name.fStart, src.fEnd };
+	success = readNextKeyValue(rest, key, value);
+		
+	printf("SUCCESS (readNextKeyValue): %d\n", success);
+	writeChunk(key);
+	printf(" = ");
+	printChunk(value);
 
+	
+}
 
 static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 {
@@ -68,7 +92,7 @@ static void drawDocument(std::shared_ptr<SVGDocument> doc)
 	// Create a SvgDrawingContext for the canvas
 	SvgDrawingContext ctx(&gFontHandler);
 	BLContextCreateInfo ctxInfo{};
-	ctxInfo.threadCount = 4;
+	ctxInfo.threadCount = 0;
 	ctx.begin(appFrameBuffer().image(), &ctxInfo);
 
 	// setup any transform
@@ -290,19 +314,27 @@ static void onKeyboardEvent(const KeyboardEvent& ke)
 	}
 }
 
+static void setupFonts()
+{
+	//loadDefaultFonts();
+	loadFontDirectory("c:\\windows\\fonts");
+	//loadFontDirectory("..\\resources");
+}
+
+
 // called once before main loop is running
 static void setup()
 {
-    printf("setup()\n");
+    //printf("setup()\n");
     
 	
-
+	//quicktest();
+	
+	setupFonts();
 	
 	frameRate(15);
 	
-    //loadDefaultFonts();
-	//loadFontDirectory("c:\\windows\\fonts");
-	//loadFontDirectory("..\\resources");
+
 	
     dropFiles();
 
