@@ -47,7 +47,18 @@ namespace waavs {
 			XmlAttributeCollection attrs{};
 			attrs.scanAttributes(attrSpan);
 			
-			
+			// If there's a style attribute, then add those to the collection
+			auto style = attrs.getAttribute("style");
+			if (style)
+			{
+				// If we have a style attribute, assume both the stop-color
+				// and the stop-opacity are in there
+
+				XmlAttributeCollection styleAttributes;
+				parseStyleAttribute(style, styleAttributes);
+				attrs.mergeAttributes(styleAttributes);
+			}
+
 			// Get the offset
 			SVGDimension dim{};
 			dim.loadFromChunk(attrs.getAttribute("offset"));
