@@ -36,16 +36,15 @@ namespace waavs {
 
         // default and copy constructor not allowed, let's see what breaks
         SVGObject() = default;
-        SVGObject(const SVGObject& other) = delete;
         
-        //SVGObject(IAmGroot* root) noexcept {}
+        // want to know when a copy or assignment is happening
+        // so mark these as 'delete' for now so we can catch it
+        SVGObject(const SVGObject& other) = delete;
+        SVGObject& operator=(const SVGObject& other) = delete;
 
         virtual ~SVGObject() = default;
 
-        // we don't want an implied assignment operator
-        SVGObject& operator=(const SVGObject& other) = delete;
 
-        
         const ByteSpan& id() const noexcept { return fId; }
         void id(const ByteSpan& aid) noexcept { fId = aid; }
         
@@ -100,7 +99,7 @@ namespace waavs {
         
         virtual void resolveProperties(IAmGroot* groot, SVGViewable* container) {;}
         virtual void resolvePosition(IAmGroot* groot, SVGViewable *container) { ; }
-        virtual void resolveStyle(IAmGroot* groot, SVGViewable *container) { ; }
+        //virtual void resolveStyle(IAmGroot* groot, SVGViewable *container) { ; }
         
         virtual void update(IAmGroot* groot) { ; }
         
@@ -516,7 +515,6 @@ namespace waavs {
             
             resolveProperties(groot, container);
             resolvePosition(groot, container);
-            resolveStyle(groot, container);
             
             bindPropertiesToGroot(groot, this);
             
@@ -826,21 +824,6 @@ namespace waavs {
             
             bindChildrenToGroot(groot, this);
 
-
-            /*
-            // Do the image cache thing if necessary
-            auto opacity = getVisualProperty("opacity");
-            if (opacity)
-            {
-                //BLResult res = opacity->getVariant().toDouble(&fOpacity);
-
-                //if (fUseCacheIsolation)
-                //{
-                //    drawIntoCache(groot);
-                //}
-
-            }
-            */
         }
 
 
@@ -901,7 +884,7 @@ namespace waavs {
 				node->draw(ctx, groot);
 			}
         }
-        
+        /*
         virtual void drawIntoCache(IAmGroot *groot)
         {
             // get the bounding box to determine how big
@@ -930,6 +913,7 @@ namespace waavs {
             
             cachectx.flush();
         }
+        */
         
         void draw(IRenderSVG *ctx, IAmGroot* groot) override
         {
@@ -938,18 +922,10 @@ namespace waavs {
 
             ctx->push();
             
-            //if (fUseCacheIsolation && fImageIsCached && !fCachedImage.empty())
-            //{
-            //    ctx->setGlobalAlpha(fOpacity);
-            //    ctx->blitImage(getBBox(), fCachedImage);
-            //}
-            //else 
-            {
-                applyAttributes(ctx, groot);
-                drawSelf(ctx, groot);
+            applyAttributes(ctx, groot);
+            drawSelf(ctx, groot);
 
-                drawChildren(ctx, groot);
-            }
+            drawChildren(ctx, groot);
             
             ctx->pop();
         }

@@ -9,7 +9,7 @@
 	When you want to know when something happens, you
 	subscribe() to a topic.
 
-	Whatever is responsible for indicating the thing happened
+	Whatever is responsible for signaling the event
 	will call the notify() function of the topic, and the
 	subscribed function will be called.
 
@@ -26,10 +26,10 @@
 
 	The subscriber is a functor, that is, anything that has the 
 	function signature.  It can be an object, or a function pointer,
-	essentially anything that resolves as std::function<void>()
+	essentially anything that resolves as std::function<void>(const T&)
 
 	This is a very nice pure type with no dependencies outside
-	the standard template library
+	the standard template library, and <functional>
 */
 template <typename T>
 class Topic

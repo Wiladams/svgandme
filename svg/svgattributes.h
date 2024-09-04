@@ -656,6 +656,18 @@ namespace waavs {
     //=========================================================
     // SVGFillRule
     //=========================================================
+    static bool parseFillRule(const ByteSpan& inChunk, BLFillRule& value)
+    {
+        if (inChunk == "nonzero")
+            value = BL_FILL_RULE_NON_ZERO;
+        else if (inChunk == "evenodd")
+            value = BL_FILL_RULE_EVEN_ODD;
+        else
+            return false;
+
+        return true;
+    }
+    
     struct SVGFillRule : public SVGVisualProperty
     {
         static void registerFactory() {
@@ -670,37 +682,24 @@ namespace waavs {
         BLFillRule fValue{ BL_FILL_RULE_EVEN_ODD };
 
         SVGFillRule(IAmGroot* iMap) : SVGVisualProperty(iMap) {}
-        SVGFillRule(const SVGFillRule& other) = delete;
 
-        SVGFillRule& operator=(const SVGFillRule& rhs) = delete;
+        bool loadSelfFromChunk(const ByteSpan& inChunk) override
+        {
+            ByteSpan s = chunk_trim(inChunk, xmlwsp);
+
+			if (!parseFillRule(s, fValue))
+				return false;
+            
+            set(true);
+
+            return true;
+        }
 
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
             if (isSet())
                 ctx->fillRule(fValue);
         }
-
-        bool loadSelfFromChunk(const ByteSpan& inChunk) override
-        {
-            ByteSpan s = chunk_trim(inChunk, xmlwsp);
-
-            if (!s)
-                return false;
-
-
-            set(true);
-
-            if (s == "nonzero")
-                fValue = BL_FILL_RULE_NON_ZERO;
-            else if (s == "evenodd")
-                fValue = BL_FILL_RULE_EVEN_ODD;
-            else
-                set(false);
-
-            return true;
-        }
-
-
     };
 }
 
@@ -741,8 +740,6 @@ namespace waavs {
             registerSVGAttribute("stroke-width", [](const ByteSpan& value) {auto node = std::make_shared<SVGStrokeWidth>(nullptr); node->loadFromChunk(value);  return node; });
         }
 
-
-
         double fWidth{ 1.0 };
 
         SVGStrokeWidth(IAmGroot* iMap) : SVGVisualProperty(iMap) { }
@@ -750,6 +747,7 @@ namespace waavs {
         SVGStrokeWidth(const SVGStrokeWidth& other) = delete;
         SVGStrokeWidth& operator=(const SVGStrokeWidth& rhs) = delete;
 
+        
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
             ctx->strokeWidth(fWidth);
@@ -809,6 +807,28 @@ namespace waavs {
     //=========================================================
     // SVGStrokeLineCap
     //=========================================================
+    static bool parseLineCaps(const ByteSpan& inChunk, BLStrokeCap &value)
+    {
+        ByteSpan s = inChunk;
+        
+        if ( s == "butt")
+            value = BL_STROKE_CAP_BUTT;
+        else if (s == "round")
+            value = BL_STROKE_CAP_ROUND;
+        else if (s == "round-reverse")
+            value = BL_STROKE_CAP_ROUND_REV;
+        else if (s == "square")
+            value = BL_STROKE_CAP_SQUARE;
+        else if (s == "triangle")
+            value = BL_STROKE_CAP_TRIANGLE;
+        else if (s == "triangle-reverse")
+            value = BL_STROKE_CAP_TRIANGLE_REV;
+        else
+            return false;
+
+        return true;
+    }
+    
     struct SVGStrokeLineCap : public SVGVisualProperty
     {
         static void registerFactory()
@@ -857,22 +877,15 @@ namespace waavs {
         {
             ByteSpan s = inChunk;
 
-            set(true);
+			if (parseLineCaps(s, fLineCap))
+			{
+				set(true);
+				needsBinding(false);
+				return true;
+			}
 
-            if (s == "butt")
-                fLineCap = BL_STROKE_CAP_BUTT;
-            else if (s == "round")
-                fLineCap = BL_STROKE_CAP_ROUND;
-            else if (s == "round-reverse")
-                fLineCap = BL_STROKE_CAP_ROUND_REV;
-            else if (s == "square")
-                fLineCap = BL_STROKE_CAP_SQUARE;
-            else if (s == "triangle")
-                fLineCap = BL_STROKE_CAP_TRIANGLE;
-            else if (s == "triangle-reverse")
-                fLineCap = BL_STROKE_CAP_TRIANGLE_REV;
-            else
-                set(false);
+            set(false);
+      
 
             return true;
         }
@@ -1173,7 +1186,6 @@ namespace waavs {
         SVGClipPathAttribute(IAmGroot* groot) : SVGVisualProperty(groot) {}
 
 
-        
         bool loadFromUrl(IAmGroot* groot, const ByteSpan& inChunk)
         {
             if (nullptr == groot)
@@ -1244,6 +1256,34 @@ namespace waavs {
         VECTOR_EFFECT_FIXED_POSITION,
     };
     
+    static bool parseVectorEffect(const ByteSpan& inChunk, VectorEffectKind& value)
+    {
+        if (inChunk == "none")
+        {
+            value = VECTOR_EFFECT_NONE;
+        }
+        else if (inChunk == "non-scaling-stroke")
+        {
+            value = VECTOR_EFFECT_NON_SCALING_STROKE;
+        }
+        else if (inChunk == "non-scaling-size")
+        {
+            value = VECTOR_EFFECT_NON_SCALING_SIZE;
+        }
+        else if (inChunk == "non-rotation")
+        {
+            value = VECTOR_EFFECT_NON_ROTATION;
+        }
+        else if (inChunk == "fixed-position")
+        {
+            value = VECTOR_EFFECT_FIXED_POSITION;
+        }
+        else
+            return false;
+        
+        return true;
+    }
+    
     struct SVGVectorEffectAttribute : public SVGVisualProperty
     {
         static void registerFactory() {
@@ -1251,9 +1291,6 @@ namespace waavs {
         }
 
 
-
-        bool fExplicitNone{ false };
-        bool fRenderBeforeScale = false;
         VectorEffectKind fEffectKind{ VECTOR_EFFECT_NONE };
 
         
@@ -1262,32 +1299,11 @@ namespace waavs {
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
             needsBinding(false);
+            
+            if (!parseVectorEffect(inChunk, fEffectKind))
+                return false;
+            
             set(true);
-
-            if (inChunk == "none")
-            {
-                fExplicitNone = true;
-            }
-            else if (inChunk == "non-scaling-stroke")
-            {
-                fEffectKind = VECTOR_EFFECT_NON_SCALING_STROKE;
-            }
-            else if (inChunk == "non-scaling-size")
-            {
-                fEffectKind = VECTOR_EFFECT_NON_SCALING_SIZE;
-            }
-            else if (inChunk == "non-rotation")
-            {
-                fEffectKind = VECTOR_EFFECT_NON_ROTATION;
-            }
-            else if (inChunk == "fixed-position")
-            {
-                fEffectKind = VECTOR_EFFECT_FIXED_POSITION;
-            }
-            else {
-                set(false);
-            }
-
             return true;
         }
 

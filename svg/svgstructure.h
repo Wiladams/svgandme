@@ -103,6 +103,11 @@ namespace waavs {
 			fDimY.loadFromChunk(getAttribute("y"));
 			fDimWidth.loadFromChunk(getAttribute("width"));
 			fDimHeight.loadFromChunk(getAttribute("height"));
+			fViewbox.loadFromChunk(getAttribute("viewBox"));
+
+			// BUGBUG - if the width and height are not set, then
+			// we need to get them out of the viewBox if that was set
+
 			
 			fBBox.x = fDimX.calculatePixels(w, 0, dpi);
 			fBBox.y = fDimY.calculatePixels(h, 0, dpi);
@@ -112,7 +117,7 @@ namespace waavs {
 			fViewport.sceneFrame(getBBox());
 			//fViewport.surfaceFrame(getBBox());
 
-			fViewbox.loadFromChunk(getAttribute("viewBox"));
+
 			
 			if (fViewbox.isSet()) {
 				fViewport.sceneFrame(fViewbox.fRect);
@@ -164,9 +169,6 @@ namespace waavs {
 			ctx->pop();
 		}
 
-
-
-
 	};
 	
 	//================================================
@@ -204,7 +206,6 @@ namespace waavs {
 		SVGGElement(IAmGroot* aroot)
 			: SVGGraphicsElement(aroot)
 		{
-			//fUseCacheIsolation = true;
 		}
 	};
 
@@ -284,7 +285,7 @@ namespace waavs {
 			registerSingularNode();
 		}
 
-		ByteSpan fData{};
+		ByteSpan fContent{};
 
 		// Instance Constructor
 		SVGDescNode(IAmGroot* aroot)
@@ -294,10 +295,12 @@ namespace waavs {
 			visible(false);
 		}
 
+		const ByteSpan& content() const { return fContent; }
+		
 		// Load the text content if it exists
 		void loadContentNode(const XmlElement& elem, IAmGroot* groot) override
 		{
-			fData = elem.data();
+			fContent = elem.data();
 		}
 	};
 	
@@ -335,24 +338,18 @@ namespace waavs {
 			registerSingularNode();
 		}
 
-		ByteSpan fTitle{};
+		ByteSpan fContent{};
 
 		// Instance Constructor
 		SVGTitleNode(IAmGroot* aroot)
 			: SVGGraphicsElement(aroot) {}
 
+		const ByteSpan& content() const { return fContent; }
+		
 		// Load the text content if it exists
 		void loadContentNode(const XmlElement& elem, IAmGroot* groot) override
 		{
-			//printf("SVGTitleNode\n");
-			//printXmlElement(elem);
-
-			// Create a text content node and 
-			// add it to our node set
-			fTitle = elem.data();
-			//auto node = std::make_shared<SVGTextContentNode>(groot);
-			//node->text(elem.data());
-			//addNode(node, groot);
+			fContent = elem.data();
 		}
 	};
 	
@@ -438,17 +435,7 @@ namespace waavs {
 			fDimHeight.loadFromChunk(getAttribute("height"));
 		}
 
-		/*
-		void loadSelfClosingNode(const XmlElement& elem, IAmGroot* groot) override
-		{
-			//printf("SVGSymbolNode::loadSelfClosingNode: \n");
-			//printXmlElement(elem);
-			auto anode = createSingularNode(elem, groot);
-			if (anode != nullptr) {
-				addNode(anode, groot);
-			}
-		}
-		*/
+
 	};
 	
 
@@ -595,13 +582,6 @@ namespace waavs {
 			}
 		}
 
-
-
-		//void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
-		//{
-		//	SVGGraphicsElement::loadVisualProperties(attrs, groot);
-		//	needsBinding(true);
-		//}
 
 		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{

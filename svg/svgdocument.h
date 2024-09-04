@@ -292,6 +292,15 @@ namespace waavs {
             //SVGClipPathAttribute::registerFactory();
 			SVGFillPaint::registerFactory();
             SVGFillOpacity::registerFactory();
+            SVGOpacity::registerFactory();
+            SVGStrokeLineCap::registerFactory();
+            SVGStrokeLineJoin::registerFactory();
+            SVGStrokeMiterLimit::registerFactory();
+            SVGStrokeWidth::registerFactory();
+
+            SVGStrokePaint::registerFactory();
+            SVGStrokeOpacity::registerFactory();
+
             
             SVGFillRule::registerFactory();
             
@@ -302,16 +311,10 @@ namespace waavs {
 			SVGMarkerAttribute::registerMarkerFactory();
 
             
-            SVGOpacity::registerFactory();
+
             
             
-            SVGStrokeLineCap::registerFactory();
-            SVGStrokeLineJoin::registerFactory();
-            SVGStrokeMiterLimit::registerFactory();
-            SVGStrokeWidth::registerFactory();
-            
-            SVGStrokePaint::registerFactory();
-			SVGStrokeOpacity::registerFactory();
+
             
 
             

@@ -101,3 +101,8 @@ In many cases, there is support for things beyond the profile for the purpose of
 - Animation  - Very runtime specific, not likely to ever be included
 - Filters    - will depend on future blend2d support
 - Path based clipping - will depend on future blend2d support
+
+
+## Notes
+- A potential embedded javascript - https://mujs.com/
+- Maybe support Lua as a scripting language

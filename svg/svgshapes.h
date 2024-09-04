@@ -431,7 +431,7 @@ namespace waavs {
 			//	fHasMarkers = true;
 			//}
 
-			needsBinding(false);
+			//needsBinding(false);
 		}
 
 		bool drawMarker(IRenderSVG* ctx, std::shared_ptr<SVGVisualProperty> prop, MarkerPosition pos, const BLPoint& p1, const BLPoint& p2, IAmGroot* groot)

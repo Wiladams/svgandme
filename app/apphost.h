@@ -217,15 +217,15 @@ extern "C" {
 // Doing C++ pub/sub
 // These are only accessible through the C++ interface
 using SignalEventTopic = Topic<intptr_t>; 
-using MouseEventTopic = Topic<waavs::MouseEvent&>;				// Mouse events
-using KeyboardEventTopic = Topic<waavs::KeyboardEvent&>;		// Keyboard events
-using JoystickEventTopic = Topic<waavs::JoystickEvent&>;		// Joystick events
-using FileDropEventTopic = Topic<waavs::FileDropEvent&>;		// File drop events
-using TouchEventTopic = Topic<waavs::TouchEvent&>;				// Touch events
-using PointerEventTopic = Topic<waavs::PointerEvent&>;			// Pointer events
-using GestureEventTopic = Topic<waavs::GestureEvent&>;			// Gesture events
-using FrameCountEventTopic = Topic<waavs::FrameCountEvent&>;	// Timed Frame count events
-using ResizeEventTopic = Topic<waavs::ResizeEvent&>;			// Application Window Resize events	
+using MouseEventTopic = Topic<waavs::MouseEvent>;				// Mouse events
+using KeyboardEventTopic = Topic<waavs::KeyboardEvent>;		// Keyboard events
+using JoystickEventTopic = Topic<waavs::JoystickEvent>;		// Joystick events
+using FileDropEventTopic = Topic<waavs::FileDropEvent>;		// File drop events
+using TouchEventTopic = Topic<waavs::TouchEvent>;				// Touch events
+using PointerEventTopic = Topic<waavs::PointerEvent>;			// Pointer events
+using GestureEventTopic = Topic<waavs::GestureEvent>;			// Gesture events
+using FrameCountEventTopic = Topic<waavs::FrameCountEvent>;	// Timed Frame count events
+using ResizeEventTopic = Topic<waavs::ResizeEvent>;			// Application Window Resize events	
 
 
 APP_EXPORT void subscribe(SignalEventTopic::Subscriber s);

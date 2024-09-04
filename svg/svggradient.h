@@ -99,55 +99,7 @@ namespace waavs {
 			paint.setOpacity(fOpacity);
 
 			
-			/*
-			// We'll get the paint either from a style attribute
-			// or from stop-color and stop-opacity attributes
-			auto style = getAttribute("style");
-			if (style)
-			{
-				// If we have a style attribute, assume both the stop-color
-				// and the stop-opacity are in there
 
-				XmlAttributeCollection styleAttributes;
-				parseStyleAttribute(style, styleAttributes);
-				paint.loadFromChunk(styleAttributes.getAttribute("stop-color"));
-
-				// load the opacity
-				dimOpacity.loadFromChunk(styleAttributes.getAttribute("stop-opacity"));
-			}
-			else
-			{
-				// If we don't have a style attribute, assume we have
-				// stop-color and possibly stop-opacity attributes
-				// otherwise, default to black
-				if (getAttribute("stop-color"))
-				{
-					paint.loadFromChunk(getAttribute("stop-color"));
-				}
-				else
-				{
-					// Default color is black
-					paint.loadFromChunk("black");
-				}
-
-				if (getAttribute("stop-opacity"))
-				{
-					dimOpacity.loadFromChunk(getAttribute("stop-opacity"));
-				}
-				else
-				{
-					// Default opacity is 1.0
-					dimOpacity.loadFromChunk("1.0");
-				}
-			}
-
-			if (dimOpacity.isSet())
-			{
-				fOpacity = dimOpacity.calculatePixels(1);
-			}
-
-			paint.setOpacity(fOpacity);
-			*/
 			BLVar aVar = paint.getVariant();
 			uint32_t colorValue = 0;
 			auto res = blVarToRgba32(&aVar, &colorValue);
@@ -189,7 +141,7 @@ namespace waavs {
 		}
 
 		// Load a URL Reference
-		void resolveStyle(IAmGroot* groot, SVGViewable* container) override
+		void resolveReference(IAmGroot* groot, SVGViewable* container)
 		{
 			// if there's no manager
 			// or there's no template to look
@@ -212,7 +164,7 @@ namespace waavs {
 				// lookup the thing we're referencing
 				auto node = groot->getElementById(idValue);
 
-				// pull out the color value
+
 				if (node != nullptr)
 				{
 					// That node itself might need to be bound
@@ -230,6 +182,13 @@ namespace waavs {
 						// Start with just assigning the stops
 						const BLGradient& tmpGradient = aVar.as<BLGradient>();
 
+						//fGradient = tmpGradient;
+						//if (fHasGradientTransform)
+						//{
+						//	fGradient.setTransform(fGradientTransform);
+						//}
+					
+						///*
 						// assign stops from tmpGradient
 						fGradient.assignStops(tmpGradient.stops(), tmpGradient.size());
 
@@ -253,6 +212,7 @@ namespace waavs {
 						{
 							fGradient.setTransform(fGradientTransform);
 						}
+						//*/
 
 					}
 				}
@@ -267,18 +227,12 @@ namespace waavs {
 
 
 		void resolvePosition(IAmGroot* groot, SVGViewable* container)
-		//void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
 		{
-			//SVGGraphicsElement::loadVisualProperties(attrs, groot);
-
 			// See if we have a template reference
 			if (getAttribute("href"))
 				fTemplateReference = getAttribute("href");
 			else if (getAttribute("xlink:href"))
 				fTemplateReference = getAttribute("xlink:href");
-
-			//if (fTemplateReference)
-			//	needsResolving(true);
 
 			// Whether we've loaded a template or not
 			// load the common attributes for gradients
@@ -307,7 +261,7 @@ namespace waavs {
 				fHasGradientTransform = parseTransform(getAttribute("gradientTransform"), fGradientTransform);
 			}
 
-			needsBinding(true);
+
 		}
 
 		//
@@ -364,7 +318,6 @@ namespace waavs {
 
 		SVGLinearGradient(IAmGroot* aroot) :SVGGradient(aroot)
 		{
-			//fGradient.reset();
 			fGradient.setType(BL_GRADIENT_TYPE_LINEAR);
 		}
 
@@ -422,7 +375,8 @@ namespace waavs {
 					values.y1 = fY2.calculatePixels(h, 0, dpi);
 			}
 
-
+			resolveReference(groot, container);
+			
 			fGradient.setValues(values);
 			fGradientVar = fGradient;
 
@@ -511,8 +465,10 @@ namespace waavs {
 			else
 				values.y1 = values.y0;
 
-
+			resolveReference(groot, container);
+			
 			fGradient.setValues(values);
+			fGradientVar = fGradient;
 		}
 
 
@@ -610,9 +566,10 @@ namespace waavs {
 			else if (values.repeat == 0)
 				values.repeat = 1.0;
 			
-
+			resolveReference(groot, container);
+			
 			fGradient.setValues(values);
-
+			fGradientVar = fGradient;
 		}
 
 	};
@@ -646,7 +603,6 @@ namespace waavs {
 			return fPaint.getVariant();
 		}
 
-		//void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
 		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
 			//SVGVisualNode::loadVisualProperties(attrs, groot);
