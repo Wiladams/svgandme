@@ -436,6 +436,16 @@ namespace waavs {
                 }
             }
 
+            // Check for id selector if we have one
+            if (id())
+            {
+                auto idsel = groot->styleSheet()->getIDSelector(id());
+                if (idsel != nullptr)
+                {
+					fAttributes.mergeAttributes(idsel->attributes());
+                }
+            }
+            
             // Lookup any attributes based on the class, if specified
             ByteSpan classChunk = fClassAttribute;
             while (classChunk)
@@ -468,6 +478,23 @@ namespace waavs {
             // presentation attributes of the current element, if any
             fAttributes.mergeAttributes(fPresentationAttributes);
 
+            // BUGBUG - this is a hack to get the fill and stroke
+            // It needs to go deeper and get the color attribute that's from the tree
+            // where the current node is just the latest.
+            // if there is a stroke attribute with a value of 'currentColor', then look
+            // for a 'color' attribute, and set the stroke color to that value
+            auto strokeColor = fAttributes.getAttribute("stroke");
+            //auto fillColor = fAttributes.getAttribute("fill");
+            if (strokeColor && (strokeColor == "currentColor"))
+            {
+                auto colorValue = fAttributes.getAttribute("color");
+                if (colorValue)
+                {
+                    fAttributes.addAttribute("stroke", colorValue);
+                }
+            }
+
+            
 
             // Use up some of the attributes
             ByteSpan display = fAttributes.getAttribute("display");
@@ -531,159 +558,6 @@ namespace waavs {
             return nullptr;
         }
 
-        /*
-        //
-        // setAttribute
-        // 
-        // Allows setting any attribute on the element
-        // The 'name', is the name of the attribute to be set
-        // the 'value', is a span, that contains a raw string to be parsed to set the value
-        //
-        virtual void setAttribute(const ByteSpan& name, const ByteSpan& value)
-        {
-            // If the value is nothing, then don't set it
-            if (!value)
-                return;
-            
-            // First, set the raw attribute 
-            fAttributes.addAttribute(name, value);
-        }
-        */
-        
-        /*
-        //
-        // loadVisualProperties
-        // 
-        // This might be called multiple times on an element
-        // once for the regular attributes
-        // a second time for attributes hidden in a 'style' attribute
-        //
-        virtual void loadVisualProperties(const XmlAttributeCollection & attrCollection, IAmGroot* groot)
-        {
-            ByteSpan display = attrCollection.getAttribute("display");
-            if (display)
-            {
-                display = chunk_trim(display, xmlwsp);
-
-                if (display == "none")
-                    visible(false);
-            }
-
-            if (attrCollection.getAttribute("transform"))
-            {
-                fHasTransform = parseTransform(attrCollection.getAttribute("transform"), fTransform);
-                if (fHasTransform)
-                {
-                    // create the inverse transform for subsequent
-                    // UI interaction
-                    //fTransformInverse = fTransform;
-					//fTransformInverse.invert();
-                }
-            }
-            
-            // Run through the attributes passed in 
-            // add them into our attributes 
-            // BUGBUG - not sure we actually need to do this
-            // all attributes are typically loaded during
-            // loadVisualProperties of the sub-class
-            // so this is kind of redundant
-            // Yes, we do need to do this, because we use ourself
-            // on a loadVisualProperties(*this) call
-            for (auto& attr : attrCollection.fAttributes)
-            {
-				setAttribute(attr.first, attr.second);
-            }
-
-            
-			// BUGBUG - this is a hack to get the fill and stroke
-            // It needs to go deeper and get the color attribute that's from the tree
-            // where the current node is just the latest.
-            // if there is a stroke attribute with a value of 'currentColor', then look
-			// for a 'color' attribute, and set the stroke color to that value
-			auto strokeColor = attrCollection.getAttribute("stroke");
-            auto fillColor = attrCollection.getAttribute("fill");
-            if (strokeColor && (strokeColor == "currentColor"))
-            {
-                auto colorValue = attrCollection.getAttribute("color");
-                if (colorValue)
-                {
-                    setAttribute("stroke", colorValue);
-                }
-            }
-            
-        }
-        */
-
-        /*
-        // Assuming we've already scanned our attributes
-        // do further processing with them
-        void loadCommonVisualProperties(IAmGroot* groot)
-        {
-            // BUGBUG - need to decide order of precedence for presentation attributes
-            // load the common stuff that doesn't require
-            // any additional processing
-            loadVisualProperties(this->fAttributes, groot);
-
-            // Handle the class attribute if there is one
-            // The class attribute can be a whitespace separated list
-            // of class names, so we need to lookup each selector
-            // and turn whatever we find there into an attribute list
-            // and load them.
-            // BUGBUG - need to parse full class selector
-            // Assume multiple simple words for a first go
-            ByteSpan classChunk = getAttribute("class");
-            while (classChunk)
-            {
-                // peel a word off the front
-                auto classId = chunk_token(classChunk, xmlwsp);
-
-                auto csel = groot->styleSheet()->getClassSelector(classId);
-                if (csel != nullptr)
-                {
-                    loadVisualProperties(csel->attributes(), groot);
-                }
-                else {
-                    //printf("SVGVisualNode::bindPropertiesToGroot, ERROR - NO CLASS SELECTOR FOR %s\n", toString(classId).c_str());
-                }
-            }
-
-            // See if there's an element selector for the current element
-            // Deal with any more attributes that need special handling
-
-            if (!name().empty())
-            {
-                auto esel = groot->styleSheet()->getElementSelector(name());
-                if (esel != nullptr)
-                {
-                    loadVisualProperties(esel->attributes(), groot);
-                }
-            }
-
-            // Check for id selector if we have one
-            // These
-            auto id = getAttribute("id");
-            if (id)
-            {
-                auto idsel = groot->styleSheet()->getIDSelector(id);
-                if (idsel != nullptr)
-                {
-                    loadVisualProperties(idsel->attributes(), groot);
-                }
-            }
-
-            // Do the local style sheet properties last as they
-            // override any that came from global style sheets
-
-            ByteSpan styleChunk = getAttribute("style");
-
-            if (styleChunk) {
-                XmlAttributeCollection styleAttributes;
-
-                parseStyleAttribute(styleChunk, styleAttributes);
-                loadVisualProperties(styleAttributes, groot);
-            }
-        }
-        */
 
         // Contains styling attributes
         virtual void applyAttributes(IRenderSVG* ctx, IAmGroot* groot)
@@ -884,36 +758,7 @@ namespace waavs {
 				node->draw(ctx, groot);
 			}
         }
-        /*
-        virtual void drawIntoCache(IAmGroot *groot)
-        {
-            // get the bounding box to determine how big
-            // the cache should be
-            BLRect bbox = frame();
-            int iWidth = (int)bbox.w;
-            int iHeight = (int)bbox.h;
 
-            // Create a new image with the same size as the bounding box
-            fCachedImage.create(iWidth, iHeight, BLFormat::BL_FORMAT_PRGB32);
-
-            // Create the drawing context to go with the cache
-            IRenderSVG cachectx(groot->fontHandler());
-            cachectx.begin(fCachedImage);
-            cachectx.clearAll();
-            //cachectx.fillAll(BLRgba32(0xFFffffffu));
-            cachectx.setCompOp(BL_COMP_OP_SRC_COPY);
-            cachectx.noStroke();
-            cachectx.translate(-bbox.x, -bbox.y);
-
-
-            // Render out content into the backing buffer
-            fImageIsCached = false;
-            SVGGraphicsElement::draw(&cachectx, groot);
-            fImageIsCached = true;
-            
-            cachectx.flush();
-        }
-        */
         
         void draw(IRenderSVG *ctx, IAmGroot* groot) override
         {

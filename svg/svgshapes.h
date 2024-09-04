@@ -134,13 +134,47 @@ namespace waavs {
 		
 		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{
+			ByteSpan porder = getAttribute("paint-order");
+			
 			if (fIsRound) {
-				ctx->fillRoundRect(geom);
-				ctx->strokeRoundRect(geom);
+				if (!porder) {
+					ctx->fillRoundRect(geom);
+					ctx->strokeRoundRect(geom);
+				}
+				else {
+					// get paint order tokens one at a time
+					while (porder) {
+						auto ptoken = chunk_token(porder, chrWspChars);
+						if (ptoken.empty())
+							break;
+
+						if (ptoken == "fill")
+							ctx->fillRoundRect(geom);
+						else if (ptoken == "stroke")
+							ctx->strokeRoundRect(geom);
+
+					}
+				}
 			}
 			else {
-				ctx->fillRect(geom.x, geom.y, geom.w, geom.h);
-				ctx->strokeRect(geom.x, geom.y, geom.w, geom.h);
+				if (!porder) {
+					ctx->fillRect(geom.x, geom.y, geom.w, geom.h);
+					ctx->strokeRect(geom.x, geom.y, geom.w, geom.h);
+				}
+				else {
+					// get paint order tokens one at a time
+					while (porder) {
+						auto ptoken = chunk_token(porder, chrWspChars);
+						if (ptoken.empty())
+							break;
+
+						if (ptoken == "fill")
+							ctx->fillRect(geom.x, geom.y, geom.w, geom.h);
+						else if (ptoken == "stroke")
+							ctx->strokeRect(geom.x, geom.y, geom.w, geom.h);
+
+					}
+				}
 			}
 		}
 
@@ -262,8 +296,30 @@ namespace waavs {
 		
 		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-			ctx->fillCircle(geom);
-			ctx->strokeCircle(geom);
+
+			
+			ByteSpan porder = getAttribute("paint-order");
+
+			if (!porder) {
+				ctx->fillCircle(geom);
+				ctx->strokeCircle(geom);
+			}
+			else {
+				// get paint order tokens one at a time
+				while (porder) {
+					auto ptoken = chunk_token(porder, chrWspChars);
+					if (ptoken.empty())
+						break;
+
+					if (ptoken == "fill")
+						ctx->fillCircle(geom);
+					else if (ptoken == "stroke")
+						ctx->strokeCircle(geom);
+
+				}
+			}
+
+			
 		}
 		
 		
@@ -328,8 +384,28 @@ namespace waavs {
 		
 		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-			ctx->fillEllipse(geom);
-			ctx->strokeEllipse(geom);
+			ByteSpan porder = getAttribute("paint-order");
+
+			if (!porder) {
+				ctx->fillEllipse(geom);
+				ctx->strokeEllipse(geom);
+			}
+			else {
+				// get paint order tokens one at a time
+				while (porder) {
+					auto ptoken = chunk_token(porder, chrWspChars);
+					if (ptoken.empty())
+						break;
+
+					if (ptoken == "fill")
+						ctx->fillEllipse(geom);
+					else if (ptoken == "stroke")
+						ctx->strokeEllipse(geom);
+
+				}
+			}
+			
+
 		}
 		
 		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
@@ -569,12 +645,37 @@ namespace waavs {
 			// order these are done in
 			//printf("SVGGeometryElement::drawSelf(%s)\n", id().c_str());
 
-			ctx->fillPath(fPath);
-			ctx->strokePath(fPath);
+			ByteSpan porder = getAttribute("paint-order");
 
-			// draw markers if we have any
-			if (fHasMarkers)
-				drawMarkers(ctx, groot);
+			if (!porder) {
+				// default order is fill, stroke, markers
+				ctx->fillPath(fPath);
+				ctx->strokePath(fPath);
+				
+				// draw markers if we have any
+				if (fHasMarkers)
+					drawMarkers(ctx, groot);
+			}
+			else {
+				// get paint order tokens one at a time
+				while (porder) {
+					auto ptoken = chunk_token(porder, chrWspChars);
+					if (ptoken.empty())
+						break;
+					
+					if (ptoken == "fill")
+						ctx->fillPath(fPath);
+					else if (ptoken == "stroke")
+						ctx->strokePath(fPath);
+					else if (ptoken == "markers")
+					{
+						// draw markers if we have any
+						if (fHasMarkers)
+							drawMarkers(ctx, groot);
+					}
+				}
+			}
+
 		}
 
 	};

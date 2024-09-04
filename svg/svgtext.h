@@ -518,7 +518,31 @@ namespace waavs {
 				{
 					BLRect pRect = fFontSelection.calcTextPosition(textNode->text(), fTextCursor.x, fTextCursor.y, fTextHAlignment, fTextVAlignment, fDominantBaseline);
 					fFontSelection.draw(ctx, groot);
-					ctx->text(textNode->text(), pRect.x, pRect.y);
+					ByteSpan txt = textNode->text();
+					
+					ByteSpan porder = getAttribute("paint-order");
+					
+					if (!porder || porder=="normal") {
+						ctx->fillUtf8Text(BLPoint(pRect.x, pRect.y), ctx->font(), (char*)txt.data(), txt.size());
+						ctx->strokeUtf8Text(BLPoint(pRect.x, pRect.y), ctx->font(), (char*)txt.data(), txt.size());
+					}
+					else {
+						// get paint order tokens one at a time
+						while (porder) {
+							auto ptoken = chunk_token(porder, chrWspChars);
+							if (ptoken.empty())
+								break;
+
+							if (ptoken == "fill")
+								ctx->fillUtf8Text(BLPoint(pRect.x, pRect.y), ctx->font(), (char*)txt.data(), txt.size());
+							else if (ptoken == "stroke")
+								ctx->strokeUtf8Text(BLPoint(pRect.x, pRect.y), ctx->font(), (char*)txt.data(), txt.size());
+						}
+					}
+					
+
+					
+					//ctx->text(textNode->text(), pRect.x, pRect.y);
 					fTextCursor.x += pRect.w;
 				}
 				else
