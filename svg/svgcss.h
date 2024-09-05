@@ -198,6 +198,8 @@ namespace waavs
         }
     };
 
+
+    /*
     //======================================================
     // CSSInlineStyleIterator
     // 
@@ -256,7 +258,7 @@ namespace waavs
         CSSInlineStyleIterator& operator++() { next(); return *this; }
 		CSSInlineStyleIterator& operator++(int i) { next(); return *this; }
     };
-
+    */
 
     // CSSSelectorIterator
     // 

@@ -367,7 +367,7 @@ namespace waavs
 		const uint8_t* endAt = a.fEnd;
 		while (startAt < endAt && skippable(*startAt))
 			++startAt;
-		
+
 		return { startAt, endAt };
 	}
 
@@ -391,11 +391,11 @@ namespace waavs
 		// trim from the beginning
 		while (start < end && skippable(*start))
 			++start;
-		
+
 		// trim from the end
 		while (start < end && skippable(*(end - 1)))
 			--end;
-		
+
 		return { start, end };
 	}
 
@@ -403,10 +403,10 @@ namespace waavs
 	{
 		const uint8_t* start = a.fStart;
 		const uint8_t* end = a.fEnd;
-		
-		while (start < end&& chrWspChars(*start))
+
+		while (start < end && chrWspChars(*start))
 			++start;
-		
+
 		return { start, end };
 	}
 
@@ -416,14 +416,14 @@ namespace waavs
 		const uint8_t* end = inChunk.fEnd;
 		while (start < end && *start != achar)
 			++start;
-		
+
 		return { start, end };
 	}
 
 
 
 	static INLINE bool chunk_starts_with_char(const ByteSpan& a, const uint8_t b) noexcept
-	{	
+	{
 		return (a.size() > 0) && (a.fStart[0] == b);
 	}
 
@@ -431,7 +431,7 @@ namespace waavs
 	{
 		return src.startsWith(str);
 	}
-	
+
 	static INLINE bool chunk_starts_with_cstr(const ByteSpan& a, const char* b) noexcept
 	{
 		// see if the null terminated string is at the beginning of the bytespan
@@ -442,7 +442,7 @@ namespace waavs
 			++start;
 			++b;
 		}
-		
+
 		return *b == 0;
 	}
 
@@ -491,7 +491,7 @@ namespace waavs
 
 		return { start, tokenEnd };
 	}
-	
+
 	static INLINE ByteSpan chunk_token(ByteSpan& a, const charset& delims) noexcept
 	{
 		if (!a) {
@@ -522,13 +522,130 @@ namespace waavs
 		return chunk_token(a, delims);
 	}
 
+
+
+	// Given an input chunk
+	// find the first instance of a specified character
+	// return the chunk preceding the found character
+	// or or the whole chunk of the character is not found
+	static inline ByteSpan chunk_find_char(const ByteSpan& a, char c) noexcept
+	{
+		const uint8_t* start = a.fStart;
+		const uint8_t* end = a.fEnd;
+		while (start < end && *start != c)
+			++start;
+
+		return { start, end };
+	}
+
+	// 
+	// scan a ByteSpan 'src', looking for the search span 'str'
+	// return true if it's found, and set the 'value' ByteSpan 
+	// to the location.
+	static INLINE bool chunk_find(const ByteSpan& src, const ByteSpan& str, ByteSpan& value) noexcept
+	{
+		const uint8_t* start = src.fStart;
+		const uint8_t* end = src.fEnd;
+		const uint8_t* b = str.fStart;
+		const uint8_t* bEnd = str.fEnd;
+
+		while (start < end)
+		{
+			// find the first character of the search string in the source string
+			while (start < end && *start != *b)
+				++start;
+
+			// if we've run out of source string, we didn't find it
+			if (start == end)
+				return false;
+
+			// now that we've found a potential first character
+			// of the search string, we need to see if the rest
+			// of the search string is present
+			while (start < end && b < bEnd && *start == *b)
+			{
+				++start;
+				++b;
+			}
+
+			// if we've run out of search string, we found it
+			if (b == bEnd)
+			{
+				value = { start - str.size(), start };
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	static INLINE ByteSpan chunk_find_cstr(const ByteSpan& a, const char* c) noexcept
+	{
+		const uint8_t* start = a.fStart;
+		const uint8_t* end = a.fEnd;
+		const uint8_t* cstart = (const uint8_t*)c;
+		const uint8_t* cend = cstart + strlen(c);
+		ByteSpan cChunk(cstart, cend);
+
+		while (start < end)
+		{
+			if (*start == *cstart)
+			{
+
+				if (chunk_starts_with({ start, end }, cChunk))
+				{
+					break;
+					//return { start, end };
+				}
+			}
+
+			++start;
+		}
+
+		return { start, end };
+	}
+
+	static inline ByteSpan chunk_read_bracketed(ByteSpan& src, const uint8_t lbracket, const uint8_t rbracket) noexcept
+	{
+		uint8_t* beginattrValue = nullptr;
+		uint8_t* endattrValue = nullptr;
+		uint8_t quote{};
+
+		// Skip white space before the quoted bytes
+		src = chunk_ltrim(src, chrWspChars);
+
+		if (!src || *src != lbracket)
+			return {};
+
+
+		// advance past the lbracket, then look for the matching close quote
+		src++;
+		beginattrValue = (uint8_t*)src.fStart;
+
+		// Skip until end of the value.
+		while (src && *src != rbracket)
+			src++;
+
+		if (src)
+		{
+			endattrValue = (uint8_t*)src.fStart;
+			src++;
+		}
+
+		// Store only well formed quotes
+		return { beginattrValue, endattrValue };
+	}
+}
+
+namespace waavs {
+
 	// readNextKeyValue()
 	// 
 	// Attributes are separated by '=' and values are quoted with 
 	// either "'" or '"'
 	// Ex: <tagname attr1='first value'  attr2="second value" />
 	// The src so it points past the end of the retrieved value
-	static bool readNextKeyValue(ByteSpan& src, ByteSpan& key, ByteSpan& value) noexcept
+	static bool readNextKeyAttribute(ByteSpan& src, ByteSpan& key, ByteSpan& value) noexcept
 	{
 		// Zero these out in case there is failure
 		//key = {};
@@ -604,119 +721,42 @@ namespace waavs
 
 		return true;
 	}
+
 	
-	// Given an input chunk
-	// find the first instance of a specified character
-	// return the chunk preceding the found character
-	// or or the whole chunk of the character is not found
-	static inline ByteSpan chunk_find_char(const ByteSpan& a, char c) noexcept
-	{
-		const uint8_t* start = a.fStart;
-		const uint8_t* end = a.fEnd;
-		while (start < end && *start != c)
-			++start;
-
-		return { start, end };
-	}
-
+	// readNextCSSKeyValue()
 	// 
-	// scan a ByteSpan 'src', looking for the search span 'str'
-	// return true if it's found, and set the 'value' ByteSpan 
-	// to the location.
-	static INLINE bool chunk_find(const ByteSpan& src, const ByteSpan &str, ByteSpan &value) noexcept
+	// Properties are separated by ';'
+	// values are separated from the key with ':'
+	// Ex: <tagname style="stroke:black;fill:white" />
+	// Return
+	//   true - if a valid key/value pair was found
+	//      in this case, key, and value will be populated
+	//   false - if no key/value pair was found, or end of string
+	//      in this case, key, and value will be undefined
+	//
+	static bool readNextCSSKeyValue(ByteSpan& src, ByteSpan& key, ByteSpan& value, const unsigned char fieldDelimeter = ';', const unsigned char keyValueSeparator = ':') noexcept
 	{
-		const uint8_t* start = src.fStart;
-		const uint8_t* end = src.fEnd;
-		const uint8_t* b = str.fStart;
-		const uint8_t* bEnd = str.fEnd;
-
-		while (start < end )
-		{
-			// find the first character of the search string in the source string
-			while (start < end && *start != *b)
-				++start;
-
-			// if we've run out of source string, we didn't find it
-			if (start == end)
-				return false;
-
-			// now that we've found a potential first character
-			// of the search string, we need to see if the rest
-			// of the search string is present
-			while (start < end && b < bEnd && *start == *b)
-			{
-				++start;
-				++b;
-			}
-
-			// if we've run out of search string, we found it
-			if (b == bEnd)
-			{
-				value = { start - str.size(), start };
-				return true;
-			}
-		}
-
-		return false;
-	}
-	
-	static INLINE ByteSpan chunk_find_cstr(const ByteSpan& a, const char* c) noexcept
-	{
-		const uint8_t* start = a.fStart;
-		const uint8_t* end = a.fEnd;
-		const uint8_t* cstart = (const uint8_t*)c;
-		const uint8_t* cend = cstart + strlen(c);
-		ByteSpan cChunk(cstart, cend);
-		
-		while (start < end)
-		{
-			if (*start == *cstart)
-			{
-				
-				if (chunk_starts_with({ start, end }, cChunk))
-				{
-					break;
-					//return { start, end };
-				}
-			}
-			
-			++start;
-		}
-		
-		return { start, end };
-	}
-
-	static inline ByteSpan chunk_read_bracketed(ByteSpan& src, const uint8_t lbracket, const uint8_t rbracket) noexcept
-	{
-		uint8_t* beginattrValue = nullptr;
-		uint8_t* endattrValue = nullptr;
-		uint8_t quote{};
-
-		// Skip white space before the quoted bytes
+		// Trim leading whitespace to begin
 		src = chunk_ltrim(src, chrWspChars);
 
-		if (!src || *src != lbracket)
-			return {};
+		// If the string is now blank, return immediately
+		if (!src)
+			return false;
 
+		// peel off a key/value pair by taking a token up to the fieldDelimeter
+		value = chunk_token_char(src, fieldDelimeter);
 
-		// advance past the lbracket, then look for the matching close quote
-		src++;
-		beginattrValue = (uint8_t*)src.fStart;
+		// Now, separate the key from the value using the keyValueSeparator
+		key = chunk_token_char(value, keyValueSeparator);
 
-		// Skip until end of the value.
-		while (src && *src != rbracket)
-			src++;
+		// trim the key and value fields of whitespace
+		key = chunk_trim(key, chrWspChars);
+		value = chunk_trim(value, chrWspChars);
 
-		if (src)
-		{
-			endattrValue = (uint8_t*)src.fStart;
-			src++;
-		}
-
-		// Store only well formed quotes
-		return { beginattrValue, endattrValue };
+		return true;
 	}
-
+	
+	
 	// Take a chunk containing a series of digits and turn
 	// it into a 64-bit unsigned integer
 	// Stop processing when the first non-digit is seen, 

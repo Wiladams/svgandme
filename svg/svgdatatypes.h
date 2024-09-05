@@ -568,18 +568,12 @@ namespace waavs {
         // looking for.
         ByteSpan styleChunk = inChunk;
 
-        
         if (styleChunk) {
-            // use CSSInlineIterator to iterate through the key value pairs
-            CSSInlineStyleIterator iter(styleChunk);
-
-            while (iter.next())
+            ByteSpan key{};
+            ByteSpan value{};
+            while (readNextCSSKeyValue(styleChunk, key, value))
             {
-                if ((*iter).first && (*iter).second)
-                {
-                    // add raw attribute value to collection
-                    styleAttributes.addAttribute((*iter).first, (*iter).second);
-                }
+                styleAttributes.addAttribute(key, value);
             }
         }
 

@@ -157,7 +157,7 @@ namespace waavs {
 				}
 			}
 			else {
-				if (!porder) {
+				if (!porder || porder == "normal") {
 					ctx->fillRect(geom.x, geom.y, geom.w, geom.h);
 					ctx->strokeRect(geom.x, geom.y, geom.w, geom.h);
 				}
@@ -300,7 +300,7 @@ namespace waavs {
 			
 			ByteSpan porder = getAttribute("paint-order");
 
-			if (!porder) {
+			if (!porder || porder == "normal") {
 				ctx->fillCircle(geom);
 				ctx->strokeCircle(geom);
 			}
@@ -386,7 +386,7 @@ namespace waavs {
 		{
 			ByteSpan porder = getAttribute("paint-order");
 
-			if (!porder) {
+			if (!porder || porder == "normal") {
 				ctx->fillEllipse(geom);
 				ctx->strokeEllipse(geom);
 			}
@@ -647,7 +647,7 @@ namespace waavs {
 
 			ByteSpan porder = getAttribute("paint-order");
 
-			if (!porder) {
+			if (!porder || porder == "normal") {
 				// default order is fill, stroke, markers
 				ctx->fillPath(fPath);
 				ctx->strokePath(fPath);
@@ -662,7 +662,7 @@ namespace waavs {
 					auto ptoken = chunk_token(porder, chrWspChars);
 					if (ptoken.empty())
 						break;
-					
+
 					if (ptoken == "fill")
 						ctx->fillPath(fPath);
 					else if (ptoken == "stroke")
@@ -674,6 +674,7 @@ namespace waavs {
 							drawMarkers(ctx, groot);
 					}
 				}
+
 			}
 
 		}

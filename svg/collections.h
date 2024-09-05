@@ -42,7 +42,7 @@ namespace waavs {
             ByteSpan key;
             ByteSpan value;
 
-            while (readNextKeyValue(src, key, value))
+            while (readNextKeyAttribute(src, key, value))
             {
                 addAttribute(key, value);
             }
@@ -93,7 +93,7 @@ namespace waavs {
             ByteSpan src = inChunk;
             ByteSpan name{};
 
-            while (readNextKeyValue(src, name, value))
+            while (readNextKeyAttribute(src, name, value))
             {
                 if (name == key)
                     return true;

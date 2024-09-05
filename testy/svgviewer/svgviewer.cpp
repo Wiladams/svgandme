@@ -34,9 +34,21 @@ bool gPerformTransform = true;
 
 
 
-void quicktest()
+static void quicktest()
 {
+	//static const char* srcStr = "stop-color:#321B0C";
+	static const char* srcStr = "stop-color:#532916;stop-opacity:0.7457;";
 
+	ByteSpan src(srcStr);
+	ByteSpan key{};
+	ByteSpan value{};
+	
+	while (readNextCSSKeyValue(src, key, value)) {
+		printf("CSS: ");
+		writeChunk(key);
+		printf(" = ");
+		printChunk(value);
+	}
 
 	
 }

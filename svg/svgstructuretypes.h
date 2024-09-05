@@ -126,7 +126,7 @@ namespace waavs {
 			ByteSpan src = elem.data();
             ByteSpan attrName{};
             ByteSpan attrValue{};
-            while (readNextKeyValue(src, attrName, attrValue))
+            while (readNextKeyAttribute(src, attrName, attrValue))
             {
 				if (attrName == "id")
 				{
@@ -463,15 +463,9 @@ namespace waavs {
                 }
             }
 
-            // Upsert any of the attributes associated with 'style' attribute
-            // if they exist
-            //ByteSpan styleChunk = getAttribute("style");
-
+            // Upsert any of the attributes associated with 'style' attribute if they exist
             if (fStyleAttribute) {
-                XmlAttributeCollection styleAttributes;
-
-                parseStyleAttribute(fStyleAttribute, styleAttributes);
-                fAttributes.mergeAttributes(styleAttributes);
+                parseStyleAttribute(fStyleAttribute, fAttributes);
             }
 
             // Finally, override any of the attributes already set with the 

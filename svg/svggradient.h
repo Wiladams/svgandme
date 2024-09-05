@@ -53,10 +53,7 @@ namespace waavs {
 			{
 				// If we have a style attribute, assume both the stop-color
 				// and the stop-opacity are in there
-
-				XmlAttributeCollection styleAttributes;
-				parseStyleAttribute(style, styleAttributes);
-				attrs.mergeAttributes(styleAttributes);
+				parseStyleAttribute(style, attrs);
 			}
 
 			// Get the offset
