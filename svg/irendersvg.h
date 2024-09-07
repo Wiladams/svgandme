@@ -11,8 +11,6 @@
 
 namespace waavs
 {
-
-
     // Text Alignment
     enum class ALIGNMENT : unsigned
     {
@@ -30,12 +28,13 @@ namespace waavs
 
 
 
-
+    /*
     enum class FILLRULE : unsigned
     {
         NON_ZERO = 0,
         EVEN_ODD = 1,
     };
+    */
 }
 
 namespace waavs
@@ -79,11 +78,11 @@ namespace waavs
             }
         }
 
-        // Cakk this before each frame to be drawn
+        // Call this before each frame to be drawn
         void renew()
         {
             if (fBackground.isNull())
-                clearAll();
+                clear();
             else
                 fillAll(fBackground);
 
@@ -157,7 +156,7 @@ namespace waavs
             return bResult == BL_SUCCESS;
         }
 
-        // paint for filling polygons
+        // paint for filling shapes
         virtual void fill(const BLVar& value) { BLContext::setFillStyle(value); }
         virtual void fill(const BLRgba32& value) { BLContext::setFillStyle(value); }
         virtual void fillOpacity(double o) { BLContext::setFillAlpha(o); }

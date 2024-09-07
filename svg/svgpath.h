@@ -611,30 +611,30 @@ namespace waavs
 			/* O */ nullptr,
 			/* P */ nullptr,
 			parseQuadTo,			// Q	'cccc'
-			/* R */ nullptr,
+			nullptr,				// R 
 			parseSmoothCubicTo,		// S	'cccc'
 			parseSmoothQuadTo,		// T	'cc'
-			/* U */ nullptr,
+			nullptr,				// U
 			parseVLineTo,			// V	'c'
 			/* W */ nullptr,
 			/* X */ nullptr,
 			/* Y */ nullptr,
 			parseClose,				// Z	''
 			parseArcBy,				// a	'rrffcc'
-			/* b */ nullptr,
+			nullptr,				// b
 			parseCubicBy,			// c	'cccccc'
 			/* d */ nullptr,
 			/* e */ nullptr,
 			/* f */ nullptr,
 			/* g */ nullptr,
 			parseHLineBy,			// h	'c'
-			/* i */ nullptr,
-			/* j */ nullptr,
-			/* k */ nullptr,
+			nullptr,				// i
+			nullptr,				// j
+			nullptr,				// k
 			parseLineBy,			// l	'cc'
 			parseMoveBy,			// m	'cc'
-			/* n */ nullptr,
-			/* o */ nullptr,
+			nullptr,				// n
+			nullptr,				
 			nullptr,				// p
 			parseQuadBy,			// q	'cccc'
 			nullptr,				// r

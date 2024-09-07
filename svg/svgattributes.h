@@ -1061,39 +1061,44 @@ namespace waavs {
 
         // Given the specified orientation, and a path, calculate the angle
         // of rotation for the marker
-        double calculateRadians(MarkerPosition pos, const BLPoint& p1, const BLPoint& p2) const
+        // return the value in radians
+        double calculateRadians(MarkerPosition pos, const BLPoint& p1, const BLPoint& p2, const BLPoint& p3) const
         {
             if (fOrientation == MarkerOrientation::MARKER_ORIENT_ANGLE)
             {
+                // fAngle is already in radians
                 return fAngle;
-                //return fAngle.radians();
             }
 
-
-            double ang = std::atan2(p2.y - p1.y, p2.x - p1.x);
-
-
-            switch (fOrientation)
+            // Calculate the angle based on tangent
+			double diffx1 = p2.x - p1.x;
+			double diffy1 = p2.y - p1.y;
+			double diffx2 = p3.x - p2.x;
+			double diffy2 = p3.y - p2.y;
+            
+            double ang1 = std::atan2(diffy1, diffx1);
+            double ang2 = std::atan2(diffy2, diffx2);
+            
+            switch (pos)
             {
-            case MarkerOrientation::MARKER_ORIENT_AUTO:
-            {
-                // BUGBUG - need to rework this.  'auto' is supposed to give
-                // you an angle between a center point and the current location
-                return ang;
-            }
-            case MarkerOrientation::MARKER_ORIENT_AUTOSTARTREVERSE:
-            {
-                // use p1 and p2 as a vector to calculate an angle in radians
-                // where p1 is the origin, and p2 is the vector
-                // then add pi to the angle
+                case MARKER_POSITION_START: 
+                {
+                    if (fOrientation == MarkerOrientation::MARKER_ORIENT_AUTOSTARTREVERSE)
+                        return ang1 + waavs::pi;
+                }
+                break;
+                
+                case MARKER_POSITION_MIDDLE:
+                    return (ang1 + ang2) / 2.0;
+                break;
 
-
-                return -ang;
-            }
-
+                case MARKER_POSITION_END:
+                    return ang1;
+                break;
             }
 
-            return ang;
+
+            return ang1;
         }
     };
 }

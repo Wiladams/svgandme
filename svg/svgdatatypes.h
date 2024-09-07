@@ -177,7 +177,13 @@ namespace waavs {
     }
 
     // readNumericArguments()
-//
+    //
+    // Read a list of numeric arguments as specified in the 'argTypes'
+    // c, r - read a number
+	// f - read a flag
+    // 
+	// The number of arguments read is determined by the length of the argTypes string
+    //
     static bool readNumericArguments(ByteSpan& s, const char* argTypes, double* outArgs) noexcept
     {
         // typical whitespace found in lists of numbers, like on paths and polylines
@@ -240,10 +246,44 @@ namespace waavs
     };
     
     //==============================================================================
-// SVGLength
-// Representation of a unit based length.
-// This is the DOM specific replacement of SVGDimension
-//==============================================================================
+    // SVGLength
+    // Representation of a unit based length.
+    // This is the DOM specific replacement of SVGDimension
+    //   Reference:  https://svgwg.org/svg2-draft/types.html#InterfaceSVGNumber
+    //==============================================================================
+    struct SVGLength {
+		static const unsigned short SVG_LENGTHTYPE_UNKNOWN = 0;
+		static const unsigned short SVG_LENGTHTYPE_NUMBER = 1;
+		static const unsigned short SVG_LENGTHTYPE_PERCENTAGE = 2;
+		static const unsigned short SVG_LENGTHTYPE_EMS = 3;
+		static const unsigned short SVG_LENGTHTYPE_EXS = 4;
+		static const unsigned short SVG_LENGTHTYPE_PX = 5;
+		static const unsigned short SVG_LENGTHTYPE_CM = 6;
+		static const unsigned short SVG_LENGTHTYPE_MM = 7;
+		static const unsigned short SVG_LENGTHTYPE_IN = 8;
+		static const unsigned short SVG_LENGTHTYPE_PT = 9;
+		static const unsigned short SVG_LENGTHTYPE_PC = 10;
+        
+		double fValue{ 0 };
+        unsigned short fUnitType = SVG_LENGTHTYPE_UNKNOWN;
+        
+		SVGLength(double value, unsigned short kind) noexcept : fValue(value), fUnitType(kind) {}
+		
+        unsigned short unitType() const noexcept { return fUnitType; }
+        
+        double value(const double range) const noexcept {
+            switch (fUnitType) {
+                case SVGLength::SVG_LENGTHTYPE_NUMBER:
+                    return fValue;
+                case SVGLength::SVG_LENGTHTYPE_PERCENTAGE:
+					return fValue * range / 100.0;
+            }
+
+            return 0;
+        }
+    };
+    
+    
     enum SVGLengthRelativeUnits {
         SVG_LENGTH_RELATIVE_UNKNOWN = 0,
         SVG_LENGTH_RELATIVE_EM = 1,

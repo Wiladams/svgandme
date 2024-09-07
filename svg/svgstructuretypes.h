@@ -24,19 +24,19 @@ namespace waavs {
     struct IAmGroot;        // forward declaration
     struct IManageReferences;  // forward declaration
     struct SVGViewable;         // forward declaration
-    
+
     struct SVGObject
     {
     protected:
         ByteSpan fId{};      // The id of the element
-        
+
         bool fNeedsBinding{ false };
 
     public:
 
         // default and copy constructor not allowed, let's see what breaks
         SVGObject() = default;
-        
+
         // want to know when a copy or assignment is happening
         // so mark these as 'delete' for now so we can catch it
         SVGObject(const SVGObject& other) = delete;
@@ -47,8 +47,8 @@ namespace waavs {
 
         const ByteSpan& id() const noexcept { return fId; }
         void id(const ByteSpan& aid) noexcept { fId = aid; }
-        
-       
+
+
         bool needsBinding() const noexcept { return fNeedsBinding; }
         void needsBinding(bool needsIt) noexcept { fNeedsBinding = needsIt; }
 
@@ -57,11 +57,93 @@ namespace waavs {
 
         // sub-classes should return something interesting as BLVar
         // This can be used for styling, so images, colors, patterns, gradients, etc
-        virtual const BLVar getVariant() noexcept { return BLVar::null();}
+        virtual const BLVar getVariant() noexcept { return BLVar::null(); }
 
 
     };
+}
 
+    
+    namespace waavs {
+
+
+        // SVGVisualProperty
+        // This is meant to be the base class for things that are optionally
+        // used to alter the graphics context.
+        // If isSet() is true, then the drawSelf() is called.
+        // sub-classes should override drawSelf() to do the actual drawing
+        //
+        // This is used for things like; Paint, Transform, Miter, etc.
+        //
+        struct SVGVisualProperty : public SVGObject
+        {
+            bool fAutoDraw{ true };
+            bool fIsSet{ false };
+            ByteSpan fRawValue;
+
+
+            SVGVisualProperty(IAmGroot* groot) :SVGObject(), fIsSet(false) {}
+
+            SVGVisualProperty(const SVGVisualProperty& other) = delete;
+            SVGVisualProperty& operator=(const SVGVisualProperty& rhs) = delete;
+
+
+            void set(const bool value) { fIsSet = value; }
+            bool isSet() const { return fIsSet; }
+
+            void autoDraw(bool value) { fAutoDraw = value; }
+            bool autoDraw() const { return fAutoDraw; }
+
+            const ByteSpan& rawValue() const { return fRawValue; }
+
+            virtual bool loadSelfFromChunk(const ByteSpan& chunk)
+            {
+                return false;
+            }
+
+            bool loadFromChunk(const ByteSpan& inChunk)
+            {
+                auto s = chunk_trim(inChunk, xmlwsp);
+
+                if (!s)
+                    return false;
+
+                fRawValue = s;
+
+                return loadSelfFromChunk(fRawValue);
+            }
+
+            virtual void update(IAmGroot* groot) { ; }
+
+            // Apply propert to the context conditionally
+            virtual void drawSelf(IRenderSVG* ctx, IAmGroot* groot)
+            {
+                ;
+            }
+
+            virtual void draw(IRenderSVG* ctx, IAmGroot* groot)
+            {
+                //printf("SVGVisualProperty::draw == ");
+                //printChunk(fRawValue);
+
+                if (isSet())
+                    drawSelf(ctx, groot);
+            }
+
+        };
+
+        // Collection of property constructors
+        static std::unordered_map<ByteSpan, std::function<std::shared_ptr<SVGVisualProperty>(const ByteSpan&)>, ByteSpanHash> gSVGAttributeCreation;
+
+        // Convenient function to register property constructors
+        static void registerSVGAttribute(const ByteSpan& name, std::function<std::shared_ptr<SVGVisualProperty>(const ByteSpan&)> func)
+        {
+            gSVGAttributeCreation[name] = func;
+        }
+
+    }
+    
+    namespace waavs {
     struct SVGViewable : public SVGObject //, public XmlAttributeCollection
     {
     protected:
@@ -99,7 +181,6 @@ namespace waavs {
         
         virtual void resolveProperties(IAmGroot* groot, SVGViewable* container) {;}
         virtual void resolvePosition(IAmGroot* groot, SVGViewable *container) { ; }
-        //virtual void resolveStyle(IAmGroot* groot, SVGViewable *container) { ; }
         
         virtual void update(IAmGroot* groot) { ; }
         
@@ -120,7 +201,6 @@ namespace waavs {
 
             // Gather all the presentation attributes to start
             fAttributeSpan = elem.data();
-            //scanAttributes(fAttributeSpan);
             
             // Scan the attributes, saving off the ones we think are interesting
 			ByteSpan src = elem.data();
@@ -272,84 +352,7 @@ namespace waavs {
 
 
 
-namespace waavs {
 
-
-    // SVGVisualProperty
-    // This is meant to be the base class for things that are optionally
-    // used to alter the graphics context.
-    // If isSet() is true, then the drawSelf() is called.
-    // sub-classes should override drawSelf() to do the actual drawing
-    //
-    // This is used for things like; Paint, Transform, Miter, etc.
-    //
-    struct SVGVisualProperty : public SVGObject
-    {
-        bool fAutoDraw{ true };
-        bool fIsSet{ false };
-        ByteSpan fRawValue;
-
-        
-        SVGVisualProperty(IAmGroot* groot) :SVGObject(), fIsSet(false) {}
-
-        SVGVisualProperty(const SVGVisualProperty& other) = delete;
-        SVGVisualProperty& operator=(const SVGVisualProperty& rhs) = delete;
-
-
-        void set(const bool value) { fIsSet = value; }
-        bool isSet() const { return fIsSet; }
-
-		void autoDraw(bool value) { fAutoDraw = value; }
-		bool autoDraw() const { return fAutoDraw; }
-        
-        const ByteSpan& rawValue() const { return fRawValue; }
-        
-        virtual bool loadSelfFromChunk(const ByteSpan& chunk)
-        {
-            return false;
-        }
-
-        bool loadFromChunk(const ByteSpan& inChunk)
-        {
-            auto s = chunk_trim(inChunk, xmlwsp);
-            
-            if (!s)
-                return false;
-            
-            fRawValue = s;
-
-            return loadSelfFromChunk(fRawValue);
-        }
-
-        virtual void update(IAmGroot* groot) { ; }
-        
-        // Apply propert to the context conditionally
-        virtual void drawSelf(IRenderSVG* ctx, IAmGroot* groot)
-        {
-            ;
-        }
-
-        virtual void draw(IRenderSVG* ctx, IAmGroot* groot)
-        {
-            //printf("SVGVisualProperty::draw == ");
-            //printChunk(fRawValue);
-
-            if (isSet())
-                drawSelf(ctx, groot);
-        }
-
-    };
-
-    // Collection of property constructors
-    static std::unordered_map<ByteSpan, std::function<std::shared_ptr<SVGVisualProperty>(const ByteSpan&)>, ByteSpanHash> gSVGAttributeCreation;
-
-    // Convenient function to register property constructors
-	static void registerSVGAttribute(const ByteSpan& name, std::function<std::shared_ptr<SVGVisualProperty>(const ByteSpan&)> func)
-	{
-		gSVGAttributeCreation[name] = func;
-	}
-    
-}
 
 
 
@@ -798,7 +801,11 @@ namespace waavs {
             }
         }
 
-
+        virtual void loadEndTag(const XmlElement& elem, IAmGroot* groot)
+        {
+			//printf("SVGGraphicsElement::loadEndTag [%s]\n", toString(elem.name()).c_str());
+        }
+        
         virtual void loadContentNode(const XmlElement& elem, IAmGroot* groot)
         {
             //printf("SVGCompountNode::loadContentNode\n");
@@ -893,7 +900,7 @@ namespace waavs {
                     {
                         // Close the current element
                         buildState = BUILD_STATE_CLOSE;
-                        //loadEndTag(elem, groot);
+                        loadEndTag(elem, groot);
                     }
                     else if (elem.isContent())
                     {
