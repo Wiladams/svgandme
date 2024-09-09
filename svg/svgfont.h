@@ -62,33 +62,17 @@ namespace waavs {
 			isStructural(false);
 		}
 
-		//void loadSelfFromXmlElement(const XmlElement& elem, IAmGroot* groot) override
+
 		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
-			//SVGGraphicsElement::loadSelfFromXmlElement(elem, groot);
 
 
-			// get horiz-adv-x as a numeric value if it exists
-			auto horizAdvX = getAttribute("horiz-adv-x");
-			auto horizOriginX = getAttribute("horiz-origin-x");
-			auto horizOriginY = getAttribute("horiz-origin-y");
-			auto vertAdvY = getAttribute("vert-adv-y");
-			auto vertOriginX = getAttribute("vert-origin-x");
-			auto vertOriginY = getAttribute("vert-origin-y");
-
-
-			if (horizAdvX)
-				fHorizAdvX = toNumber(horizAdvX);
-			if (horizOriginX)
-				fHorizOriginX = toNumber(horizOriginX);
-			if (horizOriginY)
-				fHorizOriginY = toNumber(horizOriginY);
-			if (vertAdvY)
-				fVertAdvY = toNumber(vertAdvY);
-			if (vertOriginX)
-				fVertOriginX = toNumber(vertOriginX);
-			if (vertOriginY)
-				fVertOriginY = toNumber(vertOriginY);
+			parseNumber(getAttribute("horiz-adv-x"), fHorizAdvX);
+			parseNumber(getAttribute("horiz-origin-x"), fHorizOriginX);
+			parseNumber(getAttribute("horiz-origin-y"), fHorizOriginY);
+			parseNumber(getAttribute("vert-adv-y"), fVertAdvY);
+			parseNumber(getAttribute("vert-origin-x"), fVertOriginX);
+			parseNumber(getAttribute("vert-origin-y"), fVertOriginY);
 
 
 			needsBinding(true);
@@ -162,10 +146,10 @@ namespace waavs {
 
 		SVGFontFaceNode(IAmGroot* iMap) :SVGGraphicsElement(iMap) {}
 
-		//void loadSelfFromXmlElement(const XmlElement& elem, IAmGroot* groot) override
+
 		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
-			//SVGGraphicsElement::loadSelfFromXmlElement(elem, groot);
+
 
 			auto fontFamily = getAttribute("font-family");
 			auto fontStyle = getAttribute("font-style");
@@ -220,26 +204,14 @@ namespace waavs {
 		{
 		}
 
-		//void loadSelfFromXmlElement(const XmlElement& elem, IAmGroot* groot) override
 		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
-		{
-			//SVGGraphicsElement::loadSelfFromXmlElement(elem, groot);
-
-			auto horizAdvX = getAttribute("horiz-adv-x");
-			auto vertAdvY = getAttribute("vert-adv-y");
-			auto vertOriginX = getAttribute("vert-origin-x");
-			auto vertOriginY = getAttribute("vert-origin-y");
+		{	
+			parseNumber(getAttribute("horiz-adv-x"), fHorizAdvX);
+			parseNumber(getAttribute("vert-adv-y"), fVertAdvY);
+			parseNumber(getAttribute("vert-origin-x"), fVertOriginX);
+			parseNumber(getAttribute("vert-origin-y"), fVertOriginY);
 			
-			if (horizAdvX)
-				fHorizAdvX = toNumber(horizAdvX);
-			if (vertAdvY)
-				fVertAdvY = toNumber(vertAdvY);
-			if (vertOriginX)
-				fVertOriginX = toNumber(vertOriginX);
-			if (vertOriginY)
-				fVertOriginY = toNumber(vertOriginY);
 			
-
 			auto d = getAttribute("d");
 			if (!d)
 				return;
@@ -287,19 +259,12 @@ namespace waavs {
 			// just store the raw ByteSpan
 			// and let the caller parse it
 			auto uni = getAttribute("unicode");
-			auto horizAdvX = getAttribute("horiz-adv-x");
-			auto vertAdvY = getAttribute("vert-adv-y");
-			auto vertOriginX = getAttribute("vert-origin-x");
-			auto vertOriginY = getAttribute("vert-origin-y");
 			
-			if (horizAdvX)
-				fHorizAdvX = toNumber(horizAdvX);
-			if (vertAdvY)
-				fVertAdvY = toNumber(vertAdvY);
-			if (vertOriginX)
-				fVertOriginX = toNumber(vertOriginX);
-			if (vertOriginY)
-				fVertOriginY = toNumber(vertOriginY);
+			parseNumber(getAttribute("horiz-adv-x"), fHorizAdvX);
+			parseNumber(getAttribute("vert-adv-y"), fVertAdvY);
+			parseNumber(getAttribute("vert-origin-x"), fVertOriginX);
+			parseNumber(getAttribute("vert-origin-y"), fVertOriginY);
+			
 			
 			auto d = getAttribute("d");
 			if (!d)
@@ -307,7 +272,6 @@ namespace waavs {
 
 			auto success = blpathparser::parsePath(d, fPath);
 			fPath.shrink();
-
 		}
 
 	};
@@ -358,20 +322,17 @@ namespace waavs {
 			};
 		}
 
-		std::string fFaceName{};
+		ByteSpan fFaceName{};
 
 		SVGFontFaceNameNode(IAmGroot* iMap) :SVGVisualNode(iMap) { visible(false); }
 
-		const std::string& faceName() const {
+		const ByteSpan& faceName() const {
 			return fFaceName;
 		}
 		
-		//void loadSelfFromXmlElement(const XmlElement& elem, IAmGroot* groot) override
 		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
-			auto aname = getAttribute("name");
-			if (aname)
-				fFaceName = toString(aname);
+			fFaceName = getAttribute("name");
 		}
 
 

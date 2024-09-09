@@ -12,6 +12,7 @@
 
 #include "svgattributes.h"
 #include "svgstructuretypes.h"
+#include "converters.h"
 
 namespace waavs {
 	struct SVGImageElement : public SVGGraphicsElement

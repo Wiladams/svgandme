@@ -2,6 +2,7 @@
 
 #include <string>
 #include <array>
+#include <list>
 #include <functional>
 #include <unordered_map>
 
@@ -78,10 +79,17 @@ namespace waavs {
 			//needsBinding(false);
 		}
 
-		bool drawMarker(IRenderSVG* ctx, std::shared_ptr<SVGVisualProperty> prop, MarkerPosition pos, const BLPoint& p1, const BLPoint& p2, const BLPoint& p3, IAmGroot* groot)
+		bool drawMarker(IRenderSVG* ctx, const ByteSpan propname, MarkerPosition pos, const BLPoint& p1, const BLPoint& p2, const BLPoint& p3, IAmGroot* groot)
 		{
+			std::shared_ptr<SVGVisualProperty> prop = getVisualProperty(propname);
+			
+			// Look for the default marker if the specified one is not found
 			if (nullptr == prop)
-				return false;
+			{
+				prop = getVisualProperty("marker");
+				if (nullptr == prop)
+					return false;
+			}
 			
 			// cast the prop to a SVGMarkerAttribute
 			auto marker = std::dynamic_pointer_cast<SVGMarkerAttribute>(prop);
@@ -119,6 +127,8 @@ namespace waavs {
 			// from the markerNode
 			double rads = markerNode->orientation().calculateRadians(pos, p1, p2, p3);
 
+			//printf("angle: %f\n", degrees(rads));
+			
 			// apply the transformation
 			ctx->translate(transP);
 			ctx->rotate(rads);
@@ -151,11 +161,15 @@ namespace waavs {
 			BLPoint lastMoveTo{};
 			BLPoint lastOnPoint{};
 			
+			//printf("Command Size: %d  Path Size: %d\n", cmdSpan.size(), fPath.size());
+			
 			while (cmdSpan)
 			{
 				int nVerts = 0;
+				uint8_t cmd = cmdSpan[0];
+				//printf("COORD: %d %f, %f\n", cmd, verts[vertOffset].x, verts[vertOffset].y);
 
-				switch (*cmdSpan)
+				switch (cmd)
 				{
 					// For the MOVE command, it's a first point, so in order to calculate an angle
 					// we need a following point, if it exists.  If it doesn't exist, then we 
@@ -178,13 +192,13 @@ namespace waavs {
 								break;
 
 								case BL_PATH_CMD_CUBIC:
-									p2 = verts[vertOffset + 3];
-									//nVerts += 2;
+									p2 = verts[vertOffset + 1];
+
 								break;
 									
 								case BL_PATH_CMD_QUAD:
-									p2 = verts[vertOffset + 2];
-									//nVerts += 2;
+									p2 = verts[vertOffset + 1];
+								break;
 									
 								case BL_PATH_CMD_CLOSE:
 								case BL_PATH_CMD_MOVE:
@@ -193,7 +207,7 @@ namespace waavs {
 							}
 						}
 
-						drawMarker(ctx, fVisualProperties["marker-start"], MarkerPosition::MARKER_POSITION_START, p1, p2, p2, groot);
+						drawMarker(ctx, "marker-start", MarkerPosition::MARKER_POSITION_START, p1, p2, p2, groot);
 
 						lastCmd = BL_PATH_CMD_MOVE;
 					}
@@ -216,35 +230,36 @@ namespace waavs {
 							switch (nextCmd) {
 								case BL_PATH_CMD_ON:
 									p3 = verts[vertOffset + 1];
-									drawMarker(ctx, fVisualProperties["marker-mid"], MarkerPosition::MARKER_POSITION_MIDDLE, p1, p2, p3, groot);
+									drawMarker(ctx, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, p1, p2, p3, groot);
 									lastOnPoint = p2;
 								break;
 								
 								case BL_PATH_CMD_CLOSE:
 									p3 = lastMoveTo;
-									drawMarker(ctx, fVisualProperties["marker-mid"], MarkerPosition::MARKER_POSITION_MIDDLE, p1, p2, p3, groot);
+									drawMarker(ctx, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, p1, p2, p3, groot);
 									lastOnPoint = p2;
 								break;
 								
 								case BL_PATH_CMD_MOVE:
 								default:
 									p3 = p2;
-									drawMarker(ctx, fVisualProperties["marker-end"], MarkerPosition::MARKER_POSITION_END, verts[vertOffset - 1], verts[vertOffset], verts[vertOffset], groot);
+									drawMarker(ctx, "marker-end", MarkerPosition::MARKER_POSITION_END, verts[vertOffset - 1], verts[vertOffset], verts[vertOffset], groot);
 									lastOnPoint = p2;
 							}
 						}
 						else {
 							// If there is no next command, then this is an 'end', so we should use the end marker if it exists
-							drawMarker(ctx, fVisualProperties["marker-end"], MarkerPosition::MARKER_POSITION_END, verts[vertOffset - 1], verts[vertOffset], verts[vertOffset], groot);
+							drawMarker(ctx, "marker-end", MarkerPosition::MARKER_POSITION_END, verts[vertOffset - 1], verts[vertOffset], verts[vertOffset], groot);
 						}
 						
 						lastCmd = BL_PATH_CMD_ON;
+						lastOnPoint = p2;
 					}
 					break;
 
 					case BL_PATH_CMD_QUAD:
 						nVerts = 2;
-						//drawMarker(ctx, fVisualProperties["marker-mid"], MarkerPosition::MARKER_POSITION_MIDDLE, verts[vertOffset], verts[vertOffset], verts[vertOffset+1], groot);
+						//drawMarker(ctx, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, verts[vertOffset], verts[vertOffset], verts[vertOffset+1], groot);
 					break;
 
 					case BL_PATH_CMD_CONIC:
@@ -252,9 +267,16 @@ namespace waavs {
 						printf("BL_PATH_CMD_CONIC\n");
 					break;
 					
-					case BL_PATH_CMD_CUBIC:
+					case BL_PATH_CMD_CUBIC: {
 						nVerts = 3;
-						//drawMarker(ctx, fVisualProperties["marker-mid"], MarkerPosition::MARKER_POSITION_MIDDLE, verts[vertOffset], verts[vertOffset], verts[vertOffset + 1], groot);
+						BLPoint p1 = verts[vertOffset + 1];
+						BLPoint p2 = verts[vertOffset+2];
+						BLPoint p3 = verts[vertOffset + 3];
+						drawMarker(ctx, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, p1, p2, p3, groot);
+						
+						lastCmd = BL_PATH_CMD_CUBIC;
+						lastOnPoint = verts[vertOffset + 2];
+					}
 					break;
 
 					case BL_PATH_CMD_CLOSE: {
@@ -266,7 +288,7 @@ namespace waavs {
 						
 						nVerts = 1;
 
-						drawMarker(ctx, fVisualProperties["marker-end"], MarkerPosition::MARKER_POSITION_END, p1, p2, p3, groot);
+						drawMarker(ctx, "marker-end", MarkerPosition::MARKER_POSITION_END, p1, p2, p3, groot);
 
 						lastCmd = BL_PATH_CMD_CLOSE;
 						lastOnPoint = p2;
@@ -274,7 +296,7 @@ namespace waavs {
 					break;
 				}
 
-				cmdSpan++;
+				cmdSpan+= nVerts;
 				vertOffset += nVerts;
 			}
 		}
@@ -298,17 +320,39 @@ namespace waavs {
 					drawMarkers(ctx, groot);
 			}
 			else {
+				std::list<ByteSpan> alist = {
+					ByteSpan("fill"),
+					ByteSpan("stroke"),
+					ByteSpan("markers")
+				};
+				
 				// get paint order tokens one at a time
 				while (porder) {
 					auto ptoken = chunk_token(porder, chrWspChars);
 					if (ptoken.empty())
 						break;
 
-					if (ptoken == "fill")
+					if (ptoken == "fill") 
 						ctx->fillPath(fPath);
 					else if (ptoken == "stroke")
 						ctx->strokePath(fPath);
 					else if (ptoken == "markers")
+					{
+						// draw markers if we have any
+						if (fHasMarkers)
+							drawMarkers(ctx, groot);
+					}
+					
+					alist.remove(ptoken);
+				}
+				
+				// If there's anything still in the list, then draw that
+				for (auto& token : alist) {
+					if (token == "fill")
+						ctx->fillPath(fPath);
+					else if (token == "stroke")
+						ctx->strokePath(fPath);
+					else if (token == "markers")
 					{
 						// draw markers if we have any
 						if (fHasMarkers)

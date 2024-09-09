@@ -270,7 +270,6 @@ namespace waavs {
 			//printXmlElement(elem);
 			if (elem.name() != "stop")
 			{
-				//printf("SVGGradientNode::loadSelfClosingNode, unknown node type: %s\n", toString(elem.name()).c_str());
 				return;
 			}
 
@@ -602,20 +601,15 @@ namespace waavs {
 
 		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
-			//SVGVisualNode::loadVisualProperties(attrs, groot);
+			fPaint.loadFromChunk(getAttribute("solid-color"));
 
-			if (getAttribute("solid-color"))
-			{
-				fPaint.loadFromChunk(getAttribute("solid-color"));
-			}
+			auto solidopa = getAttribute("solid-opacity");
 
-			if (getAttribute("solid-opacity"))
+			double opa{ 0 };
+			if (readNumber(solidopa, opa))
 			{
-				double opa = toDouble(getAttribute("solid-opacity"));
 				fPaint.setOpacity(opa);
 			}
-
-
 		}
 
 	};

@@ -283,14 +283,14 @@ namespace waavs {
         
 
 
-        std::string fValue{ "Arial" };
+        ByteSpan fValue{};
 
         SVGFontFamily(IAmGroot* inMap) : SVGVisualProperty(inMap) {}
 
         SVGFontFamily& operator=(const SVGFontFamily& rhs) = delete;
 
 
-		const std::string& value() const { return fValue; }
+		const ByteSpan& value() const { return fValue; }
         
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
@@ -302,7 +302,8 @@ namespace waavs {
             if (!inChunk)
 				return false;
             
-            fValue = toString(chunk_trim(inChunk, xmlwsp));
+            fValue = inChunk;
+            //fValue = toString(chunk_trim(inChunk, xmlwsp));
             set(true);
             
 			return true;
@@ -471,7 +472,6 @@ namespace waavs {
     //=====================================================
     struct SVGPaint : public SVGPaintAttribute
     {
-        //bool fNeedsResolving{ false };
         ByteSpan fPaintReference{};
 
 
@@ -610,6 +610,10 @@ namespace waavs {
                 if (str == "none") {
                     fPaintVar = BLVar::null();
                     set(true);
+                }
+                else if ((str == "context-stroke") || (str == "context-fill"))
+                {
+                    set(false);
                 }
                 else if ((str == "inherit") || (str == "currentColor"))
                 {
@@ -758,9 +762,12 @@ namespace waavs {
             if (!inChunk)
                 return false;
             
-            fWidth = toNumber(inChunk);
+            ByteSpan s = inChunk;
+            if (!readNumber(s, fWidth))
+                return false;
+            
             set(true);
-
+            
             return true;
         }
 
@@ -792,7 +799,11 @@ namespace waavs {
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
-            fMiterLimit = toNumber(inChunk);
+            ByteSpan s = inChunk;
+            
+            if (!readNumber(s, fMiterLimit))
+                return false;
+            
             fMiterLimit = clamp(fMiterLimit, 1.0, 10.0);
 
             set(true);
@@ -1073,9 +1084,14 @@ namespace waavs {
             // Calculate the angle based on tangent
 			double diffx1 = p2.x - p1.x;
 			double diffy1 = p2.y - p1.y;
-			double diffx2 = p3.x - p2.x;
-			double diffy2 = p3.y - p2.y;
+			//double diffx2 = p3.x - p2.x;
+			//double diffy2 = p3.y - p2.y;
             
+            //double diffx1 = p1.x - p2.x;
+            //double diffy1 = p1.y - p2.y;
+            double diffx2 = p3.x - p2.x;
+            double diffy2 = p3.y - p2.y;
+
             double ang1 = std::atan2(diffy1, diffx1);
             double ang2 = std::atan2(diffy2, diffx2);
             

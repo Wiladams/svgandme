@@ -262,7 +262,8 @@ namespace waavs {
             if (it != fDefinitions.end())
                 return it->second;
 
-            printf("SVGDocument::getElementById, FAIL: %s\n", toString(name).c_str());
+            printf("SVGDocument::getElementById, FAIL: ");
+            printChunk(name);
 
             return {};
         }
@@ -322,7 +323,8 @@ namespace waavs {
             if (it != fEntities.end())
                 return it->second;
 
-            printf("SVGDocument::findEntity(), FAIL: %s\n", toString(name).c_str());
+            printf("SVGDocument::findEntity(), FAIL: ");
+            printChunk(name);
 
             return ByteSpan{};
         }
@@ -605,11 +607,18 @@ namespace waavs {
 
 namespace waavs {
     // compound node creation dispatch - 'g', 'symbol', 'pattern', 'linearGradient', 'radialGradient', 'conicGradient', 'image', 'style', 'text', 'tspan', 'use'
-    static std::unordered_map<ByteSpan, std::function<std::shared_ptr<SVGVisualNode>(IAmGroot* aroot, XmlElementIterator& iter)>, ByteSpanHash> gSVGGraphicsElementCreation{};
-
+    using SVGContainerCreationMap = std::unordered_map<ByteSpan, std::function<std::shared_ptr<SVGVisualNode>(IAmGroot* aroot, XmlElementIterator& iter)>, ByteSpanHash>;
+    static SVGContainerCreationMap gSVGGraphicsElementCreation{};
+    
+	static void registerContainerNode(const ByteSpan& name, std::function<std::shared_ptr<SVGVisualNode>(IAmGroot* aroot, XmlElementIterator& iter)> creator)
+	{
+		gSVGGraphicsElementCreation[name] = creator;
+	}
+    
     // Geometry node creation dispatch
     // Creating from a singular element
-    static std::unordered_map<ByteSpan, std::function<std::shared_ptr<SVGVisualNode>(IAmGroot* root, const XmlElement& elem)>, ByteSpanHash> gShapeCreationMap{};
+    using ShapeCreationMap = std::unordered_map<ByteSpan, std::function<std::shared_ptr<SVGVisualNode>(IAmGroot* root, const XmlElement& elem)>, ByteSpanHash> ;
+    static ShapeCreationMap gShapeCreationMap{};
 
     static void registerSVGSingularNode(const ByteSpan& name, std::function<std::shared_ptr<SVGVisualNode>(IAmGroot* root, const XmlElement& elem)> func)
     {

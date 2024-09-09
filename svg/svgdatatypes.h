@@ -19,8 +19,78 @@
 
 namespace waavs {
     
+    // parse64u
+	// Parse a 64 bit unsigned integer from a string
+	// return true if successful, false if not
+	// If successful, the value is stored in the out parameter
+    //
+    static INLINE bool parse64u(const ByteSpan& inChunk, int64_t& v) noexcept
+    {
+        ByteSpan s = inChunk;
+
+        if (!s)
+            return false;
+
+
+        const unsigned char* sStart = s.fStart;
+        const unsigned char* sEnd = s.fEnd;
+
+        // Return early if the next thing is not a digit
+        if (!is_digit(*sStart))
+            return false;
+
+        // Initialize the value
+        v = 0;
+
+        // While we still have input to consume
+        while ((sStart < sEnd) && is_digit(*sStart))
+        {
+            v = (v * 10) + (uint64_t)(*sStart - '0');
+            sStart++;
+        }
+
+        return true;
+    }
+    
+    // parse64i
+	// Parse a 64 bit signed integer from the input span
+	// Return true if successful, false otherwise
+	// If successful, the value is stored in the out parameter
+    //
+    static INLINE bool parse64i(const ByteSpan& inChunk, int64_t& v) noexcept
+    {
+        ByteSpan s = inChunk;
+        
+        if (!s)
+            return false;
+
+        const unsigned char* sStart = s.fStart;
+        const unsigned char* sEnd = s.fEnd;
+        
+        // Check for a sign if it's there
+        int sign = 1;
+		if (*sStart == '-') {
+			sign = -1;
+			sStart++;
+		}
+		else if (*sStart == '+') {
+			sStart++;
+		}
+        
+        if (!parse64u(s, v))
+            return false;
+
+		if (sign < 0)
+			v = -v;
+
+        return true;
+    }
+    
     static INLINE bool read_u64(ByteSpan& s, uint64_t &v) noexcept
     {
+        if (!s)
+            return false;
+        
 		v = 0;
         const unsigned char * sStart = s.fStart;
         const unsigned char * sEnd = s.fEnd;
@@ -135,7 +205,11 @@ namespace waavs {
         return true;
     }
 
-
+    static INLINE bool parseNumber(const ByteSpan& inChunk, double& value)
+    {
+		ByteSpan s = inChunk;
+		return readNumber(s, value);
+    }
     
     // readNextNumber()
     // 

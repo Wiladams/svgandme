@@ -7,7 +7,7 @@
 
 #include "mappedfile.h"
 #include "svguiapp.h"
-//#include "svgwaavs.h"
+#include "svgwaavs.h"
 
 using namespace waavs;
 
@@ -18,8 +18,6 @@ IRenderSVG gDrawingContext(nullptr);
 // Reference to currently active document
 std::shared_ptr<SVGDocument> gDoc{ nullptr };
 ViewPort gViewPort{};
-
-
 
 
 // For mouse management

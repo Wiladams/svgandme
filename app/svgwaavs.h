@@ -9,7 +9,7 @@
 
 #include "screensnapshot.h"
 #include "gmonitor.h"
-
+#include "converters.h"
 
 
 
@@ -26,9 +26,9 @@ namespace waavs {
 	{
 		static void registerFactory() {
 			registerSVGSingularNode("displayCapture",
-				[](IAmGroot* root, const XmlElement& elem) {
-					auto node = std::make_shared<DisplayCaptureElement>(root);
-					node->loadFromXmlElement(elem);
+				[](IAmGroot* groot, const XmlElement& elem) {
+					auto node = std::make_shared<DisplayCaptureElement>(groot);
+					node->loadFromXmlElement(elem, groot);
 					return node;
 				});
 		}
@@ -58,7 +58,7 @@ namespace waavs {
 
 		DisplayCaptureElement(IAmGroot* aroot) :SVGGraphicsElement(aroot) {}
 
-		const BLVar getVariant() override noexcept
+		const BLVar getVariant() noexcept override
 		{
 			if (fVar.isNull())
 			{
@@ -70,8 +70,10 @@ namespace waavs {
 			return fVar;
 		}
 
+		
 		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
 		{
+
 			// We need to resolve the size of the user space
 			// start out with some information from groot
 			double dpi = 96;
@@ -91,28 +93,21 @@ namespace waavs {
 				h = cFrame.h;
 			}
 
-			
+
 			fSrcSpan = getAttribute("src");
 
-			if (getAttribute("capX"))
-				fCapX = toInteger(getAttribute("capX"));
-			if (getAttribute("capY"))
-				fCapY = toInteger(getAttribute("capY"));
-			if (getAttribute("capWidth"))
-				fCapWidth = toInteger(getAttribute("capWidth"));
-			if (getAttribute("capHeight"))
-				fCapHeight = toInteger(getAttribute("capHeight"));
+			parse64i(getAttribute("capX"), fCapX);
+			parse64i(getAttribute("capY"), fCapY);
+			parse64i(getAttribute("capWidth"), fCapWidth);
+			parse64i(getAttribute("capHeight"), fCapHeight);
+
 
 			fDimX.loadFromChunk(getAttribute("x"));
 			fDimY.loadFromChunk(getAttribute("y"));
 			fDimWidth.loadFromChunk(getAttribute("width"));
 			fDimHeight.loadFromChunk(getAttribute("height"));
-		}
-		
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
-		{
-
-
+			
+			
 			// BUGBUG - need to get the dpi and canvas size to calculate these properly
 			fX = fDimX.calculatePixels();
 			fY = fDimY.calculatePixels();
@@ -126,7 +121,6 @@ namespace waavs {
 
 				// Setup the screen snapper
 				HDC dc = DisplayMonitor::createDC(displayName.c_str());
-				//HDC dc = nullptr;
 				
 				// BUGBUG
 				// If capture width has not been set, then get it from 
@@ -146,6 +140,7 @@ namespace waavs {
 			if (!fDimHeight.isSet())
 				fHeight = (double)fSnapper.height();
 
+			fSnapper.update();
 		}
 
 		
@@ -154,16 +149,13 @@ namespace waavs {
 			fSnapper.update();
 		}
 		
-		void drawSelf(IRenderSVG *ctx)
-		{
-			fSnapper.update();
-			
+		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+		{	
 			int lWidth = (int)fSnapper.width();
 			int lHeight = (int)fSnapper.height();
 
 			ctx->scaleImage(this->fSnapper.getImage(), 0, 0, lWidth, lHeight, fX, fY, fWidth, fHeight);
 			ctx->flush();
-
 		}
 		
 	};

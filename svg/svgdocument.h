@@ -48,7 +48,7 @@
 #include "svghyperlink.h"
 
 #include "svgdrawingcontext.h"
-//#include "svgwaavs.h"
+#include "svgwaavs.h"
 
 
 namespace waavs {
@@ -285,6 +285,9 @@ namespace waavs {
 namespace waavs {
     struct SVGFactory
     {
+        // Disallow copying and assignment
+        SVGFactory(const SVGFactory&) = delete;
+		SVGFactory& operator=(const SVGFactory&) = delete;
         
         SVGFactory()
         {
@@ -385,7 +388,7 @@ namespace waavs {
             SVGTitleNode::registerFactory();            // 'title'
 
 
-            //DisplayCaptureElement::registerFactory();
+            DisplayCaptureElement::registerFactory();
         }
 
     };

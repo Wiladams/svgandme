@@ -310,13 +310,6 @@ namespace waavs
 	static INLINE uint64_t chunk_to_u64(ByteSpan& s) noexcept;
 	static INLINE int64_t chunk_to_i64(ByteSpan& s) noexcept;
 
-	// simple type parsing
-	//static inline int64_t toInteger(const ByteSpan& inChunk) noexcept;
-	//static inline double toNumber(const ByteSpan& inChunk) noexcept;
-	//static inline double toDouble(const ByteSpan& inChunk) noexcept;
-	static INLINE std::string toString(const ByteSpan& inChunk) noexcept;
-	//static inline int toBoolInt(const ByteSpan& inChunk) noexcept;
-
 	// Number Conversions
 	static INLINE double chunk_to_double(const ByteSpan& inChunk) noexcept;
 }
@@ -950,54 +943,7 @@ namespace waavs {
 	}
 }
 
-namespace waavs {
-	
-	static inline int64_t toInteger(const ByteSpan& inChunk) noexcept
-	{
-		ByteSpan s = inChunk;
-		return chunk_to_i64(s);
-	}
 
-	// toNumber
-	// a floating point number
-	static inline double toNumber(const ByteSpan& inChunk) noexcept
-	{
-		ByteSpan s = inChunk;
-		return chunk_to_double(s);
-	}
-
-	static inline double toDouble(const ByteSpan& s) noexcept
-	{
-		return chunk_to_double(s);
-
-	}
-	
-		
-	/*
-	// return 1 if the chunk is "true" or "1" or "t" or "T" or "y" or "Y" or "yes" or "Yes" or "YES"
-	// return 0 if the chunk is "false" or "0" or "f" or "F" or "n" or "N" or "no" or "No" or "NO"
-	// return 0 otherwise
-	static inline int toBoolInt(const ByteSpan& inChunk) noexcept
-	{
-		ByteSpan s = inChunk;
-
-		if (s == "true" || s == "1" || s == "t" || s == "T" || s == "y" || s == "Y" || s == "yes" || s == "Yes" || s == "YES")
-			return 1;
-		else if (s == "false" || s == "0" || s == "f" || s == "F" || s == "n" || s == "N" || s == "no" || s == "No" || s == "NO")
-			return 0;
-		else
-			return 0;
-	}
-	*/
-	static inline std::string toString(const ByteSpan& inChunk) noexcept
-	{
-		if (!inChunk)
-			return std::string();
-		
-		return std::string(inChunk.fStart, inChunk.fEnd);
-	}
-
-}
 
 namespace waavs {
 	//

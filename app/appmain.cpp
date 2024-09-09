@@ -1097,7 +1097,7 @@ static LRESULT CALLBACK MsgHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
     //    HandlePointerMessage(hWnd, msg, wParam, lParam);
     //}
     else if (msg == WM_ERASEBKGND) {
-        printf("WM_ERASEBKGND\n");
+       // printf("WM_ERASEBKGND\n");
         //if (gPaintHandler != nullptr) {
         //    gPaintHandler(hWnd, msg, wParam, lParam);
         //}
