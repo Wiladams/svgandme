@@ -81,6 +81,7 @@
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DisableLanguageExtensions>false</DisableLanguageExtensions>
+      <ExceptionHandling>false</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -102,6 +103,7 @@
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <DisableLanguageExtensions>false</DisableLanguageExtensions>
+      <ExceptionHandling>false</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -123,6 +125,7 @@
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DisableLanguageExtensions>false</DisableLanguageExtensions>
+      <ExceptionHandling>false</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -144,6 +147,7 @@
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <DisableLanguageExtensions>false</DisableLanguageExtensions>
+      <ExceptionHandling>false</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -177,6 +181,8 @@
     <ClInclude Include="..\..\svg\fast_double_parser.h" />
     <ClInclude Include="..\..\svg\fonthandler.h" />
     <ClInclude Include="..\..\svg\irendersvg.h" />
+    <ClInclude Include="..\..\svg\maths.h" />
+    <ClInclude Include="..\..\svg\membuff.h" />
     <ClInclude Include="..\..\svg\svg.h" />
     <ClInclude Include="..\..\svg\svgattributes.h" />
     <ClInclude Include="..\..\svg\svgclip.h" />
@@ -201,7 +207,9 @@
     <ClInclude Include="..\..\svg\svgstructuretypes.h" />
     <ClInclude Include="..\..\svg\svgstyle.h" />
     <ClInclude Include="..\..\svg\svgtext.h" />
+    <ClInclude Include="..\..\svg\utf8.h" />
     <ClInclude Include="..\..\svg\viewport.h" />
+    <ClInclude Include="..\..\svg\xmlentity.h" />
     <ClInclude Include="..\..\svg\xmlscan.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

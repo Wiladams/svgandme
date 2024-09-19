@@ -68,15 +68,17 @@ namespace waavs {
 		{
 			SVGGraphicsElement::bindPropertiesToGroot(groot, container);
 
-			if (((fVisualProperties.find("marker-start") != fVisualProperties.end()) && fVisualProperties["marker-start"]->isSet()) ||
-				((fVisualProperties.find("marker-mid") != fVisualProperties.end()) && fVisualProperties["marker-mid"]->isSet()) ||
-				((fVisualProperties.find("marker-end") != fVisualProperties.end()) && fVisualProperties["marker-end"]->isSet()) ||
-				((fVisualProperties.find("marker") != fVisualProperties.end()) && fVisualProperties["marker"]->isSet()))
+			// figure out if we have any markers set
+			auto mStart = getAttribute("marker-start");
+			auto mMid = getAttribute("marker-mid");
+			auto mEnd = getAttribute("marker-end");
+			auto m = getAttribute("marker");
+			
+			if ((mStart&& mStart!="none") || (mMid&& mMid!="none") || (mEnd&&mEnd!="none") || (m&& m!="none")) 
 			{
 				fHasMarkers = true;
 			}
-
-			//needsBinding(false);
+			
 		}
 
 		bool drawMarker(IRenderSVG* ctx, const ByteSpan propname, MarkerPosition pos, const BLPoint& p1, const BLPoint& p2, const BLPoint& p3, IAmGroot* groot)
@@ -106,7 +108,6 @@ namespace waavs {
 			std::shared_ptr<SVGMarkerElement> markerNode = std::dynamic_pointer_cast<SVGMarkerElement>(aNode);
 
 
-			ctx->push();
 
 			BLPoint transP{};
 
@@ -125,11 +126,16 @@ namespace waavs {
 
 			// Use the three given points to calculate the angle of rotation 
 			// from the markerNode
-			double rads = markerNode->orientation().calculateRadians(pos, p1, p2, p3);
-
-			//printf("angle: %f\n", degrees(rads));
+			//double rads = markerNode->orientation().calculateRadians(pos, p1, p2, p3);
+			double rads = markerNode->orientation().calcRadians(pos, p1, p2, p3);
 			
-			// apply the transformation
+			//printf("angle: %f  Normalized: %f\n", degrees(rads), degrees(radians_normalize(rads)));
+			
+			// Draw lines reprsenting the two vectors
+			ctx->strokeLine(p1, p2, BLRgba32(0xFFff0000));
+			ctx->strokeLine(p2, p3, BLRgba32(0xFF0000FF));
+			
+			ctx->push();
 			ctx->translate(transP);
 			ctx->rotate(rads);
 
@@ -148,12 +154,16 @@ namespace waavs {
 		// drawing a marker at each point
 		void drawMarkers(IRenderSVG* ctx, IAmGroot* groot)
 		{
+			// early return if we don't have markers
+			if (!fHasMarkers)
+				return;
+				
 			static const uint8_t CMD_INVALID = 0xffu;
 			
 			ByteSpan cmdSpan(fPath.commandData(), fPath.commandDataEnd());
 
 			const BLPoint* verts = fPath.vertexData();
-			int numVerts = fPath.size();
+			size_t numVerts = fPath.size();
 			int vertOffset{ 0 };
 			int nVerts = 0;
 			
@@ -229,6 +239,7 @@ namespace waavs {
 							uint8_t nextCmd = cmdSpan[1];
 							switch (nextCmd) {
 								case BL_PATH_CMD_ON:
+								case BL_PATH_CMD_CUBIC:
 									p3 = verts[vertOffset + 1];
 									drawMarker(ctx, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, p1, p2, p3, groot);
 									lastOnPoint = p2;
@@ -239,7 +250,7 @@ namespace waavs {
 									drawMarker(ctx, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, p1, p2, p3, groot);
 									lastOnPoint = p2;
 								break;
-								
+									
 								case BL_PATH_CMD_MOVE:
 								default:
 									p3 = p2;
@@ -271,8 +282,32 @@ namespace waavs {
 						nVerts = 3;
 						BLPoint p1 = verts[vertOffset + 1];
 						BLPoint p2 = verts[vertOffset+2];
-						BLPoint p3 = verts[vertOffset + 3];
-						drawMarker(ctx, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, p1, p2, p3, groot);
+						BLPoint p3 = p2;
+						if (cmdSpan.size() > 1)
+						{
+							uint8_t nextCmd = cmdSpan[1];
+							switch (nextCmd) {
+							case BL_PATH_CMD_ON:
+							case BL_PATH_CMD_CUBIC:
+								p3 = verts[vertOffset + 3];
+								drawMarker(ctx, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, p1, p2, p3, groot);
+								break;
+								
+							case BL_PATH_CMD_CLOSE:
+								p3 = lastMoveTo;
+								drawMarker(ctx, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, p1, p2, p3, groot);
+								break;
+
+							case BL_PATH_CMD_MOVE:
+							default:
+								p3 = p2;
+								drawMarker(ctx, "marker-end", MarkerPosition::MARKER_POSITION_END, p1, p2, p3, groot);
+							}
+						}
+						else {
+							// If there is no next command, then this is an 'end', so we should use the end marker if it exists
+							drawMarker(ctx, "marker-end", MarkerPosition::MARKER_POSITION_END, p1, p2, p3, groot);
+						}
 						
 						lastCmd = BL_PATH_CMD_CUBIC;
 						lastOnPoint = verts[vertOffset + 2];
@@ -316,7 +351,7 @@ namespace waavs {
 				ctx->strokePath(fPath);
 
 				// draw markers if we have any
-				if (fHasMarkers)
+				//if (fHasMarkers)
 					drawMarkers(ctx, groot);
 			}
 			else {
@@ -339,7 +374,7 @@ namespace waavs {
 					else if (ptoken == "markers")
 					{
 						// draw markers if we have any
-						if (fHasMarkers)
+						//if (fHasMarkers)
 							drawMarkers(ctx, groot);
 					}
 					

@@ -111,7 +111,7 @@ namespace waavs {
 			return memcmp(fStart, b.fStart, maxBytes) >= 0;
 		}
 
-		
+
 		ByteSpan& operator+= (size_t n) noexcept {
 			if (n > size())
 				n = size();
@@ -130,10 +130,12 @@ namespace waavs {
 		const unsigned char* data() const noexcept { return (unsigned char*)fStart; }
 		const unsigned char* begin() const noexcept { return fStart; }
 		const unsigned char* end() const noexcept { return fEnd; }
-		size_t size()  const noexcept { ptrdiff_t sz = fEnd - fStart; if (sz < 0) return 0; return sz;}
+		size_t size()  const noexcept { ptrdiff_t sz = fEnd - fStart; if (sz < 0) return 0; return sz; }
 		const bool empty() const noexcept { return fStart == fEnd; }
 
 		void setAll(unsigned char c) noexcept { memset((uint8_t*)fStart, c, size()); }
+
+		void copyFrom(const void* src, size_t sz) noexcept { memcpy((uint8_t*)fStart, src, sz); }
 		
 		// subSpan()
 		// Create a bytespan that is a subspan of the current span
@@ -170,20 +172,22 @@ namespace waavs {
 		{
 			return (subSpan((size_t)0, b.size()) == b);
 		}
-		
+
 		bool endsWith(const ByteSpan& b) const noexcept
 		{
 			return (subSpan(size() - b.size(), b.size()) == b);
 		}
 	};
 
+}
 
+namespace waavs {
 	static INLINE size_t copy(ByteSpan& a, const ByteSpan& b) noexcept;
 	static INLINE size_t copy_to_cstr(char* str, size_t len, const ByteSpan& a) noexcept;
 	static INLINE int compare(const ByteSpan& a, const ByteSpan& b) noexcept;
 	static INLINE int comparen(const ByteSpan& a, const ByteSpan& b, int n) noexcept;
 	static INLINE int comparen_cstr(const ByteSpan& a, const char* b, int n) noexcept;
-	static INLINE bool chunk_is_equal_cstr(const ByteSpan& a, const char* s) noexcept;
+	//static INLINE bool chunk_is_equal_cstr(const ByteSpan& a, const char* s) noexcept;
 
 	// Some utility functions for common operations
 
@@ -236,14 +240,14 @@ namespace waavs {
 
 
 
-	static INLINE bool chunk_is_equal_cstr(const ByteSpan& a, const char* cstr) noexcept
-	{
-		size_t len = strlen(cstr);
-		if (a.size() != len)
-			return false;
+	//static INLINE bool chunk_is_equal_cstr(const ByteSpan& a, const char* cstr) noexcept
+	//{
+	//	size_t len = strlen(cstr);
+	//	if (a.size() != len)
+	//		return false;
 		
-		return memcmp(a.fStart, cstr, len) == 0;
-	}
+	//	return memcmp(a.fStart, cstr, len) == 0;
+	//}
 
 
 	static INLINE void chunk_truncate(ByteSpan& dc) noexcept
@@ -261,12 +265,6 @@ namespace waavs {
 	}
 
 	static INLINE ByteSpan& chunk_skip_to_end(ByteSpan& dc) noexcept { dc.fStart = dc.fEnd; }
-
-
-	
-
-	
-
 
 
 }
@@ -305,14 +303,7 @@ namespace waavs {
 	static void printChunk(const ByteSpan& chunk) noexcept;
 }
 
-namespace waavs
-{
-	static INLINE uint64_t chunk_to_u64(ByteSpan& s) noexcept;
-	static INLINE int64_t chunk_to_i64(ByteSpan& s) noexcept;
 
-	// Number Conversions
-	static INLINE double chunk_to_double(const ByteSpan& inChunk) noexcept;
-}
 
 namespace waavs
 {
@@ -749,148 +740,7 @@ namespace waavs {
 		return true;
 	}
 	
-	
-	// Take a chunk containing a series of digits and turn
-	// it into a 64-bit unsigned integer
-	// Stop processing when the first non-digit is seen, 
-	// or the end of the chunk
-	// This routine alters the input chunk to reflect the remaining
-	// characters after the number
-	static inline uint64_t chunk_to_u64(ByteSpan& s) noexcept
-	{
-		static const std::bitset<256> decDigits = chrDecDigits.bits;
-		
-		uint64_t v = 0;
 
-		while (s && decDigits[*s])
-		{
-			v = v * 10 + (uint64_t)(*s - '0');
-			s++;
-		}
-
-		return v;
-	}
-
-	static inline int64_t chunk_to_i64(ByteSpan& s) noexcept
-	{
-		int64_t v = 0;
-
-		bool negative = false;
-		if (s && *s == '-')
-		{
-			negative = true;
-			s++;
-		}
-
-		while (s && chrDecDigits(*s))
-		{
-			v = v * 10 + (int64_t)(*s - '0');
-			s++;
-		}
-
-		if (negative)
-			v = -v;
-
-		return v;
-	}
-
-
-
-	//
-	// chunk_to_double()
-	// 
-	// parse floating point number
-	// includes sign, exponent, and decimal point
-	// The input chunk is altered, with the fStart pointer moved to the end of the number
-	// Note:  If we want to include "charconv", the we can use the std::from_chars
-	// This should be a fast implementation, far batter than something like atof, or sscanf
-	// But, the routine here should be universally fast, when charconv is not available on the 
-	// target platform.
-	//
-			// Just put this from_chars implementation here in case
-		// we ever want to use it instead
-		//double outNumber = 0;
-		//auto res = std::from_chars((const char*)s.fStart, (const char*)s.fEnd, outNumber);
-		//if (res.ec == std::errc::invalid_argument)
-		//{
-		//	printf("chunk_to_double: INVALID ARGUMENT: ");
-		//	printChunk(s);
-		//}
-		//return outNumber;
-	
-	static inline double chunk_to_double(const ByteSpan& inChunk) noexcept
-	{
-		ByteSpan s = inChunk;
-
-		double sign = 1.0;
-		double res = 0.0;
-		long long intPart = 0;
-		uint64_t fracPart = 0;
-		bool hasIntPart = false;
-		bool hasFracPart = false;
-
-		// Parse optional sign
-		if (*s == '+') {
-			s++;
-		}
-		else if (*s == '-') {
-			sign = -1;
-			s++;
-		}
-
-		// Parse integer part
-		if (chrDecDigits[*s]) {
-
-			intPart = chunk_to_u64(s);
-
-			res = (double)intPart;
-			hasIntPart = true;
-		}
-
-		// Parse fractional part.
-		if (*s == '.') {
-			s++; // Skip '.'
-			auto sentinel = s.fStart;
-
-			if (chrDecDigits(*s)) {
-				fracPart = chunk_to_u64(s);
-				auto ending = s.fStart;
-
-				ptrdiff_t diff = ending - sentinel;
-				res = res + ((double)fracPart) / (double)powd((double)10, double(diff));
-				hasFracPart = true;
-			}
-		}
-
-		// A valid number should have integer or fractional part.
-		if (!hasIntPart && !hasFracPart)
-			return 0.0;
-
-
-		// Parse optional exponent
-		if (*s == 'e' || *s == 'E') {
-			long long expPart = 0;
-			s++; // skip 'E'
-
-			double expSign = 1.0;
-			if (*s == '+') {
-				s++;
-			}
-			else if (*s == '-') {
-				expSign = -1.0;
-				s++;
-			}
-
-			if (chrDecDigits[*s]) {
-				expPart = chunk_to_u64(s);
-				res = res * powd(10, double(expSign * double(expPart)));
-			}
-		}
-
-		return res * sign;
-		
-	}
-	
 }
 
 
@@ -945,87 +795,3 @@ namespace waavs {
 
 
 
-namespace waavs {
-	//
-	// MemBuff
-	// 
-	// This is a very simple data structure that allocates a chunk of memory
-	// When the destructor is called, the memory is freed.
-	// This could easily be handled by something like a unique_ptr, but I don't
-	// want to force the usage of std library when it's not really needed.
-	// besides, it's so easy and convenient and small.
-	// Note:  This could be a sub-class of ByteSpan, but the semantics are different
-	// With a ByteSpan, you can alter the start/end pointers, but with a memBuff, you can't.
-	// so, it is much easier to return a ByteSpan, and let that be manipulated instead.
-	// 
-	
-	struct MemBuff final 
-	{
-		uint8_t* fData{nullptr};
-		ptrdiff_t fSize{0};
-
-		// No default constructor
-		MemBuff() = default;
-		
-		MemBuff(const size_t sz) noexcept
-		{
-			fData = new uint8_t[sz];
-			fSize = sz;
-		}
-
-		MemBuff(const ByteSpan& chunk) noexcept
-		{
-			fSize = chunk.size();
-			fData = new uint8_t[fSize];
-			memcpy(fData, chunk.data(), fSize);
-		}
-		
-		~MemBuff() noexcept
-		{
-			if (fData != nullptr)
-				delete[] fData;
-		}
-
-		uint8_t* data() const noexcept { return fData; }
-		size_t size() const noexcept { return fSize; }
-
-		// initSize
-		// Initialize the memory buffer with a given size
-		//bool initSize(const size_t sz)
-		//{
-		//	fData = new uint8_t[sz];
-		//	fSize = sz;
-		//	return true;
-		//}
-		
-		// initFromSpan
-		// copy the data from the input span into the memory buffer
-		//
-		
-		bool initFromSpan(const ByteSpan& srcSpan) noexcept
-		{
-			if (fData != nullptr)
-				delete[] fData;
-			
-			fData = nullptr;
-			fSize = srcSpan.size();
-			
-			if (fSize > 0) {
-				fData = new uint8_t[fSize];
-				memcpy(fData, srcSpan.fStart, fSize);
-			}
-			
-			return true;
-		}
-		
-		
-		// span()
-		// 
-		// Create a ByteSpan from the memory buffer.
-		// This is pure convenience, as a ByteSpan can easily be created
-		// from the data() and size() functions.
-		// The lifetime of the ByteSpan that is returned it not governed
-		// by the MemBuff object.  This is something the caller must manage.
-		ByteSpan span() const noexcept { return ByteSpan(fData, fData + fSize); }
-	};
-}

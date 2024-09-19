@@ -9,12 +9,23 @@
 
 #include <functional>
 #include <unordered_map>
+#include <string>
 
 #include "svgattributes.h"
 #include "svgstructuretypes.h"
 #include "converters.h"
 
 namespace waavs {
+	
+	static INLINE std::string toString(const ByteSpan& inChunk) noexcept
+	{
+		if (!inChunk)
+			return std::string();
+
+		return std::string(inChunk.fStart, inChunk.fEnd);
+	}
+
+	
 	struct SVGImageElement : public SVGGraphicsElement
 	{
 		static void registerSingularNode()
@@ -89,6 +100,10 @@ namespace waavs {
 			if (nullptr != groot)
 			{
 				dpi = groot->dpi();
+			}
+			
+			if (nullptr != container)
+			{
 				w = groot->canvasWidth();
 				h = groot->canvasHeight();
 			}
@@ -115,7 +130,6 @@ namespace waavs {
 				if (chunk_starts_with_cstr(fImageRef, "data:"))
 				{
 					bool success = parseImage(fImageRef, fImage);
-					//printf("SVGImageNode::fImageRef, parseImage: %d\n", success);
 				}
 				else {
 					// Otherwise, assume it's a file reference
@@ -127,10 +141,6 @@ namespace waavs {
 				}
 			}
 
-			// BUGBUG - sanity check of image data
-			//BLImageData imgData{};
-			//fImage.getData(&imgData);
-			//printf("imgData: %d x %d  depth: %d\n", imgData.size.w, imgData.size.h, fImage.depth());
 
 			fX = 0;
 			fY = 0;

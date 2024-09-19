@@ -105,7 +105,7 @@ static void registerAppHandlers()
 
 void onLoad()
 {
-	printf("onLoad\n");
+	//printf("onLoad\n");
 
 	registerAppHandlers();
 

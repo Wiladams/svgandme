@@ -22,6 +22,7 @@
 
 
 namespace waavs {
+    /*
 	static bool endsWith(const std::string& src, const std::string &suffix) 
     {
         if (suffix.size() > src.size())
@@ -29,6 +30,7 @@ namespace waavs {
         
         return src.substr(src.size() - suffix.size()) == suffix;
 	}
+    */
     
     class FontHandler
     {

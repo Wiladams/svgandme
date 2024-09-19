@@ -2,7 +2,9 @@
 
 #include "definitions.h"
 
-
+//
+// Some bitwise manipulation routines
+//
 
 namespace waavs
 {
@@ -37,6 +39,7 @@ namespace waavs {
     static const char* hexdigits = "0123456789abcdef";
 
     // tohex32
+    // 
     // Take a 32-bit number and return the hex representation of the same
     // The buffer passed in needs to be at least 8 bytes long
     // 
@@ -46,7 +49,7 @@ namespace waavs {
     //  there arw two errors that can occur
     // 1) the buffLen is less than 8
     //
-    static INLINE int tohex32(const uint32_t inNumber, char* buff, size_t buffLen)
+    static INLINE int tohex32(const uint32_t inNumber, char* buff, size_t buffLen) noexcept
     {
         if (buffLen < 8)
             return 0;
@@ -68,7 +71,7 @@ namespace waavs {
     // The most significant bit is in the first byte of the 
     // array.  when displayed as a string, the output will 
     // be similar to what you would see in the calculator app
-    static INLINE int tobin32(uint32_t a, char* buff, size_t buffLen)
+    static INLINE int tobin32(uint32_t a, char* buff, size_t buffLen) noexcept
     {
         if (buffLen < 33)
             return 0;
@@ -87,37 +90,37 @@ namespace waavs {
     //
     static INLINE uint16_t bnot16(uint16_t a) noexcept { return ~a; }
     static INLINE uint16_t band16(uint16_t a, uint16_t b) noexcept { return a & b; }
-    static INLINE uint16_t bor16(uint16_t a, uint16_t b) { return a | b; }
-    static INLINE uint16_t bxor16(uint16_t a, uint16_t b) { return a ^ b; }
-    static INLINE uint16_t lshift16(uint16_t a, unsigned int nbits) { return a << nbits; }
-    static INLINE uint16_t rshift16(uint16_t a, unsigned int nbits) { return a >> nbits; }
-    static INLINE int16_t arshift16(int16_t a, unsigned int nbits) { return a >> nbits; }
-    static INLINE uint16_t rol16(uint16_t a, unsigned int n) { return ((a << n) | (a >> (16 - n))); }
-    static INLINE uint16_t ror16(uint16_t a, unsigned int n) { return ((a << (16 - n)) | (a >> n)); }
+    static INLINE uint16_t bor16(uint16_t a, uint16_t b) noexcept { return a | b; }
+    static INLINE uint16_t bxor16(uint16_t a, uint16_t b) noexcept { return a ^ b; }
+    static INLINE uint16_t lshift16(uint16_t a, unsigned int nbits) noexcept { return a << nbits; }
+    static INLINE uint16_t rshift16(uint16_t a, unsigned int nbits) noexcept { return a >> nbits; }
+    static INLINE int16_t arshift16(int16_t a, unsigned int nbits) noexcept { return a >> nbits; }
+    static INLINE uint16_t rol16(uint16_t a, unsigned int n) noexcept { return ((a << n) | (a >> (16 - n))); }
+    static INLINE uint16_t ror16(uint16_t a, unsigned int n) noexcept { return ((a << (16 - n)) | (a >> n)); }
     //static INLINE uint16_t bswap16(uint16_t a) {return _byteswap_ushort(a);}
-    static INLINE uint16_t bswap16(uint16_t a) { return (a >> 8) | (a << 8); }
+    static INLINE uint16_t bswap16(uint16_t a) noexcept { return (a >> 8) | (a << 8); }
 
-    static INLINE uint16_t tobit16(uint64_t a) { return (uint16_t)a; }
+    static INLINE uint16_t tobit16(uint64_t a) noexcept { return (uint16_t)a; }
 
 
     // 32-bit versions
     //
-    static INLINE uint32_t bnot32(uint32_t a) { return ~a; }
-    static INLINE uint32_t band32(uint32_t a, uint32_t b) { return a & b; }
-    static INLINE uint32_t bor32(uint32_t a, uint32_t b) { return a | b; }
-    static INLINE uint32_t bxor32(uint32_t a, uint32_t b) { return a ^ b; }
-    static INLINE uint32_t lshift32(uint32_t a, unsigned int nbits) { return a << nbits; }
-    static INLINE uint32_t rshift32(uint32_t a, unsigned int nbits) { return a >> nbits; }
-    static INLINE int32_t arshift16(int32_t a, unsigned int nbits) { return a >> nbits; }
-    static INLINE uint32_t rol32(uint32_t a, unsigned int n) { return ((a << n) | (a >> (32 - n))); }
-    static INLINE uint32_t ror32(uint32_t a, unsigned int n) { return ((a << (32 - n)) | (a >> n)); }
+    static INLINE uint32_t bnot32(uint32_t a) noexcept { return ~a; }
+    static INLINE uint32_t band32(uint32_t a, uint32_t b) noexcept { return a & b; }
+    static INLINE uint32_t bor32(uint32_t a, uint32_t b) noexcept { return a | b; }
+    static INLINE uint32_t bxor32(uint32_t a, uint32_t b) noexcept { return a ^ b; }
+    static INLINE uint32_t lshift32(uint32_t a, unsigned int nbits) noexcept { return a << nbits; }
+    static INLINE uint32_t rshift32(uint32_t a, unsigned int nbits) noexcept { return a >> nbits; }
+    static INLINE int32_t arshift16(int32_t a, unsigned int nbits) noexcept { return a >> nbits; }
+    static INLINE uint32_t rol32(uint32_t a, unsigned int n) noexcept { return ((a << n) | (a >> (32 - n))); }
+    static INLINE uint32_t ror32(uint32_t a, unsigned int n) noexcept { return ((a << (32 - n)) | (a >> n)); }
     //static INLINE uint32_t bswap32(uint32_t a) {return _byteswap_ulong(a);}
-    static INLINE uint32_t bswap32(uint32_t v) {
+    static INLINE uint32_t bswap32(uint32_t v) noexcept {
         return ((v & 0xff000000) >> 24) | ((v & 0x00ff0000) >> 8) |
             ((v & 0x0000ff00) << 8) | ((v & 0x000000ff) << 24);
     }
 
-    static INLINE uint32_t tobit32(uint64_t a) { return (uint32_t)a; }
+    static INLINE uint32_t tobit32(uint64_t a) noexcept { return (uint32_t)a; }
 
 
     // 64-bit versions

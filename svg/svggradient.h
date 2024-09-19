@@ -337,10 +337,10 @@ namespace waavs {
 			// loaded from a template
 			BLLinearGradientValues values{ 0,0,0,1 };// = fGradient.linear();
 
-			SVGDimension fX1{ 0,SVG_UNITS_USER };
-			SVGDimension fY1{ 0,SVG_UNITS_USER };
-			SVGDimension fX2{ 100,SVG_UNITS_PERCENT };
-			SVGDimension fY2{ 0,SVG_UNITS_PERCENT };
+			SVGDimension fX1{ 0,SVGLength::SVG_LENGTHTYPE_PERCENTAGE };
+			SVGDimension fY1{ 0,SVGLength::SVG_LENGTHTYPE_NUMBER };
+			SVGDimension fX2{ 100,SVGLength::SVG_LENGTHTYPE_PERCENTAGE };
+			SVGDimension fY2{ 0,SVGLength::SVG_LENGTHTYPE_PERCENTAGE };
 			
 			fX1.loadFromChunk(getAttribute("x1"));
 			fY1.loadFromChunk(getAttribute("y1"));
@@ -436,11 +436,11 @@ namespace waavs {
 
 			BLRadialGradientValues values = fGradient.radial();
 
-			SVGDimension fCx{ 50, SVG_UNITS_PERCENT };
-			SVGDimension fCy{ 50, SVG_UNITS_PERCENT };
-			SVGDimension fR{ 50, SVG_UNITS_PERCENT };
-			SVGDimension fFx{ 50, SVG_UNITS_PERCENT, false };
-			SVGDimension fFy{ 50, SVG_UNITS_PERCENT, false };
+			SVGDimension fCx{ 50, SVGLength::SVG_LENGTHTYPE_PERCENTAGE };
+			SVGDimension fCy{ 50, SVGLength::SVG_LENGTHTYPE_PERCENTAGE };
+			SVGDimension fR{ 50, SVGLength::SVG_LENGTHTYPE_PERCENTAGE };
+			SVGDimension fFx{ 50, SVGLength::SVG_LENGTHTYPE_PERCENTAGE, false };
+			SVGDimension fFy{ 50, SVGLength::SVG_LENGTHTYPE_PERCENTAGE, false };
 			
 			fCx.loadFromChunk(getAttribute("cx"));
 			fCy.loadFromChunk(getAttribute("cy"));

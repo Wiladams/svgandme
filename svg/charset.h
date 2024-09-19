@@ -27,10 +27,10 @@ namespace waavs {
 		std::bitset<256> bits;
 
 		// Common Constructors
-		charset() = default;
-		explicit charset(const char achar) { addChar(achar); }
-		charset(const char* chars) { addChars(chars); }
-		charset(const charset& aset) { addCharset(aset); }
+		constexpr charset() noexcept = default;
+		explicit charset(const char achar) noexcept { addChar(achar); }
+		charset(const char* chars) noexcept { addChars(chars); }
+		charset(const charset& aset) noexcept { addCharset(aset); }
 
 		
 		// Convenience methods for adding and removing characters
@@ -134,5 +134,17 @@ namespace waavs {
 	static charset chrDecDigits("0123456789");
 	static charset chrHexDigits("0123456789ABCDEFabcdef");
 
-	static constexpr INLINE bool is_digit(unsigned char c) noexcept { return (uint8_t)(c - '0') <= 9; }
+	static constexpr INLINE bool is_digit(const unsigned char c) noexcept { int diff = c - '0';  return ((diff>=0) && (diff<= 9)); }
+
+	static constexpr INLINE bool is_hex_digit(const unsigned char vIn) noexcept
+	{
+		if (vIn >= '0' && vIn <= '9')
+			return true;
+		else if (vIn >= 'a' && vIn <= 'f')
+			return true;
+		else if (vIn >= 'A' && vIn <= 'F')
+			return true;
+		else
+			return false;
+	}
 }

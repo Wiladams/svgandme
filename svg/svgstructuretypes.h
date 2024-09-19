@@ -113,6 +113,12 @@ namespace waavs {
                 return loadSelfFromChunk(fRawValue);
             }
 
+            virtual bool loadFromAttributes(const XmlAttributeCollection& attrs)
+            {
+                return loadFromChunk(attrs.getAttribute(id()));
+            }
+
+            
             virtual void update(IAmGroot* groot) { ; }
 
             // Apply propert to the context conditionally
@@ -133,10 +139,10 @@ namespace waavs {
         };
 
         // Collection of property constructors
-        static std::unordered_map<ByteSpan, std::function<std::shared_ptr<SVGVisualProperty>(const ByteSpan&)>, ByteSpanHash> gSVGAttributeCreation;
+        static std::unordered_map<ByteSpan, std::function<std::shared_ptr<SVGVisualProperty>(const XmlAttributeCollection& attrs)>, ByteSpanHash> gSVGAttributeCreation;
 
         // Convenient function to register property constructors
-        static void registerSVGAttribute(const ByteSpan& name, std::function<std::shared_ptr<SVGVisualProperty>(const ByteSpan&)> func)
+        static void registerSVGAttribute(const ByteSpan& name, std::function<std::shared_ptr<SVGVisualProperty>(const XmlAttributeCollection &attrs)> func)
         {
             gSVGAttributeCreation[name] = func;
         }
@@ -525,7 +531,8 @@ namespace waavs {
                 auto it = gSVGAttributeCreation.find(attr.first);
                 if (it != gSVGAttributeCreation.end())
                 {
-                    auto prop = it->second(attr.second);
+                    //auto prop = it->second(attr.second);
+                    auto prop = it->second(fAttributes);
                     if (prop != nullptr)
                     {
                         fVisualProperties[attr.first] = prop;
@@ -669,7 +676,7 @@ namespace waavs {
         SVGGraphicsElement(IAmGroot* aroot)
             :SVGVisualNode(aroot) {}
 
-
+        /*
 		// Return a reference to the cached image if it exists
         // Function returns 'true' when the image cache is active
         // and returns 'false' when the image cache is not used
@@ -681,7 +688,7 @@ namespace waavs {
 			img = fCachedImage;
 			return true;
         }
-        
+        */
         
         virtual void bindChildrenToGroot(IAmGroot* groot, SVGViewable* container)
         {

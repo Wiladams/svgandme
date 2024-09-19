@@ -90,7 +90,7 @@ unsigned int systemPpi = 192;   // starting pixel density
 
 // Stuff related to rate of displaying frames
 float fFrameRate = 1;
-float fInterval = 1000;
+double fInterval = 1000;
 double fNextMillis = 0;
 size_t fDroppedFrames = 0;
 uint64_t fFrameCount = 0;         // how many frames drawn so far

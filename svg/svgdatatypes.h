@@ -7,7 +7,9 @@
 
 #include "blend2d.h"
 #include "bspan.h"
+#include "membuff.h"
 #include "base64.h"
+#include "converters.h"
 
 //
 // Parsing routines for the core SVG data types
@@ -19,197 +21,7 @@
 
 namespace waavs {
     
-    // parse64u
-	// Parse a 64 bit unsigned integer from a string
-	// return true if successful, false if not
-	// If successful, the value is stored in the out parameter
-    //
-    static INLINE bool parse64u(const ByteSpan& inChunk, int64_t& v) noexcept
-    {
-        ByteSpan s = inChunk;
 
-        if (!s)
-            return false;
-
-
-        const unsigned char* sStart = s.fStart;
-        const unsigned char* sEnd = s.fEnd;
-
-        // Return early if the next thing is not a digit
-        if (!is_digit(*sStart))
-            return false;
-
-        // Initialize the value
-        v = 0;
-
-        // While we still have input to consume
-        while ((sStart < sEnd) && is_digit(*sStart))
-        {
-            v = (v * 10) + (uint64_t)(*sStart - '0');
-            sStart++;
-        }
-
-        return true;
-    }
-    
-    // parse64i
-	// Parse a 64 bit signed integer from the input span
-	// Return true if successful, false otherwise
-	// If successful, the value is stored in the out parameter
-    //
-    static INLINE bool parse64i(const ByteSpan& inChunk, int64_t& v) noexcept
-    {
-        ByteSpan s = inChunk;
-        
-        if (!s)
-            return false;
-
-        const unsigned char* sStart = s.fStart;
-        const unsigned char* sEnd = s.fEnd;
-        
-        // Check for a sign if it's there
-        int sign = 1;
-		if (*sStart == '-') {
-			sign = -1;
-			sStart++;
-		}
-		else if (*sStart == '+') {
-			sStart++;
-		}
-        
-        if (!parse64u(s, v))
-            return false;
-
-		if (sign < 0)
-			v = -v;
-
-        return true;
-    }
-    
-    static INLINE bool read_u64(ByteSpan& s, uint64_t &v) noexcept
-    {
-        if (!s)
-            return false;
-        
-		v = 0;
-        const unsigned char * sStart = s.fStart;
-        const unsigned char * sEnd = s.fEnd;
-        
-        while ((sStart < sEnd) && is_digit(*sStart))
-        {
-            v = (v * 10) + (uint64_t)(*sStart - '0');
-            sStart++;
-        }
-
-		s.fStart = sStart;
-        
-        return true;
-    }
-    
-    // readNumber()
-    //
-    // Parse a double number from the given ByteSpan, advancing the start
-    // of the ByteSpan to beyond where we found the last character of the number.
-    // Assumption:  We're sitting at beginning of a number, all whitespace handling
-    // has already occured.
-    static bool INLINE readNumber(ByteSpan& s, double &value) noexcept
-    {
-		const unsigned char* startAt = s.fStart;
-        const unsigned char* endAt = s.fEnd;
-        
-        double sign = 1.0;
-        double res = 0.0;
-
-        // integer part
-        uint64_t intPart = 0;
-        
-        // fractional part
-        uint64_t fracPart = 0;
-        uint64_t fracBase = 1;
-        
-
-        bool hasIntPart = false;
-        bool hasFracPart = false;
-
-        // Parse optional sign
-        if (*startAt == '+') {
-            startAt++;
-        }
-        else if (*startAt == '-') {
-            sign = -1;
-            startAt++;
-        }
-
-        // Parse integer part
-        if (is_digit(*startAt))
-        {
-			hasIntPart = true;
-            s.fStart = startAt;
-			read_u64(s, intPart);
-            startAt = s.fStart;
-            res = static_cast<double>(intPart);
-        }
-
-        // Parse fractional part.
-        if ((startAt<endAt) && (*startAt == '.')) 
-        {
-            hasFracPart = true;
-            startAt++; // Skip '.'
-
-            fracBase = 1;
-            
-            // Add the fraction portion without calling out to powd
-            while ((startAt<endAt) && is_digit(*startAt)) {
-                fracPart = fracPart * 10 + static_cast<uint64_t>(*startAt - '0');
-                fracBase *= 10;
-                startAt++;
-            }
-            res += (static_cast<double>(fracPart) / static_cast<double>(fracBase));
-
-        }
-
-        // If we don't have an integer or fractional
-        // part, then just return false
-		if (!hasIntPart && !hasFracPart)
-			return false;
-        
-        // Parse optional exponent
-        // mostly we don't see this, so we won't bother trying
-        // to optimize it beyond using powd
-        if ((startAt<endAt) && ((*startAt == 'e') || (*startAt == 'E'))) 
-        {
-            // exponent parts
-            uint64_t expPart = 0;
-            double expSign = 1.0;
-            
-            startAt++; // skip 'E'
-            if (*startAt == '+') {
-                startAt++;
-            }
-            else if (*startAt == '-') {
-                expSign = -1.0;
-                startAt++;
-            }
-
-            if (is_digit(*startAt)) {
-                s.fStart = startAt;
-                read_u64(s, expPart);
-                startAt = s.fStart;
-                res = res * powd(10, double(expSign * double(expPart)));
-            }
-        }
-        s.fStart = startAt;
-        
-        value = res * sign;
-        
-        return true;
-    }
-
-    static INLINE bool parseNumber(const ByteSpan& inChunk, double& value)
-    {
-		ByteSpan s = inChunk;
-		return readNumber(s, value);
-    }
     
     // readNextNumber()
     // 
@@ -357,7 +169,7 @@ namespace waavs
         }
     };
     
-    
+    /*
     enum SVGLengthRelativeUnits {
         SVG_LENGTH_RELATIVE_UNKNOWN = 0,
         SVG_LENGTH_RELATIVE_EM = 1,
@@ -369,7 +181,9 @@ namespace waavs
         SVG_LENGTH_RELATIVE_VMIN = 7,
         SVG_LENGTH_RELATIVE_VMAX = 8,
     };
-
+    */
+    
+    /*
     enum SVGLengthAbsoluteUnits {
         SVG_LENGTH_ABSOLUTE_UNKNOWN = 0,
         SVG_LENGTH_ABSOLUTE_CM = 1, // centimeters
@@ -380,8 +194,8 @@ namespace waavs
         SVG_LENGTH_ABSOLUTE_PX,     // pixels
         SVG_LENGTH_ABSOLUTE_Q       // quarter-millimeters
     };
-
-
+    */
+    /*
     enum SVGDimensionUnits
     {
         SVG_UNITS_UNKNOWN = 0,
@@ -396,6 +210,7 @@ namespace waavs
         SVG_UNITS_PT,
         SVG_UNITS_PX,
     };
+    */
     
     //==============================================================================
     // SVGAngle
@@ -408,7 +223,8 @@ namespace waavs
 		SVG_ANGLETYPE_UNSPECIFIED = 1,
 		SVG_ANGLETYPE_DEG = 2,
 		SVG_ANGLETYPE_RAD = 3,
-		SVG_ANGLETYPE_GRAD = 4
+		SVG_ANGLETYPE_GRAD = 4,
+        SVG_ANGLETYPE_TURN = 5,
 	};
     
     static SVGAngleUnits parseAngleUnits(const ByteSpan& units)
@@ -422,10 +238,14 @@ namespace waavs
 			return SVG_ANGLETYPE_RAD;
 		else if (units == "grad")
 			return SVG_ANGLETYPE_GRAD;
+		else if (units == "turn")
+			return SVG_ANGLETYPE_TURN;
 		else
 			return SVG_ANGLETYPE_UNKNOWN;
     }
     
+    // parseAngle()
+    // 
     // returns in radians
     static bool parseAngle(ByteSpan &s, double& value, SVGAngleUnits& units)
     {
@@ -448,7 +268,7 @@ namespace waavs
                 value = value * (3.14159265358979323846 / 180.0);
             break;
             
-			// If radians, do nothing
+			// If radians, do nothing, already in radians
             case SVG_ANGLETYPE_RAD:
             break;
             
@@ -457,6 +277,10 @@ namespace waavs
                 value = value * (3.14159265358979323846 / 200.0);
             break;
             
+			case SVG_ANGLETYPE_TURN:
+				value = value * 2.0 * 3.14159265358979323846;
+			break;
+                
             default:
                 return false;
         }
@@ -466,18 +290,6 @@ namespace waavs
     
 
     
-    //
-    // parseLengthUnits
-    // %
-    // em
-    // ex
-	// px
-    // pt
-	// pc
-	// cm
-	// mm
-	// in
-    //		SVG_LENGTHTYPE_UNKNOWN = 0,
 
 
     
@@ -485,48 +297,56 @@ namespace waavs
     // SVGDimension
     // used for length, time, frequency, resolution, location
     //==============================================================================
-
+    /*
+		static const unsigned short SVG_LENGTHTYPE_NUMBER = 1;
+    */
     
     // Turn a units indicator into an enum
-    static SVGDimensionUnits parseDimensionUnits(const ByteSpan& units)
+    static bool parseDimensionUnits(const ByteSpan& inChunk, unsigned short &units)
     {
+        ByteSpan s = inChunk;
+        
         // if the chunk is blank, then return user units
-        if (!units)
-            return SVG_UNITS_USER;
+        if (!s)
+            return false;
 
-        if (units[0] == 'p' && units[1] == 'x')
-            return SVG_UNITS_PX;
-        else if (units[0] == 'p' && units[1] == 't')
-            return SVG_UNITS_PT;
-        else if (units[0] == 'p' && units[1] == 'c')
-            return SVG_UNITS_PC;
-        else if (units[0] == 'm' && units[1] == 'm')
-            return SVG_UNITS_MM;
-        else if (units[0] == 'c' && units[1] == 'm')
-            return SVG_UNITS_CM;
-        else if (units[0] == 'i' && units[1] == 'n')
-            return SVG_UNITS_IN;
-        else if (units[0] == '%')
-            return SVG_UNITS_PERCENT;
-        else if (units[0] == 'e' && units[1] == 'm')
-            return SVG_UNITS_EM;
-        else if (units[0] == 'e' && units[1] == 'x')
-            return SVG_UNITS_EX;
-
-        return SVG_UNITS_USER;
+        if (!s)
+            units = SVGLength::SVG_LENGTHTYPE_UNKNOWN;
+        if (s[0] == 'p' && s[1] == 'x')
+            units = SVGLength::SVG_LENGTHTYPE_PX;
+        else if (s[0] == 'p' && s[1] == 't')
+            units = SVGLength::SVG_LENGTHTYPE_PT;
+        else if (s[0] == 'p' && s[1] == 'c')
+            units = SVGLength::SVG_LENGTHTYPE_PC;
+        else if (s[0] == 'm' && s[1] == 'm')
+            units = SVGLength::SVG_LENGTHTYPE_MM;
+        else if (s[0] == 'c' && s[1] == 'm')
+            units = SVGLength::SVG_LENGTHTYPE_CM;
+        else if (s[0] == 'i' && s[1] == 'n')
+            units = SVGLength::SVG_LENGTHTYPE_IN;
+        else if (s[0] == '%')
+            units = SVGLength::SVG_LENGTHTYPE_PERCENTAGE;
+        else if (s[0] == 'e' && s[1] == 'm')
+            units = SVGLength::SVG_LENGTHTYPE_EMS;
+        else if (s[0] == 'e' && s[1] == 'x')
+            units = SVGLength::SVG_LENGTHTYPE_EXS;
+        else
+            return false;
+        
+        return true;
     }
     
     
     struct SVGDimension 
     {
         double fValue{ 0.0 };
-        SVGDimensionUnits fUnits{ SVGDimensionUnits::SVG_UNITS_USER };
+        unsigned short fUnits{ SVGLength::SVG_LENGTHTYPE_NUMBER };
         bool fHasValue{ false };
 
         SVGDimension(const SVGDimension& other) = delete;
         
         SVGDimension() = default;
-		SVGDimension(double value, SVGDimensionUnits units, bool setValue = true)
+		SVGDimension(double value, unsigned short units, bool setValue = true)
             : fValue(value)
             , fUnits(units)
 			, fHasValue(setValue)
@@ -544,22 +364,35 @@ namespace waavs
 
 		bool isSet() const { return fHasValue; }
         double value() const { return fValue; }
-        SVGDimensionUnits units() const { return fUnits; }
+        unsigned short units() const { return fUnits; }
         
+        /*
+        		static const unsigned short SVG_LENGTHTYPE_UNKNOWN = 0;
+		static const unsigned short SVG_LENGTHTYPE_NUMBER = 1;
+		static const unsigned short SVG_LENGTHTYPE_PERCENTAGE = 2;
+		static const unsigned short SVG_LENGTHTYPE_EMS = 3;
+		static const unsigned short SVG_LENGTHTYPE_EXS = 4;
+		static const unsigned short SVG_LENGTHTYPE_PX = 5;
+		static const unsigned short SVG_LENGTHTYPE_CM = 6;
+		static const unsigned short SVG_LENGTHTYPE_MM = 7;
+		static const unsigned short SVG_LENGTHTYPE_IN = 8;
+		static const unsigned short SVG_LENGTHTYPE_PT = 9;
+		static const unsigned short SVG_LENGTHTYPE_PC = 10;
+        */
         // Using the units and other information, calculate the actual value
         double calculatePixels(double length = 1.0, double orig = 0, double dpi = 96) const
         {
             switch (fUnits) {
-            case SVG_UNITS_USER:		return fValue;                  // User units and PX units are the same
-            case SVG_UNITS_PX:			return fValue;                  // User units and px units are the same
-            case SVG_UNITS_PT:			return fValue / 72.0f * dpi;
-            case SVG_UNITS_PC:			return fValue / 6.0f * dpi;
-            case SVG_UNITS_MM:			return fValue / 25.4f * dpi;
-            case SVG_UNITS_CM:			return fValue / 2.54f * dpi;
-            case SVG_UNITS_IN:			return fValue * dpi;
-            case SVG_UNITS_EM:			return fValue * length;         // length should represent 'em' height of font                 
-            case SVG_UNITS_EX:		    return fValue * 0.52f;          // x-height, fontHeight * 0.52.
-            case SVG_UNITS_PERCENT:	
+            case SVGLength::SVG_LENGTHTYPE_NUMBER:		return fValue;                  // User units and PX units are the same
+            case SVGLength::SVG_LENGTHTYPE_PX:			return fValue;                  // User units and px units are the same
+            case SVGLength::SVG_LENGTHTYPE_PT:			return fValue / 72.0f * dpi;
+            case SVGLength::SVG_LENGTHTYPE_PC:			return fValue / 6.0f * dpi;
+            case SVGLength::SVG_LENGTHTYPE_MM:			return fValue / 25.4f * dpi;
+            case SVGLength::SVG_LENGTHTYPE_CM:			return fValue / 2.54f * dpi;
+            case SVGLength::SVG_LENGTHTYPE_IN:			return fValue * dpi;
+            case SVGLength::SVG_LENGTHTYPE_EMS:			return fValue * length;         // length should represent 'em' height of font                 
+            case SVGLength::SVG_LENGTHTYPE_EXS:		    return fValue * length * 0.52f;          // x-height, fontHeight * 0.52.
+            case SVGLength::SVG_LENGTHTYPE_PERCENTAGE:
                 double clampedVal = waavs::clamp(fValue, 0.0, 100.0);
                 return orig + ((clampedVal / 100.0f) * length);
             }
@@ -582,7 +415,7 @@ namespace waavs
             if (!readNumber(s, fValue))
                 return false;
             
-            fUnits = parseDimensionUnits(s);
+            fUnits = parseDimensionUnits(s, fUnits);
             fHasValue = true;
             
             return true;
@@ -723,19 +556,7 @@ namespace waavs {
     // #RRGGBB
     // #RGB
     // Anything else is an error
-    static inline uint8_t  hexCharToDecimal(const uint8_t value) noexcept
-    {
-        if (value >= '0' && value <= '9')
-            return value - '0';
-        else if (value >= 'a' && value <= 'f')
-            return value - 'a' + 10;
-        else if (value >= 'A' && value <= 'F')
-            return value - 'A' + 10;
-        else
-            return 0;
-    }
-
-    static bool hexSpanToDecimal(const ByteSpan& inSpan, BLRgba32& outValue) noexcept
+    static bool hexSpanToRgba32(const ByteSpan& inSpan, BLRgba32& outValue) noexcept
     {
         outValue.value = 0;
 
@@ -745,12 +566,16 @@ namespace waavs {
         if (inSpan[0] != '#')
             return false;
 
+        uint8_t r{};
+        uint8_t g{};
+        uint8_t b{};
+        uint8_t a{0xffu};
+        
         if (inSpan.size() == 4) {
             // #RGB
-            // 0xRRGGBB
-            uint8_t r = hexCharToDecimal(inSpan[1]);
-            uint8_t g = hexCharToDecimal(inSpan[2]);
-            uint8_t b = hexCharToDecimal(inSpan[3]);
+            r = hexToDec(inSpan[1]);
+            g = hexToDec(inSpan[2]);
+            b = hexToDec(inSpan[3]);
 
             outValue = BLRgba32(r * 17, g * 17, b * 17);			// same effect as (r<<4|r), (g<<4|g), ..
 
@@ -758,21 +583,19 @@ namespace waavs {
         } 
         else if (inSpan.size() == 7) {
             // #RRGGBB
-            // 0xRRGGBB
-            uint8_t r = (hexCharToDecimal(inSpan[1]) << 4) | hexCharToDecimal(inSpan[2]);
-            uint8_t g = (hexCharToDecimal(inSpan[3]) << 4) | hexCharToDecimal(inSpan[4]);
-            uint8_t b = (hexCharToDecimal(inSpan[5]) << 4) | hexCharToDecimal(inSpan[6]);
+            r = (hexToDec(inSpan[1]) << 4) | hexToDec(inSpan[2]);
+            g = (hexToDec(inSpan[3]) << 4) | hexToDec(inSpan[4]);
+            b = (hexToDec(inSpan[5]) << 4) | hexToDec(inSpan[6]);
 
             outValue = BLRgba32(r, g, b);
             return true;
         }
         else if (inSpan.size() == 9) {
             // #RRGGBBAA
-            // 0xAARRGGBB
-            uint8_t r = (hexCharToDecimal(inSpan[1]) << 4) | hexCharToDecimal(inSpan[2]);
-            uint8_t g = (hexCharToDecimal(inSpan[3]) << 4) | hexCharToDecimal(inSpan[4]);
-            uint8_t b = (hexCharToDecimal(inSpan[5]) << 4) | hexCharToDecimal(inSpan[6]);
-			uint8_t a = (hexCharToDecimal(inSpan[7]) << 4) | hexCharToDecimal(inSpan[8]);
+            r = (hexToDec(inSpan[1]) << 4) | hexToDec(inSpan[2]);
+            g = (hexToDec(inSpan[3]) << 4) | hexToDec(inSpan[4]);
+            b = (hexToDec(inSpan[5]) << 4) | hexToDec(inSpan[6]);
+			a = (hexToDec(inSpan[7]) << 4) | hexToDec(inSpan[8]);
             outValue = BLRgba32(r, g, b, a);
             
             return true;
@@ -787,7 +610,7 @@ namespace waavs {
     static BLRgba32 parseColorHex(const ByteSpan& chunk) noexcept
     {
         BLRgba32 res{};
-        if (hexSpanToDecimal(chunk, res))
+        if (hexSpanToRgba32(chunk, res))
             return res;
 
         return BLRgba32(0);
@@ -837,7 +660,7 @@ namespace waavs {
         SVGDimension hd{};
         SVGDimension sd{};
         SVGDimension ld{};
-        SVGDimension od{255,SVGDimensionUnits::SVG_UNITS_USER};
+        SVGDimension od{255,SVGLength::SVG_LENGTHTYPE_NUMBER};
 
         double h = 0, s = 0, l = 0;
         double o = 1.0;
@@ -916,7 +739,7 @@ namespace waavs {
             cv.loadFromChunk(num);
 
 
-            if (cv.units() == SVGDimensionUnits::SVG_UNITS_PERCENT)
+            if (cv.units() == SVGLength::SVG_LENGTHTYPE_PERCENTAGE)
             {
                 // it's a percentage
                 // BUGBUG - we're assuming it's a range of [0..255]

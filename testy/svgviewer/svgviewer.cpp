@@ -34,21 +34,10 @@ bool gPerformTransform = true;
 
 static void quicktest()
 {
-	//static const char* srcStr = "stop-color:#321B0C";
-	static const char* srcStr = "stop-color:#532916;stop-opacity:0.7457;";
-
-	ByteSpan src(srcStr);
-	ByteSpan key{};
-	ByteSpan value{};
+	uint64_t outValue = 0;
+	parseHex64u("feedface", outValue);
 	
-	while (readNextCSSKeyValue(src, key, value)) {
-		printf("CSS: ");
-		writeChunk(key);
-		printf(" = ");
-		printChunk(value);
-	}
-
-	
+	printf("VALUE: %zd\n", outValue);
 }
 
 
@@ -323,7 +312,7 @@ static void setup()
     //printf("setup()\n");
     
 	
-	//quicktest();
+	quicktest();
 	
 	setupFonts();
 	
@@ -355,6 +344,9 @@ static void setup()
 	gViewPort.surfaceFrame({0, 0, (double)canvasWidth, (double)canvasHeight});
 	
 	// Load extension elements
+	// I really want to be able to do this here
+	// but there is an issue with the global variable that
+	// contains the registration table
 	//DisplayCaptureElement::registerFactory();
 	//SVGScriptElement::registerFactory();
 }

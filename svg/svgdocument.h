@@ -48,7 +48,7 @@
 #include "svghyperlink.h"
 
 #include "svgdrawingcontext.h"
-#include "svgwaavs.h"
+//#include "svgwaavs.h"
 
 
 namespace waavs {
@@ -292,38 +292,37 @@ namespace waavs {
         SVGFactory()
         {
             // Register attributes
-            //SVGClipPathAttribute::registerFactory();
+            SVGOpacity::registerFactory();
+            
 			SVGFillPaint::registerFactory();
             SVGFillOpacity::registerFactory();
-            SVGOpacity::registerFactory();
+            SVGFillRule::registerFactory();
+            
+            SVGStrokePaint::registerFactory();
+            SVGStrokeOpacity::registerFactory();
+            
             SVGStrokeLineCap::registerFactory();
             SVGStrokeLineJoin::registerFactory();
             SVGStrokeMiterLimit::registerFactory();
             SVGStrokeWidth::registerFactory();
 
-            SVGStrokePaint::registerFactory();
-            SVGStrokeOpacity::registerFactory();
+
+
 
             
-            SVGFillRule::registerFactory();
+			SVGMarkerAttribute::registerMarkerFactory();
+            SVGVectorEffectAttribute::registerFactory();
             
+            
+            //SVGClipPathAttribute::registerFactory();
+            //SVGTransform::registerFactory();
             //SVGFontFamily::registerFactory();
             //SVGFontSize::registerFactory();
             //SVGTextAnchor::registerFactory();
-            //             
-			SVGMarkerAttribute::registerMarkerFactory();
-
-            
-
+            //      
             
             
-
             
-
-            
-            //SVGTransform::registerFactory();
-            
-            SVGVectorEffectAttribute::registerFactory();
             
             // Register shape nodes
             SVGCircleElement::registerFactory();               // 'circle'
@@ -388,7 +387,9 @@ namespace waavs {
             SVGTitleNode::registerFactory();            // 'title'
 
 
-            DisplayCaptureElement::registerFactory();
+            // Uncomment the following, if you are using Windows,
+            // and want to do screen capture.
+            //DisplayCaptureElement::registerFactory();
         }
 
     };

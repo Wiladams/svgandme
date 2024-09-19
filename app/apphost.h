@@ -216,16 +216,16 @@ extern "C" {
 // Make Topic publishers available
 // Doing C++ pub/sub
 // These are only accessible through the C++ interface
-using SignalEventTopic = Topic<intptr_t>; 
-using MouseEventTopic = Topic<waavs::MouseEvent>;				// Mouse events
-using KeyboardEventTopic = Topic<waavs::KeyboardEvent>;		// Keyboard events
-using JoystickEventTopic = Topic<waavs::JoystickEvent>;		// Joystick events
-using FileDropEventTopic = Topic<waavs::FileDropEvent>;		// File drop events
-using TouchEventTopic = Topic<waavs::TouchEvent>;				// Touch events
-using PointerEventTopic = Topic<waavs::PointerEvent>;			// Pointer events
-using GestureEventTopic = Topic<waavs::GestureEvent>;			// Gesture events
-using FrameCountEventTopic = Topic<waavs::FrameCountEvent>;	// Timed Frame count events
-using ResizeEventTopic = Topic<waavs::ResizeEvent>;			// Application Window Resize events	
+using SignalEventTopic = waavs::Topic<intptr_t>; 
+using MouseEventTopic = waavs::Topic<waavs::MouseEvent>;				// Mouse events
+using KeyboardEventTopic = waavs::Topic<waavs::KeyboardEvent>;		// Keyboard events
+using JoystickEventTopic = waavs::Topic<waavs::JoystickEvent>;		// Joystick events
+using FileDropEventTopic = waavs::Topic<waavs::FileDropEvent>;		// File drop events
+using TouchEventTopic = waavs::Topic<waavs::TouchEvent>;				// Touch events
+using PointerEventTopic = waavs::Topic<waavs::PointerEvent>;			// Pointer events
+using GestureEventTopic = waavs::Topic<waavs::GestureEvent>;			// Gesture events
+using FrameCountEventTopic = waavs::Topic<waavs::FrameCountEvent>;	// Timed Frame count events
+using ResizeEventTopic = waavs::Topic<waavs::ResizeEvent>;			// Application Window Resize events	
 
 
 APP_EXPORT void subscribe(SignalEventTopic::Subscriber s);

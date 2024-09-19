@@ -3,111 +3,25 @@
 
 #include "svgstructuretypes.h"
 #include "svgattributes.h"
+#include "xmlentity.h"
 
+
+/*
 //
 // Text - text and tspan elements
 //
 namespace waavs {
 
-
-	static bool parseTextAnchor(const ByteSpan& inChunk, ALIGNMENT& value)
-	{
-		if (inChunk == "start")
-			value = ALIGNMENT::LEFT;
-		else if (inChunk == "middle")
-			value = ALIGNMENT::CENTER;
-		else if (inChunk == "end")
-			value = ALIGNMENT::RIGHT;
-		else
-			return false;
-
-		return true;
-	}
-
-	static bool parseTextAlign(const ByteSpan& inChunk, ALIGNMENT& value)
-	{
-		if (inChunk == "start")
-			value = ALIGNMENT::LEFT;
-		else if (inChunk == "middle")
-			value = ALIGNMENT::CENTER;
-		else if (inChunk == "end")
-			value = ALIGNMENT::RIGHT;
-		else
-			return false;
-
-		return true;
-	}
-
 	// Text Wrap
-// 
+	// 
 	enum class TEXTWRAP : unsigned
 	{
 		WORD,
 		CHAR
 	};
-	
-	// Parse the dominant-baseline attribute
-	//
-	enum class DOMINANTBASELINE
-	{
-		AUTO,
-		ALPHABETIC,
-		CENTRAL, 
-		HANGING, 
-		IDEOGRAPHIC,
-		MATHEMATICAL, 
-		MIDDLE,
-		NO_CHANGE,
-		RESET_SIZE,
-		TEXT_AFTER_EDGE,
-		TEXT_BEFORE_EDGE,
-		TEXT_BOTTOM,
-		TEXT_TOP,
-		USE_SCRIPT,
-	};
 
-	// Parse the value in the dominant-baseline attribute
-	// return false if the value is not recognized
-	static bool parseDominantBaseline(const ByteSpan& inChunk, DOMINANTBASELINE& value)
-	{
-		if (inChunk == "auto")
-			value = DOMINANTBASELINE::AUTO;
-		else if (inChunk == "alphabetic")
-			value = DOMINANTBASELINE::ALPHABETIC;
-		else if (inChunk == "central")
-			value = DOMINANTBASELINE::CENTRAL;
-		else if (inChunk == "hanging")
-			value = DOMINANTBASELINE::HANGING;
-		else if (inChunk == "ideographic")
-			value = DOMINANTBASELINE::IDEOGRAPHIC;
-		else if (inChunk == "mathematical")
-			value = DOMINANTBASELINE::MATHEMATICAL;
-		else if (inChunk == "middle")
-			value = DOMINANTBASELINE::MIDDLE;
-		else if (inChunk == "no-change")
-			value = DOMINANTBASELINE::NO_CHANGE;
-		else if (inChunk == "reset-size")
-			value = DOMINANTBASELINE::RESET_SIZE;
-		else if (inChunk == "text-after-edge")
-			value = DOMINANTBASELINE::TEXT_AFTER_EDGE;
-		else if (inChunk == "text-before-edge")
-			value = DOMINANTBASELINE::TEXT_BEFORE_EDGE;
-		else if (inChunk == "text-bottom")
-			value = DOMINANTBASELINE::TEXT_BOTTOM;
-		else if (inChunk == "text-top")
-			value = DOMINANTBASELINE::TEXT_TOP;
-		else if (inChunk == "use-script")
-			value = DOMINANTBASELINE::USE_SCRIPT;
-		else
-			return false;
-
-
-		return true;
-
-	}
-	
 }
-
+*/
 
 
 
@@ -242,8 +156,8 @@ namespace waavs {
 		}
 		
 		// calcTextPosition
-// Given a piece of text, and a coordinate
-// calculate its baseline given the a specified alignment
+		// Given a piece of text, and a coordinate
+		// calculate its baseline given the a specified alignment
 		BLRect calcTextPosition(const ByteSpan& txt, double x, double y, ALIGNMENT hAlignment = ALIGNMENT::LEFT, ALIGNMENT vAlignment = ALIGNMENT::BASELINE, DOMINANTBASELINE baseline = DOMINANTBASELINE::AUTO) const
 		{
 			BLPoint txtSize = textMeasure(txt);
@@ -313,8 +227,6 @@ namespace waavs {
 			return { x, y, cx, cy };
 		}
 		
-
-		
 		void draw(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 			// BUGBUG - not quite sure if we need both checks
@@ -345,14 +257,14 @@ namespace waavs {
 		{
 			name("textrun");
 			needsBinding(true);
+
+			expandXmlEntities(fText, fText);
 		}
 
 		ByteSpan text() const { return fText; }
 		
 		BLRect getBBox() const override { return BLRect{}; }
 
-
-		
 	};
 }
 
