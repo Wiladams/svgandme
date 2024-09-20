@@ -239,7 +239,8 @@ namespace waavs {
             if (nullptr == groot)
                 return;
             
-			fValue = dimValue.calculatePixels(16, 0, groot->dpi());
+            if (dimValue.isSet())
+			    fValue = dimValue.calculatePixels(16, 0, groot->dpi());
             
             needsBinding(false);
         }

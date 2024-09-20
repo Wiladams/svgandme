@@ -175,6 +175,7 @@
     <ClInclude Include="..\..\svg\base64.h" />
     <ClInclude Include="..\..\svg\bithacks.h" />
     <ClInclude Include="..\..\svg\bspan.h" />
+    <ClInclude Include="..\..\svg\charset.h" />
     <ClInclude Include="..\..\svg\collections.h" />
     <ClInclude Include="..\..\svg\converters.h" />
     <ClInclude Include="..\..\svg\definitions.h" />

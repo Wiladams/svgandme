@@ -336,12 +336,12 @@ namespace waavs {
             // Register Structural nodes
 			SVGAElement::registerFactory();             // 'a'
             SVGGElement::registerFactory();             // 'g'
-            SVGImageElement::registerFactory();            // 'image'
+            SVGImageElement::registerFactory();         // 'image'
             SVGSVGElement::registerFactory();           // 'svg'
             SVGStyleNode::registerFactory();            // 'style'
             SVGSwitchElement::registerFactory();        // 'switch'
             SVGTextNode::registerFactory();             // 'text'
-            SVGTSpanNode::registerFactory();            // 'tspan'
+            //SVGTSpanNode::registerFactory();            // 'tspan'
             SVGUseElement::registerFactory();           // 'use'
             
             // Non-Structural Nodes

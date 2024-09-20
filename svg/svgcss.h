@@ -14,11 +14,8 @@
 
 namespace waavs
 {
-    static charset cssdigit("0123456789");
-    static charset csswsp(" \t\r\n\f\v");
-	static charset cssalpha("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
-	static charset cssstartnamechar = cssalpha + "_";
-    static charset cssnamechar = cssstartnamechar + cssdigit + '-';
+	static charset cssstartnamechar = chrAlphaChars + "_";
+    static charset cssnamechar = cssstartnamechar + chrDecDigits + '-';
     
 
     // CSS Syntax
@@ -38,6 +35,7 @@ namespace waavs
         CSS_SELECTOR_UNIVERSAL,          // Universal selector - e.g. "*"
 	};
     
+    /*
     static std::string cssSelectorKindToString(CSSSelectorKind kind)
     {
 		switch (kind)
@@ -54,7 +52,7 @@ namespace waavs
 		default: return "INVALID";
 		}
     }
-
+    */
     
     // Look at the beginning of the selector name and determine
     // what kind of simple selector it is.
@@ -74,7 +72,7 @@ namespace waavs
 			return CSSSelectorKind::CSS_SELECTOR_UNIVERSAL;     // Select all elements
         else if (*inChunk == ',')
 			return CSSSelectorKind::CSS_SELECTOR_COMBINATOR;    // Combinator
-        else if (cssalpha[*inChunk])
+        else if (chrAlphaChars[*inChunk])
 			return CSSSelectorKind::CSS_SELECTOR_ELEMENT;       // Select elements with the given name
         else
             return CSSSelectorKind::CSS_SELECTOR_INVALID;
@@ -87,11 +85,11 @@ namespace waavs
         {
             // get the name of the attribute
             auto prop = chunk_token(s, charset(':'));
-            prop = chunk_trim(prop, csswsp);
+            prop = chunk_trim(prop, chrWspChars);
 
             // get the value of the attribute
             auto value = chunk_token(s, charset(';'));
-            value = chunk_trim(value, csswsp);
+            value = chunk_trim(value, chrWspChars);
 
             // add the attribute to the map
 			//auto name = std::string(prop.begin(), prop.end());
@@ -293,7 +291,7 @@ namespace waavs
         bool advanceSelection()
         {
             // Skip whitespace
-            fSource = chunk_ltrim(fSource, csswsp);
+            fSource = chunk_ltrim(fSource, chrWspChars);
             if (fSource.size() == 0)
                 return false;
             
@@ -327,14 +325,14 @@ namespace waavs
 
                 // separate out the select name list from the content
 				fSelectorNames = chunk_token_char(fSource, '{');
-                fSelectorNames = chunk_trim(fSelectorNames, csswsp);
+                fSelectorNames = chunk_trim(fSelectorNames, chrWspChars);
 
                 if (!fSelectorNames)
                     return false;
 
                 // Isolate the content portion
                 fSelectorContent = chunk_token_char(fSource, '}');
-                fSelectorContent = chunk_trim(fSelectorContent, csswsp);
+                fSelectorContent = chunk_trim(fSelectorContent, chrWspChars);
 
                 break;
             }
@@ -354,7 +352,7 @@ namespace waavs
 
             // pull off the next name delimeted by a comma
             ByteSpan selectorName = chunk_token(fSelectorNames, ",");
-			fSelectorNames = chunk_trim(fSelectorNames, csswsp);
+			fSelectorNames = chunk_trim(fSelectorNames, chrWspChars);
             
             // determine what kind of selector we have
             auto selectorKind = parseSimpleSelectorKind(selectorName);

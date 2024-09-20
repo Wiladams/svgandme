@@ -167,5 +167,8 @@
     <ClInclude Include="..\..\svg\membuff.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\svg\charset.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

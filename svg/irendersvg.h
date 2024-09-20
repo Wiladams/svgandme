@@ -8,22 +8,6 @@
 #include "fonthandler.h"
 
 
-
-namespace waavs
-{
-
-
-
-
-    /*
-    enum class FILLRULE : unsigned
-    {
-        NON_ZERO = 0,
-        EVEN_ODD = 1,
-    };
-    */
-}
-
 namespace waavs
 {
     /*
@@ -223,27 +207,23 @@ namespace waavs
 
 
         // Text Drawing
+		virtual void strokeText(const ByteSpan& txt, double x, double y) {
+            BLContext::strokeUtf8Text(BLPoint(x, y), fFont, (char*)txt.data(), txt.size());
+		}
+        
+        virtual void fillText(const ByteSpan& txt, double x, double y) {
+            BLContext::fillUtf8Text(BLPoint(x, y), fFont, (char*)txt.data(), txt.size());
+        }
+        
         virtual void text(const ByteSpan &txt, double x, double y)
         {
             // BUGBUG - Drawing order should be determined by 
-            // the drawing order attribute
+            // the paint-order attribute
             BLContext::strokeUtf8Text(BLPoint(x, y), fFont, (char *)txt.data(), txt.size());
             BLContext::fillUtf8Text(BLPoint(x, y), fFont, (char *)txt.data(), txt.size());
-
-            //fTextX += fTextAdvance;
         }
         
-        /*
-        virtual void text(const char* txt, double x, double y) 
-        {
-            // BUGBUG - Drawing order should be determined by 
-            // the drawing order attribute
-            BLContext::strokeUtf8Text(BLPoint(x, y), fFont, txt);
-            BLContext::fillUtf8Text(BLPoint(x, y), fFont, txt);
-            
-			//fTextX += fTextAdvance;
-        }
-        */
+
     };
 
 

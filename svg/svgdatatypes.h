@@ -305,13 +305,10 @@ namespace waavs
     static bool parseDimensionUnits(const ByteSpan& inChunk, unsigned short &units)
     {
         ByteSpan s = inChunk;
-        
-        // if the chunk is blank, then return user units
-        if (!s)
-            return false;
+
 
         if (!s)
-            units = SVGLength::SVG_LENGTHTYPE_UNKNOWN;
+            units = SVGLength::SVG_LENGTHTYPE_NUMBER;
         if (s[0] == 'p' && s[1] == 'x')
             units = SVGLength::SVG_LENGTHTYPE_PX;
         else if (s[0] == 'p' && s[1] == 't')
@@ -331,7 +328,8 @@ namespace waavs
         else if (s[0] == 'e' && s[1] == 'x')
             units = SVGLength::SVG_LENGTHTYPE_EXS;
         else
-            return false;
+            units = SVGLength::SVG_LENGTHTYPE_UNKNOWN;
+
         
         return true;
     }
@@ -383,6 +381,7 @@ namespace waavs
         double calculatePixels(double length = 1.0, double orig = 0, double dpi = 96) const
         {
             switch (fUnits) {
+            case SVGLength::SVG_LENGTHTYPE_UNKNOWN:     return fValue;
             case SVGLength::SVG_LENGTHTYPE_NUMBER:		return fValue;                  // User units and PX units are the same
             case SVGLength::SVG_LENGTHTYPE_PX:			return fValue;                  // User units and px units are the same
             case SVGLength::SVG_LENGTHTYPE_PT:			return fValue / 72.0f * dpi;
@@ -415,10 +414,9 @@ namespace waavs
             if (!readNumber(s, fValue))
                 return false;
             
-            fUnits = parseDimensionUnits(s, fUnits);
-            fHasValue = true;
+            fHasValue = parseDimensionUnits(s, fUnits);
             
-            return true;
+            return fHasValue;
         }
     };
 

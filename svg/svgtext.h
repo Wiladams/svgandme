@@ -6,26 +6,6 @@
 #include "xmlentity.h"
 
 
-/*
-//
-// Text - text and tspan elements
-//
-namespace waavs {
-
-	// Text Wrap
-	// 
-	enum class TEXTWRAP : unsigned
-	{
-		WORD,
-		CHAR
-	};
-
-}
-*/
-
-
-
-
 namespace waavs {
 	struct SVGFontSelection : public SVGVisualProperty
 	{
@@ -238,13 +218,30 @@ namespace waavs {
 }
 
 
-
+//
+// 'text' and 'tspan'
+// 
+// The difference between these two are:
+//  - 'tspan', while it can be a container (containing more tspans), it can 
+//    not appear outside a 'text' container
+//  - When style is applied in a 'tspan', it remains local to that tspan, and will not
+//    affect sibling tspans
+//  - 'x' and 'y' positions, 'text' element, default to '0', while 'tspan' default to the 
+//    whereever the text cursor currently sits.
+//
 namespace waavs {
 	// SVGTextRun
 	// This takes care of all the details of rendering a run of text
 	// It contains the text itself
 	// positioning information
 	// style information
+
+	//
+	// SVGTextRun
+	//
+	// Encapsulates a run of text.  That is, a piece of text that has a 
+	// particular style.  It is found either as direct nodes of a 'text'
+	// element, or as the content of a 'tspan'.
 	struct SVGTextRun : public SVGVisualNode
 	{
 		ByteSpan fText{};
@@ -314,7 +311,6 @@ namespace waavs {
 		BLPoint textCursor() const { return fTextCursor; }
 		
 		
-		// Load the text content if it exists
 		// Load the text content if it exists
 		void loadContentNode(const XmlElement& elem, IAmGroot* groot) override
 		{
@@ -435,10 +431,16 @@ namespace waavs {
 					ByteSpan porder = getAttribute("paint-order");
 					
 					if (!porder || porder=="normal") {
-						ctx->fillUtf8Text(BLPoint(pRect.x, pRect.y), ctx->font(), (char*)txt.data(), txt.size());
-						ctx->strokeUtf8Text(BLPoint(pRect.x, pRect.y), ctx->font(), (char*)txt.data(), txt.size());
+						ctx->fillText(txt, pRect.x, pRect.y);
+						ctx->strokeText(txt, pRect.x, pRect.y);
 					}
 					else {
+						std::list<ByteSpan> alist = {
+							ByteSpan("fill"),
+							ByteSpan("stroke"),
+							ByteSpan("markers")
+						};
+						
 						// get paint order tokens one at a time
 						while (porder) {
 							auto ptoken = chunk_token(porder, chrWspChars);
@@ -446,15 +448,29 @@ namespace waavs {
 								break;
 
 							if (ptoken == "fill")
-								ctx->fillUtf8Text(BLPoint(pRect.x, pRect.y), ctx->font(), (char*)txt.data(), txt.size());
+								ctx->fillText(txt, pRect.x, pRect.y);
 							else if (ptoken == "stroke")
-								ctx->strokeUtf8Text(BLPoint(pRect.x, pRect.y), ctx->font(), (char*)txt.data(), txt.size());
-						}
-					}
-					
+								ctx->strokeText(txt, pRect.x, pRect.y);
 
-					
-					//ctx->text(textNode->text(), pRect.x, pRect.y);
+							alist.remove(ptoken);
+						}
+
+						// If there's anything still in the list, then draw that
+						for (auto& token : alist) {
+							if (token == "fill")
+								ctx->fillText(txt, pRect.x, pRect.y);
+							else if (token == "stroke")
+								ctx->strokeText(txt, pRect.x, pRect.y);
+							else if (token == "markers")
+							{
+								// draw markers if we have any
+								//if (fHasMarkers)
+								//	drawMarkers(ctx, groot);
+							}
+						}
+						
+					}
+
 					fTextCursor.x += pRect.w;
 				}
 				else
