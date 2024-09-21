@@ -82,7 +82,7 @@ namespace waavs {
             ByteSpan fRawValue;
 
 
-            SVGVisualProperty(IAmGroot* groot) :SVGObject(), fIsSet(false) {}
+            SVGVisualProperty(IAmGroot* groot) :SVGObject(), fIsSet(false) { needsBinding(false); }
 
             SVGVisualProperty(const SVGVisualProperty& other) = delete;
             SVGVisualProperty& operator=(const SVGVisualProperty& rhs) = delete;

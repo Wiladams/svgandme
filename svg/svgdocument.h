@@ -296,7 +296,7 @@ namespace waavs {
             
 			SVGFillPaint::registerFactory();
             SVGFillOpacity::registerFactory();
-            SVGFillRule::registerFactory();
+            SVGFillRuleAttribute::registerFactory();
             
             SVGStrokePaint::registerFactory();
             SVGStrokeOpacity::registerFactory();

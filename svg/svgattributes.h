@@ -339,8 +339,8 @@ namespace waavs {
         
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
-			ByteSpan s = chunk_trim(inChunk, xmlwsp);
-            bool success = parseFontStyle(s, fStyle);
+            
+            bool success = getEnumValue(SVGFontStyle, inChunk, (int &)fStyle);
 			set(success);
             
 			return success;
@@ -365,7 +365,8 @@ namespace waavs {
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
-			bool success = parseFontWeight(inChunk, fWeight);
+            needsBinding(false);
+			bool success = getEnumValue(SVGFontWeight, inChunk, (int &)fWeight);
             set(success);
 
 			return success;
@@ -390,9 +391,8 @@ namespace waavs {
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
-            ByteSpan s = chunk_trim(inChunk, xmlwsp);
-            bool success = parseFontStretch(s, fValue);
-            set(success);
+			bool success = getEnumValue(SVGFontStretch, inChunk, (int&)fValue);
+			set(success);
             
             return success;
 
@@ -656,11 +656,11 @@ namespace waavs {
         return true;
     }
     
-    struct SVGFillRule : public SVGVisualProperty
+    struct SVGFillRuleAttribute : public SVGVisualProperty
     {
         static void registerFactory() {
             registerSVGAttribute("fill-rule", [](const XmlAttributeCollection& attrs) {
-                auto node = std::make_shared<SVGFillRule>(nullptr);
+                auto node = std::make_shared<SVGFillRuleAttribute>(nullptr);
                 node->loadFromAttributes(attrs);
                 return node;
                 });
@@ -669,18 +669,16 @@ namespace waavs {
 
         BLFillRule fValue{ BL_FILL_RULE_EVEN_ODD };
 
-        SVGFillRule(IAmGroot* iMap) : SVGVisualProperty(iMap) { id("fill-rule"); }
+        SVGFillRuleAttribute(IAmGroot* iMap) : SVGVisualProperty(iMap) { id("fill-rule"); }
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
-            ByteSpan s = chunk_trim(inChunk, xmlwsp);
+            needsBinding(false);
 
-			if (!parseFillRule(s, fValue))
-				return false;
+			bool success = getEnumValue(SVGFillRule, inChunk, (int &)fValue);
+            set(success);
             
-            set(true);
-
-            return true;
+            return success;
         }
 
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
@@ -856,19 +854,12 @@ namespace waavs {
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
-            ByteSpan s = inChunk;
-
-			if (parseLineCaps(s, fLineCap))
-			{
-				set(true);
-				needsBinding(false);
-				return true;
-			}
-
-            set(false);
-      
-
-            return false;
+            needsBinding(false);
+            
+            bool success = getEnumValue(SVGLineCaps, inChunk, (int&)fLineCap);
+            set(success);
+            
+			return success;
         }
 
     };
@@ -897,9 +888,7 @@ namespace waavs {
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
-            ByteSpan s = inChunk;
-
-            bool success = parseLineJoin(s, fLineJoin);
+            bool success = getEnumValue(SVGLineJoin, inChunk, (int &)fLineJoin);
             set(success);
 
             return success;
@@ -1290,11 +1279,10 @@ namespace waavs {
         {
             needsBinding(false);
             
-            if (!parseVectorEffect(inChunk, fEffectKind))
-                return false;
+			bool success = getEnumValue(SVGVectorEffect, inChunk, (int &)fEffectKind);
+            set(success);
             
-            set(true);
-            return true;
+            return success;
         }
 
 		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override

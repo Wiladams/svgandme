@@ -7,9 +7,12 @@
 
 #include "blend2d.h"
 #include "bspan.h"
+
 #include "membuff.h"
 #include "base64.h"
 #include "converters.h"
+#include "svgenums.h"
+
 
 //
 // Parsing routines for the core SVG data types

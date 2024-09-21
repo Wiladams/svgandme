@@ -394,9 +394,10 @@ namespace waavs {
 			fTextCursor.x = fX + fDx;
 			fTextCursor.y = fY + fDy;
 
-			parseTextAnchor(getAttribute("text-anchor"), fTextHAlignment);
-			parseTextAlign(getAttribute("text-align"), fTextVAlignment);
-			parseDominantBaseline(getAttribute("dominant-baseline"), fDominantBaseline);
+			getEnumValue(SVGTextAnchor, getAttribute("text-anchor"), (int &)fTextHAlignment);
+			getEnumValue(SVGTextAlign, getAttribute("text-align"), (int&)fTextVAlignment);
+			getEnumValue(SVGDominantBaseline, getAttribute("dominant-baseline"), (int&)fDominantBaseline);
+			
 
 			fFontSelection.loadFromXmlAttributes(this->fAttributes, groot);
 			fFontSelection.bindToGroot(groot, container);
