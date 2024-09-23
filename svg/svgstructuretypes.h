@@ -511,8 +511,11 @@ namespace waavs {
                     visible(false);
             }
 
-
-            fHasTransform = parseTransform(fAttributes.getAttribute("transform"), fTransform);
+            BLMatrix2D aTransform{};
+            if (parseTransform(fAttributes.getAttribute("transform"), aTransform)) {
+                fHasTransform = true;
+                fTransform = aTransform;
+            }
 
 
             

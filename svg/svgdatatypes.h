@@ -364,19 +364,6 @@ namespace waavs
         double value() const { return fValue; }
         unsigned short units() const { return fUnits; }
         
-        /*
-        		static const unsigned short SVG_LENGTHTYPE_UNKNOWN = 0;
-		static const unsigned short SVG_LENGTHTYPE_NUMBER = 1;
-		static const unsigned short SVG_LENGTHTYPE_PERCENTAGE = 2;
-		static const unsigned short SVG_LENGTHTYPE_EMS = 3;
-		static const unsigned short SVG_LENGTHTYPE_EXS = 4;
-		static const unsigned short SVG_LENGTHTYPE_PX = 5;
-		static const unsigned short SVG_LENGTHTYPE_CM = 6;
-		static const unsigned short SVG_LENGTHTYPE_MM = 7;
-		static const unsigned short SVG_LENGTHTYPE_IN = 8;
-		static const unsigned short SVG_LENGTHTYPE_PT = 9;
-		static const unsigned short SVG_LENGTHTYPE_PC = 10;
-        */
         // Using the units and other information, calculate the actual value
         double calculatePixels(double length = 1.0, double orig = 0, double dpi = 96) const
         {

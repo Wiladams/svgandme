@@ -310,13 +310,16 @@ namespace waavs {
 			SVGMarkerAttribute::registerMarkerFactory();
             SVGVectorEffectAttribute::registerFactory();
             
+            // Typography Attributes
+			SVGTextAnchorAttribute::registerFactory();
+            
+            // Fontography Attributes
             SVGFontFamily::registerFactory();
             SVGFontSize::registerFactory();
             SVGFontStyleAttribute::registerFactory();
             SVGFontWeightAttribute::registerFactory();
 			SVGFontStretchAttribute::registerFactory();
             
-            //SVGTextAnchor::registerFactory();   
             //SVGClipPathAttribute::registerFactory();
             //SVGTransform::registerFactory();
             

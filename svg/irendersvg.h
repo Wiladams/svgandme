@@ -7,6 +7,7 @@
 #include "blend2d.h"
 #include "fonthandler.h"
 #include "collections.h"
+#include "svgenums.h"
 
 namespace waavs
 {
@@ -21,7 +22,14 @@ namespace waavs
     struct SVGDrawingState {
         BLRect fLocalFrame{};
 
-
+        // Paint
+        BLVar fDefaultColor;
+        
+        // Typography
+        TXTALIGNMENT fTextHAlignment = LEFT;
+        TXTALIGNMENT fTextVAlignment = BASELINE;
+        
+        // Fontography
         FontHandler* fFontHandler{ nullptr };   
         BLFont fFont{};
         ByteSpan fFamilyNames{"Arial"};
@@ -40,6 +48,11 @@ namespace waavs
 		{
             fLocalFrame = other.fLocalFrame;
 
+            fDefaultColor.assign(other.fDefaultColor);
+            
+			fTextHAlignment = other.fTextHAlignment;
+			fTextVAlignment = other.fTextVAlignment;
+            
             fFontHandler = other.fFontHandler;
             fFont = other.fFont;
 
@@ -57,6 +70,11 @@ namespace waavs
             {
                 fLocalFrame = other.fLocalFrame;
              
+                fDefaultColor.assign(other.fDefaultColor);
+                
+                fTextHAlignment = other.fTextHAlignment;
+                fTextVAlignment = other.fTextVAlignment;
+                
                 fFontHandler = other.fFontHandler;
                 fFont = other.fFont;
 
@@ -69,6 +87,9 @@ namespace waavs
 
             return *this;
         }
+        
+        const BLVar & defaultColor() const { return fDefaultColor; }
+        void defaultColor(const BLVar& color) { fDefaultColor.assign(color); }
         
         // Typography changes
 		void fontHandler(FontHandler* handler) noexcept
@@ -100,11 +121,20 @@ namespace waavs
 				if (fFontHandler->selectFont(fFamilyNames, aFont, fFontSize, fFontStyle, fFontWeight, fFontStretch))
                     fFont = aFont;
 			}
-            
 
 		}
         
-
+		TXTALIGNMENT textAnchor() const { return fTextHAlignment; }
+        void textAnchor(TXTALIGNMENT anchor)
+        {
+			fTextHAlignment = anchor;
+        }
+        
+        TXTALIGNMENT textAlignment() const { return fTextVAlignment; }
+        void textAlignment(TXTALIGNMENT align)
+        {
+            fTextVAlignment = align;
+        }
         
 		void fontFamily(const ByteSpan& familyNames) noexcept
 		{
@@ -202,6 +232,8 @@ namespace waavs
 
         void resetState()
         {
+            resetTransform();
+            
             // Select a default faunt to start
             fStateStack.clear();
             fCurrentState.reset();
@@ -230,6 +262,10 @@ namespace waavs
 
             resetState();
         }
+
+        
+        const BLVar& defaultColor() const { return fCurrentState.defaultColor(); }
+        void defaultColor(const BLVar& color) { fCurrentState.defaultColor(color); }
 
         
         virtual void strokeBeforeTransform(bool b) 
@@ -348,6 +384,9 @@ namespace waavs
 
 
         // Typography
+        TXTALIGNMENT textAnchor() const { return fCurrentState.textAnchor(); }
+        void textAnchor(TXTALIGNMENT anchor) { fCurrentState.textAnchor(anchor); }
+        
         virtual void fontFamily(const ByteSpan& familyNames) {fCurrentState.fontFamily(familyNames);}
 		virtual void fontSize(double sz) { fCurrentState.fontSize(sz); }
 		virtual void fontStyle(const BLFontStyle style) { fCurrentState.fontStyle(style); }

@@ -188,6 +188,43 @@ namespace waavs {
 //==================================================================
 //  SVG Text Properties
 //==================================================================
+// Typography Attributes
+namespace waavs {
+    struct SVGTextAnchorAttribute : public SVGVisualProperty
+    {
+        static void registerFactory() {
+            registerSVGAttribute("text-anchor", [](const XmlAttributeCollection& attrs) {
+                auto node = std::make_shared<SVGTextAnchorAttribute>();
+                node->loadFromAttributes(attrs);
+                return node;
+                });
+        }
+
+
+        TXTALIGNMENT fValue{ TXTALIGNMENT::LEFT };
+
+        SVGTextAnchorAttribute() :SVGVisualProperty(nullptr)
+        {
+            id("text-anchor");
+        }
+
+        int value() const { return fValue; }
+
+        bool loadSelfFromChunk(const ByteSpan& inChunk) override
+        {
+            bool success = getEnumValue(SVGTextAnchor, inChunk, (int&)fValue);
+            set(success);
+
+            return success;
+        }
+
+        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        {
+            ctx->textAnchor(fValue);
+        }
+    };
+}
+
 namespace waavs {
     struct SVGFontSize : public SVGVisualProperty
     {
@@ -601,6 +638,39 @@ namespace waavs {
 
             return true;
         }
+    };
+}
+
+namespace waavs {
+    struct SVGColorPaint : public SVGPaint
+    {
+        static void registerFactory() {
+            registerSVGAttribute("color", [](const XmlAttributeCollection& attrs) {
+                auto node = std::make_shared<SVGColorPaint>(nullptr);
+                node->loadFromAttributes(attrs);
+                return node;
+                });
+        }
+
+
+        SVGColorPaint(IAmGroot* root) : SVGPaint(root) { id("color"); }
+
+
+        bool loadFromAttributes(const XmlAttributeCollection& attrs)
+        {
+            if (!SVGPaint::loadFromAttributes(attrs))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        {
+            ctx->defaultColor(getVariant());
+        }
+
     };
 }
 

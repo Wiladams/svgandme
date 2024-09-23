@@ -138,7 +138,7 @@ namespace waavs {
 		// calcTextPosition
 		// Given a piece of text, and a coordinate
 		// calculate its baseline given the a specified alignment
-		BLRect calcTextPosition(const ByteSpan& txt, double x, double y, ALIGNMENT hAlignment = ALIGNMENT::LEFT, ALIGNMENT vAlignment = ALIGNMENT::BASELINE, DOMINANTBASELINE baseline = DOMINANTBASELINE::AUTO) const
+		BLRect calcTextPosition(const ByteSpan& txt, double x, double y, TXTALIGNMENT hAlignment = TXTALIGNMENT::LEFT, TXTALIGNMENT vAlignment = TXTALIGNMENT::BASELINE, DOMINANTBASELINE baseline = DOMINANTBASELINE::AUTO) const
 		{
 			BLPoint txtSize = textMeasure(txt);
 			double cx = txtSize.x;
@@ -146,14 +146,14 @@ namespace waavs {
 
 			switch (hAlignment)
 			{
-			case ALIGNMENT::LEFT:
+			case TXTALIGNMENT::LEFT:
 				// do nothing
 				// x = x;
 				break;
-			case ALIGNMENT::CENTER:
+			case TXTALIGNMENT::CENTER:
 				x = x - (cx / 2);
 				break;
-			case ALIGNMENT::RIGHT:
+			case TXTALIGNMENT::RIGHT:
 				x = x - cx;
 				break;
 
@@ -163,24 +163,24 @@ namespace waavs {
 
 			switch (vAlignment)
 			{
-			case ALIGNMENT::TOP:
+			case TXTALIGNMENT::TOP:
 				y = y + cy - descent();
 				break;
-			case ALIGNMENT::CENTER:
+			case TXTALIGNMENT::CENTER:
 				y = y + (cy / 2);
 				break;
 
-			case ALIGNMENT::MIDLINE:
+			case TXTALIGNMENT::MIDLINE:
 				//should use the design metrics xheight
 				break;
 
-			case ALIGNMENT::BASELINE:
+			case TXTALIGNMENT::BASELINE:
 				// If what was passed as y is the baseline
 				// do nothing to it because blend2d draws
 				// text from baseline
 				break;
 
-			case ALIGNMENT::BOTTOM:
+			case TXTALIGNMENT::BOTTOM:
 				// Adjust from the bottom as blend2d
 				// prints from the baseline, so adjust
 				// by the amount of the descent
@@ -284,8 +284,8 @@ namespace waavs {
 		}
 
 		BLPoint fTextCursor{};
-		ALIGNMENT fTextHAlignment = ALIGNMENT::LEFT;
-		ALIGNMENT fTextVAlignment = ALIGNMENT::BASELINE;
+		TXTALIGNMENT fTextHAlignment = TXTALIGNMENT::LEFT;
+		TXTALIGNMENT fTextVAlignment = TXTALIGNMENT::BASELINE;
 		DOMINANTBASELINE fDominantBaseline = DOMINANTBASELINE::AUTO;
 		
 		SVGFontSelection fFontSelection{ nullptr };
@@ -411,23 +411,19 @@ namespace waavs {
 				fFontSelection.font(ctx->font());
 			}
 
-			if (fDimX.isSet())
-				fTextCursor.x = fX;
-			if (fDimY.isSet())
-				fTextCursor.y = fY;
-			
 
-
-			for (auto& node : fNodes) {
-
+			for (auto& node : fNodes) 
+			{
 
 				// dynamic cast the node to a SVGTextRun if possible
 				auto textNode = std::dynamic_pointer_cast<SVGTextRun>(node);
 				if (nullptr != textNode)
 				{
-					BLRect pRect = fFontSelection.calcTextPosition(textNode->text(), fTextCursor.x, fTextCursor.y, fTextHAlignment, fTextVAlignment, fDominantBaseline);
-					fFontSelection.draw(ctx, groot);
+					TXTALIGNMENT anchor = ctx->textAnchor();
 					ByteSpan txt = textNode->text();
+					BLRect pRect = fFontSelection.calcTextPosition(txt, fTextCursor.x, fTextCursor.y, anchor, fTextVAlignment, fDominantBaseline);
+					fFontSelection.draw(ctx, groot);
+
 					
 					ByteSpan porder = getAttribute("paint-order");
 					
@@ -494,6 +490,13 @@ namespace waavs {
 			if (!visible())
 				return;
 
+			// For a span, the default position is wherever the container left the cursor
+			// but if we have x, y, then we set the position explicitly
+			if (fDimX.isSet())
+				fTextCursor.x = fX;
+			if (fDimY.isSet())
+				fTextCursor.y = fY;
+			
 			ctx->push();
 
 			applyAttributes(ctx, groot);
@@ -532,7 +535,28 @@ namespace waavs {
 		}
 
 
+		void draw(IRenderSVG* ctx, IAmGroot* groot) override
+		{
+			if (!visible())
+				return;
 
+			// For a text node, the default position is zero
+			fTextCursor.x = 0;
+			fTextCursor.y = 0;
+
+			if (fDimX.isSet())
+				fTextCursor.x = fX;
+			if (fDimY.isSet())
+				fTextCursor.y = fY;
+			
+			ctx->push();
+
+			applyAttributes(ctx, groot);
+
+			drawChildren(ctx, groot);
+
+			ctx->pop();
+		}
 	};
 }
 

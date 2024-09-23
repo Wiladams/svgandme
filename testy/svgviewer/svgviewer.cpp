@@ -339,7 +339,8 @@ static void setup()
 	// clear the buffer to white to start
 	appFrameBuffer().setAllPixels(vec4b{ 0xFF,0xff,0xff,0xff });
 	BLContextCreateInfo ctxInfo{};
-	ctxInfo.threadCount = 4;
+	//ctxInfo.threadCount = 4;
+	ctxInfo.threadCount = 0;
 	gDrawingContext.begin(appFrameBuffer().image(), &ctxInfo);
 		
 	// Set the initial viewport

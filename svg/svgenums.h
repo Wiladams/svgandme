@@ -67,7 +67,7 @@ namespace waavs {
 namespace waavs {
 	
     // Text Alignment
-    enum ALIGNMENT : int
+    enum TXTALIGNMENT : int
     {
         CENTER = 0x01,
 
@@ -82,15 +82,15 @@ namespace waavs {
     };
 
 	static SVGEnum SVGTextAnchor = {
-		{ "start", (int)ALIGNMENT::LEFT },
-		{ "middle", (int)ALIGNMENT::CENTER },
-		{ "end", (int)ALIGNMENT::RIGHT }
+		{ "start", (int)TXTALIGNMENT::LEFT },
+		{ "middle", (int)TXTALIGNMENT::CENTER },
+		{ "end", (int)TXTALIGNMENT::RIGHT }
 	};
 
     static SVGEnum SVGTextAlign = {
-        { "start", (int)ALIGNMENT::LEFT },
-        { "middle", (int)ALIGNMENT::CENTER },
-        { "end", (int)ALIGNMENT::RIGHT }
+        { "start", (int)TXTALIGNMENT::LEFT },
+        { "middle", (int)TXTALIGNMENT::CENTER },
+        { "end", (int)TXTALIGNMENT::RIGHT }
     };
     
 
