@@ -211,8 +211,8 @@ namespace waavs {
 		{
 			// BUGBUG - not quite sure if we need both checks
 			//if (isSet() && visible())
-			if (isSet())
-				ctx->font(fFont);
+			//if (isSet())
+			//	ctx->font(fFont);
 		}
 	};
 }
@@ -486,9 +486,7 @@ namespace waavs {
 						fTextCursor = tspanNode->textCursor();
 					}
 				}
-
 			}
-			
 		}
 
 		void draw(IRenderSVG* ctx, IAmGroot* groot) override

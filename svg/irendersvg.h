@@ -6,49 +6,207 @@
 
 #include "blend2d.h"
 #include "fonthandler.h"
-
+#include "collections.h"
 
 namespace waavs
 {
+    struct IRenderSVG;
+    struct IAmGroot;
+    
     /*
         IGraphics defines the essential interface for doing vector graphics
         This is a pure virtual interface for the most part, so a sub-class must
         implement a fair bit of stuff.
     */
+    struct SVGDrawingState {
+        BLRect fLocalFrame{};
+
+
+        FontHandler* fFontHandler{ nullptr };   
+        BLFont fFont{};
+        ByteSpan fFamilyNames{"Arial"};
+        float fFontSize{ 16 };
+        BLFontStyle fFontStyle = BL_FONT_STYLE_NORMAL;
+        BLFontWeight fFontWeight = BL_FONT_WEIGHT_NORMAL;
+        BLFontStretch fFontStretch = BL_FONT_STRETCH_NORMAL;
+
+        
+        SVGDrawingState() = default;
+        
+        // Copy Constructor
+		SVGDrawingState(const SVGDrawingState& other) noexcept
+			: fFont(other.fFont)
+			, fLocalFrame(other.fLocalFrame)
+		{
+            fLocalFrame = other.fLocalFrame;
+
+            fFontHandler = other.fFontHandler;
+            fFont = other.fFont;
+
+            fFamilyNames = other.fFamilyNames;
+            fFontSize = other.fFontSize;
+            fFontStyle = other.fFontStyle;
+            fFontWeight = other.fFontWeight;
+            fFontStretch = other.fFontStretch;
+		}
+        
+        // Assignment operator
+        SVGDrawingState& operator=(const SVGDrawingState& other) noexcept
+        {
+            if (this != &other)
+            {
+                fLocalFrame = other.fLocalFrame;
+             
+                fFontHandler = other.fFontHandler;
+                fFont = other.fFont;
+
+                fFamilyNames = other.fFamilyNames;
+				fFontSize = other.fFontSize;
+                fFontStyle = other.fFontStyle;
+				fFontWeight = other.fFontWeight;
+				fFontStretch = other.fFontStretch;
+            }
+
+            return *this;
+        }
+        
+        // Typography changes
+		void fontHandler(FontHandler* handler) noexcept
+		{
+			fFontHandler = handler;
+
+            // Select a default faunt to start
+            if (fFontHandler != nullptr) {
+                resetFont();
+            }
+		}
+        
+        void reset()
+        {
+            fFamilyNames = "Arial";
+			fFontSize = 16;
+			fFontStyle = BL_FONT_STYLE_NORMAL;
+			fFontWeight = BL_FONT_WEIGHT_NORMAL;
+			fFontStretch = BL_FONT_STRETCH_NORMAL;
+            
+            resetFont();
+        }
+        
+        void resetFont()
+		{
+			if (nullptr != fFontHandler)
+			{
+                BLFont aFont;
+				if (fFontHandler->selectFont(fFamilyNames, aFont, fFontSize, fFontStyle, fFontWeight, fFontStretch))
+                    fFont = aFont;
+			}
+            
+
+		}
+        
+
+        
+		void fontFamily(const ByteSpan& familyNames) noexcept
+		{
+			fFamilyNames = familyNames;
+            resetFont();
+        }
+        
+		void fontSize(float size) noexcept
+		{
+			fFontSize = size;
+			resetFont();
+		}
+
+		void fontStyle(BLFontStyle style) noexcept
+		{
+			fFontStyle = style;
+			resetFont();
+		}
+        
+		void fontWeight(BLFontWeight weight) noexcept
+		{
+			fFontWeight = weight;
+			resetFont();
+		}
+        
+        void fontStretch(BLFontStretch stretch) noexcept
+        {
+			fFontStretch = stretch;
+			resetFont();
+        }
+    };
+    
+
+    
     struct IRenderSVG : public BLContext
     {
         BLVar fBackground{};
         
-        // Typography
-        FontHandler* fFontHandler{ nullptr };
-        BLFont fFont{};
 
-
-        // local width/height
-		double fLocalWidth{ 0 };
-        double fLocalHeight{ 0 };
-        BLRect fLocalFrame{};
-        
+        // Managing state
+        WSStack<SVGDrawingState> fStateStack{};
+        SVGDrawingState fCurrentState{};
         
     public:
-        IRenderSVG(FontHandler* fh) :fFontHandler(fh) 
+        IRenderSVG(FontHandler* fh)
         {
 			fBackground = BLRgba32(0xFFFFFFFF);
+            
             fontHandler(fh);
         }
         
         virtual ~IRenderSVG() {}
 
-        FontHandler* fontHandler() const { return fFontHandler; }
+        FontHandler* fontHandler() const { return fCurrentState.fFontHandler; }
         void fontHandler(FontHandler* fh) { 
-            fFontHandler = fh; 
-            
-            // Select a default faunt to start
-            if (fFontHandler) {
-                bool success = fFontHandler->selectFont("Arial", fFont, 16);
+            fCurrentState.fontHandler(fh);
+        }
+
+        
+        void localFrame(const BLRect& r) { fCurrentState.fLocalFrame = r; }
+		BLRect localFrame() const { return fCurrentState.fLocalFrame; }
+        
+        // Text Font selection
+        const BLFont& font() const { return fCurrentState.fFont; }
+        virtual void font(BLFont& afont){ fCurrentState.fFont = afont;    }
+
+        
+        void applyState()
+        {
+            // probably applying font characteristics
+        }
+        
+        virtual bool push() {
+            // Save the current state to the state stack
+            fStateStack.push(fCurrentState);
+
+            // Save the blend2d context as well
+            auto res = save();
+            return res == BL_SUCCESS;
+        }
+
+        virtual bool pop() {
+            auto res = restore();
+            return res == BL_SUCCESS;
+
+            // Restore the current state from the state stack
+            if (!fStateStack.empty()) {
+                fCurrentState = fStateStack.top();
+                fStateStack.pop();
+
+                // Apply the current state to the context
+                applyState();
             }
         }
 
+        void resetState()
+        {
+            // Select a default faunt to start
+            fStateStack.clear();
+            fCurrentState.reset();
+        }
+        
         // Call this before each frame to be drawn
         void renew()
         {
@@ -70,27 +228,9 @@ namespace waavs
             noStroke();
             strokeWidth(1.0);
 
-            // Select a default faunt to start
-            fontHandler(fFontHandler);
-
+            resetState();
         }
-        
-        void background(const BLVar& bg) noexcept
-        {
-			blVarAssignWeak(&fBackground, &bg);
-        }
-        
-        // Execute generic operation on this context
-        // This supports interface expansion without adding new function prototypes
-        virtual void exec(std::function<void(IRenderSVG*)> f) { f(this); }
 
-        //virtual void setDpiUnits(const int dpi, const float units) = 0;
-        void localSize(double w, double h) { fLocalWidth = w; fLocalHeight = h; }
-        BLPoint localSize() const { return BLPoint(fLocalWidth, fLocalHeight); }
-        
-        void localFrame(const BLRect& r) { fLocalFrame = r; }
-		BLRect localFrame() const { return fLocalFrame; }
-        
         
         virtual void strokeBeforeTransform(bool b) 
         {
@@ -107,15 +247,8 @@ namespace waavs
         virtual void strokeWidth(double w) { BLContext::setStrokeWidth(w); }
 		double strokeWidth() { return blContextGetStrokeWidth(this); }
         
-        virtual bool push() {
-            auto res = save();
-            return res == BL_SUCCESS;
-        }
-        
-        virtual bool pop() {
-            auto res = restore();
-            return res == BL_SUCCESS;
-        }
+
+
         
         virtual bool flush() {
             BLResult bResult = BLContext::flush(BL_CONTEXT_FLUSH_SYNC);
@@ -145,6 +278,20 @@ namespace waavs
         // Background management
         virtual void clear() {
             BLContext::clearAll();
+        }
+        
+        void background(const BLVar& bg) noexcept
+        {
+            blVarAssignWeak(&fBackground, &bg);
+            
+            if (bg.isNull())
+				clear();
+            else {
+                BLContext::save();
+                BLContext::setFillStyle(fBackground);
+                BLContext::fillAll();
+                BLContext::restore();
+            }
         }
         
         virtual void background(const BLRgba32& c) {
@@ -198,32 +345,29 @@ namespace waavs
             BLContext::blitImage(dst, src, srcArea);
         }
 
-        // Text Font selection
-		const BLFont& font() const { return fFont; }
-        virtual void font(BLFont& afont)
-        {
-			fFont = afont;
-        }
 
 
+        // Typography
+        virtual void fontFamily(const ByteSpan& familyNames) {fCurrentState.fontFamily(familyNames);}
+		virtual void fontSize(double sz) { fCurrentState.fontSize(sz); }
+		virtual void fontStyle(const BLFontStyle style) { fCurrentState.fontStyle(style); }
+		virtual void fontWeight(const BLFontWeight weight) { fCurrentState.fontWeight(weight); }
+        virtual void fontStretch(const BLFontStretch stretch) { fCurrentState.fontStretch(stretch); }
+        
         // Text Drawing
 		virtual void strokeText(const ByteSpan& txt, double x, double y) {
-            BLContext::strokeUtf8Text(BLPoint(x, y), fFont, (char*)txt.data(), txt.size());
+            BLContext::strokeUtf8Text(BLPoint(x, y), font(), (char*)txt.data(), txt.size());
 		}
         
         virtual void fillText(const ByteSpan& txt, double x, double y) {
-            BLContext::fillUtf8Text(BLPoint(x, y), fFont, (char*)txt.data(), txt.size());
-        }
-        
-        virtual void text(const ByteSpan &txt, double x, double y)
-        {
-            // BUGBUG - Drawing order should be determined by 
-            // the paint-order attribute
-            BLContext::strokeUtf8Text(BLPoint(x, y), fFont, (char *)txt.data(), txt.size());
-            BLContext::fillUtf8Text(BLPoint(x, y), fFont, (char *)txt.data(), txt.size());
+            BLContext::fillUtf8Text(BLPoint(x, y), font(), (char*)txt.data(), txt.size());
         }
         
 
+        
+        // Execute generic operation on this context
+        // This supports interface expansion without adding new function prototypes
+        virtual void exec(std::function<void(IRenderSVG*)> f) { f(this); }
     };
 
 

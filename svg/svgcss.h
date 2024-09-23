@@ -35,24 +35,7 @@ namespace waavs
         CSS_SELECTOR_UNIVERSAL,          // Universal selector - e.g. "*"
 	};
     
-    /*
-    static std::string cssSelectorKindToString(CSSSelectorKind kind)
-    {
-		switch (kind)
-		{
-		case CSSSelectorKind::CSS_SELECTOR_ELEMENT: return "ELEMENT";
-		case CSSSelectorKind::CSS_SELECTOR_ID: return "ID";
-		case CSSSelectorKind::CSS_SELECTOR_CLASS: return "CLASS";
-		case CSSSelectorKind::CSS_SELECTOR_ATRULE: return "ATRULE";
-		case CSSSelectorKind::CSS_SELECTOR_ATTRIBUTE: return "ATTRIBUTE";
-		case CSSSelectorKind::CSS_SELECTOR_PSEUDO_CLASS: return "PSEUDO_CLASS";
-		case CSSSelectorKind::CSS_SELECTOR_PSEUDO_ELEMENT: return "PSEUDO_ELEMENT";
-		case CSSSelectorKind::CSS_SELECTOR_COMBINATOR: return "COMBINATOR";
-		case CSSSelectorKind::CSS_SELECTOR_UNIVERSAL: return "UNIVERSAL";
-		default: return "INVALID";
-		}
-    }
-    */
+
     
     // Look at the beginning of the selector name and determine
     // what kind of simple selector it is.
@@ -189,74 +172,12 @@ namespace waavs
 			gatherCssAttributes(inChunk, fAttributes);
 		}
         
-        //waavs::ByteSpan getAttribute(const std::string &&name) const
         waavs::ByteSpan getAttribute(const ByteSpan &name) const
         {
             return fAttributes.getAttribute(name);
         }
     };
 
-
-    /*
-    //======================================================
-    // CSSInlineStyleIterator
-    // 
-    // This iterator is used to iterate over the inline style attributes of an element
-    // or the content body of a selector
-    // Each iteration returns a CSS property/value pair as a std::pair
-    //======================================================
-    struct CSSInlineStyleIterator {
-        waavs::ByteSpan fSource{};
-        waavs::ByteSpan fCurrentName{};
-        waavs::ByteSpan fCurrentValue{};
-
-		CSSInlineStyleIterator() = default;
-        CSSInlineStyleIterator(const CSSInlineStyleIterator& other)
-            :fSource(other.fSource)
-            , fCurrentName(other.fCurrentName)
-            , fCurrentValue(other.fCurrentValue)
-        {}
-        CSSInlineStyleIterator(const waavs::ByteSpan& inChunk) 
-            : fSource(inChunk)
-        {
-            //next();
-        }
-
-		CSSInlineStyleIterator& operator=(const CSSInlineStyleIterator& other)
-		{
-            fSource = other.fSource;
-			fCurrentName = other.fCurrentName;
-			fCurrentValue = other.fCurrentValue;
-			return *this;
-		}
-        
-        bool next()
-        {
-            fSource = chunk_trim(fSource, csswsp);
-            fCurrentName = {};
-            fCurrentValue = {};
-
-            if (fSource)
-            {
-				fCurrentName = chunk_token(fSource, charset(":"));
-				fCurrentName = chunk_trim(fCurrentName, csswsp);
-                
-				fCurrentValue = chunk_token(fSource, charset(";"));
-                fCurrentValue = chunk_trim(fCurrentValue, csswsp);
-
-                return (bool)fCurrentName && (bool)fCurrentValue;
-            }
-            else
-                return false;
-        }
-
-        explicit operator bool() const { return fCurrentName && fCurrentValue; }
-        
-        auto operator*() { return std::make_pair(fCurrentName, fCurrentValue); }
-        CSSInlineStyleIterator& operator++() { next(); return *this; }
-		CSSInlineStyleIterator& operator++(int i) { next(); return *this; }
-    };
-    */
 
     // CSSSelectorIterator
     // 

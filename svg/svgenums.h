@@ -4,11 +4,12 @@
 // SVG Enumerator handling
 //
 // There are numerous enums in SVG, and we want to quickly convert between their
-// textual representation, and their numeric value.  The SVGEnum represents
-// the enumeration as a map between the string and the numeric value.
-// We use ByteSpan as the key, and ByteSpanHash as the hashing function.  This will
-// turn the lookup into a hash conversion, and quick lookup.  This may or may not be
-// faster than the typical if-else chain, but it's a bit more flexible, and unifies
+// textual representation, and their numeric value.  
+// The SVGEnum represents the enumeration as a map between the static text and the numeric value.
+// We use ByteSpan as the key, and ByteSpanHash as the hashing function.  ByteSpan is a good choice, 
+// because the literal text is fixed at compile time, so does not change during the duration
+// of the program.  Using the ByteSpanHash, will make for a quick lookup.  This may or may not be
+// faster than the typical if-else chain, but it's more flexible, and unifies
 // around a single implementation, which can be changed in the future if a 
 // faster way is found.
 //
@@ -48,6 +49,19 @@ namespace waavs {
 		}
 		return false;
 	}
+}
+
+namespace waavs {
+	enum SpaceUnitsKind {
+		SVG_SPACE_USER = 0,
+		SVG_SPACE_OBJECT = 1
+	};
+	
+	static SVGEnum SVGSpaceUnits = {
+		{ "userSpaceOnUse", SVG_SPACE_USER },
+		{ "objectBoundingBox", SVG_SPACE_OBJECT }
+	};
+	
 }
 
 namespace waavs {
@@ -100,7 +114,7 @@ namespace waavs {
     };
 
 	static SVGEnum SVGDominantBaseline = {
-		{ "auto", (int)DOMINANTBASELINE::AUTO },
+		{ "auto", static_cast<int>(DOMINANTBASELINE::AUTO) },
 		{ "alphabetic", (int)DOMINANTBASELINE::ALPHABETIC },
 		{ "central", (int)DOMINANTBASELINE::CENTRAL },
 		{ "hanging", (int)DOMINANTBASELINE::HANGING },
@@ -208,3 +222,35 @@ namespace waavs {
 
 
 }
+
+// Parsing spreadMethod, which is applied to the 
+// ExtendMode of the gradient
+namespace waavs {
+	static SVGEnum SVGSpreadMethod = {
+		{ "pad", BL_EXTEND_MODE_PAD },
+		{ "reflect", BL_EXTEND_MODE_REFLECT },
+		{ "repeat", BL_EXTEND_MODE_REPEAT },
+	};
+
+	static SVGEnum SVGExtendMode = {
+		{"pad", BL_EXTEND_MODE_PAD},
+		{"reflect", BL_EXTEND_MODE_REFLECT},
+		{"repeat", BL_EXTEND_MODE_REPEAT},
+
+		// blend2d specific
+		{"pad-x-pad-y", BL_EXTEND_MODE_PAD_X_PAD_Y},
+		{"pad-x-repeat-y", BL_EXTEND_MODE_PAD_X_REPEAT_Y},
+		{"pad-x-reflect-y", BL_EXTEND_MODE_PAD_X_REFLECT_Y},
+		
+		{"repeat-x-pad-y", BL_EXTEND_MODE_REPEAT_X_PAD_Y},
+		{"repeat-x-repeat-y", BL_EXTEND_MODE_REPEAT_X_REPEAT_Y},
+		{"repeat-x-reflect-y", BL_EXTEND_MODE_REPEAT_X_REFLECT_Y},
+		
+		{"reflect-x-repeat-y", BL_EXTEND_MODE_REFLECT_X_REPEAT_Y},
+		{"reflect-x-reflect-y", BL_EXTEND_MODE_REFLECT_X_REFLECT_Y},
+		{"reflect-x-pad-y", BL_EXTEND_MODE_REFLECT_X_PAD_Y},
+	};
+	
+
+}
+

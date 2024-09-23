@@ -15,14 +15,6 @@
 
 namespace waavs {
 
-	//============================================================
-	//	SVGGradient
-	//  gradientUnits ("userSpaceOnUse" or "objectBoundingBox")
-	//============================================================
-	enum GradientUnits {
-		objectBoundingBox = 0,
-		userSpaceOnUse = 1
-	};
 
 	// Default values
 	// offset == 0
@@ -116,7 +108,7 @@ namespace waavs {
 
 		BLGradient fGradient{};
 		BLVar fGradientVar{};
-		GradientUnits fGradientUnits{ objectBoundingBox };
+		SpaceUnitsKind fGradientUnits{ SVG_SPACE_OBJECT };
 		ByteSpan fTemplateReference{};
 
 
@@ -233,30 +225,24 @@ namespace waavs {
 
 			// Whether we've loaded a template or not
 			// load the common attributes for gradients
-			BLExtendMode extendMode{ BL_EXTEND_MODE_PAD };
-			if (parseSpreadMethod(getAttribute("spreadMethod"), extendMode))
+			BLExtendMode extendMode = BL_EXTEND_MODE_PAD;
+			if (getEnumValue(SVGExtendMode, getAttribute("extendMode"), (int &)extendMode))
 			{
-				fGradient.setExtendMode(extendMode);
+				fGradient.setExtendMode((BLExtendMode)extendMode);
 			}
 
 
 			// read the gradientUnits
-			if (getAttribute("gradientUnits"))
-			{
-				auto units = getAttribute("gradientUnits");
-				if (units == "userSpaceOnUse")
-					fGradientUnits = userSpaceOnUse;
-				else if (units == "objectBoundingBox")
-					fGradientUnits = objectBoundingBox;
-			}
+			getEnumValue(SVGSpaceUnits, getAttribute("gradientUnits"), (int&)fGradientUnits);
+			
 
 			// Get the transform
 			// This will get applied in the resolveReferences in case
 			// the template has its own matrix
-			if (getAttribute("gradientTransform"))
-			{
+			//if (getAttribute("gradientTransform"))
+			//{
 				fHasGradientTransform = parseTransform(getAttribute("gradientTransform"), fGradientTransform);
-			}
+			//}
 
 
 		}
@@ -348,7 +334,7 @@ namespace waavs {
 			fY2.loadFromChunk(getAttribute("y2"));
 
 			
-			if (fGradientUnits == userSpaceOnUse)
+			if (fGradientUnits == SVG_SPACE_USER)
 			{
 				if (fX1.isSet())
 					values.x0 = fX1.calculatePixels(w, 0, dpi);

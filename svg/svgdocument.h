@@ -307,20 +307,18 @@ namespace waavs {
             SVGStrokeWidth::registerFactory();
 
 
-
-
-            
 			SVGMarkerAttribute::registerMarkerFactory();
             SVGVectorEffectAttribute::registerFactory();
             
+            SVGFontFamily::registerFactory();
+            SVGFontSize::registerFactory();
+            SVGFontStyleAttribute::registerFactory();
+            SVGFontWeightAttribute::registerFactory();
+			SVGFontStretchAttribute::registerFactory();
             
+            //SVGTextAnchor::registerFactory();   
             //SVGClipPathAttribute::registerFactory();
             //SVGTransform::registerFactory();
-            //SVGFontFamily::registerFactory();
-            //SVGFontSize::registerFactory();
-            //SVGTextAnchor::registerFactory();
-            //      
-            
             
             
             

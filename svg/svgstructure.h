@@ -141,7 +141,7 @@ namespace waavs {
 		{
 			for (auto& node : fNodes) {
 				// Restore our context before drawing each child
-				ctx->localSize(getBBox().w, getBBox().h);
+				//ctx->localSize(getBBox().w, getBBox().h);
 				ctx->localFrame(getBBox());
 
 				node->draw(ctx, groot);
@@ -395,7 +395,7 @@ namespace waavs {
 		{
 			SVGGraphicsElement::applyAttributes(ctx, groot);
 
-			auto localSize = ctx->localSize();
+			auto localSize = ctx->localFrame();
 
 			// BUGBUG - This is probably supposed to be
 			// If the symbol does not specify a width, but
@@ -411,10 +411,10 @@ namespace waavs {
 					scaleX = fDimWidth.calculatePixels() / fViewbox.width();
 					scaleY = fDimHeight.calculatePixels() / fViewbox.height();
 				}
-				else if (localSize.x > 0 && localSize.y > 0)
+				else if (localSize.w > 0 && localSize.h > 0)
 				{
-					scaleX = localSize.x / fViewbox.width();
-					scaleY = localSize.y / fViewbox.height();
+					scaleX = localSize.w / fViewbox.width();
+					scaleY = localSize.h / fViewbox.height();
 				}
 
 				ctx->scale(scaleX, scaleY);
@@ -519,7 +519,7 @@ namespace waavs {
 			// own scaling.
 			if (fDimWidth.isSet() && fDimHeight.isSet())
 			{
-				ctx->localSize(width, height);
+				ctx->localFrame(BLRect{ 0,0,width,height });
 			}
 
 		}

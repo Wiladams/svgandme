@@ -9,9 +9,8 @@
 #include <functional>
 
 #include "svgattributes.h"
-#include "viewport.h"
 #include "svgstructuretypes.h"
-
+#include "viewport.h"
 
 namespace waavs {
 
@@ -45,7 +44,7 @@ namespace waavs {
 		}
 
 
-		SVGSpaceUnits fPatternUnits{ SVGSpaceUnits::SVG_SPACE_OBJECT };
+		SpaceUnitsKind fPatternUnits{ SpaceUnitsKind::SVG_SPACE_OBJECT };
 		BLMatrix2D fPatternTransform{};
 
 		BLPattern fPattern{};
@@ -163,7 +162,7 @@ namespace waavs {
 			fViewport.sceneFrame(getBBox());
 
 
-			parseSpaceUnits(getAttribute("patternUnits"), fPatternUnits);
+			getEnumValue(SVGSpaceUnits, getAttribute("patternUnits"), (int &)fPatternUnits);
 			fViewbox.loadFromChunk(getAttribute("viewBox"));
 			parseTransform(getAttribute("patternTransform"), fPatternTransform);
 

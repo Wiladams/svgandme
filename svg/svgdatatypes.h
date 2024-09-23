@@ -129,10 +129,7 @@ namespace waavs {
 
 namespace waavs
 {
-    enum SVGSpaceUnits {
-        SVG_SPACE_USER = 0,
-        SVG_SPACE_OBJECT = 1
-    };
+
     
     //==============================================================================
     // SVGLength
@@ -425,84 +422,11 @@ namespace waavs
 
 }
 
-namespace waavs {
-    static bool parseSpaceUnits(const ByteSpan& inChunk, SVGSpaceUnits& units) noexcept
-    {
-        if (inChunk == "userSpaceOnUse")
-			units = SVG_SPACE_USER;
-		else if (inChunk == "objectBoundingBox")
-			units = SVG_SPACE_OBJECT;
-		else
-			return false;
 
-        return true;
-    }
-}
 
-namespace waavs {
-    // SVGExtendMode
-    // Supports the various ExtendMode kinds that BLPattern supports
-    static bool parseExtendMode(const ByteSpan& inChunk, BLExtendMode& outMode)
-    {
-        if (!inChunk)
-            return false;
 
-        // These are the simple ones
-        if (inChunk == "pad")
-			outMode = BL_EXTEND_MODE_PAD;
-		else if (inChunk == "repeat")
-			outMode = BL_EXTEND_MODE_REPEAT;
-		else if (inChunk == "reflect")
-			outMode = BL_EXTEND_MODE_REFLECT;
 
-        // These are more complex
-		else if (inChunk == "pad-x-pad-y")
-			outMode = BL_EXTEND_MODE_PAD_X_PAD_Y;
-		else if (inChunk == "pad-x-repeat-y")
-			outMode = BL_EXTEND_MODE_PAD_X_REPEAT_Y;
-		else if (inChunk == "pad-x-reflect-y")
-			outMode = BL_EXTEND_MODE_PAD_X_REFLECT_Y;
-		else if (inChunk == "repeat-x-repeat-y")
-			outMode = BL_EXTEND_MODE_REPEAT_X_REPEAT_Y;
-		else if (inChunk == "repeat-x-pad-y")
-			outMode = BL_EXTEND_MODE_REPEAT_X_PAD_Y;
-		else if (inChunk == "repeat-x-reflect-y")
-			outMode = BL_EXTEND_MODE_REPEAT_X_REFLECT_Y;
-		else if (inChunk == "reflect-x-reflect-y")
-			outMode = BL_EXTEND_MODE_REFLECT_X_REFLECT_Y;
-		else if (inChunk == "reflect-x-pad-y")
-			outMode = BL_EXTEND_MODE_REFLECT_X_PAD_Y;
-		else if (inChunk == "reflect-x-repeat-y")
-			outMode = BL_EXTEND_MODE_REFLECT_X_REPEAT_Y;
-		else
-			return false;
 
-        
-        return true;
-    }
-}
-
-// Parsing spreadMethod, which is applied to the 
-// ExtendMode of the gradient
-namespace waavs {
-    static bool parseSpreadMethod(const ByteSpan& inChunk, BLExtendMode& outMode) noexcept
-    {
-
-        if (!inChunk)
-            return false;
-        
-        if (inChunk == "pad")
-            outMode = BL_EXTEND_MODE_PAD;
-        else if (inChunk == "reflect")
-            outMode = BL_EXTEND_MODE_REFLECT;
-        else if (inChunk == "repeat")
-            outMode = BL_EXTEND_MODE_REPEAT;
-        else
-            return false;
-
-        return true;
-    }
-}
 
 namespace waavs {
     

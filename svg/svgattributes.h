@@ -35,24 +35,17 @@ namespace waavs {
             autoDraw(false);
         }
 
+        BLExtendMode value() const { return fExtendMode; }
+        
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
-        {
-            if (!inChunk)
-                return false;
-            
-            BLExtendMode outMode{ BL_EXTEND_MODE_PAD };
-            if (parseExtendMode(inChunk, outMode))
-			{
-				fExtendMode = outMode;
-                set(true);
-                
-				return true;
-			}
-            
-            return false;
+        {   
+            bool success = getEnumValue(SVGExtendMode, inChunk, (int&)fExtendMode);
+            set(success);
+
+            return success;
         }
         
-		BLExtendMode value() const { return fExtendMode; }
+
 	};
 }
 
@@ -145,9 +138,7 @@ namespace waavs {
 
         }
 
-        
         SVGStrokeOpacity(IAmGroot* iMap) :SVGOpacity(iMap) { id("stroke-opacity"); }
-
 
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
@@ -231,7 +222,7 @@ namespace waavs {
         
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            //ctx->textSize(fValue);
+            ctx->fontSize(fValue);
         }
 
         void bindToGroot(IAmGroot* groot, SVGViewable* container) noexcept override
@@ -285,7 +276,7 @@ namespace waavs {
 
         ByteSpan fValue{};
 
-        SVGFontFamily(IAmGroot* inMap) : SVGVisualProperty(inMap) {}
+        SVGFontFamily(IAmGroot* inMap) : SVGVisualProperty(inMap) { id("font-family"); }
 
         SVGFontFamily& operator=(const SVGFontFamily& rhs) = delete;
 
@@ -294,7 +285,7 @@ namespace waavs {
         
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            //ctx->textFamily(fValue.c_str());
+            ctx->fontFamily(fValue);
         }
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
@@ -326,7 +317,7 @@ namespace waavs {
         }
         
         
-        uint32_t fStyle{ BL_FONT_STYLE_NORMAL };
+        BLFontStyle fValue{ BL_FONT_STYLE_NORMAL };
 
         SVGFontStyleAttribute() :SVGVisualProperty(nullptr) 
         { 
@@ -335,15 +326,20 @@ namespace waavs {
             needsBinding(false); 
         }
         
-        uint32_t value() const {return fStyle;}
+        int value() const {return fValue;}
         
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
             
-            bool success = getEnumValue(SVGFontStyle, inChunk, (int &)fStyle);
+            bool success = getEnumValue(SVGFontStyle, inChunk, (int &)fValue);
 			set(success);
             
 			return success;
+        }
+
+        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        {
+            ctx->fontStyle(fValue);
         }
     };
     
@@ -357,11 +353,11 @@ namespace waavs {
                 });
         }
         
-        uint32_t fWeight{ BL_FONT_WEIGHT_NORMAL };
+        BLFontWeight fWeight{ BL_FONT_WEIGHT_NORMAL };
         
         SVGFontWeightAttribute() :SVGVisualProperty(nullptr) { id("font-weight"); }
 
-		uint32_t value() const { return fWeight; }
+		BLFontWeight value() const { return fWeight; }
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
@@ -371,6 +367,11 @@ namespace waavs {
 
 			return success;
 		}
+
+        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        {
+            ctx->fontWeight(value());
+        }
 	};
 
     struct SVGFontStretchAttribute : public SVGVisualProperty
@@ -383,11 +384,11 @@ namespace waavs {
                 });
         }
         
-        uint32_t fValue{ BL_FONT_STRETCH_NORMAL };
+        BLFontStretch fValue{ BL_FONT_STRETCH_NORMAL };
 
         SVGFontStretchAttribute() :SVGVisualProperty(nullptr) { id("font-stretch"); }
 
-        uint32_t value() const { return fValue; }
+        BLFontStretch value() const { return fValue; }
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
@@ -397,6 +398,12 @@ namespace waavs {
             return success;
 
         }
+
+        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        {
+            ctx->fontStretch(value());
+        }
+        
     };
     
 }
@@ -620,16 +627,6 @@ namespace waavs {
             {
                 return false;
             }
-
-            // try to load the fill-opacity attribute while we're here
-			//auto opacAttr = attrs.getAttribute("fill-opacity");
-			//if (opacAttr)
-			//{
-            //    SVGDimension dim;
-            //    dim.loadFromChunk(opacAttr);
-            //    double opacValue = dim.calculatePixels(1.0);
-            //    setOpacity(opacValue);
-			//}
 
 			return true;
         }

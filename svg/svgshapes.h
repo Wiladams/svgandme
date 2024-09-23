@@ -30,7 +30,6 @@ namespace waavs {
 		SVGPathBasedGeometry(IAmGroot* iMap)
 			:SVGGraphicsElement(iMap)
 		{
-			//fUseCacheIsolation = true;
 		}
 
 		// Return bounding rectangle for shape
@@ -132,8 +131,8 @@ namespace waavs {
 			//printf("angle: %f  Normalized: %f\n", degrees(rads), degrees(radians_normalize(rads)));
 			
 			// Draw lines reprsenting the two vectors
-			ctx->strokeLine(p1, p2, BLRgba32(0xFFff0000));
-			ctx->strokeLine(p2, p3, BLRgba32(0xFF0000FF));
+			//ctx->strokeLine(p1, p2, BLRgba32(0xFFff0000));
+			//ctx->strokeLine(p2, p3, BLRgba32(0xFF0000FF));
 			
 			ctx->push();
 			ctx->translate(transP);

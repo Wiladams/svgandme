@@ -30,7 +30,7 @@ namespace waavs {
             return count;
         }
 
-        bool isEmpty() const {
+        bool empty() const {
             return count <= 0;
         }
 
@@ -111,7 +111,7 @@ namespace waavs {
         T peekRight() const {
             if (farRight == nullptr) {
                 // BUGBUG - maybe throw exception
-                return T(NULL);
+                return T();
             }
 
             return farRight->value;
@@ -184,7 +184,8 @@ namespace waavs {
         T pop() { return fList.popRight(); }
         int size() const { return fList.size(); }
         T top() { return fList.peekRight(); }
-
+		bool empty() const { return fList.empty(); }
+        
         // remove all the entries from the stack
         // BUGBUG - this will not call the destructors of the
         // objects being removed, so it must be used

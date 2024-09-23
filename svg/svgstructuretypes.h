@@ -88,7 +88,7 @@ namespace waavs {
             SVGVisualProperty& operator=(const SVGVisualProperty& rhs) = delete;
 
 
-            void set(const bool value) { fIsSet = value; }
+            bool set(const bool value) { fIsSet = value; return value; }
             bool isSet() const { return fIsSet; }
 
             void autoDraw(bool value) { fAutoDraw = value; }
@@ -489,7 +489,7 @@ namespace waavs {
             // if there is a stroke attribute with a value of 'currentColor', then look
             // for a 'color' attribute, and set the stroke color to that value
             auto strokeColor = fAttributes.getAttribute("stroke");
-            //auto fillColor = fAttributes.getAttribute("fill");
+
             if (strokeColor && (strokeColor == "currentColor"))
             {
                 auto colorValue = fAttributes.getAttribute("color");
@@ -511,17 +511,9 @@ namespace waavs {
                     visible(false);
             }
 
-            if (fAttributes.getAttribute("transform"))
-            {
-                fHasTransform = parseTransform(fAttributes.getAttribute("transform"), fTransform);
-                if (fHasTransform)
-                {
-                    // create the inverse transform for subsequent
-                    // UI interaction
-                    //fTransformInverse = fTransform;
-                    //fTransformInverse.invert();
-                }
-            }
+
+            fHasTransform = parseTransform(fAttributes.getAttribute("transform"), fTransform);
+
 
             
             //
@@ -531,6 +523,11 @@ namespace waavs {
                 auto it = gSVGAttributeCreation.find(attr.first);
                 if (it != gSVGAttributeCreation.end())
                 {
+                    // BUGBUG - we should pass in both the current attribute chunk
+                    // and the collection of attributes
+                    // That way, those places that only need the chunk can be quick
+                    // and save another lookup.
+                    // Those that need more attributes from the collection can have them
                     //auto prop = it->second(attr.second);
                     auto prop = it->second(fAttributes);
                     if (prop != nullptr)
