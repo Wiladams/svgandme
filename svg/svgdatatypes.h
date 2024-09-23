@@ -138,30 +138,19 @@ namespace waavs
     //   Reference:  https://svgwg.org/svg2-draft/types.html#InterfaceSVGNumber
     //==============================================================================
     struct SVGLength {
-		static const unsigned short SVG_LENGTHTYPE_UNKNOWN = 0;
-		static const unsigned short SVG_LENGTHTYPE_NUMBER = 1;
-		static const unsigned short SVG_LENGTHTYPE_PERCENTAGE = 2;
-		static const unsigned short SVG_LENGTHTYPE_EMS = 3;
-		static const unsigned short SVG_LENGTHTYPE_EXS = 4;
-		static const unsigned short SVG_LENGTHTYPE_PX = 5;
-		static const unsigned short SVG_LENGTHTYPE_CM = 6;
-		static const unsigned short SVG_LENGTHTYPE_MM = 7;
-		static const unsigned short SVG_LENGTHTYPE_IN = 8;
-		static const unsigned short SVG_LENGTHTYPE_PT = 9;
-		static const unsigned short SVG_LENGTHTYPE_PC = 10;
         
 		double fValue{ 0 };
-        unsigned short fUnitType = SVG_LENGTHTYPE_UNKNOWN;
+        int fUnitType = SVG_LENGTHTYPE_UNKNOWN;
         
-		SVGLength(double value, unsigned short kind) noexcept : fValue(value), fUnitType(kind) {}
+		SVGLength(double value, int kind) noexcept : fValue(value), fUnitType(kind) {}
 		
-        unsigned short unitType() const noexcept { return fUnitType; }
+        int unitType() const noexcept { return fUnitType; }
         
         double value(const double range) const noexcept {
             switch (fUnitType) {
-                case SVGLength::SVG_LENGTHTYPE_NUMBER:
+                case SVG_LENGTHTYPE_NUMBER:
                     return fValue;
-                case SVGLength::SVG_LENGTHTYPE_PERCENTAGE:
+                case SVG_LENGTHTYPE_PERCENTAGE:
 					return fValue * range / 100.0;
             }
 
@@ -169,48 +158,6 @@ namespace waavs
         }
     };
     
-    /*
-    enum SVGLengthRelativeUnits {
-        SVG_LENGTH_RELATIVE_UNKNOWN = 0,
-        SVG_LENGTH_RELATIVE_EM = 1,
-        SVG_LENGTH_RELATIVE_EX = 2,
-        SVG_LENGTH_RELATIVE_CH = 3,
-        SVG_LENGTH_RELATIVE_REM = 4,
-        SVG_LENGTH_RELATIVE_VW = 5,
-        SVG_LENGTH_RELATIVE_VH = 6,
-        SVG_LENGTH_RELATIVE_VMIN = 7,
-        SVG_LENGTH_RELATIVE_VMAX = 8,
-    };
-    */
-    
-    /*
-    enum SVGLengthAbsoluteUnits {
-        SVG_LENGTH_ABSOLUTE_UNKNOWN = 0,
-        SVG_LENGTH_ABSOLUTE_CM = 1, // centimeters
-        SVG_LENGTH_ABSOLUTE_MM,     // millimeters
-        SVG_LENGTH_ABSOLUTE_IN,     // inches
-        SVG_LENGTH_ABSOLUTE_PT,     // points
-        SVG_LENGTH_ABSOLUTE_PC,     // Picas
-        SVG_LENGTH_ABSOLUTE_PX,     // pixels
-        SVG_LENGTH_ABSOLUTE_Q       // quarter-millimeters
-    };
-    */
-    /*
-    enum SVGDimensionUnits
-    {
-        SVG_UNITS_UNKNOWN = 0,
-        SVG_UNITS_USER,
-        SVG_UNITS_PERCENT,
-        SVG_UNITS_CM,
-        SVG_UNITS_EM,
-        SVG_UNITS_EX,
-        SVG_UNITS_IN,
-        SVG_UNITS_MM,
-        SVG_UNITS_PC,
-        SVG_UNITS_PT,
-        SVG_UNITS_PX,
-    };
-    */
     
     //==============================================================================
     // SVGAngle
@@ -302,8 +249,16 @@ namespace waavs
     */
     
     // Turn a units indicator into an enum
-    static bool parseDimensionUnits(const ByteSpan& inChunk, unsigned short &units)
+    static bool parseDimensionUnits(const ByteSpan& inChunk, int &units)
     {
+
+        if (getEnumValue(SVGDimensionEnum, inChunk, units))
+            return true;
+
+        
+			units = SVG_LENGTHTYPE_UNKNOWN;
+            return false;
+            /*
         ByteSpan s = inChunk;
 
 
@@ -329,16 +284,17 @@ namespace waavs
             units = SVGLength::SVG_LENGTHTYPE_EXS;
         else
             units = SVGLength::SVG_LENGTHTYPE_UNKNOWN;
-
+            
         
         return true;
+        */
     }
     
     
     struct SVGDimension 
     {
         double fValue{ 0.0 };
-        unsigned short fUnits{ SVGLength::SVG_LENGTHTYPE_NUMBER };
+        int fUnits{ SVG_LENGTHTYPE_NUMBER };
         bool fHasValue{ false };
 
         SVGDimension(const SVGDimension& other) = delete;
@@ -368,17 +324,17 @@ namespace waavs
         double calculatePixels(double length = 1.0, double orig = 0, double dpi = 96) const
         {
             switch (fUnits) {
-            case SVGLength::SVG_LENGTHTYPE_UNKNOWN:     return fValue;
-            case SVGLength::SVG_LENGTHTYPE_NUMBER:		return fValue;                  // User units and PX units are the same
-            case SVGLength::SVG_LENGTHTYPE_PX:			return fValue;                  // User units and px units are the same
-            case SVGLength::SVG_LENGTHTYPE_PT:			return fValue / 72.0f * dpi;
-            case SVGLength::SVG_LENGTHTYPE_PC:			return fValue / 6.0f * dpi;
-            case SVGLength::SVG_LENGTHTYPE_MM:			return fValue / 25.4f * dpi;
-            case SVGLength::SVG_LENGTHTYPE_CM:			return fValue / 2.54f * dpi;
-            case SVGLength::SVG_LENGTHTYPE_IN:			return fValue * dpi;
-            case SVGLength::SVG_LENGTHTYPE_EMS:			return fValue * length;         // length should represent 'em' height of font                 
-            case SVGLength::SVG_LENGTHTYPE_EXS:		    return fValue * length * 0.52f;          // x-height, fontHeight * 0.52.
-            case SVGLength::SVG_LENGTHTYPE_PERCENTAGE:
+            case SVG_LENGTHTYPE_UNKNOWN:     return fValue;
+            case SVG_LENGTHTYPE_NUMBER:		return fValue;                  // User units and PX units are the same
+            case SVG_LENGTHTYPE_PX:			return fValue;                  // User units and px units are the same
+            case SVG_LENGTHTYPE_PT:			return fValue / 72.0f * dpi;
+            case SVG_LENGTHTYPE_PC:			return fValue / 6.0f * dpi;
+            case SVG_LENGTHTYPE_MM:			return fValue / 25.4f * dpi;
+            case SVG_LENGTHTYPE_CM:			return fValue / 2.54f * dpi;
+            case SVG_LENGTHTYPE_IN:			return fValue * dpi;
+            case SVG_LENGTHTYPE_EMS:			return fValue * length;         // length should represent 'em' height of font                 
+            case SVG_LENGTHTYPE_EXS:		    return fValue * length * 0.52f;          // x-height, fontHeight * 0.52.
+            case SVG_LENGTHTYPE_PERCENTAGE:
                 double clampedVal = waavs::clamp(fValue, 0.0, 100.0);
                 return orig + ((clampedVal / 100.0f) * length);
             }
@@ -572,7 +528,7 @@ namespace waavs {
         SVGDimension hd{};
         SVGDimension sd{};
         SVGDimension ld{};
-        SVGDimension od{255,SVGLength::SVG_LENGTHTYPE_NUMBER};
+        SVGDimension od{255,SVG_LENGTHTYPE_NUMBER};
 
         double h = 0, s = 0, l = 0;
         double o = 1.0;
@@ -651,7 +607,7 @@ namespace waavs {
             cv.loadFromChunk(num);
 
 
-            if (cv.units() == SVGLength::SVG_LENGTHTYPE_PERCENTAGE)
+            if (cv.units() == SVG_LENGTHTYPE_PERCENTAGE)
             {
                 // it's a percentage
                 // BUGBUG - we're assuming it's a range of [0..255]
