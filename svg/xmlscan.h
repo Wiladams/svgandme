@@ -564,7 +564,7 @@ namespace waavs {
     static XmlElement XmlElementGenerator(const XmlIteratorParams& params, XmlIteratorState& st)
     {
         XmlElement elem{};
-        //ByteSpan s = st.fSource;
+
         
         while (st.fSource)
         {
@@ -586,6 +586,7 @@ namespace waavs {
                         // collapse whitespace
                         // if the content is all whitespace
                         // don't return anything
+                        // BUGBUG - deal with XML preserve whitespace
                         content = chunk_trim(content, xmlwsp);
                         if (content)
                         {

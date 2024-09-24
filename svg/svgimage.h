@@ -16,6 +16,74 @@
 #include "converters.h"
 
 namespace waavs {
+    //
+    // parseImage()
+    // 
+    // Turn a base64 encoded inlined image into a BLImage
+    // We are handed the attribute, typically coming from a 
+    // href of an <image> tag, or as a lookup for a fill, or stroke, 
+    // paint attribute.
+    // What we're passed are the contents of the 'url()'.  
+    // 
+    // Example: <image id="image_textures" x="0" y="0" width="1024" height="768" xlink:href="data:image/jpeg;base64,/9j/...
+    //
+    static bool parseImage(const ByteSpan& inChunk, BLImage& img)
+    {
+        static int n = 1;
+        bool success{ false };
+        ByteSpan value = inChunk;
+
+        // figure out what kind of encoding we're dealing with
+        // value starts with: 'data:image/png;base64,<base64 encoded image>
+        //
+        ByteSpan data = chunk_token(value, ":");
+        auto mime = chunk_token(value, ";");
+        auto encoding = chunk_token(value, ",");
+
+
+        if (encoding == "base64")
+        {
+            // allocate some memory to decode into
+            unsigned int outBuffSize = base64::getDecodeOutputSize(value.size());
+            MemBuff outBuff(outBuffSize);
+
+            auto decodedSize = base64::decode((const char*)value.data(), value.size(), outBuff.data());
+
+            // BUGBUG - write chunk to file for debugging
+            //ByteSpan outChunk = ByteSpan(outBuff.data(), outBuff.size());
+            //char filename[256]{ 0 };
+			//sprintf_s(filename, "base64_%02d.dat", n++);
+            //writeChunkToFile(outChunk, filename);
+            
+            if (decodedSize < 1) {
+                printf("parseImage: Error in base54::decode, decoded \n");
+                return false;
+            }
+            
+			// See if it's a format that blend2d can deal with using its
+            // own codecs
+            BLResult res = img.readFromData(outBuff.data(), outBuff.size());
+            success = (res == BL_SUCCESS);
+            
+            // If we didn't succeed in decoding, then try any specilized methods of decoding
+            // we might have.
+            if (!success) {
+                if (mime == "image/gif")
+                {
+                    printf("parseImage:: trying to decode GIF\n");
+					// try to decode it as a gif
+                    //BLResult res = img.readFromData(outBuff.data(), outBuff.size());
+                    //success = (res == BL_SUCCESS);
+                }
+            }
+            
+        }
+
+        return success;
+    }
+}
+
+namespace waavs {
 	
 	static INLINE std::string toString(const ByteSpan& inChunk) noexcept
 	{

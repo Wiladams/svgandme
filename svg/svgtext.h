@@ -7,6 +7,115 @@
 
 
 namespace waavs {
+	static BLPoint textMeasure(const BLFont& font, const ByteSpan& txt) noexcept
+	{
+		BLTextMetrics tm;
+		BLGlyphBuffer gb;
+
+		gb.setUtf8Text(txt.data(), txt.size());
+		font.shape(gb);
+		font.getTextMetrics(gb, tm);
+
+		float cx = (float)(tm.boundingBox.x1 - tm.boundingBox.x0);
+		float cy = font.metrics().ascent + font.metrics().descent;
+
+		return BLPoint(cx, cy);
+	}
+
+	static double descent(const BLFont& font) noexcept
+	{
+		return font.metrics().descent;
+	}
+
+	static double emHeight(const BLFont& font) noexcept
+	{
+		auto size = textMeasure(font, "M");
+		return size.y;
+	}
+
+	static double exHeight(const BLFont& font) noexcept
+	{
+		auto size = textMeasure(font, "x");
+		return size.y;
+	}
+
+	// calcTextPosition
+// Given a piece of text, and a coordinate
+// calculate its baseline given the a specified alignment
+	static BLRect calcTextPosition(BLFont font, const ByteSpan& txt, double x, double y, TXTALIGNMENT hAlignment = TXTALIGNMENT::LEFT, TXTALIGNMENT vAlignment = TXTALIGNMENT::BASELINE, DOMINANTBASELINE baseline = DOMINANTBASELINE::AUTO)
+	{
+		BLPoint txtSize = textMeasure(font, txt);
+		double cx = txtSize.x;
+		double cy = txtSize.y;
+
+		switch (hAlignment)
+		{
+		case TXTALIGNMENT::LEFT:
+			// do nothing
+			// x = x;
+			break;
+		case TXTALIGNMENT::CENTER:
+			x = x - (cx / 2);
+			break;
+		case TXTALIGNMENT::RIGHT:
+			x = x - cx;
+			break;
+
+		default:
+			break;
+		}
+
+		switch (vAlignment)
+		{
+		case TXTALIGNMENT::TOP:
+			y = y + cy - descent(font);
+			break;
+		case TXTALIGNMENT::CENTER:
+			y = y + (cy / 2);
+			break;
+
+		case TXTALIGNMENT::MIDLINE:
+			//should use the design metrics xheight
+			break;
+
+		case TXTALIGNMENT::BASELINE:
+			// If what was passed as y is the baseline
+			// do nothing to it because blend2d draws
+			// text from baseline
+			break;
+
+		case TXTALIGNMENT::BOTTOM:
+			// Adjust from the bottom as blend2d
+			// prints from the baseline, so adjust
+			// by the amount of the descent
+			y = y - descent(font);
+			break;
+
+		default:
+			break;
+		}
+
+		switch (baseline)
+		{
+		case DOMINANTBASELINE::HANGING:
+			y = y + emHeight(font);
+			break;
+
+		case DOMINANTBASELINE::CENTRAL:
+		case DOMINANTBASELINE::MIDDLE:
+			// adjust by half the height
+			y = y + (exHeight(font) / 2);
+			break;
+		}
+
+		return { x, y, cx, cy };
+	}
+}
+
+
+/*
+namespace waavs {
+
 	struct SVGFontSelection : public SVGVisualProperty
 	{
 		BLFont fFont;
@@ -44,21 +153,11 @@ namespace waavs {
 
 		const BLFont& font() const { return fFont; }
 		void font(const BLFont& aFont) { fFont = aFont; set(true); }
-		double descent() const {
-			return fFont.metrics().descent;
-		}
+
 		
-		double emHeight() const noexcept 
-		{
-			auto size = textMeasure("M"); 
-			return size.y;
-		}
+
 		
-		double exHeight() const noexcept
-		{
-			auto size = textMeasure("x");
-			return size.y;
-		}
+
 		
 		void bindToGroot(IAmGroot* groot, SVGViewable* container) noexcept override
 		{
@@ -119,93 +218,9 @@ namespace waavs {
 			}
 		}
 
-		BLPoint textMeasure(const ByteSpan& txt) const
-		{
-			BLTextMetrics tm;
-			BLGlyphBuffer gb;
 
-			gb.setUtf8Text(txt.data(), txt.size());
-			fFont.shape(gb);
-			fFont.getTextMetrics(gb, tm);
-
-			float cx = (float)(tm.boundingBox.x1 - tm.boundingBox.x0);
-			//float cy = fFont.size();
-			float cy = fFont.metrics().ascent + fFont.metrics().descent;
-
-			return BLPoint(cx, cy);
-		}
 		
-		// calcTextPosition
-		// Given a piece of text, and a coordinate
-		// calculate its baseline given the a specified alignment
-		BLRect calcTextPosition(const ByteSpan& txt, double x, double y, TXTALIGNMENT hAlignment = TXTALIGNMENT::LEFT, TXTALIGNMENT vAlignment = TXTALIGNMENT::BASELINE, DOMINANTBASELINE baseline = DOMINANTBASELINE::AUTO) const
-		{
-			BLPoint txtSize = textMeasure(txt);
-			double cx = txtSize.x;
-			double cy = txtSize.y;
 
-			switch (hAlignment)
-			{
-			case TXTALIGNMENT::LEFT:
-				// do nothing
-				// x = x;
-				break;
-			case TXTALIGNMENT::CENTER:
-				x = x - (cx / 2);
-				break;
-			case TXTALIGNMENT::RIGHT:
-				x = x - cx;
-				break;
-
-			default:
-				break;
-			}
-
-			switch (vAlignment)
-			{
-			case TXTALIGNMENT::TOP:
-				y = y + cy - descent();
-				break;
-			case TXTALIGNMENT::CENTER:
-				y = y + (cy / 2);
-				break;
-
-			case TXTALIGNMENT::MIDLINE:
-				//should use the design metrics xheight
-				break;
-
-			case TXTALIGNMENT::BASELINE:
-				// If what was passed as y is the baseline
-				// do nothing to it because blend2d draws
-				// text from baseline
-				break;
-
-			case TXTALIGNMENT::BOTTOM:
-				// Adjust from the bottom as blend2d
-				// prints from the baseline, so adjust
-				// by the amount of the descent
-				y = y - descent();
-				break;
-
-			default:
-				break;
-			}
-
-			switch (baseline)
-			{
-				case DOMINANTBASELINE::HANGING:
-					y = y + emHeight();
-				break;
-					
-				case DOMINANTBASELINE::CENTRAL:
-				case DOMINANTBASELINE::MIDDLE:
-					// adjust by half the height
-					y = y + (exHeight()/2);
-				break;
-			}
-			
-			return { x, y, cx, cy };
-		}
 		
 		void draw(IRenderSVG* ctx, IAmGroot* groot) override
 		{
@@ -215,7 +230,10 @@ namespace waavs {
 			//	ctx->font(fFont);
 		}
 	};
+
 }
+*/
+
 
 
 //
@@ -246,7 +264,7 @@ namespace waavs {
 	{
 		ByteSpan fText{};
 		BLPoint fTextSize{};
-
+		BLRect fBBox;
 		
 		SVGTextRun(const ByteSpan &txt, IAmGroot* groot)
 			: SVGVisualNode(groot)
@@ -254,13 +272,14 @@ namespace waavs {
 		{
 			name("textrun");
 			needsBinding(true);
-
+			
 			expandXmlEntities(fText, fText);
 		}
 
 		ByteSpan text() const { return fText; }
 		
-		BLRect getBBox() const override { return BLRect{}; }
+		BLRect getBBox() const override { return fBBox; }
+		void setBBox(const BLRect& box) { fBBox = box; }
 
 	};
 }
@@ -283,13 +302,15 @@ namespace waavs {
 				};
 		}
 
-		BLPoint fTextCursor{};
+
 		TXTALIGNMENT fTextHAlignment = TXTALIGNMENT::LEFT;
 		TXTALIGNMENT fTextVAlignment = TXTALIGNMENT::BASELINE;
 		DOMINANTBASELINE fDominantBaseline = DOMINANTBASELINE::AUTO;
 		
-		SVGFontSelection fFontSelection{ nullptr };
+		//SVGFontSelection fFontSelection{ nullptr };
 
+		BLRect fBBox{};
+		
 		double fX{ 0 };
 		double fY{ 0 };
 		double fDx{ 0 };
@@ -306,9 +327,8 @@ namespace waavs {
 			needsBinding(true);
 		}
 
-
-		void textCursor(const BLPoint& pos) { fTextCursor = pos; }
-		BLPoint textCursor() const { return fTextCursor; }
+		
+		BLRect getBBox() const override { return fBBox; }
 		
 		
 		// Load the text content if it exists
@@ -379,39 +399,26 @@ namespace waavs {
 			fDimDy.loadFromChunk(getAttribute("dy"));
 			fDimDx.loadFromChunk(getAttribute("dx"));
 
-			fX = fTextCursor.x;
-			fY = fTextCursor.y;
-			
-			if (fDimX.isSet())
-				fX = fDimX.calculatePixels(w, 0, 96);
-			if (fDimY.isSet())
-				fY = fDimY.calculatePixels(h, 0, 96);
-			if (fDimDx.isSet())
-				fDx = fDimDx.calculatePixels(w, 0, 96);
-			if (fDimDy.isSet())
-				fDy = fDimDy.calculatePixels(h, 0, 96);
-
-			fTextCursor.x = fX + fDx;
-			fTextCursor.y = fY + fDy;
 
 			getEnumValue(SVGTextAnchor, getAttribute("text-anchor"), (int &)fTextHAlignment);
 			getEnumValue(SVGTextAlign, getAttribute("text-align"), (int&)fTextVAlignment);
 			getEnumValue(SVGDominantBaseline, getAttribute("dominant-baseline"), (int&)fDominantBaseline);
 			
 
-			fFontSelection.loadFromXmlAttributes(this->fAttributes, groot);
-			fFontSelection.bindToGroot(groot, container);
+			//fFontSelection.loadFromXmlAttributes(this->fAttributes, groot);
+			//fFontSelection.bindToGroot(groot, container);
 		}
 
 		
 		void drawChildren(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-			if (!fFontSelection.isSet())
-			{
-				fFontSelection.font(ctx->font());
-			}
+			//if (!fFontSelection.isSet())
+			//{
+			//	fFontSelection.font(ctx->font());
+			//}
 
-
+			fBBox = {};
+			
 			for (auto& node : fNodes) 
 			{
 
@@ -421,9 +428,9 @@ namespace waavs {
 				{
 					TXTALIGNMENT anchor = ctx->textAnchor();
 					ByteSpan txt = textNode->text();
-					BLRect pRect = fFontSelection.calcTextPosition(txt, fTextCursor.x, fTextCursor.y, anchor, fTextVAlignment, fDominantBaseline);
-					fFontSelection.draw(ctx, groot);
-
+					BLPoint pos = ctx->textCursor();
+					BLRect pRect = calcTextPosition(ctx->font(), txt, pos.x, pos.y, anchor, fTextVAlignment, fDominantBaseline);
+					expandRect(fBBox, pRect);
 					
 					ByteSpan porder = getAttribute("paint-order");
 					
@@ -468,7 +475,7 @@ namespace waavs {
 						
 					}
 
-					fTextCursor.x += pRect.w;
+					ctx->textCursor(BLPoint(pRect.x + pRect.w, pRect.y));
 				}
 				else
 				{
@@ -477,9 +484,8 @@ namespace waavs {
 					
 					if (nullptr != tspanNode)
 					{
-						tspanNode->textCursor(fTextCursor);
+						//ctx->textCursor(BLPoint(fX, fY));
 						tspanNode->draw(ctx, groot);
-						fTextCursor = tspanNode->textCursor();
 					}
 				}
 			}
@@ -492,17 +498,32 @@ namespace waavs {
 
 			// For a span, the default position is wherever the container left the cursor
 			// but if we have x, y, then we set the position explicitly
+			BLRect cFrame = ctx->localFrame();
+			auto w = cFrame.w;
+			auto h = cFrame.h;
+
+			// For a tspan, the default position is wherever the container left the cursor
+			BLPoint cursor = ctx->textCursor();
+			fX = cursor.x;
+			fY = cursor.y;
+
 			if (fDimX.isSet())
-				fTextCursor.x = fX;
+				fX = fDimX.calculatePixels(w, 0, 96);
 			if (fDimY.isSet())
-				fTextCursor.y = fY;
+				fY = fDimY.calculatePixels(h, 0, 96);
+			if (fDimDx.isSet())
+				fDx = fDimDx.calculatePixels(w, 0, 96);
+			if (fDimDy.isSet())
+				fDy = fDimDy.calculatePixels(h, 0, 96);
+
+
+			fX = fX + fDx;
+			fY = fY + fDy;
 			
 			ctx->push();
-
+			ctx->textCursor(BLPoint(fX, fY));
 			applyAttributes(ctx, groot);
-
 			drawChildren(ctx, groot);
-
 			ctx->pop();
 		}
 
@@ -540,21 +561,33 @@ namespace waavs {
 			if (!visible())
 				return;
 
+			BLRect cFrame = ctx->localFrame();
+			auto w = cFrame.w;
+			auto h = cFrame.h;
+			
 			// For a text node, the default position is zero
-			fTextCursor.x = 0;
-			fTextCursor.y = 0;
-
+			fX = 0;
+			fY = 0;
+			
 			if (fDimX.isSet())
-				fTextCursor.x = fX;
+				fX = fDimX.calculatePixels(w, 0, 96);
 			if (fDimY.isSet())
-				fTextCursor.y = fY;
+				fY = fDimY.calculatePixels(h, 0, 96);
+			if (fDimDx.isSet())
+				fDx = fDimDx.calculatePixels(w, 0, 96);
+			if (fDimDy.isSet())
+				fDy = fDimDy.calculatePixels(h, 0, 96);
+
+			
+			fX = fX + fDx;
+			fY = fY + fDy;
+			
+
 			
 			ctx->push();
-
+			ctx->textCursor(BLPoint(fX, fY));
 			applyAttributes(ctx, groot);
-
 			drawChildren(ctx, groot);
-
 			ctx->pop();
 		}
 	};

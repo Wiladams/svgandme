@@ -298,7 +298,7 @@ namespace waavs {
 			SVGGraphicsElement::bindToGroot(groot, container);
 
 			// create the backing buffer based on the specified sizes
-			fCachedImage.create(fBBox.w, fBBox.h, BL_FORMAT_PRGB32);
+			fCachedImage.create(static_cast<int>(fBBox.w), static_cast<int>(fBBox.h), BL_FORMAT_PRGB32);
 
 			// Render out content into the backing buffer
 			IRenderSVG ctx(groot->fontHandler());

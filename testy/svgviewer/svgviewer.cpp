@@ -37,7 +37,7 @@ static void quicktest()
 	uint64_t outValue = 0;
 	parseHex64u("feedface", outValue);
 	
-	printf("VALUE: %zd\n", outValue);
+	//printf("VALUE: %zd\n", outValue);
 }
 
 

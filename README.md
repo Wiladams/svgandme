@@ -56,16 +56,18 @@ SVG is an XML based grammar.  SVGAndMe contains a fairly robust XML parser which
 SVGAndMe aspires to implement a lot of SVG that is in common usage.  The <a href="docs/README.md">docs</a> show what specifically is implemented, as well as the limitations.
 
 # Roadmap
-This code does not strive to be a 'complete' SVG implementation.  That task is highly improbable given the nature of the specs, and lack of consistency across multiple implementations.  What SVGAndMe strives to be is 'very useful' for most common cases.  Those common cases range from being able to render simple icons, to complex street maps.  Whereas there are a number of common features that a lot of the simpler parsers do not deal with (text, templated gradients, symbols, markers), SVGAndMe does implement these to varying degrees.
+This code does not strive to be a 'complete' SVG implementation.  That task is highly improbable given the nature of the specs, and lack of consistency across multiple implementations.  What SVGAndMe strives to be is 'very useful' for most common cases.  Those common cases range from being able to render simple icons, to complex street maps.  Whereas there are a number of common features that a lot of the simpler parsers do not deal with (text, templated gradients, symbols, markers), SVGAndMe does implement these to varying degrees.  Specifically, SVGAndMe is striving to implement the "Static" profile of SVG, which leaves out things like animation, ui events, and scripting.
+
+This leaves room to support thousands of .svg documents, from openclipart to wikimedia, to free svg iconds.  SVGAndMe will certainly support most typical forms of UI elements that a developer might want to describe, as well as fairly complex art works as well.
 
 The roadmap of feature work is a combination of shoring up support for already existing features, as well as adding a couple of new major feature areas (filters, masks).
 
-- Opportunistic bug fixing
-- Opportunistic feature requests
-- Make text-anchor work reliably
-- Make text-align work reliably
-- Make tspan element work correctly
-- Support paint/style being applied inline, rather than from context
+
+- **Make text-anchor work reliably**
+- **Make text-align work reliably**
+- **Make tspan element work correctly**
+- **Implement SVGEnum**
+- **Remove usage of std::string**
 - Support backing store when using group and path elements
 - Support global opacity on group and path elements
 - Fixup coordinate system on Markers
@@ -74,3 +76,6 @@ The roadmap of feature work is a combination of shoring up support for already e
 - Add Support for Filters
 - Improve performance for very small cases
 - Remove usage of std library where allocations are done
+- Opportunistic bug fixing
+- Opportunistic feature requests
+- Opportunistic removal of dead code

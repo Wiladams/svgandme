@@ -21,7 +21,8 @@ namespace waavs
     */
     struct SVGDrawingState {
         BLRect fLocalFrame{};
-
+        BLPoint fTextCursor{};
+        
         // Paint
         BLVar fDefaultColor;
         
@@ -47,7 +48,8 @@ namespace waavs
 			, fLocalFrame(other.fLocalFrame)
 		{
             fLocalFrame = other.fLocalFrame;
-
+            fTextCursor = other.fTextCursor;
+            
             fDefaultColor.assign(other.fDefaultColor);
             
 			fTextHAlignment = other.fTextHAlignment;
@@ -69,7 +71,8 @@ namespace waavs
             if (this != &other)
             {
                 fLocalFrame = other.fLocalFrame;
-             
+                fTextCursor = other.fTextCursor;
+                
                 fDefaultColor.assign(other.fDefaultColor);
                 
                 fTextHAlignment = other.fTextHAlignment;
@@ -104,6 +107,13 @@ namespace waavs
         
         void reset()
         {
+            fLocalFrame = BLRect();
+            
+            fDefaultColor = BLVar::null();
+            
+            fTextHAlignment = LEFT;
+            fTextVAlignment = BASELINE;
+            
             fFamilyNames = "Arial";
 			fFontSize = 16;
 			fFontStyle = BL_FONT_STYLE_NORMAL;
@@ -135,6 +145,9 @@ namespace waavs
         {
             fTextVAlignment = align;
         }
+        
+		BLPoint textCursor() const { return fTextCursor; }
+		void textCursor(const BLPoint& cursor){fTextCursor = cursor;}
         
 		void fontFamily(const ByteSpan& familyNames) noexcept
 		{
@@ -172,7 +185,7 @@ namespace waavs
     struct IRenderSVG : public BLContext
     {
         BLVar fBackground{};
-        
+        BLPoint fTextCursor{};
 
         // Managing state
         WSStack<SVGDrawingState> fStateStack{};
@@ -218,7 +231,7 @@ namespace waavs
 
         virtual bool pop() {
             auto res = restore();
-            return res == BL_SUCCESS;
+
 
             // Restore the current state from the state stack
             if (!fStateStack.empty()) {
@@ -228,6 +241,8 @@ namespace waavs
                 // Apply the current state to the context
                 applyState();
             }
+
+            return res == BL_SUCCESS;
         }
 
         void resetState()
@@ -387,8 +402,14 @@ namespace waavs
         TXTALIGNMENT textAnchor() const { return fCurrentState.textAnchor(); }
         void textAnchor(TXTALIGNMENT anchor) { fCurrentState.textAnchor(anchor); }
         
+        BLPoint textCursor() const { return fTextCursor; }
+        void textCursor(const BLPoint& cursor) { fTextCursor = cursor; }
+
+        //BLPoint textCursor() const { return fCurrentState.textCursor(); }
+        //void textCursor(const BLPoint& cursor) { fCurrentState.textCursor(cursor); }
+        
         virtual void fontFamily(const ByteSpan& familyNames) {fCurrentState.fontFamily(familyNames);}
-		virtual void fontSize(double sz) { fCurrentState.fontSize(sz); }
+		virtual void fontSize(double sz) { fCurrentState.fontSize(static_cast<float>(sz)); }
 		virtual void fontStyle(const BLFontStyle style) { fCurrentState.fontStyle(style); }
 		virtual void fontWeight(const BLFontWeight weight) { fCurrentState.fontWeight(weight); }
         virtual void fontStretch(const BLFontStretch stretch) { fCurrentState.fontStretch(stretch); }
