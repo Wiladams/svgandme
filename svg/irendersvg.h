@@ -155,6 +155,7 @@ namespace waavs
             resetFont();
         }
         
+        double fontSize() const noexcept {return fFontSize;}
 		void fontSize(float size) noexcept
 		{
 			fFontSize = size;
@@ -410,6 +411,8 @@ namespace waavs
         
         virtual void fontFamily(const ByteSpan& familyNames) {fCurrentState.fontFamily(familyNames);}
 		virtual void fontSize(double sz) { fCurrentState.fontSize(static_cast<float>(sz)); }
+		double fontSize() const { return fCurrentState.fontSize(); }
+        
 		virtual void fontStyle(const BLFontStyle style) { fCurrentState.fontStyle(style); }
 		virtual void fontWeight(const BLFontWeight weight) { fCurrentState.fontWeight(weight); }
         virtual void fontStretch(const BLFontStretch stretch) { fCurrentState.fontStretch(stretch); }

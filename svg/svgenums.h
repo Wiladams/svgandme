@@ -84,45 +84,12 @@ namespace waavs {
 		{"mm", SVG_LENGTHTYPE_MM},
 		{"cm", SVG_LENGTHTYPE_CM},
 		{"in", SVG_LENGTHTYPE_IN},
-		{"%", SVG_LENGTHTYPE_PERCENTAGE},
+		{"%",  SVG_LENGTHTYPE_PERCENTAGE},
 		{"em", SVG_LENGTHTYPE_EMS},
 		{"ex", SVG_LENGTHTYPE_EXS}
 	};
 	
-	/*
-	// Turn a units indicator into an enum
-	static bool parseDimensionUnits(const ByteSpan& inChunk, unsigned short& units)
-	{
-		ByteSpan s = inChunk;
 
-
-		if (!s)
-			units = SVGLength::SVG_LENGTHTYPE_NUMBER;
-		if (s[0] == 'p' && s[1] == 'x')
-			units = SVGLength::SVG_LENGTHTYPE_PX;
-		else if (s[0] == 'p' && s[1] == 't')
-			units = SVGLength::SVG_LENGTHTYPE_PT;
-		else if (s[0] == 'p' && s[1] == 'c')
-			units = SVGLength::SVG_LENGTHTYPE_PC;
-		else if (s[0] == 'm' && s[1] == 'm')
-			units = SVGLength::SVG_LENGTHTYPE_MM;
-		else if (s[0] == 'c' && s[1] == 'm')
-			units = SVGLength::SVG_LENGTHTYPE_CM;
-		else if (s[0] == 'i' && s[1] == 'n')
-			units = SVGLength::SVG_LENGTHTYPE_IN;
-		else if (s[0] == '%')
-			units = SVGLength::SVG_LENGTHTYPE_PERCENTAGE;
-		else if (s[0] == 'e' && s[1] == 'm')
-			units = SVGLength::SVG_LENGTHTYPE_EMS;
-		else if (s[0] == 'e' && s[1] == 'x')
-			units = SVGLength::SVG_LENGTHTYPE_EXS;
-		else
-			units = SVGLength::SVG_LENGTHTYPE_UNKNOWN;
-
-
-		return true;
-	}
-	*/
 }
 
 namespace waavs {

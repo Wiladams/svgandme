@@ -243,7 +243,9 @@ namespace waavs {
         // Parse optional exponent
         // mostly we don't see this, so we won't bother trying
         // to optimize it beyond using powd
-        if ((startAt < endAt) && ((*startAt == 'e') || (*startAt == 'E')))
+        if ((startAt < endAt) && 
+            (((*startAt == 'e') || (*startAt == 'E')) && 
+            ((startAt[1] != 'm') && (startAt[1] != 'x'))))
         {
             // exponent parts
             uint64_t expPart = 0;
@@ -257,6 +259,7 @@ namespace waavs {
                 expSign = -1.0;
                 startAt++;
             }
+
 
             if (is_digit(*startAt)) {
                 s.fStart = startAt;

@@ -404,19 +404,11 @@ namespace waavs {
 			getEnumValue(SVGTextAlign, getAttribute("text-align"), (int&)fTextVAlignment);
 			getEnumValue(SVGDominantBaseline, getAttribute("dominant-baseline"), (int&)fDominantBaseline);
 			
-
-			//fFontSelection.loadFromXmlAttributes(this->fAttributes, groot);
-			//fFontSelection.bindToGroot(groot, container);
 		}
 
 		
 		void drawChildren(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-			//if (!fFontSelection.isSet())
-			//{
-			//	fFontSelection.font(ctx->font());
-			//}
-
 			fBBox = {};
 			
 			for (auto& node : fNodes) 
@@ -496,33 +488,38 @@ namespace waavs {
 			if (!visible())
 				return;
 
+			ctx->push();
+
+			applyAttributes(ctx, groot);
+
+			
 			// For a span, the default position is wherever the container left the cursor
 			// but if we have x, y, then we set the position explicitly
 			BLRect cFrame = ctx->localFrame();
 			auto w = cFrame.w;
 			auto h = cFrame.h;
-
+			double fSize = ctx->fontSize();
+			
 			// For a tspan, the default position is wherever the container left the cursor
 			BLPoint cursor = ctx->textCursor();
 			fX = cursor.x;
 			fY = cursor.y;
 
 			if (fDimX.isSet())
-				fX = fDimX.calculatePixels(w, 0, 96);
+				fX = fDimX.calculatePixels(fSize, 0, 96);
 			if (fDimY.isSet())
-				fY = fDimY.calculatePixels(h, 0, 96);
+				fY = fDimY.calculatePixels(fSize, 0, 96);
 			if (fDimDx.isSet())
-				fDx = fDimDx.calculatePixels(w, 0, 96);
+				fDx = fDimDx.calculatePixels(fSize, 0, 96);
 			if (fDimDy.isSet())
-				fDy = fDimDy.calculatePixels(h, 0, 96);
+				fDy = fDimDy.calculatePixels(fSize, 0, 96);
 
 
 			fX = fX + fDx;
 			fY = fY + fDy;
 			
-			ctx->push();
 			ctx->textCursor(BLPoint(fX, fY));
-			applyAttributes(ctx, groot);
+
 			drawChildren(ctx, groot);
 			ctx->pop();
 		}
@@ -565,18 +562,24 @@ namespace waavs {
 			auto w = cFrame.w;
 			auto h = cFrame.h;
 			
+			ctx->push();
+			
+			applyAttributes(ctx, groot);
+			
+			double fSize = ctx->fontSize();
+			
 			// For a text node, the default position is zero
 			fX = 0;
 			fY = 0;
 			
 			if (fDimX.isSet())
-				fX = fDimX.calculatePixels(w, 0, 96);
+				fX = fDimX.calculatePixels(fSize, 0, 96);
 			if (fDimY.isSet())
-				fY = fDimY.calculatePixels(h, 0, 96);
+				fY = fDimY.calculatePixels(fSize, 0, 96);
 			if (fDimDx.isSet())
-				fDx = fDimDx.calculatePixels(w, 0, 96);
+				fDx = fDimDx.calculatePixels(fSize, 0, 96);
 			if (fDimDy.isSet())
-				fDy = fDimDy.calculatePixels(h, 0, 96);
+				fDy = fDimDy.calculatePixels(fSize, 0, 96);
 
 			
 			fX = fX + fDx;
@@ -584,9 +587,9 @@ namespace waavs {
 			
 
 			
-			ctx->push();
+
 			ctx->textCursor(BLPoint(fX, fY));
-			applyAttributes(ctx, groot);
+
 			drawChildren(ctx, groot);
 			ctx->pop();
 		}

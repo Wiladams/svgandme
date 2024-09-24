@@ -544,9 +544,9 @@ namespace waavs {
     // will operate
     struct XmlIteratorParams {
         bool fSkipComments = true;
-        bool fSkipProcessingInstructions = true;
+        bool fSkipProcessingInstructions = false;
         bool fSkipWhitespace = true;
-        bool fSkipCData = true;
+        bool fSkipCData = false;
         bool fAutoScanAttributes = false;
     };
 
@@ -587,7 +587,9 @@ namespace waavs {
                         // if the content is all whitespace
                         // don't return anything
                         // BUGBUG - deal with XML preserve whitespace
-                        content = chunk_trim(content, xmlwsp);
+                        if (params.fSkipWhitespace)
+                            content = chunk_trim(content, xmlwsp);
+                        
                         if (content)
                         {
                             // Set the state for next iteration

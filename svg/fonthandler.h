@@ -199,7 +199,9 @@ namespace waavs {
 
                 if ((name == "Sans") ||
                     (name == "sans") ||
-                    (name == "sans-serif")) {
+                    (name == "Helvetica") ||
+                    (name == "sans-serif")) 
+                {
                     success = (BL_SUCCESS == fFontManager.queryFace("Arial", qprops, face));
                 }
 				else if ((name == "Serif") ||
@@ -222,9 +224,12 @@ namespace waavs {
 				// Didn't find it, try the next one
                 printf("== FontHandler::selectFontFamily, NOT FOUND: ");
                 printChunk(name);
-			}
+            }
+
+            // last chance, nothing else worked, so try loading our default, Arial
+            bool success = (BL_SUCCESS == fFontManager.queryFace("Arial", qprops, face));
             
-			return false;
+			return success;
 		}
         
         
