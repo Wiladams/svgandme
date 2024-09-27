@@ -132,11 +132,6 @@ namespace waavs {
 		// Load a URL Reference
 		void resolveReference(IAmGroot* groot, SVGViewable* container)
 		{
-			// if there's no manager
-			// or there's no template to look
-			// return immediately
-			//if (refManager == nullptr || !fTemplateReference)
-			//	return;
 
 			if (fTemplateReference)
 			{
@@ -226,25 +221,15 @@ namespace waavs {
 			// Whether we've loaded a template or not
 			// load the common attributes for gradients
 			BLExtendMode extendMode = BL_EXTEND_MODE_PAD;
-			if (getEnumValue(SVGExtendMode, getAttribute("extendMode"), (int &)extendMode))
+			if (getEnumValue(SVGExtendMode, getAttribute("extendMode"), (uint32_t &)extendMode))
 			{
 				fGradient.setExtendMode((BLExtendMode)extendMode);
 			}
 
 
 			// read the gradientUnits
-			getEnumValue(SVGSpaceUnits, getAttribute("gradientUnits"), (int&)fGradientUnits);
-			
-
-			// Get the transform
-			// This will get applied in the resolveReferences in case
-			// the template has its own matrix
-			//if (getAttribute("gradientTransform"))
-			//{
-				fHasGradientTransform = parseTransform(getAttribute("gradientTransform"), fGradientTransform);
-			//}
-
-
+			getEnumValue(SVGSpaceUnits, getAttribute("gradientUnits"), (uint32_t &)fGradientUnits);
+			fHasGradientTransform = parseTransform(getAttribute("gradientTransform"), fGradientTransform);
 		}
 
 		//
@@ -252,8 +237,6 @@ namespace waavs {
 		//
 		void loadSelfClosingNode(const XmlElement& elem, IAmGroot* groot) override
 		{
-			//printf("SVGGradientNode::loadSelfClosingNode()\n");
-			//printXmlElement(elem);
 			if (elem.name() != "stop")
 			{
 				return;
@@ -278,7 +261,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			gShapeCreationMap["linearGradient"] = [](IAmGroot* groot, const XmlElement& elem) {
+			getSVGSingularCreationMap()["linearGradient"] = [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGLinearGradient>(groot);
 				node->loadFromXmlElement(elem, groot);
 
@@ -288,12 +271,13 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["linearGradient"] = [](IAmGroot* groot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGLinearGradient>(groot);
-				node->loadFromXmlIterator(iter, groot);
+			registerContainerNode("linearGradient",
+				[](IAmGroot* groot, XmlElementIterator& iter) {
+					auto node = std::make_shared<SVGLinearGradient>(groot);
+					node->loadFromXmlIterator(iter, groot);
 
-				return node;
-				};
+					return node;
+				});
 
 			registerSingularNode();
 		}
@@ -378,7 +362,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			gShapeCreationMap["radialGradient"] = [](IAmGroot* groot, const XmlElement& elem) {
+			getSVGSingularCreationMap()["radialGradient"] = [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGRadialGradient>(groot);
 				node->loadFromXmlElement(elem, groot);
 
@@ -388,11 +372,14 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["radialGradient"] = [](IAmGroot* groot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGRadialGradient>(groot);
-				node->loadFromXmlIterator(iter, groot);
-				return node;
-				};
+			registerContainerNode("radialGradient",
+				[](IAmGroot* groot, XmlElementIterator& iter) {
+					auto node = std::make_shared<SVGRadialGradient>(groot);
+					node->loadFromXmlIterator(iter, groot);
+					return node;
+				});
+			
+
 
 			registerSingularNode();
 		}
@@ -469,7 +456,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			gShapeCreationMap["conicGradient"] = [](IAmGroot* groot, const XmlElement& elem) {
+			getSVGSingularCreationMap()["conicGradient"] = [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGConicGradient>(groot);
 				node->loadFromXmlElement(elem, groot);
 
@@ -479,12 +466,14 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["conicGradient"] = [](IAmGroot* groot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGConicGradient>(groot);
-				node->loadFromXmlIterator(iter, groot);
+			registerContainerNode("conicGradient",
+				[](IAmGroot* groot, XmlElementIterator& iter) {
+					auto node = std::make_shared<SVGConicGradient>(groot);
+					node->loadFromXmlIterator(iter, groot);
 
-				return node;
-				};
+					return node;
+				});
+			
 
 			registerSingularNode();
 		}
@@ -567,7 +556,7 @@ namespace waavs {
 	struct SVGSolidColorElement : public SVGVisualNode
 	{
 		static void registerFactory() {
-			gShapeCreationMap["solidColor"] = [](IAmGroot* groot, const XmlElement& elem) {
+			getSVGSingularCreationMap()["solidColor"] = [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGSolidColorElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 

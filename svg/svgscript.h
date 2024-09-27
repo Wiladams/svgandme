@@ -8,11 +8,10 @@
 #include <functional>
 #include <cstdint>
 
-#include "blend2d.h"
 
+#include "svgattributes.h"
+#include "svgstructuretypes.h"
 
-#include "bspan.h"
-#include "maths.h"
 
 
 namespace waavs {
@@ -20,26 +19,30 @@ namespace waavs {
     {
         static void registerFactory()
         {
-            gSVGGraphicsElementCreation["script"] = [](IAmGroot* aroot, XmlElementIterator& iter) {
-                auto node = std::make_shared<SVGScriptElement>(aroot);
-                node->loadFromXmlIterator(iter);
-                return node;
-                };
+            registerContainerNode("script",
+                [](IAmGroot* groot, XmlElementIterator& iter) {
+                    auto node = std::make_shared<SVGScriptElement>(groot);
+                    node->loadFromXmlIterator(iter, groot);
+                    return node;
+                });
+            
         }
 
         ByteSpan fScript{};
 
-        SVGScriptElement(IAmGroot* aroot) : SVGGraphicsElement(aroot)
+        SVGScriptElement(IAmGroot* groot) : SVGGraphicsElement(groot)
         {
             isStructural(false);
         }
 
-        virtual void loadFromXmlIterator(XmlElementIterator& iter) override
+        // When content is not wrapped in CDATA
+        void loadContentNode(const XmlElement& elem, IAmGroot* groot) override
         {
-            SVGGraphicsElement::loadFromXmlIterator(iter);
+            loadCDataNode(elem, groot);
         }
-
-        void loadCDataNode(const XmlElement& elem) override
+        
+        // When content is wrapped in CDATA
+        void loadCDataNode(const XmlElement& elem, IAmGroot* groot) override
         {
             fScript = elem.data();
 			//writeChunkToFile(fScript, "script.js");

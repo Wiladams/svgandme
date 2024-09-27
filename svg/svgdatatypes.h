@@ -249,7 +249,7 @@ namespace waavs
     */
     
     // Turn a units indicator into an enum
-    static bool parseDimensionUnits(const ByteSpan& inChunk, int &units)
+    static bool parseDimensionUnits(const ByteSpan& inChunk, uint32_t &units)
     {
 
         if (getEnumValue(SVGDimensionEnum, inChunk, units))
@@ -257,44 +257,15 @@ namespace waavs
 
         
 			units = SVG_LENGTHTYPE_UNKNOWN;
-            return false;
-            /*
-        ByteSpan s = inChunk;
-
-
-        if (!s)
-            units = SVGLength::SVG_LENGTHTYPE_NUMBER;
-        if (s[0] == 'p' && s[1] == 'x')
-            units = SVGLength::SVG_LENGTHTYPE_PX;
-        else if (s[0] == 'p' && s[1] == 't')
-            units = SVGLength::SVG_LENGTHTYPE_PT;
-        else if (s[0] == 'p' && s[1] == 'c')
-            units = SVGLength::SVG_LENGTHTYPE_PC;
-        else if (s[0] == 'm' && s[1] == 'm')
-            units = SVGLength::SVG_LENGTHTYPE_MM;
-        else if (s[0] == 'c' && s[1] == 'm')
-            units = SVGLength::SVG_LENGTHTYPE_CM;
-        else if (s[0] == 'i' && s[1] == 'n')
-            units = SVGLength::SVG_LENGTHTYPE_IN;
-        else if (s[0] == '%')
-            units = SVGLength::SVG_LENGTHTYPE_PERCENTAGE;
-        else if (s[0] == 'e' && s[1] == 'm')
-            units = SVGLength::SVG_LENGTHTYPE_EMS;
-        else if (s[0] == 'e' && s[1] == 'x')
-            units = SVGLength::SVG_LENGTHTYPE_EXS;
-        else
-            units = SVGLength::SVG_LENGTHTYPE_UNKNOWN;
-            
         
-        return true;
-        */
+        return false;
     }
     
     
     struct SVGDimension 
     {
         double fValue{ 0.0 };
-        int fUnits{ SVG_LENGTHTYPE_NUMBER };
+        uint32_t fUnits{ SVG_LENGTHTYPE_NUMBER };
         bool fHasValue{ false };
 
         SVGDimension(const SVGDimension& other) = delete;

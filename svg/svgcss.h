@@ -21,7 +21,7 @@ namespace waavs
     // CSS Syntax
     // selector {property:value; property:value; ...}
     // 
-    enum class CSSSelectorKind
+    enum CSSSelectorKind : uint32_t
     {
 		CSS_SELECTOR_INVALID = 0,
         CSS_SELECTOR_ELEMENT,               // All elements with given name - e.g. "rect"
@@ -307,10 +307,10 @@ namespace waavs
     {
         waavs::ByteSpan fSource{};
 
-        std::unordered_map<ByteSpan, std::shared_ptr<CSSSelector>, ByteSpanHash> fIDSelectors{};
-        std::unordered_map<ByteSpan, std::shared_ptr<CSSSelector>, ByteSpanHash> fClassSelectors{};
-        std::unordered_map<ByteSpan, std::shared_ptr<CSSSelector>, ByteSpanHash> fElementSelectors{};
-        std::unordered_map<ByteSpan, std::shared_ptr<CSSSelector>, ByteSpanHash> fAnimationSelectors{};
+        std::unordered_map<ByteSpan, std::shared_ptr<CSSSelector>, ByteSpanHash, ByteSpanEquivalent> fIDSelectors{};
+        std::unordered_map<ByteSpan, std::shared_ptr<CSSSelector>, ByteSpanHash, ByteSpanEquivalent> fClassSelectors{};
+        std::unordered_map<ByteSpan, std::shared_ptr<CSSSelector>, ByteSpanHash, ByteSpanEquivalent> fElementSelectors{};
+        std::unordered_map<ByteSpan, std::shared_ptr<CSSSelector>, ByteSpanHash, ByteSpanEquivalent> fAnimationSelectors{};
         //std::vector<std::shared_ptr<CSSSelector>> fUniversalSelectors{};
 
         CSSStyleSheet() = default;
@@ -384,7 +384,7 @@ namespace waavs
         }
         
         
-		void addSelectorToMap(std::unordered_map<ByteSpan, std::shared_ptr<CSSSelector>, ByteSpanHash> &amap, std::shared_ptr<CSSSelector> selector)
+		void addSelectorToMap(std::unordered_map<ByteSpan, std::shared_ptr<CSSSelector>, ByteSpanHash, ByteSpanEquivalent> &amap, std::shared_ptr<CSSSelector> selector)
 		{
             ByteSpan aname = selector->name();
             

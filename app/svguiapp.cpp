@@ -18,8 +18,7 @@ APP_EXTERN waavs::Recorder gRecorder{ nullptr };
 
 static VOIDROUTINE gSetupHandler = nullptr;
 
-// Create one of these first, so factory constructor will run
-static SVGFactory gSVG;
+
 
 
 

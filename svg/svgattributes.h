@@ -27,7 +27,7 @@ namespace waavs {
                 });
         }
         
-        BLExtendMode fExtendMode{ BL_EXTEND_MODE_REPEAT };      // repeat by default
+        uint32_t fExtendMode{ BL_EXTEND_MODE_REPEAT };      // repeat by default
 
         SVGPatternExtendMode(IAmGroot* iMap) : SVGVisualProperty(iMap) 
         {
@@ -35,11 +35,11 @@ namespace waavs {
             autoDraw(false);
         }
 
-        BLExtendMode value() const { return fExtendMode; }
+        BLExtendMode value() const { return static_cast<BLExtendMode>(fExtendMode); }
         
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {   
-            bool success = getEnumValue(SVGExtendMode, inChunk, (int&)fExtendMode);
+            bool success = getEnumValue(SVGExtendMode, inChunk, fExtendMode);
             set(success);
 
             return success;
@@ -212,7 +212,7 @@ namespace waavs {
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
-            bool success = getEnumValue(SVGTextAnchor, inChunk, (int&)fValue);
+            bool success = getEnumValue(SVGTextAnchor, inChunk, (uint32_t &)fValue);
             set(success);
 
             return success;
@@ -368,7 +368,7 @@ namespace waavs {
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
             
-            bool success = getEnumValue(SVGFontStyle, inChunk, (int &)fValue);
+            bool success = getEnumValue(SVGFontStyle, inChunk, (uint32_t &)fValue);
 			set(success);
             
 			return success;
@@ -399,7 +399,7 @@ namespace waavs {
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
             needsBinding(false);
-			bool success = getEnumValue(SVGFontWeight, inChunk, (int &)fWeight);
+			bool success = getEnumValue(SVGFontWeight, inChunk, (uint32_t &)fWeight);
             set(success);
 
 			return success;
@@ -429,7 +429,7 @@ namespace waavs {
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
-			bool success = getEnumValue(SVGFontStretch, inChunk, (int&)fValue);
+			bool success = getEnumValue(SVGFontStretch, inChunk, (uint32_t &)fValue);
 			set(success);
             
             return success;
@@ -742,7 +742,7 @@ namespace waavs {
         {
             needsBinding(false);
 
-			bool success = getEnumValue(SVGFillRule, inChunk, (int &)fValue);
+			bool success = getEnumValue(SVGFillRule, inChunk, (uint32_t &)fValue);
             set(success);
             
             return success;
@@ -923,7 +923,7 @@ namespace waavs {
         {
             needsBinding(false);
             
-            bool success = getEnumValue(SVGLineCaps, inChunk, (int&)fLineCap);
+            bool success = getEnumValue(SVGLineCaps, inChunk, (uint32_t &)fLineCap);
             set(success);
             
 			return success;
@@ -955,7 +955,7 @@ namespace waavs {
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
-            bool success = getEnumValue(SVGLineJoin, inChunk, (int &)fLineJoin);
+            bool success = getEnumValue(SVGLineJoin, inChunk, (uint32_t &)fLineJoin);
             set(success);
 
             return success;
@@ -1346,7 +1346,7 @@ namespace waavs {
         {
             needsBinding(false);
             
-			bool success = getEnumValue(SVGVectorEffect, inChunk, (int &)fEffectKind);
+			bool success = getEnumValue(SVGVectorEffect, inChunk, (uint32_t &)fEffectKind);
             set(success);
             
             return success;

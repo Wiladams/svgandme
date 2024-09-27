@@ -28,12 +28,13 @@ namespace waavs {
 		// Static constructor to register factory method in map
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["clipPath"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+			registerContainerNode("clipPath", [](IAmGroot * groot, XmlElementIterator & iter) {
 				auto node = std::make_shared<SVGClipPathElement>(groot);
 				node->loadFromXmlIterator(iter, groot);
 
 				return node;
-				};
+			});
+			
 		}
 
 		BLImage fImage;		// Where we'll render the mask

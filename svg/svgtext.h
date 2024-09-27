@@ -40,8 +40,8 @@ namespace waavs {
 	}
 
 	// calcTextPosition
-// Given a piece of text, and a coordinate
-// calculate its baseline given the a specified alignment
+	// Given a piece of text, and a coordinate
+	// calculate its baseline given the a specified alignment
 	static BLRect calcTextPosition(BLFont font, const ByteSpan& txt, double x, double y, TXTALIGNMENT hAlignment = TXTALIGNMENT::LEFT, TXTALIGNMENT vAlignment = TXTALIGNMENT::BASELINE, DOMINANTBASELINE baseline = DOMINANTBASELINE::AUTO)
 	{
 		BLPoint txtSize = textMeasure(font, txt);
@@ -113,126 +113,7 @@ namespace waavs {
 }
 
 
-/*
-namespace waavs {
 
-	struct SVGFontSelection : public SVGVisualProperty
-	{
-		BLFont fFont;
-		
-		std::string fFamilyName{};
-		SVGFontSize fFontSize;
-		uint32_t fFontStyle = BL_FONT_STYLE_NORMAL;
-		uint32_t fFontWeight = BL_FONT_WEIGHT_NORMAL;
-		uint32_t fFontStretch = BL_FONT_STRETCH_NORMAL;
-
-
-		SVGFontSelection(IAmGroot* groot)
-			: SVGVisualProperty(groot)
-			, fFontSize(groot)
-		{
-			needsBinding(true);
-			set(false);
-		}
-
-		SVGFontSelection& operator=(const SVGFontSelection& rhs)
-		{
-			fFont.reset();
-
-			fFamilyName = rhs.fFamilyName;
-			fFontSize = rhs.fFontSize;
-			fFontStyle = rhs.fFontStyle;
-			fFontWeight = rhs.fFontWeight;
-			fFontStretch = rhs.fFontStretch;
-
-			set(false);
-			needsBinding(true);
-
-			return *this;
-		}
-
-		const BLFont& font() const { return fFont; }
-		void font(const BLFont& aFont) { fFont = aFont; set(true); }
-
-		
-
-		
-
-		
-		void bindToGroot(IAmGroot* groot, SVGViewable* container) noexcept override
-		{
-			if (!isSet()) {
-				return;
-			}
-
-			FontHandler* fh = groot->fontHandler();
-
-			// resolve the size
-			// lookup the font face
-			fFontSize.bindToGroot(groot, container);
-			auto fsize = fFontSize.value();
-
-			bool success = fh->selectFont(fFamilyName.c_str(), fFont, (float)fsize, fFontStyle, fFontWeight, fFontStretch);
-			if (success)
-				set(true);
-			
-		}
-
-		void loadFromXmlAttributes(const XmlAttributeCollection& elem, IAmGroot* groot)
-		{
-			// look for font-family
-			auto familyChunk = elem.getAttribute("font-family");
-			if (familyChunk) {
-				fFamilyName = std::string(familyChunk.fStart, familyChunk.fEnd);
-				set(true);
-			}
-
-			// look for font-size
-			// This can get resolved at binding time
-			fFontSize.loadFromChunk(elem.getAttribute("font-size"));
-			if (fFontSize.isSet())
-				set(true);
-
-			// look for font-style
-			SVGFontStyleAttribute styleAttribute;
-			styleAttribute.loadFromChunk(elem.getAttribute("font-style"));
-			if (styleAttribute.isSet()) {
-				fFontStyle = styleAttribute.value();
-				set(true);
-			}
-
-			// look for font-weight
-			SVGFontWeightAttribute weightAttribute;
-			weightAttribute.loadFromChunk(elem.getAttribute("font-weight"));
-			if (weightAttribute.isSet()) {
-				fFontWeight = weightAttribute.value();
-				set(true);
-			}
-
-			// look for font-stretch
-			SVGFontStretchAttribute stretchAttribute;
-			stretchAttribute.loadFromChunk(elem.getAttribute("font-stretch"));
-			if (stretchAttribute.isSet()) {
-				fFontStretch = stretchAttribute.value();
-				set(true);
-			}
-		}
-
-
-		
-
-		
-		void draw(IRenderSVG* ctx, IAmGroot* groot) override
-		{
-			// BUGBUG - not quite sure if we need both checks
-			//if (isSet() && visible())
-			//if (isSet())
-			//	ctx->font(fFont);
-		}
-	};
-
-}
-*/
 
 
 
@@ -294,12 +175,14 @@ namespace waavs {
 	{
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["tspan"] = [](IAmGroot* groot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGTSpanNode>(groot);
-				node->loadFromXmlIterator(iter, groot);
-				
-				return node;
-				};
+			registerContainerNode("tspan",
+				[](IAmGroot* groot, XmlElementIterator& iter) {
+					auto node = std::make_shared<SVGTSpanNode>(groot);
+					node->loadFromXmlIterator(iter, groot);
+
+					return node;
+				});
+			
 		}
 
 
@@ -400,9 +283,9 @@ namespace waavs {
 			fDimDx.loadFromChunk(getAttribute("dx"));
 
 
-			getEnumValue(SVGTextAnchor, getAttribute("text-anchor"), (int &)fTextHAlignment);
-			getEnumValue(SVGTextAlign, getAttribute("text-align"), (int&)fTextVAlignment);
-			getEnumValue(SVGDominantBaseline, getAttribute("dominant-baseline"), (int&)fDominantBaseline);
+			getEnumValue(SVGTextAnchor, getAttribute("text-anchor"), (uint32_t &)fTextHAlignment);
+			getEnumValue(SVGTextAlign, getAttribute("text-align"), (uint32_t &)fTextVAlignment);
+			getEnumValue(SVGDominantBaseline, getAttribute("dominant-baseline"), (uint32_t &)fDominantBaseline);
 			
 		}
 
@@ -539,11 +422,13 @@ namespace waavs {
 	{
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["text"] = [](IAmGroot* groot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGTextNode>(groot);
-				node->loadFromXmlIterator(iter, groot);
-				return node;
-				};
+			registerContainerNode("text",
+				[](IAmGroot* groot, XmlElementIterator& iter) {
+					auto node = std::make_shared<SVGTextNode>(groot);
+					node->loadFromXmlIterator(iter, groot);
+					return node;
+				});
+			
 		}
 		
 

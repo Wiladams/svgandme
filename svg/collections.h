@@ -255,7 +255,7 @@ namespace waavs {
 
     struct XmlAttributeCollection
     {
-        std::unordered_map<ByteSpan, ByteSpan, ByteSpanHash> fAttributes{};
+        std::unordered_map<ByteSpan, ByteSpan, ByteSpanHash, ByteSpanEquivalent> fAttributes{};
 
         XmlAttributeCollection() = default;
         XmlAttributeCollection(const XmlAttributeCollection& other) noexcept
@@ -268,7 +268,7 @@ namespace waavs {
         }
 
         // Return a const attribute collection
-        const std::unordered_map<ByteSpan, ByteSpan, ByteSpanHash>& attributes() const noexcept { return fAttributes; }
+        const std::unordered_map<ByteSpan, ByteSpan, ByteSpanHash, ByteSpanEquivalent>& attributes() const noexcept { return fAttributes; }
 
         size_t size() const noexcept { return fAttributes.size(); }
 

@@ -24,7 +24,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			gShapeCreationMap["pattern"] = [](IAmGroot* groot, const XmlElement& elem) {
+			getSVGSingularCreationMap()["pattern"] = [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGPatternElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 				return node;
@@ -34,11 +34,13 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["pattern"] = [](IAmGroot* groot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGPatternElement>(groot);
-				node->loadFromXmlIterator(iter, groot);
-				return node;
-				};
+			registerContainerNode("pattern",
+				[](IAmGroot* groot, XmlElementIterator& iter) {
+					auto node = std::make_shared<SVGPatternElement>(groot);
+					node->loadFromXmlIterator(iter, groot);
+					return node;
+				});
+			
 
 			registerSingularNode();
 		}
@@ -162,7 +164,7 @@ namespace waavs {
 			fViewport.sceneFrame(getBBox());
 
 
-			getEnumValue(SVGSpaceUnits, getAttribute("patternUnits"), (int &)fPatternUnits);
+			getEnumValue(SVGSpaceUnits, getAttribute("patternUnits"), (uint32_t &)fPatternUnits);
 			fViewbox.loadFromChunk(getAttribute("viewBox"));
 			parseTransform(getAttribute("patternTransform"), fPatternTransform);
 

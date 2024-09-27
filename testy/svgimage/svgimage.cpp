@@ -29,13 +29,14 @@ static void loadFontDirectory(const char* dir)
 	{
 		if (dir_entry.is_regular_file())
 		{
-			if (endsWith(dir_entry.path().generic_string(), ".ttf") ||
-				endsWith(dir_entry.path().generic_string(), ".TTF") ||
-				endsWith(dir_entry.path().generic_string(), ".otf"))
+			if ((dir_entry.path().extension() == ".ttf") ||
+				(dir_entry.path().extension() == ".otf") ||
+				(dir_entry.path().extension() == ".TTF"))
 			{
-				BLFontFace ff;
+				BLFontFace ff{};
 				bool success = gFontHandler.loadFontFace(dir_entry.path().generic_string().c_str(), ff);
 			}
+			
 		}
 	}
 }

@@ -23,11 +23,13 @@ namespace waavs {
 	{
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["style"] = [](IAmGroot* groot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGStyleNode>(groot);
-				node->loadFromXmlIterator(iter, groot);
-				return node;
-				};
+			registerContainerNode("style",
+				[](IAmGroot* groot, XmlElementIterator& iter) {
+					auto node = std::make_shared<SVGStyleNode>(groot);
+					node->loadFromXmlIterator(iter, groot);
+					return node;
+				});
+			
 		}
 
 

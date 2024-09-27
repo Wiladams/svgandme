@@ -8,6 +8,7 @@
 #include "mappedfile.h"
 #include "svguiapp.h"
 #include "svgwaavs.h"
+#include "svgicons.h"
 
 using namespace waavs;
 
@@ -29,6 +30,46 @@ static double gZoomFactor = 0.1;
 // Animation management
 bool gAnimate = false;
 bool gPerformTransform = true;
+bool gCheckerBackground = true;
+
+// Create one of these first, so factory constructor will run
+static SVGFactory gSVG;
+
+
+// Checkboard pattern for background
+#include <stdio.h>
+#define MULTILINE_String(...) #__VA_ARGS__
+
+const char* checkerStr = R"||(
+	<svg width = "100%" height = "100%" xmlns = "http://www.w3.org/2000/svg">								
+	<!--Define a checkerboard pattern-->															
+	<defs>																							
+	<pattern id = "checkerboard" width = "20" height = "20" patternUnits = "userSpaceOnUse">		
+	<rect width = "10" height = "10" fill = "lightgray" />
+	<rect x = "10" width = "10" height = "10" fill = "darkgray" />									
+	<rect y = "10" width = "10" height = "10" fill = "darkgray" />									
+	<rect x = "10" y = "10" width = "10" height = "10" fill = "lightgray" />						
+	</pattern>																					
+	</defs>																						
+	
+	<!--Background with checkerboard pattern-->														
+	<rect width = "100%" height = "100%" fill = 'url(#checkerboard)' />								
+	</svg>
+)||";
+
+ByteSpan gCheckboardSpan(checkerStr);
+
+static std::shared_ptr<SVGDocument> checkerboardDoc{};
+
+
+SVGDocument goDownDoc(svgicons::goDownStr, 64, 64);
+SVGDocument goUpDoc(svgicons::goUpStr, 64, 64);
+SVGDocument goLeftDoc(svgicons::goLeftStr, 64, 64);
+SVGDocument goRightDoc(svgicons::goRightStr, 22, 22);
+
+SVGDocument goRight32(svgicons::goRightStr, 32, 32);
+SVGDocument goRight64(svgicons::goRightStr, 64, 64);
+SVGDocument goRight128(svgicons::goRightStr, 128, 128);
 
 
 
@@ -62,30 +103,55 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 	return aDoc;
 }
 
-static void drawDocument(std::shared_ptr<SVGDocument> doc)
+static void drawIcon(SVGDocument &doc, double x, double y)
 {
-	if (doc == nullptr)
-		return;
-	
-	auto rootNode = doc->documentElement();
 
-	if (rootNode == nullptr)
-		return ;
-	
-	// Create a SvgDrawingContext for the canvas
-	appFrameBuffer().setAllPixels(vec4b{ 0xff,0xff,0xff,0xff });
+	// Draw the icon
+	gDrawingContext.push();
+	gDrawingContext.translate(x, y);
+	doc.draw(&gDrawingContext, &doc);
+	gDrawingContext.pop();
+}
 
+static void drawFurniture()
+{
 	gDrawingContext.renew();
 
+	gDrawingContext.push();
+	
+	// draw the checkerboard pattern into the context
+	// do it before any transformation occurs
+	if (checkerboardDoc != nullptr && gCheckerBackground)
+		checkerboardDoc->draw(&gDrawingContext, checkerboardDoc.get());
+	
+	// draw some icons
+	drawIcon(goLeftDoc, 0, 10);
+	drawIcon(goRightDoc, 24, 16);
+	drawIcon(goUpDoc, 12, 0);
+	drawIcon(goDownDoc, 12, 22);
+	
+	drawIcon(goRight32, 10, 100);
+	drawIcon(goRight64, 10, 140);
+	drawIcon(goRight128, 10, 220);
+	
+	gDrawingContext.pop();
+}
+
+static void drawDocument(std::shared_ptr<SVGDocument> doc)
+{
+	drawFurniture();
+
+	//double startTime = seconds();
 
 	// setup any transform
 	if (gPerformTransform)
 		gDrawingContext.setTransform(gViewPort.sceneToSurfaceTransform());
 
-	//double startTime = seconds();
 
 	// draw the document into the ctx
-	doc->draw(&gDrawingContext, doc.get());
+	if (doc != nullptr)
+		doc->draw(&gDrawingContext, doc.get());
+
 	gDrawingContext.flush();
 	
 	//double endTime = seconds();
@@ -102,6 +168,9 @@ static void resetView()
 	gViewPort.reset();
 	gViewPort.sceneFrame(BLRect(0, 0, canvasWidth, canvasHeight));
 	gViewPort.surfaceFrame(BLRect(0, 0, canvasWidth, canvasHeight));
+
+	checkerboardDoc = SVGDocument::createFromChunk(gCheckboardSpan, &gFontHandler, canvasWidth, canvasHeight, systemPpi);
+
 }
 
 static void onFileDrop(const FileDropEvent& fde)
@@ -285,12 +354,17 @@ static void onKeyboardEvent(const KeyboardEvent& ke)
 
 			case 'A':
 				gAnimate = !gAnimate;
-				break;
+			break;
 				
+			case 'C':
+				gCheckerBackground = !gCheckerBackground;
+				refreshDoc();
+			break;
+
 			case 'T':
 				gPerformTransform = !gPerformTransform;
 				refreshDoc();
-				break;
+			break;
 		}
 	}
 }
@@ -311,6 +385,7 @@ static void setup()
 {
     //printf("setup()\n");
     
+	//gSVG.registerNodeTypes();
 	
 	quicktest();
 	
@@ -322,7 +397,7 @@ static void setup()
 
 
 	//layered();
-	// resize app window
+	// set app window size and title
 	createAppWindow(1024, 768, "SVGViewer");
 	
 	gRecorder.reset(&appFrameBuffer().image(), "frame", 15, 0);
@@ -344,10 +419,13 @@ static void setup()
 	// Set the initial viewport
 	gViewPort.surfaceFrame({0, 0, (double)canvasWidth, (double)canvasHeight});
 	
+	// Create initial checkerboard document
+	checkerboardDoc = SVGDocument::createFromChunk(gCheckboardSpan, &gFontHandler, canvasWidth, canvasHeight, systemPpi);
+
 	// Load extension elements
 	// I really want to be able to do this here
 	// but there is an issue with the global variable that
 	// contains the registration table
-	//DisplayCaptureElement::registerFactory();
+	DisplayCaptureElement::registerFactory();
 	//SVGScriptElement::registerFactory();
 }

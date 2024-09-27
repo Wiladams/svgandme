@@ -20,14 +20,13 @@ namespace waavs {
 	{
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["foreignObject"] = [](IAmGroot* groot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGForeignObjectElement>(groot);
-				node->loadFromXmlIterator(iter, groot);
+			registerContainerNode("foreignObject",
+				[](IAmGroot* groot, XmlElementIterator& iter) {
+					auto node = std::make_shared<SVGForeignObjectElement>(groot);
+					node->loadFromXmlIterator(iter, groot);
 
-				return node;
-				};
-
-			//registerSingularNode();
+					return node;
+				});
 		}
 
 		double fX{ 0 };

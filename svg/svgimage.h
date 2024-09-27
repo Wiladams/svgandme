@@ -98,7 +98,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			gShapeCreationMap["image"] = [](IAmGroot* groot, const XmlElement& elem) {
+			getSVGSingularCreationMap()["image"] = [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGImageElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 
@@ -108,12 +108,13 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["image"] = [](IAmGroot* groot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGImageElement>(groot);
-				node->loadFromXmlIterator(iter, groot);
+			registerContainerNode("image",
+				[](IAmGroot* groot, XmlElementIterator& iter) {
+					auto node = std::make_shared<SVGImageElement>(groot);
+					node->loadFromXmlIterator(iter, groot);
 
-				return node;
-				};
+					return node;
+				});
 
 			registerSingularNode();
 		}

@@ -20,18 +20,20 @@ namespace waavs {
 	{
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["switch"] = [](IAmGroot* groot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGSwitchElement>(groot);
-				node->loadFromXmlIterator(iter, groot);
+			registerContainerNode("switch",
+				[](IAmGroot* groot, XmlElementIterator& iter) {
+					auto node = std::make_shared<SVGSwitchElement>(groot);
+					node->loadFromXmlIterator(iter, groot);
 
-				return node;
-				};
+					return node;
+				});
+			
 		}
 
 
 		ByteSpan fSystemLanguage;
 
-		std::unordered_map<ByteSpan, std::shared_ptr<SVGVisualNode>, ByteSpanHash> fLanguageNodes{};
+		std::unordered_map<ByteSpan, std::shared_ptr<SVGVisualNode>, ByteSpanHash, ByteSpanEquivalent> fLanguageNodes{};
 		std::shared_ptr<SVGVisualNode> fDefaultNode{ nullptr };
 		std::shared_ptr<SVGVisualNode> fSelectedNode{ nullptr };
 

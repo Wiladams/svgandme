@@ -1,5 +1,7 @@
 #pragma once
 
+#ifndef SVGSTRUCTURETYPES_H
+#define SVGSTRUCTURETYPES_H
 
 #include <memory>
 #include <vector>
@@ -139,7 +141,7 @@ namespace waavs {
         };
 
         // Collection of property constructors
-        static std::unordered_map<ByteSpan, std::function<std::shared_ptr<SVGVisualProperty>(const XmlAttributeCollection& attrs)>, ByteSpanHash> gSVGAttributeCreation;
+        static std::unordered_map<ByteSpan, std::function<std::shared_ptr<SVGVisualProperty>(const XmlAttributeCollection& attrs)>, ByteSpanHash, ByteSpanEquivalent> gSVGAttributeCreation;
 
         // Convenient function to register property constructors
         static void registerSVGAttribute(const ByteSpan& name, std::function<std::shared_ptr<SVGVisualProperty>(const XmlAttributeCollection &attrs)> func)
@@ -253,8 +255,8 @@ namespace waavs {
     // for the purpose of looking up nodes, but also for style sheets
     struct IManageReferences
     {
-        std::unordered_map<ByteSpan, std::shared_ptr<SVGViewable>, ByteSpanHash> fDefinitions{};
-        std::unordered_map<ByteSpan, ByteSpan, ByteSpanHash> fEntities{};
+        std::unordered_map<ByteSpan, std::shared_ptr<SVGViewable>, ByteSpanHash, ByteSpanEquivalent> fDefinitions{};
+        std::unordered_map<ByteSpan, ByteSpan, ByteSpanHash, ByteSpanEquivalent> fEntities{};
         
         virtual void addElementReference(const ByteSpan& name, std::shared_ptr<SVGViewable> obj)
         {
@@ -374,7 +376,7 @@ namespace waavs {
     struct SVGVisualNode : public SVGViewable
     {
         // Xml Node stuff
-        std::unordered_map<ByteSpan, std::shared_ptr<SVGVisualProperty>, ByteSpanHash> fVisualProperties{};
+        std::unordered_map<ByteSpan, std::shared_ptr<SVGVisualProperty>, ByteSpanHash, ByteSpanEquivalent> fVisualProperties{};
 
         bool fIsStructural{ true };
         bool fHasTransform{ false };
@@ -613,34 +615,65 @@ namespace waavs {
 
 
 namespace waavs {
+    // Geometry node creation dispatch
+    // Creating from a singular element
+    using ShapeCreationMap = std::unordered_map<ByteSpan, std::function<std::shared_ptr<SVGVisualNode>(IAmGroot* root, const XmlElement& elem)>, ByteSpanHash, ByteSpanEquivalent>;
+
     // compound node creation dispatch - 'g', 'symbol', 'pattern', 'linearGradient', 'radialGradient', 'conicGradient', 'image', 'style', 'text', 'tspan', 'use'
-    using SVGContainerCreationMap = std::unordered_map<ByteSpan, std::function<std::shared_ptr<SVGVisualNode>(IAmGroot* aroot, XmlElementIterator& iter)>, ByteSpanHash>;
-    static SVGContainerCreationMap gSVGGraphicsElementCreation{};
+    using SVGContainerCreationMap = std::unordered_map<ByteSpan, std::function<std::shared_ptr<SVGVisualNode>(IAmGroot* aroot, XmlElementIterator& iter)>, ByteSpanHash, ByteSpanEquivalent>;
+
+    
+    
+
+
+    
+    static ShapeCreationMap& getSVGSingularCreationMap()
+    {
+        static ShapeCreationMap gShapeCreationMap{};
+
+        return gShapeCreationMap;
+    }
+    
+	static SVGContainerCreationMap& getSVGContainerCreationMap()
+	{
+        static SVGContainerCreationMap gSVGGraphicsElementCreation{};
+        
+        return gSVGGraphicsElementCreation;
+	}
+    
+
+    // Register named creation routines
+    static void registerSVGSingularNode(const ByteSpan& name, std::function<std::shared_ptr<SVGVisualNode>(IAmGroot* root, const XmlElement& elem)> func)
+    {
+        getSVGSingularCreationMap()[name] = func;
+    }
     
 	static void registerContainerNode(const ByteSpan& name, std::function<std::shared_ptr<SVGVisualNode>(IAmGroot* aroot, XmlElementIterator& iter)> creator)
 	{
-		gSVGGraphicsElementCreation[name] = creator;
+        getSVGContainerCreationMap()[name] = creator;
 	}
     
-    // Geometry node creation dispatch
-    // Creating from a singular element
-    using ShapeCreationMap = std::unordered_map<ByteSpan, std::function<std::shared_ptr<SVGVisualNode>(IAmGroot* root, const XmlElement& elem)>, ByteSpanHash> ;
-    static ShapeCreationMap gShapeCreationMap{};
 
-    static void registerSVGSingularNode(const ByteSpan& name, std::function<std::shared_ptr<SVGVisualNode>(IAmGroot* root, const XmlElement& elem)> func)
-    {
-        gShapeCreationMap[name] = func;
-        //printf("gShapeCreationMap.size(%d)\n", gShapeCreationMap.size());
-    }
     
     // Convenience way to create an element
 	static std::shared_ptr<SVGVisualNode> createSingularNode(const XmlElement& elem, IAmGroot* root)
 	{
         ByteSpan aname = elem.name();
-		auto it = gShapeCreationMap.find(aname);
-		if (it != gShapeCreationMap.end())
+		auto it = getSVGSingularCreationMap().find(aname);
+		if (it != getSVGSingularCreationMap().end())
 		{
 			return it->second(root, elem);
+		}
+		return nullptr;
+	}
+
+	static std::shared_ptr<SVGVisualNode> createContainerNode(XmlElementIterator& iter, IAmGroot* root)
+	{
+		ByteSpan aname = iter->name();
+		auto it = getSVGContainerCreationMap().find(aname);
+		if (it != getSVGContainerCreationMap().end())
+		{
+			return it->second(root, iter);
 		}
 		return nullptr;
 	}
@@ -851,6 +884,15 @@ namespace waavs {
             // If the name of the element is found in the map,
             // then create a new node of that type and add it
             // to the list of nodes.
+            auto node = createContainerNode(iter, groot);
+            if (node != nullptr) {
+                addNode(node, groot);
+            }
+            else {
+                auto node = getSVGContainerCreationMap()["g"](groot, iter);
+            }
+
+            /*
 			auto aname = elem.name();
 			auto it = gSVGGraphicsElementCreation.find(aname);
             if (it != gSVGGraphicsElementCreation.end())
@@ -866,6 +908,7 @@ namespace waavs {
                 // know what it is, so ignore it
                 //addNode(node);
             }
+            */
         }
 
 
@@ -952,3 +995,6 @@ namespace waavs {
 
     };
 }
+
+
+#endif

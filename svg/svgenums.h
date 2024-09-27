@@ -25,9 +25,9 @@
 #include "blend2d.h"
 
 namespace waavs {
-	using SVGEnum = std::unordered_map<ByteSpan, int, ByteSpanHash>;
+	using SVGEnum = std::unordered_map<ByteSpan, uint32_t, ByteSpanHash, ByteSpanEquivalent>;
 
-	static INLINE bool getEnumValue(SVGEnum enumMap, const ByteSpan& key, int& value) noexcept
+	static INLINE bool getEnumValue(SVGEnum enumMap, const ByteSpan& key, uint32_t & value) noexcept
 	{
 		auto it = enumMap.find(key);
 		if (it == enumMap.end())
@@ -37,7 +37,7 @@ namespace waavs {
 	}
 
 	// Return the key that corresponds to the specified value
-	static INLINE bool getEnumKey(SVGEnum enumMap, int value, ByteSpan& key) noexcept
+	static INLINE bool getEnumKey(SVGEnum enumMap, uint32_t value, ByteSpan& key) noexcept
 	{
 		for (auto it = enumMap.begin(); it != enumMap.end(); ++it)
 		{
@@ -52,17 +52,17 @@ namespace waavs {
 }
 
 namespace waavs {
-	enum SpaceUnitsKind {
+	enum SpaceUnitsKind : uint32_t {
 		SVG_SPACE_USER = 0,
 		SVG_SPACE_OBJECT = 1
 	};
 	
 	static SVGEnum SVGSpaceUnits = {
-		{ "userSpaceOnUse", SVG_SPACE_USER },
-		{ "objectBoundingBox", SVG_SPACE_OBJECT }
+		{ "userSpaceOnUse", SpaceUnitsKind::SVG_SPACE_USER },
+		{ "objectBoundingBox", SpaceUnitsKind::SVG_SPACE_OBJECT }
 	};
 	
-	enum SVGLengthType {
+	enum SVGLengthKind : uint32_t {
 		SVG_LENGTHTYPE_UNKNOWN = 0,
 		SVG_LENGTHTYPE_NUMBER = 1,
 		SVG_LENGTHTYPE_PERCENTAGE = 2,
@@ -95,7 +95,7 @@ namespace waavs {
 namespace waavs {
 	
     // Text Alignment
-    enum TXTALIGNMENT : int
+    enum TXTALIGNMENT : uint32_t
     {
         CENTER = 0x01,
 
@@ -109,21 +109,27 @@ namespace waavs {
 
     };
 
+	enum SVGAlignment : uint32_t {
+		SVG_ALIGNMENT_START = 0x02,
+		SVG_ALIGNMENT_MIDDLE = 0x01,
+		SVG_ALIGNMENT_END = 0x04,
+	};
+	
 	static SVGEnum SVGTextAnchor = {
-		{ "start", (int)TXTALIGNMENT::LEFT },
-		{ "middle", (int)TXTALIGNMENT::CENTER },
-		{ "end", (int)TXTALIGNMENT::RIGHT }
+		{ "start", SVG_ALIGNMENT_START },
+		{ "middle", SVG_ALIGNMENT_MIDDLE },
+		{ "end", SVG_ALIGNMENT_END }
 	};
 
     static SVGEnum SVGTextAlign = {
-        { "start", (int)TXTALIGNMENT::LEFT },
-        { "middle", (int)TXTALIGNMENT::CENTER },
-        { "end", (int)TXTALIGNMENT::RIGHT }
+        { "start", (int)SVG_ALIGNMENT_START },
+        { "middle", (int)SVG_ALIGNMENT_MIDDLE },
+        { "end", (int)SVG_ALIGNMENT_END }
     };
     
 
 	// Dominant Baseline
-    enum class DOMINANTBASELINE : int
+    enum DOMINANTBASELINE : uint32_t
     {
         AUTO,
         ALPHABETIC,
@@ -142,20 +148,20 @@ namespace waavs {
     };
 
 	static SVGEnum SVGDominantBaseline = {
-		{ "auto", static_cast<int>(DOMINANTBASELINE::AUTO) },
-		{ "alphabetic", (int)DOMINANTBASELINE::ALPHABETIC },
-		{ "central", (int)DOMINANTBASELINE::CENTRAL },
-		{ "hanging", (int)DOMINANTBASELINE::HANGING },
-		{ "ideographic", (int)DOMINANTBASELINE::IDEOGRAPHIC },
-		{ "mathematical", (int)DOMINANTBASELINE::MATHEMATICAL },
-		{ "middle", (int)DOMINANTBASELINE::MIDDLE },
-		{ "no-change", (int)DOMINANTBASELINE::NO_CHANGE },
-		{ "reset-size", (int)DOMINANTBASELINE::RESET_SIZE },
-		{ "text-after-edge", (int)DOMINANTBASELINE::TEXT_AFTER_EDGE },
-		{ "text-before-edge", (int)DOMINANTBASELINE::TEXT_BEFORE_EDGE },
-		{ "text-bottom", (int)DOMINANTBASELINE::TEXT_BOTTOM },
-		{ "text-top", (int)DOMINANTBASELINE::TEXT_TOP },
-		{ "use-script", (int)DOMINANTBASELINE::USE_SCRIPT }
+		{ "auto", DOMINANTBASELINE::AUTO },
+		{ "alphabetic", DOMINANTBASELINE::ALPHABETIC },
+		{ "central", DOMINANTBASELINE::CENTRAL },
+		{ "hanging", DOMINANTBASELINE::HANGING },
+		{ "ideographic", DOMINANTBASELINE::IDEOGRAPHIC },
+		{ "mathematical", DOMINANTBASELINE::MATHEMATICAL },
+		{ "middle", DOMINANTBASELINE::MIDDLE },
+		{ "no-change", DOMINANTBASELINE::NO_CHANGE },
+		{ "reset-size", DOMINANTBASELINE::RESET_SIZE },
+		{ "text-after-edge", DOMINANTBASELINE::TEXT_AFTER_EDGE },
+		{ "text-before-edge", DOMINANTBASELINE::TEXT_BEFORE_EDGE },
+		{ "text-bottom", DOMINANTBASELINE::TEXT_BOTTOM },
+		{ "text-top", DOMINANTBASELINE::TEXT_TOP },
+		{ "use-script", DOMINANTBASELINE::USE_SCRIPT }
 	};
     
 	static SVGEnum SVGFontWeight = {
@@ -220,7 +226,7 @@ namespace waavs {
 }
 
 namespace waavs {
-    enum VectorEffectKind {
+    enum VectorEffectKind : uint32_t {
         VECTOR_EFFECT_NONE,
         VECTOR_EFFECT_NON_SCALING_STROKE,
         VECTOR_EFFECT_NON_SCALING_SIZE,

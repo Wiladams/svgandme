@@ -7,6 +7,8 @@
 
 APP_EXTERN waavs::FontHandler gFontHandler;
 APP_EXTERN waavs::Recorder gRecorder;
+//APP_EXTERN waavs::SVGFactory gSVG;
+
 
 #ifdef __cplusplus
 extern "C" {

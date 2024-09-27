@@ -25,12 +25,14 @@ namespace waavs {
 	{
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["marker"] = [](IAmGroot* groot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGMarkerElement>(groot);
-				node->loadFromXmlIterator(iter, groot);
+			registerContainerNode("marker",
+				[](IAmGroot* groot, XmlElementIterator& iter) {
+					auto node = std::make_shared<SVGMarkerElement>(groot);
+					node->loadFromXmlIterator(iter, groot);
 
-				return node;
-				};
+					return node;
+				});
+			
 		}
 
 		// Fields

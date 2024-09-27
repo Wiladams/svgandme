@@ -21,7 +21,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			gShapeCreationMap["a"] = [](IAmGroot* groot, const XmlElement& elem) {
+			getSVGSingularCreationMap()["a"] = [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGAElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 
@@ -32,12 +32,13 @@ namespace waavs {
 		// Static constructor to register factory method in map
 		static void registerFactory()
 		{
-			gSVGGraphicsElementCreation["a"] = [](IAmGroot* groot, XmlElementIterator& iter) {
-				auto node = std::make_shared<SVGAElement>(groot);
-				node->loadFromXmlIterator(iter, groot);
+			registerContainerNode("a",
+				[](IAmGroot* groot, XmlElementIterator& iter) {
+					auto node = std::make_shared<SVGAElement>(groot);
+					node->loadFromXmlIterator(iter, groot);
 
-				return node;
-				};
+					return node;
+				});
 
 			registerSingularNode();
 		}

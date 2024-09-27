@@ -65,6 +65,16 @@ namespace waavs {
 		// operator!=;
 		// operator<=;
 		// operator>=;
+		
+		bool equivalent(const ByteSpan& b) const noexcept
+		{
+			if (size() != b.size())
+				return false;
+			return memcmp(fStart, b.fStart, size()) == 0;
+		}
+		
+		// operator==
+		// Perform a full content comparison of the two spans
 		bool operator==(const ByteSpan& b) const noexcept
 		{
 			if (size() != b.size())
@@ -292,6 +302,34 @@ namespace waavs {
 		}
 	};
 
+	struct ByteSpanEquivalent {
+		bool operator()(const ByteSpan& a, const ByteSpan& b) const noexcept {
+			if (a.size() != b.size())
+				return false;
+			return memcmp(a.fStart, b.fStart, a.size()) == 0;
+		}
+	};
+
+	// Case insensitive 'string' comparison
+	struct ByteSpanInsensitiveHash {
+		size_t operator()(const ByteSpan& span) const noexcept {
+			return waavs::fnv1a_32_case_insensitive(span.data(), span.size());
+		}
+	};
+	
+	struct ByteSpanCaseInsensitive {
+		bool operator()(const ByteSpan& a, const ByteSpan& b) const noexcept {
+			if (a.size() != b.size())
+				return false;
+
+			for (size_t i = 0; i < a.size(); ++i) {
+				if (std::tolower(a[i]) != std::tolower(b[i]))  // Case-insensitive comparison
+					return false;
+			}
+			
+			return true;
+		}
+	};
 }
 
 // Functions that are implemented here
@@ -323,6 +361,8 @@ namespace waavs
 
 	static INLINE ByteSpan chunk_token(ByteSpan& a, const charset& delims) noexcept;
 	static INLINE ByteSpan chunk_find_char(const ByteSpan& a, char c) noexcept;
+	static INLINE bool chunk_find(const ByteSpan& src, const ByteSpan& str, ByteSpan& value) noexcept;
+	static INLINE ByteSpan chunk_find_cstr(const ByteSpan& a, const char* c) noexcept;
 
 
 
@@ -523,7 +563,9 @@ namespace waavs
 	}
 
 	// 
-	// scan a ByteSpan 'src', looking for the search span 'str'
+	// chunk_find()
+	// 
+	// Scan a ByteSpan 'src', looking for the search span 'str'
 	// return true if it's found, and set the 'value' ByteSpan 
 	// to the location.
 	static INLINE bool chunk_find(const ByteSpan& src, const ByteSpan& str, ByteSpan& value) noexcept

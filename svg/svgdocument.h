@@ -48,7 +48,7 @@
 #include "svghyperlink.h"
 
 #include "svgdrawingcontext.h"
-//#include "svgwaavs.h"
+
 
 
 namespace waavs {
@@ -86,7 +86,7 @@ namespace waavs {
         // Implementation
 		//==========================================
         
-        SVGDocument(FontHandler *fh, const double w, const double h, const double ppi = 96)
+        SVGDocument(FontHandler *fh, const double w=0, const double h=0, const double ppi = 96)
             :SVGGraphicsElement(this)
             , fDpi(ppi)
             , fFontHandler(fh)
@@ -97,14 +97,44 @@ namespace waavs {
 			fStyleSheet = std::make_shared<CSSStyleSheet>();
         }
 
+        SVGDocument(const ByteSpan& srcChunk, const double w = 64, const double h = 64, const double ppi = 96, FontHandler* fh=nullptr)
+            :SVGGraphicsElement(this)
+            , fDpi(ppi)
+            , fFontHandler(fh)
+            , fCanvasWidth(w)
+            , fCanvasHeight(h)
+        {
+            resetFromChunk(srcChunk, fh, w, h, ppi);
+        }
+        
+        
+        void resetFromChunk(const ByteSpan& srcChunk, FontHandler* fh, const double w, const double h, const double ppi=96)
+        {
+            // clear out the old document
+            //clear();
+            fontHandler(fh);
+            dpi(ppi);
+            canvasSize(w, h);
+            fStyleSheet = std::make_shared<CSSStyleSheet>();
+
+            // load the new document
+            loadFromChunk(srcChunk);
+
+            bindToGroot(this, nullptr);
+        }
+        
+        
 		// Properties
 		FontHandler* fontHandler() const override { return fFontHandler; }
+        void fontHandler(FontHandler* fh) { fFontHandler = fh; }
         
         double dpi() const override { return fDpi; }
 		void dpi(const double d) override { fDpi = d; }
         
 		double canvasWidth() const override { return fCanvasWidth; }
 		double canvasHeight() const override { return fCanvasHeight; }
+        void canvasSize(const double w, const double h) { fCanvasWidth = w; fCanvasHeight = h; }
+        
         
         BLRect getBBox() const override 
         {
@@ -265,6 +295,8 @@ namespace waavs {
             return true;
         }
 
+
+        
         // A convenience to construct the document from a chunk, and return
         // a shared pointer to the document
         static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, FontHandler* fh, const double w, const double h, const double ppi)
@@ -290,6 +322,11 @@ namespace waavs {
 		SVGFactory& operator=(const SVGFactory&) = delete;
         
         SVGFactory()
+        {
+            registerNodeTypes();
+        }
+        
+        void registerNodeTypes()
         {
             // Register attributes
             SVGOpacity::registerFactory();
@@ -388,9 +425,7 @@ namespace waavs {
             SVGTitleNode::registerFactory();            // 'title'
 
 
-            // Uncomment the following, if you are using Windows,
-            // and want to do screen capture.
-            //DisplayCaptureElement::registerFactory();
+
         }
 
     };
