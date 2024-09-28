@@ -16,11 +16,11 @@
 #include "svgstructuretypes.h"
 #include "svgattributes.h"
 #include "svgshapes.h"
-#include "svgdocument.h"
 #include "svgfilter.h"
 #include "viewport.h"
 #include "fonthandler.h"
-
+#include "svgdocument.h"
+#include "svgfactory.h"
 
 
 

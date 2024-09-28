@@ -98,7 +98,7 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 
 	
 	ByteSpan aspan(mapped->data(), mapped->size());
-	std::shared_ptr<SVGDocument> aDoc = SVGDocument::createFromChunk(aspan, &gFontHandler, canvasWidth, canvasHeight, systemPpi);
+	std::shared_ptr<SVGDocument> aDoc = SVGDocument::createFromChunk(aspan, &getFontHandler(), canvasWidth, canvasHeight, systemPpi);
 	
 	return aDoc;
 }
@@ -125,14 +125,14 @@ static void drawFurniture()
 		checkerboardDoc->draw(&gDrawingContext, checkerboardDoc.get());
 	
 	// draw some icons
-	drawIcon(goLeftDoc, 0, 10);
-	drawIcon(goRightDoc, 24, 16);
-	drawIcon(goUpDoc, 12, 0);
-	drawIcon(goDownDoc, 12, 22);
+	//drawIcon(goLeftDoc, 0, 10);
+	//drawIcon(goRightDoc, 24, 16);
+	//drawIcon(goUpDoc, 12, 0);
+	//drawIcon(goDownDoc, 12, 22);
 	
-	drawIcon(goRight32, 10, 100);
-	drawIcon(goRight64, 10, 140);
-	drawIcon(goRight128, 10, 220);
+	//drawIcon(goRight32, 10, 100);
+	//drawIcon(goRight64, 10, 140);
+	//drawIcon(goRight128, 10, 220);
 	
 	gDrawingContext.pop();
 }
@@ -169,7 +169,7 @@ static void resetView()
 	gViewPort.sceneFrame(BLRect(0, 0, canvasWidth, canvasHeight));
 	gViewPort.surfaceFrame(BLRect(0, 0, canvasWidth, canvasHeight));
 
-	checkerboardDoc = SVGDocument::createFromChunk(gCheckboardSpan, &gFontHandler, canvasWidth, canvasHeight, systemPpi);
+	checkerboardDoc = SVGDocument::createFromChunk(gCheckboardSpan, &getFontHandler(), canvasWidth, canvasHeight, systemPpi);
 
 }
 
@@ -376,7 +376,7 @@ static void setupFonts()
 	//loadFontDirectory("..\\resources");
 	loadFontDirectory("d:\\commonfonts");
 	
-	gDrawingContext.fontHandler(&gFontHandler);
+	gDrawingContext.fontHandler(&getFontHandler());
 }
 
 
@@ -420,7 +420,7 @@ static void setup()
 	gViewPort.surfaceFrame({0, 0, (double)canvasWidth, (double)canvasHeight});
 	
 	// Create initial checkerboard document
-	checkerboardDoc = SVGDocument::createFromChunk(gCheckboardSpan, &gFontHandler, canvasWidth, canvasHeight, systemPpi);
+	checkerboardDoc = SVGDocument::createFromChunk(gCheckboardSpan, &getFontHandler(), canvasWidth, canvasHeight, systemPpi);
 
 	// Load extension elements
 	// I really want to be able to do this here

@@ -12,8 +12,12 @@
 using namespace waavs;
 
 
+waavs::FontHandler& getFontHandler() {
+	static waavs::FontHandler fh;
+	return fh;
+}
 
-waavs::FontHandler gFontHandler{};
+
 APP_EXTERN waavs::Recorder gRecorder{ nullptr };
 
 static VOIDROUTINE gSetupHandler = nullptr;
@@ -27,7 +31,7 @@ static VOIDROUTINE gSetupHandler = nullptr;
 // Typography
 static bool loadFont(const char* filename, BLFontFace& ff) noexcept
 {
-	bool success = gFontHandler.loadFontFace(filename, ff);
+	bool success = getFontHandler().loadFontFace(filename, ff);
 	return success;
 }
 
@@ -56,7 +60,7 @@ static bool loadFontDirectory(const char* dir) noexcept
 				(dir_entry.path().extension() == ".TTF"))
 			{
 				BLFontFace ff{};
-				bool success = gFontHandler.loadFontFace(dir_entry.path().generic_string().c_str(), ff);
+				bool success = getFontHandler().loadFontFace(dir_entry.path().generic_string().c_str(), ff);
 			}
 				
 			//if (endsWith(dir_entry.path().generic_string(), ".ttf") ||
@@ -74,14 +78,14 @@ static bool loadFontDirectory(const char* dir) noexcept
 
 static bool loadDefaultFonts() noexcept
 {
-	gFontHandler.loadDefaultFonts();
+	getFontHandler().loadDefaultFonts();
 
 	return true;
 }
 
 static bool loadFontFiles(std::vector<const char*> filenames)
 {
-	gFontHandler.loadFonts(filenames);
+	getFontHandler().loadFonts(filenames);
 
 	return true;
 }

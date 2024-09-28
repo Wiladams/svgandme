@@ -5,10 +5,10 @@
 #include "recorder.h"
 
 
-APP_EXTERN waavs::FontHandler gFontHandler;
+//APP_EXTERN waavs::FontHandler gFontHandler;
 APP_EXTERN waavs::Recorder gRecorder;
-//APP_EXTERN waavs::SVGFactory gSVG;
 
+APP_EXPORT waavs::FontHandler & getFontHandler();
 
 #ifdef __cplusplus
 extern "C" {
