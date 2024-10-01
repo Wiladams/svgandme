@@ -9,31 +9,36 @@
 #include "svguiapp.h"
 #include "svgicons.h"
 #include "svgcacheddocument.h"
-#include "svgnavigator.h"
+
 #include "svgdocumentbrowser.h"
+#include "svgfilelistview.h"
 
 using namespace waavs;
 
+constexpr int APP_WIDTH = 1920;
+constexpr int APP_HEIGHT = 1024;
+constexpr int APP_HMARGIN = 10;
+constexpr int APP_VMARGIN = 10;
+constexpr int APP_TOOL_MARGIN = 64;
 
 // Create one of these first, so factory constructor will run
 static SVGFactory gSVG;
 
 
 // Drawing context used for drawing document
-// 	SvgDrawingContext ctx(&gFontHandler);
 IRenderSVG gDrawingContext(nullptr);
 
 
 // Animation management
-bool gAnimate = false;
+bool gAnimate = true;
 bool gPerformTransform = true;
 bool gCheckerBackground = true;
 
 
 
-
-SVGBrowsingView gBrowsingView(BLRect(128,24,800,600));
-
+//SVGCachedDocument gBrowsingView(BLRect(128, 24, 800, 600));
+SVGBrowsingView gBrowsingView(BLRect(280, APP_VMARGIN,APP_WIDTH - 256 - APP_HMARGIN - APP_HMARGIN - APP_HMARGIN,APP_HEIGHT - APP_VMARGIN - APP_TOOL_MARGIN));
+SVGFileListView gFileListView(BLRect(APP_HMARGIN, APP_VMARGIN, 256, APP_HEIGHT - APP_VMARGIN - APP_TOOL_MARGIN), &getFontHandler());
 
 
 
@@ -41,7 +46,8 @@ static void drawDocument()
 {
 	// draw the document into the ctx
 	gBrowsingView.draw(&gDrawingContext);
-
+	gFileListView.draw(&gDrawingContext);
+	
 	gDrawingContext.flush();
 }
 
@@ -82,13 +88,22 @@ static void loadDocFromFilename(const char* filename)
 
 static void onFileDrop(const FileDropEvent& fde)
 {
-	// assuming there's at least one file that 
-	// has been dropped.
-	for (int i = 0; i < fde.filenames.size(); i++)
+	if (gFileListView.contains(fde.x, fde.y))
 	{
-		loadDocFromFilename(fde.filenames[i].c_str());
-
+		gFileListView.onFileDrop(fde);
 		refreshDoc();
+	}
+	else {
+
+		// assuming there's at least one file that 
+		// has been dropped.
+		for (int i = 0; i < fde.filenames.size(); i++)
+		{
+			loadDocFromFilename(fde.filenames[i].c_str());
+
+			refreshDoc();
+			break;
+		}
 	}
 }
 
@@ -127,10 +142,18 @@ static void portalChanged(const bool& changed)
 	refreshDoc();
 }
 
+static void fileSelected(const SVGFileIcon& fIcon)
+{
+	gBrowsingView.resetFromDocument(fIcon.document());
+	//refreshDoc();
+}
+
 static void onMouseEvent(const MouseEvent& e)
 {
-	if (gBrowsingView.contains(BLPoint(e.x, e.y)))
+	if (gBrowsingView.contains(e.x, e.y))
 		gBrowsingView.onMouseEvent(e);
+	else if (gFileListView.contains(e.x, e.y))
+		gFileListView.onMouseEvent(e);
 }
 
 static void onKeyboardEvent(const KeyboardEvent& ke)
@@ -180,7 +203,7 @@ static void setup()
 	//printf("setup()\n");
 
 	// Setup runtime specific stuff
-	createAppWindow(1024, 768, "SVG Explorer");
+	createAppWindow(APP_WIDTH, APP_HEIGHT, "SVG Explorer");
 	dropFiles();
 	frameRate(20);
 
@@ -204,8 +227,12 @@ static void setup()
 	ctxInfo.threadCount = 0;
 	gDrawingContext.begin(appFrameBuffer().image(), &ctxInfo);
 
+	//gFileListView.setFontHandler(&getFontHandler());
+
 	// Set the initial viewport
 	gBrowsingView.subscribe(portalChanged);
-	
+	gFileListView.Topic<bool>::subscribe(portalChanged);
+	gFileListView.Topic<SVGFileIcon>::subscribe(fileSelected);
+
 	refreshDoc();
 }

@@ -4,7 +4,7 @@
 #include "pubsub.h"
 
 namespace waavs {
-	// SVGNavigator
+	// ViewNavigator
 	//
 	// Takes UI events, and turns them into document navigation
 	// zoom, pan, scale, rotate, etc.
@@ -16,9 +16,10 @@ namespace waavs {
 	// how to subscribe from within a class
 	// 		subscribe([this](const T& e) {THandler(e); });
 	//
-	struct SVGNavigator: public Topic<bool>
+	struct ViewNavigator: public Topic<bool>
 	{
 		ViewPort fPortal{};
+
 		bool fIsDragging = false;
 		BLPoint fDragPos{ 0,0 };
 		double fZoomFactor = 0.1;
@@ -32,27 +33,61 @@ namespace waavs {
 
 		// Setting scene and surface frames
 		// setting and getting surface frame
-		void surfaceFrame(const BLRect& fr) { fPortal.surfaceFrame(fr); }
-		const BLRect& surfaceFrame() const { return fPortal.surfaceFrame(); }
+		void setFrame(const BLRect& fr) { fPortal.surfaceFrame(fr); }
+		const BLRect& frame() const { return fPortal.surfaceFrame(); }
 
 		// setting and getting scene frame
-		void sceneFrame(const BLRect& fr) { fPortal.sceneFrame(fr); }
-		const BLRect& sceneFrame() const { return fPortal.sceneFrame(); }
+		void setBounds(const BLRect& fr) { fPortal.sceneFrame(fr); }
+		const BLRect& bounds() const { return fPortal.sceneFrame(); }
 
+
+		BLPoint sceneToSurface(double x, double y) const
+		{
+			return fPortal.sceneToSurface(x, y);
+		}
+
+		BLPoint surfaceToScene(double x, double y) const
+		{
+			return fPortal.surfaceToScene(x, y);
+		}
 
 		// Retrieving the transformations
-		BLMatrix2D sceneToSurfaceTransform() { return fPortal.sceneToSurfaceTransform(); }
-		BLMatrix2D surfaceToSceneTransform() { return fPortal.surfaceToSceneTransform(); }
+		const BLMatrix2D & sceneToSurfaceTransform() const { return fPortal.sceneToSurfaceTransform(); }
+		const BLMatrix2D & surfaceToSceneTransform() const { return fPortal.surfaceToSceneTransform(); }
 
+
+		// Coordinates are in object space
+		// so calculate new objectFrame
+		void lookAt(double cx, double cy)
+		{
+			BLRect oFrame = bounds();
+			auto w = oFrame.w;
+			auto h = oFrame.h;
+			oFrame.x = cx - w / 2;
+			oFrame.y = cy - h / 2;
+
+			setBounds(oFrame);
+			notify(true);
+		}
 
 		// Actions that will change the transformations
 		// Pan
 		// This is a translation, so it will move the viewport in the opposite direction
 		// of the provided values
-		void pan(double dx, double dy)
+		void panTo(double x, double y)
 		{
-			fPortal.translateBy(-dx, -dy);
+			fPortal.translateTo(x, y);
 			notify(true);
+		}
+
+		void panBy(double dx, double dy)
+		{
+			if ((fabs(dx) > dbl_eps) || (fabs(dy) > dbl_eps))
+			{
+				fPortal.translateBy(-dx, -dy);
+				notify(true);
+			}
+
 		}
 
 		// zoomBy
@@ -118,7 +153,7 @@ namespace waavs {
 
 					//printf("dx = %3.2f, dy = %3.2f\n", dx, dy);
 
-					pan(dx, dy);
+					panBy(dx, dy);
 					fDragPos = { e.x, e.y };
 				}
 			}

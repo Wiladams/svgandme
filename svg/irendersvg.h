@@ -214,7 +214,7 @@ namespace waavs
         // Text Font selection
         const BLFont& font() const { return fCurrentState.fFont; }
         virtual void font(BLFont& afont){ fCurrentState.fFont = afont;    }
-
+        void resetFont() { fCurrentState.resetFont(); }
         
         void applyState()
         {
@@ -263,6 +263,8 @@ namespace waavs
             else
                 fillAll(fBackground);
 
+            resetState();
+
             // Setup the default drawing state
             // to conform to what SVG expects
             setCompOp(BL_COMP_OP_SRC_OVER);
@@ -275,8 +277,6 @@ namespace waavs
             fill(BLRgba32(0, 0, 0));
             noStroke();
             strokeWidth(1.0);
-
-            resetState();
         }
 
         

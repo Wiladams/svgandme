@@ -39,11 +39,17 @@ namespace waavs {
 			fSurfaceFrame = BLRect(0, 0, 1, 1);
 		}
 		
+		ViewPort(const BLRect& aSurfaceFrame, const BLRect& aSceneFrame)
+			:fSurfaceFrame(aSurfaceFrame)
+			, fSceneFrame(aSceneFrame)
+		{
+			calcTransform();
+		}
+		
 		ViewPort(double x, double y, double w, double h)
 			:fSurfaceFrame{ (float)x, (float)y, (float)w, (float)h }
+			, fSceneFrame{0,0,w,h}
 		{
-			fSceneFrame = fSurfaceFrame;
-
 			calcTransform();
 		}
 		
@@ -52,6 +58,8 @@ namespace waavs {
 		ViewPort(const ViewPort& other) = delete;
 		ViewPort& operator=(const ViewPort& other) = delete;
 		
+		virtual ~ViewPort() = default;
+
 		/*
 		ViewPort(const Viewport& other)
 			: fTransform(other.fTransform)
@@ -63,7 +71,7 @@ namespace waavs {
 		{}
 		*/
 
-		void reset() {
+		virtual void reset() {
 			fTransform.reset();
 			fInverseTransform.reset();
 			fRotRad = 0.0;
@@ -73,12 +81,14 @@ namespace waavs {
 		}
 
 		// retrieve the calculated transform
-		const BLMatrix2D& sceneToSurfaceTransform() {
+		// Usage:
+		// Use this transformation when you need to draw the scene into a context
+		const BLMatrix2D& sceneToSurfaceTransform() const {
 			// print the fTransform values
 			//printf("ViewPort::sceneToSurfaceTransform: %f %f %f %f %f %f\n", fTransform.m[0], fTransform.m[1], fTransform.m[2], fTransform.m[3], fTransform.m[4], fTransform.m[5]);
 			return fTransform; 
 		}
-		const BLMatrix2D& surfaceToSceneTransform() { return fInverseTransform; }
+		const BLMatrix2D& surfaceToSceneTransform() const { return fInverseTransform; }
 		
 		// setting and getting surface frame
 		void surfaceFrame(const BLRect& fr) { fSurfaceFrame = fr; calcTransform(); }
@@ -121,17 +131,7 @@ namespace waavs {
 			return tScale;
 		}
 
-		// Calculate the transforms, based on the currently set 
-		// values for the two frames, and the rotation
-		void printTransform()
-		{
-			BLPoint ascale(1, 1);
-			
-			printf("ViewPort::print\n");
-			printf("   Rotation: %f (%f,%f)\n", fRotRad, fRotCenter.x, fRotCenter.y);
-			printf("      Scale: %3.4f\n", trueScale(ascale));
-			printf("  Translate: %3.4f, %3.4f\n", fSceneFrame.x, fSceneFrame.y);
-		}
+
 		
 		
 		void calcTransform()
@@ -155,14 +155,18 @@ namespace waavs {
 
 
 		// This will translate relative to the current x, y position
-		bool translateBy(double dx, double dy)
+		bool translateTo(double x, double y)
 		{
-			// BUGBUG - take minimum frame into account
-			fSceneFrame.x += (float)dx;
-			fSceneFrame.y += (float)dy;
+			fSceneFrame.x = x;
+			fSceneFrame.y = y;
 			calcTransform();
 
 			return true;
+		}
+
+		bool translateBy(double dx, double dy)
+		{
+			return translateTo(fSceneFrame.x + dx, fSceneFrame.y + dy);
 		}
 
 		bool scaleObjectFrameBy(double sx, double sy, double centerx, double centery)
@@ -206,6 +210,17 @@ namespace waavs {
 			return true;
 		}
 
+		// Calculate the transforms, based on the currently set 
+		// values for the two frames, and the rotation
+		void printTransform()
+		{
+			BLPoint ascale(1, 1);
+
+			printf("ViewPort::print\n");
+			printf("   Rotation: %f (%f,%f)\n", fRotRad, fRotCenter.x, fRotCenter.y);
+			printf("      Scale: %3.4f\n", trueScale(ascale));
+			printf("  Translate: %3.4f, %3.4f\n", fSceneFrame.x, fSceneFrame.y);
+		}
 	};
 }
 

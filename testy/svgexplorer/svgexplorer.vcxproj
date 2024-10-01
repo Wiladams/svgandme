@@ -152,9 +152,11 @@
     <ClInclude Include="..\..\svg\svgfactory.h" />
     <ClInclude Include="..\..\svg\svgstructuretypes.h" />
     <ClInclude Include="..\..\svg\viewport.h" />
+    <ClInclude Include="graphicview.h" />
     <ClInclude Include="svgdocumentbrowser.h" />
+    <ClInclude Include="svgfilelistview.h" />
     <ClInclude Include="svgicons.h" />
-    <ClInclude Include="svgnavigator.h" />
+    <ClInclude Include="viewnavigator.h" />
     <ClInclude Include="svgcacheddocument.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

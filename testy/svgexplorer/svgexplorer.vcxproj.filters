@@ -38,7 +38,7 @@
     <ClInclude Include="..\..\svg\viewport.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="svgnavigator.h">
+    <ClInclude Include="viewnavigator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="svgdocumentbrowser.h">
@@ -48,6 +48,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\svg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="svgfilelistview.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="graphicview.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -6,39 +6,32 @@
 #include "bspan.h"
 #include "svgdocument.h"
 #include "viewport.h"
+#include "graphicview.h"
 
 
 namespace waavs {
 
-	struct SVGCachedDocument : public SVGViewable
+	
+	struct SVGCachedDocument : public SVGCachedView
 	{
-		BLImage fCachedImage{};
-		BLRect fUIFrame{};
-		BLMatrix2D fSceneToSurfaceTransform{};
-		bool fNeedsRedraw{ true };
-		
 		SVGDocumentHandle fDocument{nullptr};
 
-		
-		
-		SVGCachedDocument() :SVGViewable(nullptr) {}
-		SVGCachedDocument(const BLRect& aframe)
-			:SVGViewable(nullptr)
+
+		SVGCachedDocument(const BLRect& aframe, FontHandler *fh=nullptr)
+			:SVGCachedView(aframe, fh)
 		{
-			uiFrame(aframe);
 		}
 		
-		void needsRedraw(const bool needsIt) { fNeedsRedraw = needsIt; }
-		bool needsRedraw() const { return fNeedsRedraw; }
-		
-		void uiFrame(const BLRect& aframe) 
+		virtual ~SVGCachedDocument() = default;
+
+		void moveTo(const BLPoint& pt) noexcept
 		{
-			fUIFrame = aframe;
-			fCachedImage.reset();
-			fCachedImage.create(fUIFrame.w, fUIFrame.h, BL_FORMAT_PRGB32);
+			auto fr = frame();
+			fr.x = pt.x;
+			fr.y = pt.y;
+			setFrame(fr);
 		}
-		const BLRect & uiFrame() const { return fUIFrame; }
-		
+
 
 		virtual void onDocumentLoad()
 		{
@@ -48,73 +41,34 @@ namespace waavs {
 		virtual void resetFromDocument(SVGDocumentHandle doc, FontHandler* fh = nullptr) noexcept
 		{
 			fDocument = doc;
-			needsRedraw(true);
+
+			auto sFrame = fDocument->frame();
+			setBounds(sFrame);
+			setNeedsRedraw(true);
 			onDocumentLoad();
-			
-			drawIntoCache();
 		}
 		
-		// Transformation used to map from scene to our backing buffer surface
-		const BLMatrix2D & sceneToSurfaceTransform() const { return fSceneToSurfaceTransform; }
-		void sceneToSurfaceTransform(const BLMatrix2D& tform) { fSceneToSurfaceTransform = tform; }
-		
-		// drawIntoCache()
-		// 
-		// draw the document into the backing buffer
-		//
-		virtual void drawBackgroundIntoCache(IRenderSVG &ctx)
-		{
-			;
+		/*
+		void drawBackground(IRenderSVG *ctx) override
+		{	
+			// Draw a background into cache
+			ctx->background(BLRgba32(0xffffff00));
+			ctx->stroke(BLRgba32(0xffff0000));
+			auto fr = frame();
+			ctx->strokeLine(0, 0, fr.w, fr.h);
+			ctx->strokeLine(0, fr.h, fr.w, 0);
 		}
-		
-		virtual void drawIntoCache() 
+		*/
+
+		void drawSelf(IRenderSVG* ctx)
 		{
-			// Create a drawing context
-			// And setup the transform
-			IRenderSVG drawingContext(nullptr);
-			drawingContext.begin(fCachedImage);
-			drawingContext.renew();
-			drawingContext.clear();
-			
-			drawBackgroundIntoCache(drawingContext);
-
-			// Draw the document, after applying the transform
-			drawingContext.setTransform(sceneToSurfaceTransform());
-
 			if (nullptr != fDocument) {
-				drawingContext.fontHandler(fDocument->fontHandler());
-				fDocument->draw(&drawingContext, fDocument.get());
+				ctx->fontHandler(fDocument->fontHandler());
+				fDocument->draw(ctx, fDocument.get());
 			}
-			
-			drawingContext.flush();
-
-			needsRedraw(false);
-		}
-		
-		void moveTo(const BLPoint& pt) noexcept
-		{
-			fUIFrame.x = pt.x;
-			fUIFrame.y = pt.y;
-		}
-		
-		void draw(IRenderSVG* ctx, IAmGroot* groot) override 
-		{
-			if (needsRedraw())
-			{
-				drawIntoCache();
-				needsRedraw(false);
-			}
-			
-			// just do a blt of the cached image
-			ctx->image(fCachedImage, static_cast<int>(fUIFrame.x), static_cast<int>(fUIFrame.y));
-			
-			return; 
 		}
 
-		void draw(IRenderSVG* ctx)
-		{
-			draw(ctx, fDocument.get());
-		}
+
 	};
 
 }

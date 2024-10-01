@@ -2,7 +2,7 @@
 
 
 #include "svgcacheddocument.h"
-#include "svgnavigator.h"
+#include "viewnavigator.h"
 #include "svgicons.h"
 
 
@@ -10,7 +10,7 @@ namespace waavs {
 
 	struct SVGBrowsingView : public SVGCachedDocument, public Topic<bool>
 	{
-		SVGNavigator fNavigator{};
+		ViewNavigator fNavigator{};
 
 		SVGDocument checkerboardDoc{ nullptr };
 		
@@ -23,53 +23,60 @@ namespace waavs {
 		{
 			checkerboardDoc.resetFromSpan(getIconSpan("checkerboard"), nullptr, aframe.w, aframe.h, 96);
 
-			fNavigator.surfaceFrame(BLRect(0, 0, aframe.w, aframe.h));
-			fNavigator.sceneFrame(BLRect(0, 0, aframe.w, aframe.h));
+			fNavigator.setFrame(BLRect(0, 0, aframe.w, aframe.h));
+			fNavigator.setBounds(BLRect(0, 0, aframe.w, aframe.h));
 			fNavigator.subscribe([this](const bool& e) {this->handleChange(); });
 
-		}
-
-		bool contains(const BLPoint& pt) const
-		{
-			return containsRect(uiFrame(), pt);
 		}
 		
 		void onDocumentLoad() override
 		{
-			fNavigator.sceneFrame(fDocument->frame());
-			sceneToSurfaceTransform(fNavigator.sceneToSurfaceTransform());
-
+			fNavigator.setBounds(fDocument->frame());
+			setBounds(fDocument->frame());
+			
+			setSceneToSurfaceTransform(fNavigator.sceneToSurfaceTransform());
 		}
 		
 
 
 		
-		void drawBackgroundIntoCache(IRenderSVG& ctx) override
+		void drawBackground(IRenderSVG *ctx) override
 		{
 			if (fUseCheckerBackground)
 			{
-				checkerboardDoc.draw(&ctx, &checkerboardDoc);
+				checkerboardDoc.draw(ctx, &checkerboardDoc);
 			}
 			else {
-				ctx.background(BLRgba32(0xffffffff));
+				ctx->background(BLRgba32(0xffffffff));
 			}
+		}
+
+		void drawForeground(IRenderSVG* ctx) override
+		{
+			ctx->strokeWidth(4);
+			ctx->strokeRect(BLRect( 0,0,frame().w, frame().h ), BLRgba32(0xffA0A0A0));
+
 		}
 
 		void handleChange()
 		{
-			sceneToSurfaceTransform(fNavigator.sceneToSurfaceTransform());
-			
-			//drawIntoCache();
-			needsRedraw(true);
+			//setBounds(fNavigator.bounds());
+			setSceneToSurfaceTransform(fNavigator.sceneToSurfaceTransform());
+
+			setNeedsRedraw(true);
 			notify(true);
 		}
 
 		void onMouseEvent(const MouseEvent& e)
 		{
 			MouseEvent le = e;
-			le.x -= static_cast<float>(fUIFrame.x);
-			le.y -= static_cast<float>(fUIFrame.y);
+			le.x -= static_cast<float>(frame().x);
+			le.y -= static_cast<float>(frame().y);
 			fNavigator.onMouseEvent(le);
+
+			// BUGBUG - The navigation can indicate whether there was a change
+			// right here, and we can set needsredraw, and notify
+			// which can remove the need for handleChange()
 		}
 
 		void onKeyboardEvent(const KeyboardEvent& ke)
@@ -81,19 +88,19 @@ namespace waavs {
 				{
 				case 'A':
 					fAnimate = !fAnimate;
-					needsRedraw(true);
+					setNeedsRedraw(true);
 					notify(true);
 					break;
 
 				case 'C':
 					fUseCheckerBackground = !fUseCheckerBackground;
-					needsRedraw(true);
+					setNeedsRedraw(true);
 					notify(true);
 					break;
 
 				case 'T':
 					fPerformTransform = !fPerformTransform;
-					needsRedraw(true);
+					setNeedsRedraw(true);
 					notify(true);
 					break;
 				}
