@@ -11,7 +11,16 @@ namespace waavs {
 	// the actual window on the screen the user is interacting with.
 	// 
 	// The sceneFrame, is the content that is being looked at.  So, if you're looking
-	// through a window as a painting outside, the sceneFrame is the painting
+	// through a window as a painting outside, the sceneFrame is the painting.
+	// The 'scene' is assumed to be an infinite canvas.  The 'sceneFrame' is the portion
+	// of that infinite canvas you want to actually show up within the surfaceFrame.
+	// 
+	// Interesting operations:
+	// 1) If you have a bounded thing, like a bitmap, and you want it to fill the surface
+	// you can specify the sceneFrame(BLRect(0,0,,img.width, img.height))
+	// 2) If you want to do some 'scolling', you send a sceneFrame to equal the size
+	// of the surfaceFrame initially, then use the translateBy(), and translateTo() functions
+	// to adjust the position of that boundary against the scene you're scrolling.
 	// 
 	// The viewport allows you to do typical 'camera' kinds of movements, like pan, zoom,
 	// lookAt, and the like, and returns you the transformation matrix that will
@@ -39,6 +48,21 @@ namespace waavs {
 			fSurfaceFrame = BLRect(0, 0, 1, 1);
 		}
 		
+		
+		// 		ViewPort(const ViewPort& other) = delete;
+		
+		ViewPort(const ViewPort& other)
+			: fTransform(other.fTransform)
+			, fInverseTransform(other.fInverseTransform)
+			, fRotRad(other.fRotRad)
+			, fRotCenter(other.fRotCenter)
+			, fSurfaceFrame(other.fSurfaceFrame)
+			, fSceneFrame(other.fSceneFrame)
+		{
+		}
+
+
+
 		ViewPort(const BLRect& aSurfaceFrame, const BLRect& aSceneFrame)
 			:fSurfaceFrame(aSurfaceFrame)
 			, fSceneFrame(aSceneFrame)
@@ -55,21 +79,12 @@ namespace waavs {
 		
 		// Start with these deleted until we know how
 		// to use them.
-		ViewPort(const ViewPort& other) = delete;
+
 		ViewPort& operator=(const ViewPort& other) = delete;
 		
 		virtual ~ViewPort() = default;
 
-		/*
-		ViewPort(const Viewport& other)
-			: fTransform(other.fTransform)
-			, fInverseTransform(other.fInverseTransform)
-			, fRotRad(other.fRotRad)
-			, fRotCenter(other.fRotCenter)
-			, fWorldFrame(other.fWorldFrame)
-			, fObjectFrame(other.fObjectFrame)
-		{}
-		*/
+
 
 		virtual void reset() {
 			fTransform.reset();
@@ -98,18 +113,15 @@ namespace waavs {
 		void sceneFrame(const BLRect& fr) { fSceneFrame = fr; calcTransform(); }
 		const BLRect& sceneFrame() const { return fSceneFrame; }
 
-
-		// Convert a point from one frame to the other
-		// this is a convenience, because you can just get the appropriate
-		// transformation matrix and do it separately.
-		// So, only use these for one offs, otherwise, get the transform
-		// and use that if doing bulk conversions.
+		
+		// Convert a point from the scene to the surface
 		BLPoint sceneToSurface(double x, double y) const
 		{
 			BLPoint pt = fTransform.mapPoint(x, y);
 			return pt;
 		}
 		
+		// Convert a point from the surface to the scene
 		BLPoint surfaceToScene(double x, double y) const
 		{
 			BLPoint pt = fInverseTransform.mapPoint(x, y );
@@ -132,8 +144,6 @@ namespace waavs {
 		}
 
 
-		
-		
 		void calcTransform()
 		{
 			BLPoint ascale(1, 1);

@@ -47,7 +47,7 @@ namespace waavs {
 
 
 		// Type conversions
-		explicit constexpr operator bool() const noexcept { return (fEnd - fStart) > 0; };
+		explicit operator bool() const noexcept { return (fEnd - fStart) > 0; };
 
 
 		// Array access

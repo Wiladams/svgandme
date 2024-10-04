@@ -11,15 +11,21 @@ namespace waavs {
 	{
 		BLTextMetrics tm;
 		BLGlyphBuffer gb;
+		BLFontMetrics fm = font.metrics();
 
 		gb.setUtf8Text(txt.data(), txt.size());
 		font.shape(gb);
 		font.getTextMetrics(gb, tm);
 
 		float cx = (float)(tm.boundingBox.x1 - tm.boundingBox.x0);
-		float cy = font.metrics().ascent + font.metrics().descent;
+		float cy = fm.ascent + fm.descent;
 
 		return BLPoint(cx, cy);
+	}
+
+	static double ascent(const BLFont& font) noexcept
+	{
+		return font.metrics().ascent;
 	}
 
 	static double descent(const BLFont& font) noexcept
@@ -27,16 +33,20 @@ namespace waavs {
 		return font.metrics().descent;
 	}
 
+	static double capHeight(const BLFont& font) noexcept
+	{
+		return font.metrics().capHeight;
+	}
+
 	static double emHeight(const BLFont& font) noexcept
 	{
-		auto size = textMeasure(font, "M");
-		return size.y;
+		auto h = font.metrics().ascent + font.metrics().descent;
+		return h;
 	}
 
 	static double exHeight(const BLFont& font) noexcept
 	{
-		auto size = textMeasure(font, "x");
-		return size.y;
+		return font.metrics().xHeight;
 	}
 
 	// calcTextPosition
@@ -98,6 +108,14 @@ namespace waavs {
 		switch (baseline)
 		{
 		case DOMINANTBASELINE::HANGING:
+			y = y + capHeight(font);
+			break;
+
+		case DOMINANTBASELINE::MATHEMATICAL:
+			y = y + exHeight(font);
+			break;
+
+		case DOMINANTBASELINE::TEXT_BEFORE_EDGE:
 			y = y + emHeight(font);
 			break;
 
@@ -335,52 +353,6 @@ namespace waavs {
 						porder = porder >> 2;
 					}
 
-
-					/*
-					ByteSpan porder = getAttribute("paint-order");
-					
-					if (!porder || porder=="normal") {
-						ctx->fillText(txt, pRect.x, pRect.y);
-						ctx->strokeText(txt, pRect.x, pRect.y);
-					}
-					else {
-						std::list<ByteSpan> alist = {
-							ByteSpan("fill"),
-							ByteSpan("stroke"),
-							ByteSpan("markers")
-						};
-						
-						// get paint order tokens one at a time
-						while (porder) {
-							auto ptoken = chunk_token(porder, chrWspChars);
-							if (ptoken.empty())
-								break;
-
-							if (ptoken == "fill")
-								ctx->fillText(txt, pRect.x, pRect.y);
-							else if (ptoken == "stroke")
-								ctx->strokeText(txt, pRect.x, pRect.y);
-
-							alist.remove(ptoken);
-						}
-
-						// If there's anything still in the list, then draw that
-						for (auto& token : alist) {
-							if (token == "fill")
-								ctx->fillText(txt, pRect.x, pRect.y);
-							else if (token == "stroke")
-								ctx->strokeText(txt, pRect.x, pRect.y);
-							else if (token == "markers")
-							{
-								// draw markers if we have any
-								//if (fHasMarkers)
-								//	drawMarkers(ctx, groot);
-							}
-						}
-						
-					}
-					*/
-
 					ctx->textCursor(BLPoint(pRect.x + pRect.w, pRect.y));
 				}
 				else
@@ -390,7 +362,6 @@ namespace waavs {
 					
 					if (nullptr != tspanNode)
 					{
-						//ctx->textCursor(BLPoint(fX, fY));
 						tspanNode->draw(ctx, groot);
 					}
 				}
