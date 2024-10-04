@@ -6,7 +6,7 @@
 
 #include <vector>
 #include <string>
-#include <functional>
+
 
 
 #include "maths.h"
@@ -14,7 +14,7 @@
 
 namespace waavs {
     // Basic type to encapsulate a mouse event
-    enum {
+    enum MouseActivityKind {
         // These are based on regular events
         MOUSEMOVED,
         MOUSEPRESSED,
@@ -54,7 +54,7 @@ namespace waavs {
     };
 
     // Keyboard interactions
-    enum {
+    enum KeyboardActivityKind {
         KEYPRESSED,
         KEYRELEASED,
         KEYTYPED
@@ -71,7 +71,7 @@ namespace waavs {
     };
 
     // Touch interactions
-    enum {
+    enum touchActivityKind {
         TOUCH_DOWN,
         TOUCH_UP,
         TOUCH_MOVE,
@@ -102,7 +102,7 @@ namespace waavs {
         bool isPen;
     };
 
-    enum {
+    enum GestureActivityKind {
         GESTURE_BEGIN = 1,
         GESTURE_END = 2,
         GESTURE_ZOOM = 3,
@@ -148,7 +148,7 @@ namespace waavs {
     };
 
     // For joystick activity
-    enum {
+    enum JoystickActivityKind {
         JOYPRESSED,
         JOYRELEASED,
         JOYMOVED,
@@ -174,8 +174,8 @@ namespace waavs {
 
     struct FrameCountEvent
     {
-        double seconds;
-        uint64_t frameCount;
+        double seconds;         // Relative to application start time
+        uint64_t frameCount;    // Since application start
     };
 
     struct ResizeEvent

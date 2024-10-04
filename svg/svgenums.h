@@ -5,7 +5,7 @@
 //
 // There are numerous enums in SVG, and we want to quickly convert between their
 // textual representation, and their numeric value.  
-// The SVGEnum represents the enumeration as a map between the static text and the numeric value.
+// The WSEnum represents the enumeration as a map between the static text and the numeric value.
 // We use ByteSpan as the key, and ByteSpanHash as the hashing function.  ByteSpan is a good choice, 
 // because the literal text is fixed at compile time, so does not change during the duration
 // of the program.  Using the ByteSpanHash, will make for a quick lookup.  This may or may not be
@@ -23,32 +23,24 @@
 
 #include "bspan.h"
 #include "blend2d.h"
+#include "wsenum.h"
+
+
 
 namespace waavs {
-	using SVGEnum = std::unordered_map<ByteSpan, uint32_t, ByteSpanHash, ByteSpanEquivalent>;
+	enum PaintOrderKind : uint32_t {
+		SVG_PAINT_ORDER_NONE = 0,		// 00
+		SVG_PAINT_ORDER_FILL = 1,		// 01
+		SVG_PAINT_ORDER_STROKE = 2,		// 10
+		SVG_PAINT_ORDER_MARKERS = 3,	// 11
+		SVG_PAINT_ORDER_NORMAL = 57,	// 111001
+	};
 
-	static INLINE bool getEnumValue(SVGEnum enumMap, const ByteSpan& key, uint32_t & value) noexcept
-	{
-		auto it = enumMap.find(key);
-		if (it == enumMap.end())
-			return false;
-		value = it->second;
-		return true;
-	}
-
-	// Return the key that corresponds to the specified value
-	static INLINE bool getEnumKey(SVGEnum enumMap, uint32_t value, ByteSpan& key) noexcept
-	{
-		for (auto it = enumMap.begin(); it != enumMap.end(); ++it)
-		{
-			if (it->second == value)
-			{
-				key = it->first;
-				return true;
-			}
-		}
-		return false;
-	}
+	static WSEnum SVGPaintOrderEnum = {
+		{"fill", PaintOrderKind::SVG_PAINT_ORDER_FILL},
+		{"stroke", PaintOrderKind::SVG_PAINT_ORDER_STROKE},
+		{"markers", PaintOrderKind::SVG_PAINT_ORDER_MARKERS},
+	};
 }
 
 namespace waavs {
@@ -57,7 +49,7 @@ namespace waavs {
 		SVG_SPACE_OBJECT = 1
 	};
 	
-	static SVGEnum SVGSpaceUnits = {
+	static WSEnum SVGSpaceUnits = {
 		{ "userSpaceOnUse", SpaceUnitsKind::SVG_SPACE_USER },
 		{ "objectBoundingBox", SpaceUnitsKind::SVG_SPACE_OBJECT }
 	};
@@ -76,7 +68,7 @@ namespace waavs {
 		SVG_LENGTHTYPE_PC = 10,
 	};
 	
-	static SVGEnum SVGDimensionEnum = {
+	static WSEnum SVGDimensionEnum = {
 		{"",SVG_LENGTHTYPE_NUMBER },
 		{"px", SVG_LENGTHTYPE_PX},
 		{"pt", SVG_LENGTHTYPE_PT},
@@ -115,13 +107,13 @@ namespace waavs {
 		SVG_ALIGNMENT_END = 0x04,
 	};
 	
-	static SVGEnum SVGTextAnchor = {
+	static WSEnum SVGTextAnchor = {
 		{ "start", SVG_ALIGNMENT_START },
 		{ "middle", SVG_ALIGNMENT_MIDDLE },
 		{ "end", SVG_ALIGNMENT_END }
 	};
 
-    static SVGEnum SVGTextAlign = {
+    static WSEnum SVGTextAlign = {
         { "start", (int)SVG_ALIGNMENT_START },
         { "middle", (int)SVG_ALIGNMENT_MIDDLE },
         { "end", (int)SVG_ALIGNMENT_END }
@@ -147,7 +139,7 @@ namespace waavs {
         USE_SCRIPT,
     };
 
-	static SVGEnum SVGDominantBaseline = {
+	static WSEnum SVGDominantBaseline = {
 		{ "auto", DOMINANTBASELINE::AUTO },
 		{ "alphabetic", DOMINANTBASELINE::ALPHABETIC },
 		{ "central", DOMINANTBASELINE::CENTRAL },
@@ -164,7 +156,7 @@ namespace waavs {
 		{ "use-script", DOMINANTBASELINE::USE_SCRIPT }
 	};
     
-	static SVGEnum SVGFontWeight = {
+	static WSEnum SVGFontWeight = {
 		{ "100", BL_FONT_WEIGHT_THIN },
 		{ "200", BL_FONT_WEIGHT_EXTRA_LIGHT },
 		{ "300", BL_FONT_WEIGHT_LIGHT },
@@ -179,7 +171,7 @@ namespace waavs {
 		{ "1000", BL_FONT_WEIGHT_BLACK }
 	};
     
-    static SVGEnum SVGFontStretch = {
+    static WSEnum SVGFontStretch = {
 		{"condensed", BL_FONT_STRETCH_CONDENSED},
 		{"expanded", BL_FONT_STRETCH_EXPANDED},
 		{"extra-condensed", BL_FONT_STRETCH_EXTRA_CONDENSED},
@@ -191,7 +183,7 @@ namespace waavs {
 		{"ultra-expanded", BL_FONT_STRETCH_ULTRA_EXPANDED}
     };
     
-	static SVGEnum SVGFontStyle = {
+	static WSEnum SVGFontStyle = {
 		{"normal", BL_FONT_STYLE_NORMAL},
 		{"italic", BL_FONT_STYLE_ITALIC},
 		{"oblique", BL_FONT_STYLE_OBLIQUE}
@@ -200,7 +192,7 @@ namespace waavs {
 }
 
 namespace waavs {
-	static SVGEnum SVGLineCaps = {
+	static WSEnum SVGLineCaps = {
 		{ "butt", BL_STROKE_CAP_BUTT },
 		{ "round", BL_STROKE_CAP_ROUND },
 		{ "square", BL_STROKE_CAP_SQUARE },
@@ -212,7 +204,7 @@ namespace waavs {
 	};
 
 
-	static SVGEnum SVGLineJoin = {
+	static WSEnum SVGLineJoin = {
 		{ "miter", BL_STROKE_JOIN_MITER_BEVEL },
 		{ "round", BL_STROKE_JOIN_ROUND },
 		{ "bevel", BL_STROKE_JOIN_BEVEL },
@@ -234,7 +226,7 @@ namespace waavs {
         VECTOR_EFFECT_FIXED_POSITION,
     };
 
-	static SVGEnum SVGVectorEffect = {
+	static WSEnum SVGVectorEffect = {
 		{ "none", VECTOR_EFFECT_NONE },
 		{ "non-scaling-stroke", VECTOR_EFFECT_NON_SCALING_STROKE },
 		{ "non-scaling-size", VECTOR_EFFECT_NON_SCALING_SIZE },
@@ -247,7 +239,7 @@ namespace waavs {
 
 namespace waavs {
 
-	static SVGEnum SVGFillRule = {
+	static WSEnum SVGFillRule = {
 		{ "nonzero", BL_FILL_RULE_NON_ZERO },
 		{ "evenodd", BL_FILL_RULE_EVEN_ODD },
 	};
@@ -260,13 +252,13 @@ namespace waavs {
 // Parsing spreadMethod, which is applied to the 
 // ExtendMode of the gradient
 namespace waavs {
-	static SVGEnum SVGSpreadMethod = {
+	static WSEnum SVGSpreadMethod = {
 		{ "pad", BL_EXTEND_MODE_PAD },
 		{ "reflect", BL_EXTEND_MODE_REFLECT },
 		{ "repeat", BL_EXTEND_MODE_REPEAT },
 	};
 
-	static SVGEnum SVGExtendMode = {
+	static WSEnum SVGExtendMode = {
 		{"pad", BL_EXTEND_MODE_PAD},
 		{"reflect", BL_EXTEND_MODE_REFLECT},
 		{"repeat", BL_EXTEND_MODE_REPEAT},

@@ -17,6 +17,8 @@ namespace waavs {
         void registerNodeTypes()
         {
             // Register attributes
+            SVGPaintOrderAttribute::registerFactory();
+
             SVGOpacity::registerFactory();
 
             SVGFillPaint::registerFactory();

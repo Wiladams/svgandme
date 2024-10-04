@@ -12,7 +12,7 @@
 #include "base64.h"
 #include "converters.h"
 #include "svgenums.h"
-
+#include "maths.h"
 
 //
 // Parsing routines for the core SVG data types

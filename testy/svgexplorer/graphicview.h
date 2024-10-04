@@ -38,7 +38,6 @@ namespace waavs {
 		GraphicView(const BLRect& aframe)
 			: fFrame(aframe)
 			, fBounds({ 0,0,aframe.w, aframe.h })
-			//, fViewport({ 0,0,aframe.w, aframe.h }, { 0,0,aframe.w, aframe.h })
 		{
 			fSceneToSurfaceTransform.reset();
 			fSurfaceToSceneTransform.reset();
@@ -50,48 +49,29 @@ namespace waavs {
 
 
 		const BLRect & frame() const { return fFrame; }
-		virtual void setFrame(const BLRect& arect) { 
-			fFrame = arect;  
-			//fViewport.surfaceFrame({ 0,0,arect.w, arect.h }); 
-		}
+		virtual void setFrame(const BLRect& arect) { fFrame = arect;  }
+
 
 		const BLRect & bounds() const { return fBounds; }
-		virtual void setBounds(const BLRect& arect) { 
-			fBounds = arect;  
-			//fViewport.sceneFrame(arect); 
-		}
+		virtual void setBounds(const BLRect& arect) { fBounds = arect;  }
 
-		virtual bool contains(double x, double y)
-		{
-			return containsRect(frame(), x, y);
-		}
+		virtual bool contains(double x, double y) {return containsRect(frame(), x, y);}
 
-		virtual void onMouseEvent(const MouseEvent& e)
-		{
+		virtual void onMouseEvent(const MouseEvent& e){}
 
-		}
+		virtual void onKeyboardEvent(const KeyboardEvent& ke){}
 
-		virtual void onKeyboardEvent(const KeyboardEvent& ke)
-		{
-		}
+		// For animation
+		void onFrameEvent(const FrameCountEvent& fe) {}
 
 		// This is meant to be rendered without any transformation applied
 		// except translation based on our frame offset
-		virtual void drawBackground(IRenderSVG* ctx)
-		{
-
-		}
+		virtual void drawBackground(IRenderSVG* ctx){}
 
 		// This is where the content should be drawn
-		virtual void drawSelf(IRenderSVG* ctx)
-		{
+		virtual void drawSelf(IRenderSVG* ctx){}
 
-		}
-
-		virtual void drawForeground(IRenderSVG* ctx)
-		{
-
-		}
+		virtual void drawForeground(IRenderSVG* ctx){}
 
 		virtual void draw(IRenderSVG* ctx)
 		{

@@ -24,10 +24,6 @@ static VOIDROUTINE gSetupHandler = nullptr;
 
 
 
-
-
-
-
 // Typography
 static bool loadFont(const char* filename, BLFontFace& ff) noexcept
 {

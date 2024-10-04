@@ -161,12 +161,16 @@ namespace waavs {
         }
 
         ByteSpan fValue{};
-        
+        uint32_t fInstruct = PaintOrderKind::SVG_PAINT_ORDER_NORMAL;
         
         SVGPaintOrderAttribute(IAmGroot* iMap) :SVGVisualProperty(iMap) 
         {
             id("paint-order");
         }
+
+        uint32_t instructions() const noexcept { return fInstruct; }
+
+
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
@@ -174,12 +178,76 @@ namespace waavs {
                 return false;
             
             fValue = inChunk;
-            
+            fInstruct = createPaintOrderInstruction(inChunk);
+
             set(true);
 
             return true;
         }
         
+        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        {
+            ctx->paintOrder(fInstruct);
+        }
+
+        static uint32_t createPaintOrderInstruction(const ByteSpan& bs)
+        {
+            uint32_t ins = 0;
+            ByteSpan porder = bs;
+
+            if (!porder || porder == "normal") {
+                // default order is fill, stroke, markers
+                ins = PaintOrderKind::SVG_PAINT_ORDER_NORMAL;
+            }
+            else {
+                std::list<ByteSpan> alist = {
+                    ByteSpan("fill"),
+                    ByteSpan("stroke"),
+                    ByteSpan("markers")
+                };
+
+                // get paint order tokens one at a time
+                size_t slot = 0;
+
+                while (porder) {
+                    auto ptoken = chunk_token(porder, chrWspChars);
+                    if (ptoken.empty())
+                        break;
+
+                    uint32_t tokValue = 0;
+                    if (getEnumValue(SVGPaintOrderEnum, ptoken, tokValue))
+                    {
+                        // shift to the right slot
+                        tokValue = tokValue << (2*slot);
+
+                        // add the value to the instructions
+                        ins |= tokValue;
+                    }
+                    slot++;
+
+                    alist.remove(ptoken);
+                }
+
+                // If there's anything still in the list, add that to the instructions
+                for (auto& ptoken : alist) {
+                    uint32_t tokValue = 0;
+
+                    if (getEnumValue(SVGPaintOrderEnum, ptoken, tokValue))
+                    {
+                        // shift to the right slot
+                        tokValue = tokValue << (2*slot);
+
+                        // add the value to the instructions
+                        ins |= tokValue;
+                    }
+                    slot++;
+                }
+
+            }
+
+            return ins;
+        }
+
     };
 
 
@@ -222,6 +290,8 @@ namespace waavs {
         {
             ctx->textAnchor(fValue);
         }
+
+
     };
 }
 

@@ -195,6 +195,7 @@
     <ClInclude Include="..\..\svg\svgdrawingcontext.h" />
     <ClInclude Include="..\..\svg\svgenums.h" />
     <ClInclude Include="..\..\svg\svgextensibility.h" />
+    <ClInclude Include="..\..\svg\svgfactory.h" />
     <ClInclude Include="..\..\svg\svgfilter.h" />
     <ClInclude Include="..\..\svg\svgfont.h" />
     <ClInclude Include="..\..\svg\svggradient.h" />
@@ -212,6 +213,7 @@
     <ClInclude Include="..\..\svg\svgtext.h" />
     <ClInclude Include="..\..\svg\utf8.h" />
     <ClInclude Include="..\..\svg\viewport.h" />
+    <ClInclude Include="..\..\svg\wsenum.h" />
     <ClInclude Include="..\..\svg\xmlentity.h" />
     <ClInclude Include="..\..\svg\xmlscan.h" />
     <ClInclude Include="svgicons.h" />

@@ -76,9 +76,35 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 #define CAN_WIDTH 640
 #define CAN_HEIGHT 480
 
+void quik()
+{
+	printf("%4d NORMAL\n", SVGPaintOrderAttribute::createInstructions("normal"));
+	printf("%4d fill\n", SVGPaintOrderAttribute::createInstructions("fill"));
+	printf("%4d fill stroke\n", SVGPaintOrderAttribute::createInstructions("fill stroke"));
+	printf("%4d fill stroke markers\n", SVGPaintOrderAttribute::createInstructions("fill stroke markers"));
+	printf("==============================================\n");
+	printf("%4d stroke\n", SVGPaintOrderAttribute::createInstructions("stroke"));
+	printf("%4d stroke fill\n", SVGPaintOrderAttribute::createInstructions("stroke fill"));
+	printf("%4d stroke fill markers\n", SVGPaintOrderAttribute::createInstructions("stroke fill markers"));
+	printf("==============================================\n");
+	printf("%4d markers\n", SVGPaintOrderAttribute::createInstructions("markers"));
+	printf("%4d markers fill\n", SVGPaintOrderAttribute::createInstructions("markers fill"));
+	printf("%4d markers fill stroke\n", SVGPaintOrderAttribute::createInstructions("markers fill stroke"));
+	printf("==============================================\n");
+	printf("%4d markers stroke fill\n", SVGPaintOrderAttribute::createInstructions("markers stroke fill"));
+	printf("%4d markers stroke\n", SVGPaintOrderAttribute::createInstructions("markers stroke"));
+
+
+
+
+}
+
+
 int main(int argc, char **argv)
 {
-    if (argc < 2)
+	//quik();
+
+	if (argc < 2)
     {
         printf("Usage: svgimage <xml file>  [output file]\n");
         return 1;
@@ -127,7 +153,7 @@ int main(int argc, char **argv)
 	// Now create a drawing context so we can
 	// do the rendering
 	SvgDrawingContext ctx(&gFontHandler);
-	BLImage img(surfaceFrame.w, surfaceFrame.h, BL_FORMAT_PRGB32);
+	BLImage img(static_cast<int>(surfaceFrame.w), static_cast<int>(surfaceFrame.h), BL_FORMAT_PRGB32);
 	
 	// apply the viewport's sceneToSurface transform to the context
 	ctx.setTransform(vp.sceneToSurfaceTransform());

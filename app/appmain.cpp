@@ -246,7 +246,7 @@ void noCursor()
     Turn Windows keyboard messages into keyevents that can 
     more easily be handled at the application level
 */
-void getKeyStates()
+void refreshKeyStates()
 {
     // Get the state of all keys on the keyboard
     ::GetKeyboardState(keyStates);
@@ -319,7 +319,7 @@ static LRESULT HandleMouseMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
     e.mbutton = (wParam & MK_MBUTTON) != 0;
     e.xbutton1 = (wParam & MK_XBUTTON1) != 0;
     e.xbutton2 = (wParam & MK_XBUTTON2) != 0;
-    bool isPressed = e.lbutton || e.rbutton || e.mbutton;
+    bool isPressed = e.lbutton || e.rbutton || e.mbutton || e.xbutton1 || e.xbutton2;
 
     switch(msg) {
         case WM_LBUTTONDBLCLK:
@@ -396,6 +396,8 @@ static LRESULT HandleMouseMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
     mouseY = e.y;
     mouseDelta = e.delta;
     mouseIsPressed = isPressed;
+
+    //printf("MOUSE: %d %d\n", e.xbutton1, e.xbutton2);
 
     gMouseEventTopic.notify(e);
 

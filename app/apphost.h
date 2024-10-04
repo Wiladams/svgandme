@@ -150,7 +150,7 @@ APP_EXPORT void layered();
 APP_EXPORT void noLayered();
 APP_EXPORT bool isLayered();
 
-APP_EXPORT void getKeyStates();
+APP_EXPORT void refreshKeyStates();
 
 // turn raw input on and off
 APP_EXPORT void rawInput();

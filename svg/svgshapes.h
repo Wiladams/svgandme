@@ -337,6 +337,34 @@ namespace waavs {
 
 		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{
+			// Get the paint order from the context
+			uint32_t porder = ctx->paintOrder();
+
+			for (int slot = 0; slot < 3; slot++)
+			{
+				uint32_t ins = porder & 0x03;	// get two lowest bits, which are a single instruction
+
+				switch (ins)
+				{
+				case PaintOrderKind::SVG_PAINT_ORDER_FILL:
+					ctx->fillPath(fPath);
+					break;
+					
+				case PaintOrderKind::SVG_PAINT_ORDER_STROKE:
+					ctx->strokePath(fPath);
+					break;
+
+				case PaintOrderKind::SVG_PAINT_ORDER_MARKERS:
+				{
+					drawMarkers(ctx, groot);
+				}
+				break;
+				}
+
+				// discard instruction, shift down to get the next one ready
+				porder = porder >> 2;
+			}
+			/*
 			// BUGBUG
 			// The paint-order attribute can change which
 			// order these are done in
@@ -395,6 +423,7 @@ namespace waavs {
 				}
 
 			}
+			*/
 
 		}
 

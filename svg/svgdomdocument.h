@@ -6,7 +6,7 @@
 
 #include "xmlscan.h"
 #include "svgcss.h"
-
+#include "membuff.h"
 
 
 
@@ -67,7 +67,7 @@ namespace waavs {
             ByteSpan key{};
             ByteSpan value{};
 
-            while (nextAttributeKeyValue(src, key, value))
+            while (readNextKeyAttribute(src, key, value))
             {
                 setAttribute(key, value);
             }
@@ -415,7 +415,7 @@ namespace waavs {
         // Overrides of node construction
         void loadXmlDecl(XmlElementIterator& iter, IAmDocument& doc) override
         {
-            printf("SVGDOMDocument::loadXmlDecl()[%s]\n", toString(iter->name()).c_str());
+            printf("SVGDOMDocument::loadXmlDecl()[%s]\n", (iter->name());
             printXmlElement(*iter);
             addAttributes(iter->data());
         }

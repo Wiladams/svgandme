@@ -65,7 +65,7 @@ namespace waavs {
 
         ByteSpan key{};
         ByteSpan value{};
-        while (nextAttributeKeyValue(src, key, value))
+        while (readNextKeyAttribute(src, key, value))
         {
             printf("  ");
             writeChunk(key);

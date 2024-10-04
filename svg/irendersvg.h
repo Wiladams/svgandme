@@ -25,7 +25,8 @@ namespace waavs
         
         // Paint
         BLVar fDefaultColor;
-        
+        uint32_t fPaintOrder{ PaintOrderKind::SVG_PAINT_ORDER_NORMAL };
+
         // Typography
         TXTALIGNMENT fTextHAlignment = LEFT;
         TXTALIGNMENT fTextVAlignment = BASELINE;
@@ -51,7 +52,8 @@ namespace waavs
             fTextCursor = other.fTextCursor;
             
             fDefaultColor.assign(other.fDefaultColor);
-            
+            fPaintOrder = other.fPaintOrder;
+
 			fTextHAlignment = other.fTextHAlignment;
 			fTextVAlignment = other.fTextVAlignment;
             
@@ -74,7 +76,8 @@ namespace waavs
                 fTextCursor = other.fTextCursor;
                 
                 fDefaultColor.assign(other.fDefaultColor);
-                
+                fPaintOrder = other.fPaintOrder;
+
                 fTextHAlignment = other.fTextHAlignment;
                 fTextVAlignment = other.fTextVAlignment;
                 
@@ -94,6 +97,9 @@ namespace waavs
         const BLVar & defaultColor() const { return fDefaultColor; }
         void defaultColor(const BLVar& color) { fDefaultColor.assign(color); }
         
+        uint32_t paintOrder() const { return fPaintOrder; }
+        void paintOrder(const uint32_t order) { fPaintOrder = order; }
+
         // Typography changes
 		void fontHandler(FontHandler* handler) noexcept
 		{
@@ -110,7 +116,8 @@ namespace waavs
             fLocalFrame = BLRect();
             
             fDefaultColor = BLVar::null();
-            
+            fPaintOrder = PaintOrderKind::SVG_PAINT_ORDER_NORMAL;
+
             fTextHAlignment = LEFT;
             fTextVAlignment = BASELINE;
             
@@ -283,7 +290,9 @@ namespace waavs
         const BLVar& defaultColor() const { return fCurrentState.defaultColor(); }
         void defaultColor(const BLVar& color) { fCurrentState.defaultColor(color); }
 
-        
+        uint32_t paintOrder() const { return fCurrentState.paintOrder(); }
+        void paintOrder(const uint32_t order) { fCurrentState.paintOrder(order); }
+
         virtual void strokeBeforeTransform(bool b) 
         {
             setStrokeTransformOrder(b ? BL_STROKE_TRANSFORM_ORDER_BEFORE : BL_STROKE_TRANSFORM_ORDER_AFTER);
