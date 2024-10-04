@@ -364,66 +364,7 @@ namespace waavs {
 				// discard instruction, shift down to get the next one ready
 				porder = porder >> 2;
 			}
-			/*
-			// BUGBUG
-			// The paint-order attribute can change which
-			// order these are done in
-			//printf("SVGGeometryElement::drawSelf(%s)\n", id().c_str());
 
-			ByteSpan porder = getAttribute("paint-order");
-
-			if (!porder || porder == "normal") {
-				// default order is fill, stroke, markers
-				ctx->fillPath(fPath);
-				ctx->strokePath(fPath);
-
-				// draw markers if we have any
-				//if (fHasMarkers)
-					drawMarkers(ctx, groot);
-			}
-			else {
-				std::list<ByteSpan> alist = {
-					ByteSpan("fill"),
-					ByteSpan("stroke"),
-					ByteSpan("markers")
-				};
-				
-				// get paint order tokens one at a time
-				while (porder) {
-					auto ptoken = chunk_token(porder, chrWspChars);
-					if (ptoken.empty())
-						break;
-
-					if (ptoken == "fill") 
-						ctx->fillPath(fPath);
-					else if (ptoken == "stroke")
-						ctx->strokePath(fPath);
-					else if (ptoken == "markers")
-					{
-						// draw markers if we have any
-						//if (fHasMarkers)
-							drawMarkers(ctx, groot);
-					}
-					
-					alist.remove(ptoken);
-				}
-				
-				// If there's anything still in the list, then draw that
-				for (auto& token : alist) {
-					if (token == "fill")
-						ctx->fillPath(fPath);
-					else if (token == "stroke")
-						ctx->strokePath(fPath);
-					else if (token == "markers")
-					{
-						// draw markers if we have any
-						if (fHasMarkers)
-							drawMarkers(ctx, groot);
-					}
-				}
-
-			}
-			*/
 
 		}
 

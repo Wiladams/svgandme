@@ -29,7 +29,7 @@ namespace waavs
 
         static std::unordered_map<ByteSpan, BLRgba32, ByteSpanInsensitiveHash, ByteSpanCaseInsensitive> svgcolors =
         {
-            {"white",  BLRgba32(255, 255, 255)},
+            {("white"),  BLRgba32(255, 255, 255)},
             {("ivory"), BLRgba32(255, 255, 240)},
             {("lightyellow"), BLRgba32(255, 255, 224)},
             {("mintcream"), BLRgba32(245, 255, 250)},
@@ -170,7 +170,7 @@ namespace waavs
             {("darkblue"), BLRgba32(0, 0, 139)},
             {("navy"), BLRgba32(0, 0, 128)},
             {("black"), BLRgba32(0, 0, 0)},
-            {("transparent"), BLRgba32(0, 0, 0) },
+            {("transparent"), BLRgba32(0, 0, 0, 0) },
 
             // Deprecated system colors
             {"activeborder", BLRgba32(0xffb4b4b4)},

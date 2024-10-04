@@ -6,8 +6,13 @@
 namespace waavs {
 	// expandCharacterEntities()
 	// 
-	// Expand the 5 basic entities
-	// &lt; &gt; &amp; &apos; &quot;
+	// Expand the 5 basic character entities
+	// &lt; 
+	// &gt; 
+	// &amp; 
+	// &apos; 
+	// &quot;
+	// 
 	// This routine does not handle any other kinds
 	// of entities, such as the numeric kind.
 	// The outputSpan is assumed to be big enough to contain

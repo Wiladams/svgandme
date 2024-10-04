@@ -307,6 +307,36 @@ namespace waavs {
 					BLRect pRect = calcTextPosition(ctx->font(), txt, pos.x, pos.y, anchor, fTextVAlignment, fDominantBaseline);
 					expandRect(fBBox, pRect);
 					
+					// Get the paint order from the context
+					uint32_t porder = ctx->paintOrder();
+
+					for (int slot = 0; slot < 3; slot++)
+					{
+						uint32_t ins = porder & 0x03;	// get two lowest bits, which are a single instruction
+
+						switch (ins)
+						{
+						case PaintOrderKind::SVG_PAINT_ORDER_FILL:
+							ctx->fillText(txt, pRect.x, pRect.y);
+							break;
+
+						case PaintOrderKind::SVG_PAINT_ORDER_STROKE:
+							ctx->strokeText(txt, pRect.x, pRect.y);
+							break;
+
+						case PaintOrderKind::SVG_PAINT_ORDER_MARKERS:
+						{
+							//drawMarkers(ctx, groot);
+						}
+						break;
+						}
+
+						// discard instruction, shift down to get the next one ready
+						porder = porder >> 2;
+					}
+
+
+					/*
 					ByteSpan porder = getAttribute("paint-order");
 					
 					if (!porder || porder=="normal") {
@@ -349,6 +379,7 @@ namespace waavs {
 						}
 						
 					}
+					*/
 
 					ctx->textCursor(BLPoint(pRect.x + pRect.w, pRect.y));
 				}
