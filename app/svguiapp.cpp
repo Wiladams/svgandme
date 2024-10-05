@@ -74,9 +74,22 @@ static bool loadFontDirectory(const char* dir) noexcept
 
 static bool loadDefaultFonts() noexcept
 {
-	getFontHandler().loadDefaultFonts();
-
-	return true;
+	// Load in some fonts to start
+	std::vector<const char*> fontNames{
+		"c:\\Windows\\Fonts\\arial.ttf",
+		"c:\\Windows\\Fonts\\calibri.ttf",
+		"c:\\Windows\\Fonts\\cascadiacode.ttf",
+		"c:\\Windows\\Fonts\\consola.ttf",
+		"c:\\Windows\\Fonts\\cour.ttf",
+		"c:\\Windows\\Fonts\\gothic.ttf",
+		"c:\\Windows\\Fonts\\segoui.ttf",
+		"c:\\Windows\\Fonts\\tahoma.ttf",
+		"c:\\Windows\\Fonts\\terminal.ttf",
+		"c:\\Windows\\Fonts\\times.ttf",
+		"c:\\Windows\\Fonts\\verdana.ttf",
+		"c:\\Windows\\Fonts\\wingding.ttf"
+	};
+	return getFontHandler().loadFonts(fontNames);
 }
 
 static bool loadFontFiles(std::vector<const char*> filenames)

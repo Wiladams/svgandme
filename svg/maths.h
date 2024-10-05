@@ -51,26 +51,26 @@ namespace {
 
 namespace waavs {
     // Some useful Math constants
-    static constexpr auto pi = 3.14159265358979323846;          // PI (as a double)
-    static constexpr auto pif = (float)pi;                      // PI (as a float value)
-    static constexpr auto PiOver2 = 1.57079632679489661923;     // PI / 2
-    static constexpr auto PiOver4 = 0.78539816339744830961;     // PI / 4
-    static constexpr auto Pi2 = 6.28318530717958647693;         // 2 * PI
-    static constexpr auto InvPi = 0.31830988618379067154;
-    static constexpr auto Inv2Pi = 0.15915494309189533577;
-    static constexpr auto Inv4Pi = 0.07957747154594766788;      // sqrt(2.0)
-	static constexpr auto DegToRad = 0.017453292519943295;      // PI / 180
-	static constexpr auto RadToDeg = 57.29577951308232;         // 180 / PI
-    static constexpr auto Sqrt2 = 1.41421356237309504880;
+    constexpr auto pi = 3.14159265358979323846;          // PI (as a double)
+    constexpr auto pif = (float)pi;                      // PI (as a float value)
+    constexpr auto PiOver2 = 1.57079632679489661923;     // PI / 2
+    constexpr auto PiOver4 = 0.78539816339744830961;     // PI / 4
+    constexpr auto Pi2 = 6.28318530717958647693;         // 2 * PI
+    constexpr auto InvPi = 0.31830988618379067154;
+    constexpr auto Inv2Pi = 0.15915494309189533577;
+    constexpr auto Inv4Pi = 0.07957747154594766788;      // sqrt(2.0)
+	constexpr auto DegToRad = 0.017453292519943295;      // PI / 180
+	constexpr auto RadToDeg = 57.29577951308232;         // 180 / PI
+    constexpr auto Sqrt2 = 1.41421356237309504880;
 
-    static constexpr auto int_max = std::numeric_limits<int>::max();
-    static constexpr auto int_min = std::numeric_limits<int>::min();
-    static constexpr auto flt_max = std::numeric_limits<float>::max();
-    static constexpr auto flt_min = std::numeric_limits<float>::min();
-    static constexpr auto flt_eps = std::numeric_limits<float>::epsilon();
-    static constexpr auto dbl_max = std::numeric_limits<double>::max();
-    static constexpr auto dbl_min = std::numeric_limits<double>::min();
-    static constexpr auto dbl_eps = std::numeric_limits<double>::epsilon();
+    constexpr auto int_max = std::numeric_limits<int>::max();
+    constexpr auto int_min = std::numeric_limits<int>::min();
+    constexpr auto flt_max = std::numeric_limits<float>::max();
+    constexpr auto flt_min = std::numeric_limits<float>::min();
+    constexpr auto flt_eps = std::numeric_limits<float>::epsilon();
+    constexpr auto dbl_max = std::numeric_limits<double>::max();
+    constexpr auto dbl_min = std::numeric_limits<double>::min();
+    constexpr auto dbl_eps = std::numeric_limits<double>::epsilon();
 
 } 
 
@@ -135,85 +135,85 @@ namespace waavs
 
 namespace waavs
 {
-    static INLINE float sign(float a) noexcept { return a < 0 ? -1.0f : 1.0f; }
-    static INLINE float max(float a, float b) noexcept { return (a > b) ? a : b; }
-    static INLINE float min(float a, float b) noexcept { return (a < b) ? a : b; }
-    static INLINE float clamp(float a, float min_, float max_) noexcept { return min(max(a, min_), max_); }
+    INLINE float sign(float a) noexcept { return a < 0 ? -1.0f : 1.0f; }
+    INLINE float max(float a, float b) noexcept { return (a > b) ? a : b; }
+    INLINE float min(float a, float b) noexcept { return (a < b) ? a : b; }
+    INLINE float clamp(float a, float min_, float max_) noexcept { return min(max(a, min_), max_); }
     
-    static INLINE float abs(float a) noexcept { return a < 0 ? -a : a; }
-    static INLINE float acos(float a) noexcept { return std::acos(a); }
-    static INLINE float asin(float a) noexcept { return std::asin(a); }
+    INLINE float abs(float a) noexcept { return a < 0 ? -a : a; }
+    INLINE float acos(float a) noexcept { return std::acos(a); }
+    INLINE float asin(float a) noexcept { return std::asin(a); }
 
-    static INLINE float atan(float a) noexcept { return std::atan(a); }
-    static INLINE float atan2(float y, float x) noexcept { return std::atan2(y, x); }
-
-
-
-    static INLINE float cos(float a) noexcept { return std::cos(a); }
-    static INLINE float exp(float a) noexcept { return std::exp(a); }
-    static INLINE float exp2(float a) noexcept { return std::exp2(a); }
-    static INLINE float fmod(float a, float b) noexcept { return std::fmod(a, b); }
-    static INLINE float log(float a) noexcept { return std::log(a); }
-    static INLINE float log2(float a) noexcept { return std::log2(a); }
+    INLINE float atan(float a) noexcept { return std::atan(a); }
+    INLINE float atan2(float y, float x) noexcept { return std::atan2(y, x); }
 
 
-    static INLINE float pow(float a, float b) noexcept { return std::pow(a, b); }
-    static INLINE double powd(double a, double b) noexcept { return std::pow(a, b); }
+
+    INLINE float cos(float a) noexcept { return std::cos(a); }
+    INLINE float exp(float a) noexcept { return std::exp(a); }
+    INLINE float exp2(float a) noexcept { return std::exp2(a); }
+    INLINE float fmod(float a, float b) noexcept { return std::fmod(a, b); }
+    INLINE float log(float a) noexcept { return std::log(a); }
+    INLINE float log2(float a) noexcept { return std::log2(a); }
 
 
-    static INLINE float sin(float a) noexcept { return std::sin(a); }
-    static INLINE float sqr(float a) noexcept { return a * a; }
-    static INLINE float sqrt(float a) noexcept { return std::sqrt(a); }
-    static INLINE float tan(float a) noexcept { return std::tan(a); }
+    INLINE float pow(float a, float b) noexcept { return std::pow(a, b); }
+    INLINE double powd(double a, double b) noexcept { return std::pow(a, b); }
 
-    static INLINE bool isfinite(float a) { return std::isfinite(a); }
-    static INLINE constexpr float radians(float a) { return float(a * 0.017453292519943295); }
-    static INLINE constexpr float degrees(float a) { return float(a * 57.29577951308232); }
-    static INLINE constexpr float lerp(float a, float b, float u) { return a * (1.0f - u) + b * u; }
-    static INLINE  void swap(float& a, float& b) { return std::swap(a, b); }
-    static INLINE float smoothStep(float a, float b, float u) {
+
+    INLINE float sin(float a) noexcept { return std::sin(a); }
+    INLINE float sqr(float a) noexcept { return a * a; }
+    INLINE float sqrt(float a) noexcept { return std::sqrt(a); }
+    INLINE float tan(float a) noexcept { return std::tan(a); }
+
+    INLINE bool isfinite(float a) { return std::isfinite(a); }
+    INLINE constexpr float radians(float a) { return float(a * 0.017453292519943295); }
+    INLINE constexpr float degrees(float a) { return float(a * 57.29577951308232); }
+    INLINE constexpr float lerp(float a, float b, float u) { return a * (1.0f - u) + b * u; }
+    INLINE  void swap(float& a, float& b) { return std::swap(a, b); }
+    INLINE float smoothStep(float a, float b, float u) {
         auto t = clamp((u - a) / (b - a), 0.0f, 1.0f);
         return t * t * (3 - 2 * t);
     }
-    static INLINE float bias(float a, float bias) {
+    INLINE float bias(float a, float bias) {
         return a / ((1.0f / bias - 2) * (1.0f - a) + 1);
     }
-    static INLINE float gain(float a, float gain)
+    INLINE float gain(float a, float gain)
     {
         return (a < 0.5f) ? bias(a * 2.0f, gain) / 2.0f
             : bias(a * 2.0f - 1, 1.0f - gain) / 2.0f + 0.5f;
     }
 
-    static INLINE float map(float x, float olow, float ohigh, float rlow, float rhigh)
+    INLINE float map(float x, float olow, float ohigh, float rlow, float rhigh)
     {
         return rlow + (x - olow) * ((rhigh - rlow) / (ohigh - olow));
     }
 
-    static INLINE float floor(float a) { return std::floor(a); }
-    static INLINE float ceil(float a) { return std::ceil(a); }
-    static INLINE bool isNaN(const float a) { return std::isnan(a); }
+    INLINE float floor(float a) { return std::floor(a); }
+    INLINE float ceil(float a) { return std::ceil(a); }
+    INLINE bool isNaN(const float a) { return std::isnan(a); }
 
 }
 
 
 namespace waavs
 {
-    static INLINE double min(double  a, double b) noexcept { return a < b ? a : b; }
-    static INLINE double max(double a, double b) noexcept { return a > b ? a : b; }
-    static INLINE double abs(double a) noexcept { return a < 0 ? -a : a; }
+    INLINE double min(double  a, double b) noexcept { return a < b ? a : b; }
+    INLINE double max(double a, double b) noexcept { return a > b ? a : b; }
+    INLINE double abs(double a) noexcept { return a < 0 ? -a : a; }
 
-    static INLINE double atan(double a) noexcept { return std::atan(a); }
-    static INLINE double atan2(double y, double x) noexcept { return std::atan2(y, x); }
+    INLINE double atan(double a) noexcept { return std::atan(a); }
+    INLINE double atan2(double y, double x) noexcept { return std::atan2(y, x); }
 
     
-    static INLINE double clamp(double a, double min_, double max_) noexcept { return min(max(a, min_), max_); }
+    INLINE double clamp(double a, double min_, double max_) noexcept { return min(max(a, min_), max_); }
 
-    static INLINE constexpr double radians(double a) noexcept { return (a * 0.017453292519943295); }
-    static INLINE constexpr double degrees(double a) noexcept { return (a * 57.29577951308232); }
+    INLINE double radians(double a) noexcept { return (a * 0.017453292519943295); }
+    INLINE double degrees(double a) noexcept { return (a * 57.29577951308232); }
 
     // radians_normalize()
     // Normalize a radian value to keep it in the range of 0 to 2pi
-    static INLINE double radians_normalize(double rad) noexcept
+    INLINE double radians_normalize(double rad) noexcept
     {
         double v = std::fmod(rad, (2.0 * pi));
         if (v < 0.0)
@@ -227,7 +227,7 @@ namespace waavs
     // 
     // Calculate angle between two vectors, where the difference
     // has already been calculated
-    static INLINE double vector_angle(double dx, double dy) noexcept
+    INLINE double vector_angle(double dx, double dy) noexcept
     {
         double rads = atan2(dy, dx);
         if (std::isnan(rads))
@@ -1195,16 +1195,16 @@ namespace waavs {
 
 namespace waavs
 {
-    static INLINE int abs(int a) { return a < 0 ? -a : a; }
-    static INLINE int min(int a, int b) { return (a < b) ? a : b; }
-    static INLINE int max(int a, int b) { return (a > b) ? a : b; }
-    static INLINE int clamp(int a, int min_, int max_) { return min(max(a, min_), max_); }
-    static INLINE int sign(int a) { return a < 0 ? -1 : 1; }
-    static INLINE int pow2(int a) { return 1 << a; }
-    static INLINE void swap(int& a, int& b) { return std::swap(a, b); };
+    INLINE int abs(int a) { return a < 0 ? -a : a; }
+    INLINE int min(int a, int b) { return (a < b) ? a : b; }
+    INLINE int max(int a, int b) { return (a > b) ? a : b; }
+    INLINE int clamp(int a, int min_, int max_) { return min(max(a, min_), max_); }
+    INLINE int sign(int a) { return a < 0 ? -1 : 1; }
+    INLINE int pow2(int a) { return 1 << a; }
+    INLINE void swap(int& a, int& b) { return std::swap(a, b); };
 
-    static INLINE size_t min(size_t a, size_t b) { return (a < b) ? a : b; }
-    static INLINE size_t max(size_t a, size_t b) { return (a > b) ? a : b; }
+    INLINE size_t min(size_t a, size_t b) { return (a < b) ? a : b; }
+    INLINE size_t max(size_t a, size_t b) { return (a > b) ? a : b; }
 }
 
 

@@ -10,10 +10,10 @@ namespace waavs
 {
     // Determine which endianness the CPU has at runtime
     // little-endian (intel standard)
-    static INLINE bool isLE() noexcept { int i = 1; return (int)*((unsigned char*)&i) == 1; }
+    INLINE bool isLE() noexcept { int i = 1; return (int)*((unsigned char*)&i) == 1; }
     
     // big-endian
-    static INLINE bool isBE() noexcept { return !isLE(); }
+    INLINE bool isBE() noexcept { return !isLE(); }
 }
 
 /*
@@ -36,7 +36,7 @@ namespace waavs
     tohex
 */
 namespace waavs {
-    static const char* hexdigits = "0123456789abcdef";
+
 
     // tohex32
     // 
@@ -49,8 +49,10 @@ namespace waavs {
     //  there arw two errors that can occur
     // 1) the buffLen is less than 8
     //
-    static INLINE int tohex32(const uint32_t inNumber, char* buff, size_t buffLen) noexcept
+    INLINE int tohex32(const uint32_t inNumber, char* buff, size_t buffLen) noexcept
     {
+        static const char* hexdigits = "0123456789abcdef";
+
         if (buffLen < 8)
             return 0;
 
@@ -71,7 +73,7 @@ namespace waavs {
     // The most significant bit is in the first byte of the 
     // array.  when displayed as a string, the output will 
     // be similar to what you would see in the calculator app
-    static INLINE int tobin32(uint32_t a, char* buff, size_t buffLen) noexcept
+    INLINE int tobin32(uint32_t a, char* buff, size_t buffLen) noexcept
     {
         if (buffLen < 33)
             return 0;
@@ -88,54 +90,54 @@ namespace waavs {
 
     // 16-bit versions
     //
-    static INLINE uint16_t bnot16(uint16_t a) noexcept { return ~a; }
-    static INLINE uint16_t band16(uint16_t a, uint16_t b) noexcept { return a & b; }
-    static INLINE uint16_t bor16(uint16_t a, uint16_t b) noexcept { return a | b; }
-    static INLINE uint16_t bxor16(uint16_t a, uint16_t b) noexcept { return a ^ b; }
-    static INLINE uint16_t lshift16(uint16_t a, unsigned int nbits) noexcept { return a << nbits; }
-    static INLINE uint16_t rshift16(uint16_t a, unsigned int nbits) noexcept { return a >> nbits; }
-    static INLINE int16_t arshift16(int16_t a, unsigned int nbits) noexcept { return a >> nbits; }
-    static INLINE uint16_t rol16(uint16_t a, unsigned int n) noexcept { return ((a << n) | (a >> (16 - n))); }
-    static INLINE uint16_t ror16(uint16_t a, unsigned int n) noexcept { return ((a << (16 - n)) | (a >> n)); }
-    //static INLINE uint16_t bswap16(uint16_t a) {return _byteswap_ushort(a);}
-    static INLINE uint16_t bswap16(uint16_t a) noexcept { return (a >> 8) | (a << 8); }
+    INLINE uint16_t bnot16(uint16_t a) noexcept { return ~a; }
+    INLINE uint16_t band16(uint16_t a, uint16_t b) noexcept { return a & b; }
+    INLINE uint16_t bor16(uint16_t a, uint16_t b) noexcept { return a | b; }
+    INLINE uint16_t bxor16(uint16_t a, uint16_t b) noexcept { return a ^ b; }
+    INLINE uint16_t lshift16(uint16_t a, unsigned int nbits) noexcept { return a << nbits; }
+    INLINE uint16_t rshift16(uint16_t a, unsigned int nbits) noexcept { return a >> nbits; }
+    INLINE int16_t arshift16(int16_t a, unsigned int nbits) noexcept { return a >> nbits; }
+    INLINE uint16_t rol16(uint16_t a, unsigned int n) noexcept { return ((a << n) | (a >> (16 - n))); }
+    INLINE uint16_t ror16(uint16_t a, unsigned int n) noexcept { return ((a << (16 - n)) | (a >> n)); }
+    //INLINE uint16_t bswap16(uint16_t a) {return _byteswap_ushort(a);}
+    INLINE uint16_t bswap16(uint16_t a) noexcept { return (a >> 8) | (a << 8); }
 
-    static INLINE uint16_t tobit16(uint64_t a) noexcept { return (uint16_t)a; }
+    INLINE uint16_t tobit16(uint64_t a) noexcept { return (uint16_t)a; }
 
 
     // 32-bit versions
     //
-    static INLINE uint32_t bnot32(uint32_t a) noexcept { return ~a; }
-    static INLINE uint32_t band32(uint32_t a, uint32_t b) noexcept { return a & b; }
-    static INLINE uint32_t bor32(uint32_t a, uint32_t b) noexcept { return a | b; }
-    static INLINE uint32_t bxor32(uint32_t a, uint32_t b) noexcept { return a ^ b; }
-    static INLINE uint32_t lshift32(uint32_t a, unsigned int nbits) noexcept { return a << nbits; }
-    static INLINE uint32_t rshift32(uint32_t a, unsigned int nbits) noexcept { return a >> nbits; }
-    static INLINE int32_t arshift16(int32_t a, unsigned int nbits) noexcept { return a >> nbits; }
-    static INLINE uint32_t rol32(uint32_t a, unsigned int n) noexcept { return ((a << n) | (a >> (32 - n))); }
-    static INLINE uint32_t ror32(uint32_t a, unsigned int n) noexcept { return ((a << (32 - n)) | (a >> n)); }
+    INLINE uint32_t bnot32(uint32_t a) noexcept { return ~a; }
+    INLINE uint32_t band32(uint32_t a, uint32_t b) noexcept { return a & b; }
+    INLINE uint32_t bor32(uint32_t a, uint32_t b) noexcept { return a | b; }
+    INLINE uint32_t bxor32(uint32_t a, uint32_t b) noexcept { return a ^ b; }
+    INLINE uint32_t lshift32(uint32_t a, unsigned int nbits) noexcept { return a << nbits; }
+    INLINE uint32_t rshift32(uint32_t a, unsigned int nbits) noexcept { return a >> nbits; }
+    INLINE int32_t arshift16(int32_t a, unsigned int nbits) noexcept { return a >> nbits; }
+    INLINE uint32_t rol32(uint32_t a, unsigned int n) noexcept { return ((a << n) | (a >> (32 - n))); }
+    INLINE uint32_t ror32(uint32_t a, unsigned int n) noexcept { return ((a << (32 - n)) | (a >> n)); }
     //static INLINE uint32_t bswap32(uint32_t a) {return _byteswap_ulong(a);}
-    static INLINE uint32_t bswap32(uint32_t v) noexcept {
+    INLINE uint32_t bswap32(uint32_t v) noexcept {
         return ((v & 0xff000000) >> 24) | ((v & 0x00ff0000) >> 8) |
             ((v & 0x0000ff00) << 8) | ((v & 0x000000ff) << 24);
     }
 
-    static INLINE uint32_t tobit32(uint64_t a) noexcept { return (uint32_t)a; }
+    INLINE uint32_t tobit32(uint64_t a) noexcept { return (uint32_t)a; }
 
 
     // 64-bit versions
     //
-    static INLINE uint64_t bnot64(uint64_t a) { return ~a; }
-    static INLINE uint64_t band64(uint64_t a, uint64_t b) { return a & b; }
-    static INLINE uint64_t bor64(uint64_t a, uint64_t b) { return a | b; }
-    static INLINE uint64_t bxor64(uint64_t a, uint64_t b) { return a ^ b; }
-    static INLINE uint64_t lshift64(uint64_t a, unsigned int nbits) { return a << nbits; }
-    static INLINE uint64_t rshift64(uint64_t a, unsigned int nbits) { return a >> nbits; }
-    static INLINE int64_t arshift16(int64_t a, unsigned int nbits) { return a >> nbits; }
-    static INLINE uint64_t rol64(uint64_t a, unsigned int n) { return ((a << n) | (a >> (64 - n))); }
-    static INLINE uint64_t ror64(uint64_t a, unsigned int n) { return ((a << (64 - n)) | (a >> n)); }
+    INLINE uint64_t bnot64(uint64_t a) { return ~a; }
+    INLINE uint64_t band64(uint64_t a, uint64_t b) { return a & b; }
+    INLINE uint64_t bor64(uint64_t a, uint64_t b) { return a | b; }
+    INLINE uint64_t bxor64(uint64_t a, uint64_t b) { return a ^ b; }
+    INLINE uint64_t lshift64(uint64_t a, unsigned int nbits) { return a << nbits; }
+    INLINE uint64_t rshift64(uint64_t a, unsigned int nbits) { return a >> nbits; }
+    INLINE int64_t arshift16(int64_t a, unsigned int nbits) { return a >> nbits; }
+    INLINE uint64_t rol64(uint64_t a, unsigned int n) { return ((a << n) | (a >> (64 - n))); }
+    INLINE uint64_t ror64(uint64_t a, unsigned int n) { return ((a << (64 - n)) | (a >> n)); }
     //static INLINE uint64_t bswap64(uint64_t a) {return _byteswap_uint64(a);}
-    static INLINE uint64_t bswap64(uint64_t v) {
+    INLINE uint64_t bswap64(uint64_t v) {
         return ((v & ((uint64_t)0xff << (7 * 8))) >> (7 * 8)) |
             ((v & ((uint64_t)0xff << (6 * 8))) >> (5 * 8)) |
             ((v & ((uint64_t)0xff << (5 * 8))) >> (3 * 8)) |
@@ -206,19 +208,19 @@ namespace waavs {
 // Return various forms of pow(2,bitnum)
 // There are different ones, which allow the user to specify how
 // many bits they want
-static INLINE constexpr uint8_t BIT8(size_t bitnum) noexcept {return (uint8_t)1 << bitnum; }
-static INLINE constexpr uint16_t BIT16(size_t bitnum) noexcept {return (uint16_t)1 << bitnum; }
-static INLINE constexpr uint32_t BIT32(size_t bitnum) noexcept {return (uint32_t)1 << bitnum; }
-static INLINE constexpr uint64_t BIT64(size_t bitnum) noexcept {return (uint64_t)1 << bitnum; }
+INLINE constexpr uint8_t BIT8(size_t bitnum) noexcept {return (uint8_t)1 << bitnum; }
+INLINE constexpr uint16_t BIT16(size_t bitnum) noexcept {return (uint16_t)1 << bitnum; }
+INLINE constexpr uint32_t BIT32(size_t bitnum) noexcept {return (uint32_t)1 << bitnum; }
+INLINE constexpr uint64_t BIT64(size_t bitnum) noexcept {return (uint64_t)1 << bitnum; }
 
 // One general purpose which will default to BIT64
 //static inline uint64_t BIT(unsigned int bitnum) {return BIT64(bitnum);}
 
 // return true if the specified bit is set in the value
-static INLINE constexpr bool isset(const uint64_t value, const size_t bitnum) noexcept {return (value & BIT64(bitnum)) > 0; }
+INLINE constexpr bool isset(const uint64_t value, const size_t bitnum) noexcept {return (value & BIT64(bitnum)) > 0; }
 
 // set a specific bit within a value
-static INLINE constexpr uint64_t setbit(const uint64_t value, const size_t bitnum) noexcept {return (value | BIT64(bitnum));}
+INLINE constexpr uint64_t setbit(const uint64_t value, const size_t bitnum) noexcept {return (value | BIT64(bitnum));}
 
 // BITMASK64
 // A bitmask is an integer where all the bits from the 
@@ -239,18 +241,18 @@ static INLINE constexpr uint64_t setbit(const uint64_t value, const size_t bitnu
 //  mask <<= low;   // shift up to proper position
 //  return mask;
 
-static INLINE constexpr uint64_t BITMASK64(const size_t low, const size_t high) noexcept {return ((((uint64_t)1ULL << (high-low)) << 1) - 1) << low;}
+INLINE constexpr uint64_t BITMASK64(const size_t low, const size_t high) noexcept {return ((((uint64_t)1ULL << (high-low)) << 1) - 1) << low;}
 
-static INLINE uint8_t BITMASK8(const size_t low, const size_t high) noexcept {return (uint8_t)BITMASK64(low, high);}
-static INLINE uint16_t BITMASK16(const size_t low, const size_t high) noexcept {return (uint16_t)BITMASK64(low,high);}
-static INLINE uint32_t BITMASK32(const size_t low, const size_t high) noexcept {return (uint32_t)BITMASK64(low, high);}
+INLINE uint8_t BITMASK8(const size_t low, const size_t high) noexcept {return (uint8_t)BITMASK64(low, high);}
+INLINE uint16_t BITMASK16(const size_t low, const size_t high) noexcept {return (uint16_t)BITMASK64(low,high);}
+INLINE uint32_t BITMASK32(const size_t low, const size_t high) noexcept {return (uint32_t)BITMASK64(low, high);}
 
 //#define BITMASK BITMASK64
 
 
 // BITSVALUE
 // Retrieve a value from a lowbit highbit pair
-static INLINE  constexpr uint64_t BITSVALUE(uint64_t src, size_t lowbit, size_t highbit) noexcept
+INLINE  constexpr uint64_t BITSVALUE(uint64_t src, size_t lowbit, size_t highbit) noexcept
 {
     return ((src & BITMASK64(lowbit, highbit)) >> lowbit);
 }
@@ -261,14 +263,14 @@ static INLINE  constexpr uint64_t BITSVALUE(uint64_t src, size_t lowbit, size_t 
 // Given a bit number, calculate which byte
 // it would be in, and which bit within that
 // byte.
-static INLINE constexpr void getbitbyteoffset(size_t bitnumber, size_t &byteoffset, size_t &bitoffset) noexcept
+INLINE constexpr void getbitbyteoffset(size_t bitnumber, size_t &byteoffset, size_t &bitoffset) noexcept
 {
     byteoffset = (int)(bitnumber / 8);
     bitoffset = bitnumber % 8;
 }
 
 
-static INLINE constexpr uint64_t bitsValueFromBytes(const uint8_t *bytes, const size_t startbit, const size_t bitcount, bool bigendian = false) noexcept
+INLINE constexpr uint64_t bitsValueFromBytes(const uint8_t *bytes, const size_t startbit, const size_t bitcount, bool bigendian = false) noexcept
 {
     // Sanity check
     if (nullptr == bytes)
@@ -311,7 +313,7 @@ static INLINE constexpr uint64_t bitsValueFromBytes(const uint8_t *bytes, const 
     (((0x00000000000000ffull & (x)) << 010) |  \
      ((0x000000000000ff00ull & (x)) >> 010))
 
-static INLINE constexpr uint16_t swapUInt16(const uint16_t num) noexcept
+INLINE uint16_t swapUInt16(const uint16_t num) noexcept
 {
     return (((num & 0x00ff) << 8) | ((num & 0xff00) >> 8));
 }
@@ -323,7 +325,7 @@ static INLINE constexpr uint16_t swapUInt16(const uint16_t num) noexcept
    ((0x0000000000ff0000ull & (x)) >> 010) | \
    ((0x00000000ff000000ull & (x)) >> 030))
 
-static INLINE constexpr uint32_t swapUInt32(const uint32_t num) noexcept
+INLINE uint32_t swapUInt32(const uint32_t num) noexcept
 {
     uint32_t x = (num & 0x0000FFFF) << 16 | (num & 0xFFFF0000) >> 16;
     x = (x & 0x00FF00FF) << 8 | (x & 0xFF00FF00) >> 8;
@@ -342,7 +344,7 @@ static INLINE constexpr uint32_t swapUInt32(const uint32_t num) noexcept
    ((0x00ff000000000000ull & (x)) >> 050) | \
    ((0xff00000000000000ull & (x)) >> 070))
 
-static INLINE constexpr uint64_t swapUInt64(const uint64_t num) noexcept
+INLINE uint64_t swapUInt64(const uint64_t num) noexcept
 {
     return  (num >> 56) |
           ((num<<40) & 0x00FF000000000000) |
@@ -354,7 +356,7 @@ static INLINE constexpr uint64_t swapUInt64(const uint64_t num) noexcept
           (num << 56);
 }
 
-static INLINE constexpr int GetAlignedByteCount(const int width, const int bitsperpixel, const int alignment) noexcept
+INLINE int GetAlignedByteCount(const int width, const int bitsperpixel, const int alignment) noexcept
 {
     return (((width * (bitsperpixel / 8)) + (alignment - 1)) & ~(alignment - 1));
 }
@@ -366,7 +368,7 @@ static INLINE constexpr int GetAlignedByteCount(const int width, const int bitsp
 // the 'scale' says where the decimal point is, starting from 
 // the least significant bit
 // so; 0x13 (0b0001.0011) ,4  == 1.1875
-static INLINE constexpr double fixedToFloat(const uint64_t vint, const int scale) noexcept
+INLINE double fixedToFloat(const uint64_t vint, const int scale) noexcept
 {
     double whole = (double)waavs::BITSVALUE(vint, scale, 63);
     double frac = (double)waavs::BITSVALUE(vint, 0, ((size_t)scale - 1));
@@ -390,7 +392,7 @@ namespace waavs {
 	constexpr uint64_t FNV1A_64_PRIME = 0x100000001b3ULL;
     
 	// 32-bit FNV-1a hash
-	static INLINE constexpr uint32_t fnv1a_32(const void* data, const size_t size) noexcept
+	INLINE uint32_t fnv1a_32(const void* data, const size_t size) noexcept
 	{
 		const uint8_t* bytes = (const uint8_t*)data;
 		uint32_t hash = FNV1A_32_INIT;
@@ -402,7 +404,7 @@ namespace waavs {
 	}
 
 	// 64-bit FNV-1a hash
-	static INLINE constexpr uint64_t fnv1a_64(const void* data, const size_t size) noexcept
+	INLINE uint64_t fnv1a_64(const void* data, const size_t size) noexcept
 	{
 		const uint8_t* bytes = (const uint8_t*)data;
 		uint64_t hash = FNV1A_64_INIT;
@@ -414,7 +416,7 @@ namespace waavs {
 	}
 
     // 32-bit case-insensitive FNV-1a hash
-    static INLINE constexpr uint32_t fnv1a_32_case_insensitive(const void* data, const size_t size) noexcept
+    INLINE uint32_t fnv1a_32_case_insensitive(const void* data, const size_t size) noexcept
     {
         const uint8_t* bytes = (const uint8_t*)data;
         uint32_t hash = FNV1A_32_INIT;
@@ -426,35 +428,4 @@ namespace waavs {
     }
 }
 
-/*
-// String Hashing borrowed from LuaJIT
-// This has too much collision at the higher bytes
-namespace waavs {
-#define bh_hashrot(x, k) (((x) << (k)) | ((x) >> (32 - (k))))
-#define bh_getu32(p) ((uint32_t)(p)[0] | ((uint32_t)(p)[1] << 8) | ((uint32_t)(p)[2] << 16) | ((uint32_t)(p)[3] << 24))
 
-    
-    static INLINE uint32_t bh_hashkey(const char* str, size_t len) noexcept
-    {
-        uint32_t a, b, h = (uint32_t)len;
-        if (len >= 4) {
-            a = bh_getu32(str);
-            h ^= bh_getu32(str + len - 4);
-            b = bh_getu32(str + (len >> 1) - 2);
-            h ^= b; h -= bh_hashrot(b, 14);
-            b += bh_getu32(str + (len >> 2) - 1);
-        }
-        else {
-            a = *(const uint8_t*)str;
-            b = *(const uint8_t*)(str + (len - 1));
-            h ^= b; h -= bh_hashrot(b, 14);
-        }
-        a ^= h; a -= bh_hashrot(h, 11);
-        b ^= a; b -= bh_hashrot(a, 25);
-        h ^= b; h -= bh_hashrot(b, 16);
-        
-        return h;
-    }
-    
-}
-*/

@@ -15,6 +15,7 @@
 
 #include <cstdint>		// uint8_t, etc
 #include <cstddef>		// nullptr_t, ptrdiff_t, size_t
+#include <cctype>
 
 #define WAAVS_NOMINMAX 1
 

@@ -422,6 +422,9 @@ namespace waavs
             case CSSSelectorKind::CSS_SELECTOR_ATRULE:
                 addSelectorToMap(fAnimationSelectors, sel);
                 break;
+            default:
+                // do nothing, not supported selector
+                break;
             }
         }
 

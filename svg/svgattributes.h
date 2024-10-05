@@ -4,7 +4,7 @@
 #include <vector>
 #include <cstdint>		// uint8_t, etc
 #include <cstddef>		// nullptr_t, ptrdiff_t, size_t
-
+#include <list>
 
 #include "maths.h"
 #include "xmlscan.h"

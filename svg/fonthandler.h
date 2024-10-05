@@ -138,9 +138,13 @@ namespace waavs {
             return true;
         }
 
+        /*
         // Do this only once to load in fonts
+        // NOTE:  You should do what is correct for your platform
+        // here to load fonts.
         bool loadDefaultFonts()
         {
+#ifdef _MSC_VER
             // Load in some fonts to start
             std::vector<const char*> fontNames{
                 "c:\\Windows\\Fonts\\arial.ttf",
@@ -157,7 +161,11 @@ namespace waavs {
                 "c:\\Windows\\Fonts\\wingding.ttf"
             };
             return loadFonts(fontNames);
+#else
+            return false;
+#endif
         }
+        */
 
         float getAdjustedFontSize(float sz) const
         {
