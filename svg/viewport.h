@@ -143,27 +143,53 @@ namespace waavs {
 			return tScale;
 		}
 
+		BLPoint fullScale(BLPoint& ascale) const
+		{
+			double tScale = 1.0;
 
-		void calcTransform()
+			ascale.x = (fSurfaceFrame.w / fSceneFrame.w);
+			ascale.y = (fSurfaceFrame.h / fSceneFrame.h);
+
+			return ascale;
+		}
+
+		
+		void calcTransform(bool freeAspect = false)
 		{
 			BLPoint ascale(1, 1);
 			double tScale = trueScale(ascale);
+			auto fScale = fullScale(ascale);
 
-			//printf("Viewport::calcTransform, object frame: %f %f %f %f\n", fObjectFrame.x, fObjectFrame.y, fObjectFrame.w, fObjectFrame.h);
-			//printTransform();
 			
 			fTransform = BLMatrix2D::makeIdentity();
-			fTransform.rotate(fRotRad, fRotCenter);
-			fTransform.scale(tScale, tScale);
-			fTransform.translate(-fSceneFrame.x, -fSceneFrame.y);
+			
 
+			// Translate by surfaceFrame amount first
+			fTransform.translate(fSurfaceFrame.x, fSurfaceFrame.y);
+			
+			// Rotate
+			fTransform.rotate(fRotRad, fRotCenter);
+			
+
+			// Scale
+			if (freeAspect)
+				fTransform.scale(fScale.x, fScale.y);
+			else
+				fTransform.scale(tScale, tScale);
+
+
+			// Translate scene frame amount
+			double tranX = -fSceneFrame.x;
+			double tranY = -fSceneFrame.y;
+			fTransform.translate(tranX, tranY);
+			
 			// Calculate the inverse transform
 			// so we can convert from world space to object space
 			fInverseTransform = fTransform;
 			fInverseTransform.invert();
 		}
-
-
+		
+		
 		// This will translate relative to the current x, y position
 		bool translateTo(double x, double y)
 		{

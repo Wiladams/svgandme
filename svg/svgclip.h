@@ -40,8 +40,8 @@ namespace waavs {
 		BLImage fImage;		// Where we'll render the mask
 
 		// Instance Constructor
-		SVGClipPathElement(IAmGroot* aroot)
-			: SVGGraphicsElement(aroot)
+		SVGClipPathElement(IAmGroot* )
+			: SVGGraphicsElement()
 		{
 			isStructural(false);
 		}
@@ -49,7 +49,7 @@ namespace waavs {
 		// 
 		// BUGBUG - this needs to happen in resolvePaint, or bingToGroot()
 		//
-		const BLVar getVariant() noexcept override
+		const BLVar getVariant(IRenderSVG*, IAmGroot*) noexcept override
 		{
 			if (!fVar.isNull())
 				return fVar;

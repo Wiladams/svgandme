@@ -88,7 +88,7 @@ namespace waavs {
         SVGDocument() = delete;
         
         SVGDocument(FontHandler *fh, const double w=0, const double h=0, const double ppi = 96)
-            :SVGGraphicsElement(this)
+            :SVGGraphicsElement()
             , fDpi(ppi)
             , fFontHandler(fh)
             , fCanvasWidth(w)
@@ -99,7 +99,7 @@ namespace waavs {
         }
 
         SVGDocument(const ByteSpan& srcChunk, const double w = 64, const double h = 64, const double ppi = 96, FontHandler* fh=nullptr)
-            :SVGGraphicsElement(this)
+            :SVGGraphicsElement()
             , fDpi(ppi)
             , fFontHandler(fh)
             , fCanvasWidth(w)
@@ -119,9 +119,7 @@ namespace waavs {
             fStyleSheet = std::make_shared<CSSStyleSheet>();
 
             // load the new document
-            loadFromChunk(srcChunk);
-
-            bindToGroot(this, nullptr);
+            loadFromChunk(srcChunk, fh);
         }
         
         
@@ -152,23 +150,14 @@ namespace waavs {
         
         void draw(IRenderSVG * ctx, IAmGroot* groot) override
         {
-            // Setup default values for a SVG context
-            ctx->strokeJoin(BL_STROKE_JOIN_MITER_CLIP);
-            ctx->strokeMiterLimit(4);
-            ctx->setFillRule(BL_FILL_RULE_NON_ZERO);
-            ctx->fill(BLRgba32(0, 0, 0));
-            ctx->noStroke();
-            ctx->strokeWidth(1.0);
-            //ctx->textAlign(ALIGNMENT::LEFT, ALIGNMENT::BASELINE);
-            //ctx->textFamily("Arial");
-            //ctx->textSize(16);
-
+            ctx->setContainerFrame(getBBox());
+            
             SVGGraphicsElement::draw(ctx, groot);
         }
         
         
         
-        bool addNode(std::shared_ptr < SVGVisualNode > node, IAmGroot* groot) override
+        bool addNode(std::shared_ptr < ISVGElement > node, IAmGroot* groot) override
         {            
 			if (!SVGGraphicsElement::addNode(node, groot))
                 return false;
@@ -188,10 +177,6 @@ namespace waavs {
             return true;
         }
         
-		//void loadSelfFromXmlIterator(XmlElementIterator& iter, IAmGroot* groot) override
-		//{
-            // do nothing here
-		//}
         
 
         // loadFromXmlIterator
@@ -279,7 +264,7 @@ namespace waavs {
         
         
 		// Assuming we've already got a file mapped into memory, load the document
-        bool loadFromChunk(const ByteSpan &srcChunk)
+        bool loadFromChunk(const ByteSpan &srcChunk, FontHandler* fh)
         {
             // create a memBuff from srcChunk
             // since we use memory references, we need
@@ -291,7 +276,6 @@ namespace waavs {
             XmlElementIterator iter(fSourceMem.span(), true);
 
             loadFromXmlIterator(iter, this);
-
             
             return true;
         }
@@ -303,12 +287,9 @@ namespace waavs {
         static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, FontHandler* fh, const double w, const double h, const double ppi)
         {
             auto doc = std::make_shared<SVGDocument>(fh, w, h, ppi);
-            if (!doc->loadFromChunk(srcChunk))
+            if (!doc->loadFromChunk(srcChunk, fh))
                 return {};
 
-            SVGDocument* groot = doc.get();
-            doc->bindToGroot(groot, nullptr);
-            
             return doc;
         }
         

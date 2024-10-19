@@ -33,7 +33,7 @@ namespace waavs {
 		}
 
 
-		SVGStyleNode(IAmGroot* aroot) :SVGGraphicsElement(aroot)
+		SVGStyleNode(IAmGroot* ) :SVGGraphicsElement()
 		{
 			isStructural(false);
 		}

@@ -32,7 +32,7 @@ namespace waavs {
         SVGPatternExtendMode(IAmGroot* iMap) : SVGVisualProperty(iMap) 
         {
             id("extendMode");
-            autoDraw(false);
+            //autoDraw(false);
         }
 
         BLExtendMode value() const { return static_cast<BLExtendMode>(fExtendMode); }
@@ -41,7 +41,8 @@ namespace waavs {
         {   
             bool success = getEnumValue(SVGExtendMode, inChunk, fExtendMode);
             set(success);
-
+            needsBinding(false);
+            
             return success;
         }
         
@@ -80,7 +81,7 @@ namespace waavs {
         
         SVGOpacity(IAmGroot* groot) :SVGVisualProperty(groot) { id("opacity"); }
 
-        const BLVar getVariant() noexcept override { return fOpacityVar; }
+        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override { return fOpacityVar; }
         
         
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
@@ -181,7 +182,8 @@ namespace waavs {
             fInstruct = createPaintOrderInstruction(inChunk);
 
             set(true);
-
+            needsBinding(false);
+            
             return true;
         }
         
@@ -282,7 +284,8 @@ namespace waavs {
         {
             bool success = getEnumValue(SVGTextAnchor, inChunk, (uint32_t &)fValue);
             set(success);
-
+            needsBinding(false);
+            
             return success;
         }
 
@@ -296,6 +299,43 @@ namespace waavs {
 }
 
 namespace waavs {
+    //
+    // SVGFontSize (font-size)
+    //
+    // This is fairly complex.  There are several categories of sizes
+    // Absolute size values (FontSizeKeywordKind, SVGFontSizeKeywordEnum)
+    //  xx-small
+	//   x-small
+	//     small
+    //     medium
+    //     large
+    //   x-large
+    //  xx-large
+    // xxx-large
+    // 
+	// Relative size values
+    //   smaller
+    //   larger
+    // 
+	// Length values
+	//   px, pt, pc, cm, mm, in, em, ex, ch, rem, vw, vh, vmin, vmax
+    // 
+	// Percentage values
+	//   100%
+    // math
+	//   calc(100% - 10px)
+    // 
+    // Global values
+	//   inherit, initial, revert, revert-layer, unset
+    //
+    // So, there are two steps to figuring out what the value should
+    // be.  
+    // 1) Figure out which of these categories of measures is being used
+	// 2) Figure out what the actual value is
+    // Other than the length values, we need to figure out at draw time
+    // what the actual value is, because we need to know what the current value
+    // is, and calculate relative to that.
+    //
     struct SVGFontSize : public SVGVisualProperty
     {
         static void registerFactory() {
@@ -307,7 +347,7 @@ namespace waavs {
         }
         
         
-        SVGDimension dimValue{};
+        SVGVariableSize dimValue{};
         double fValue{ 16.0 };
 
         SVGFontSize(IAmGroot* inMap) 
@@ -327,40 +367,48 @@ namespace waavs {
 		double value() const { return fValue; }
         
         
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
-        {
-            ctx->fontSize(fValue);
-        }
 
-        void bindToGroot(IAmGroot* groot, SVGViewable* container) noexcept override
-        {
-            if (nullptr == groot)
-                return;
-            
-            if (dimValue.isSet())
-			    fValue = dimValue.calculatePixels(16, 0, groot->dpi());
-            
-            needsBinding(false);
-        }
-        
+
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
 			if (!inChunk)
 				return false;
             
+            // BUGBUG
+            // We need to check size keywords first, then 
+            // decide what the value should be.
+            // But, realistically, we can't do that here, only 
+            // at binding time.  So, we should just preserve the raw
+            // value here, and pick up later.
             dimValue.loadFromChunk(inChunk);
 
             if (!dimValue.isSet())
                 return false;
             
-            needsBinding(true);
-
             set(true);
-                
+            needsBinding(true);
+            
             return true;
         }
 
+        virtual void bindToContext(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        {
+            if (nullptr == groot)
+                return;
 
+            if (dimValue.isSet() && ctx != nullptr)
+            {
+                auto fsize = ctx->fontSize();
+                fValue = dimValue.calculatePixels(ctx->font(), ctx->font().size(), 0, groot->dpi());
+            }
+
+            needsBinding(false);
+        }
+        
+        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        {
+            ctx->fontSize(fValue);
+        }
     };
 
     //========================================================
@@ -390,10 +438,7 @@ namespace waavs {
 
 		const ByteSpan& value() const { return fValue; }
         
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
-        {
-            ctx->fontFamily(fValue);
-        }
+
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
@@ -403,10 +448,15 @@ namespace waavs {
             fValue = inChunk;
             //fValue = toString(chunk_trim(inChunk, xmlwsp));
             set(true);
+			needsBinding(false);
             
 			return true;
         }
-
+        
+        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        {
+            ctx->fontFamily(fValue);
+        }
     };
 
 	//========================================================
@@ -429,8 +479,9 @@ namespace waavs {
         SVGFontStyleAttribute() :SVGVisualProperty(nullptr) 
         { 
             id("font-style");  
+            
             set(false); 
-            needsBinding(false); 
+
         }
         
         int value() const {return fValue;}
@@ -440,6 +491,7 @@ namespace waavs {
             
             bool success = getEnumValue(SVGFontStyle, inChunk, (uint32_t &)fValue);
 			set(success);
+            needsBinding(false);
             
 			return success;
         }
@@ -468,10 +520,10 @@ namespace waavs {
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
-            needsBinding(false);
 			bool success = getEnumValue(SVGFontWeight, inChunk, (uint32_t &)fWeight);
             set(success);
-
+            needsBinding(false);
+            
 			return success;
 		}
 
@@ -501,6 +553,7 @@ namespace waavs {
         {
 			bool success = getEnumValue(SVGFontStretch, inChunk, (uint32_t &)fValue);
 			set(success);
+            needsBinding(false);
             
             return success;
 
@@ -535,7 +588,7 @@ namespace waavs {
 
         SVGPaintAttribute(IAmGroot* groot) :SVGVisualProperty(groot) {}
 
-        const BLVar getVariant() noexcept override
+        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
         {
             return fPaintVar;
         }
@@ -562,7 +615,7 @@ namespace waavs {
         // paint.  Try to retrieve it, and get it's variant.
         // BUGBUG - Ideally, thie is where we could do ObjectBBox binding
         // 
-        virtual void resolvePaint(IAmGroot* groot, SVGViewable* container)
+        virtual void resolvePaint(IRenderSVG *ctx, IAmGroot* groot)
         {
             if (!fPaintReference)
                 return;
@@ -577,9 +630,9 @@ namespace waavs {
 
 
                 // Tell the referant node to resolve itself
-                node->bindToGroot(groot, container);
+                //node->bindToContext(ctx, groot);
 
-                const BLVar& aVar = node->getVariant();
+                const BLVar& aVar = node->getVariant(ctx, groot);
 
                 auto res = blVarAssignWeak(&fPaintVar, &aVar);
                 if (res != BL_SUCCESS)
@@ -591,34 +644,9 @@ namespace waavs {
 
 
 
-        // called when we have a reference to something
-        void bindToGroot(IAmGroot* groot, SVGViewable* container) noexcept override
-        {
-            if (!needsBinding()) {
-                return;
-            }
-
-            resolvePaint(groot, nullptr);
-
-            needsBinding(false);
-        }
 
 
-        void update(IAmGroot* groot) override
-        {
-            ByteSpan ref = rawValue();
 
-            if (chunk_starts_with_cstr(ref, "url("))
-            {
-                if (groot != nullptr) {
-                    auto node = groot->findNodeByUrl(ref);
-                    if (nullptr != node)
-                    {
-                        node->update(groot);
-                    }
-                }
-            }
-        }
 
         void setOpacity(double opacity)
         {
@@ -652,9 +680,10 @@ namespace waavs {
             if (chunk_starts_with_cstr(str, "url("))
             {
                 fPaintReference = str;
-                //fNeedsResolving = true;
-                needsBinding(true);
 
+                needsBinding(true);
+                set(true);
+                
                 return true;
             }
 
@@ -708,6 +737,32 @@ namespace waavs {
 
             return true;
         }
+
+        void update(IAmGroot* groot) override
+        {
+            ByteSpan ref = rawValue();
+
+            if (chunk_starts_with_cstr(ref, "url("))
+            {
+                if (groot != nullptr) {
+                    auto node = groot->findNodeByUrl(ref);
+                    if (nullptr != node)
+                    {
+                        node->update(groot);
+                    }
+                }
+            }
+        }
+
+        
+        void bindToContext(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        {
+            resolvePaint(ctx, groot);
+
+            needsBinding(false);
+        }
+        
+        
     };
 }
 
@@ -738,7 +793,7 @@ namespace waavs {
 
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->defaultColor(getVariant());
+            ctx->defaultColor(getVariant(ctx, groot));
         }
 
     };
@@ -760,20 +815,10 @@ namespace waavs {
 
         SVGFillPaint(IAmGroot* root) : SVGPaint(root) { id("fill"); }
 
-
-        bool loadFromAttributes(const XmlAttributeCollection& attrs)
-        {
-            if (!SVGPaint::loadFromAttributes(attrs))
-            {
-                return false;
-            }
-
-			return true;
-        }
         
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->fill(getVariant());
+            ctx->fill(getVariant(ctx, groot));
         }
 
     };
@@ -810,18 +855,16 @@ namespace waavs {
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
-            needsBinding(false);
-
 			bool success = getEnumValue(SVGFillRule, inChunk, (uint32_t &)fValue);
             set(success);
+            needsBinding(false);
             
             return success;
         }
 
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            if (isSet())
-                ctx->fillRule(fValue);
+            ctx->fillRule(fValue);
         }
     };
 }
@@ -847,7 +890,7 @@ namespace waavs {
 
 		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-            ctx->stroke(getVariant());
+            ctx->stroke(getVariant(ctx, groot));
 		}
 
     };
@@ -875,16 +918,10 @@ namespace waavs {
         SVGStrokeWidth& operator=(const SVGStrokeWidth& rhs) = delete;
 
         
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
-        {
-            ctx->strokeWidth(fWidth);
-        }
+
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
-        {
-            if (!inChunk)
-                return false;
-            
+        {   
             ByteSpan s = inChunk;
             if (!readNumber(s, fWidth))
                 return false;
@@ -894,7 +931,10 @@ namespace waavs {
             return true;
         }
 
-
+        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        {
+            ctx->strokeWidth(fWidth);
+        }
     };
 
     //=========================================================
@@ -915,10 +955,7 @@ namespace waavs {
         SVGStrokeMiterLimit(const SVGStrokeMiterLimit& other) = delete;
         SVGStrokeMiterLimit& operator=(const SVGStrokeMiterLimit& rhs) = delete;
 
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
-        {
-            ctx->strokeMiterLimit(fMiterLimit);
-        }
+
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
@@ -935,7 +972,10 @@ namespace waavs {
             return true;
         }
 
-
+        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        {
+            ctx->strokeMiterLimit(fMiterLimit);
+        }
     };
     
     //=========================================================
@@ -978,6 +1018,17 @@ namespace waavs {
         SVGStrokeLineCap(const SVGStrokeLineCap& other) = delete;
         SVGStrokeLineCap& operator=(const SVGStrokeLineCap& rhs) = delete;
 
+
+
+        bool loadSelfFromChunk(const ByteSpan& inChunk) override
+        {
+            bool success = getEnumValue(SVGLineCaps, inChunk, (uint32_t &)fLineCap);
+            set(success);
+            needsBinding(false);
+            
+			return success;
+        }
+
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
             if (fBothCaps) {
@@ -988,17 +1039,6 @@ namespace waavs {
             }
 
         }
-
-        bool loadSelfFromChunk(const ByteSpan& inChunk) override
-        {
-            needsBinding(false);
-            
-            bool success = getEnumValue(SVGLineCaps, inChunk, (uint32_t &)fLineCap);
-            set(success);
-            
-			return success;
-        }
-
     };
 
     //=========================================================
@@ -1018,31 +1058,68 @@ namespace waavs {
         SVGStrokeLineJoin& operator=(const SVGStrokeLineJoin& rhs) = delete;
 
 
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
-        {
-            ctx->strokeJoin(fLineJoin);
-        }
+
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
             bool success = getEnumValue(SVGLineJoin, inChunk, (uint32_t &)fLineJoin);
             set(success);
-
+            needsBinding(false);
+            
             return success;
         }
 
+        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        {
+            ctx->strokeJoin(fLineJoin);
+        }
     };
 }
 
 
 
 namespace waavs {
+    //================================================
+    // SVGTransform
+    // Transformation matrix
+    //================================================
+    struct SVGTransform : public SVGVisualProperty
+    {
+        static void registerFactory() {
+            registerSVGAttribute("transform", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGTransform>(nullptr); node->loadFromAttributes(attrs);  return node; });
+        }
 
+		BLMatrix2D fMatrix{ BLMatrix2D::makeIdentity() };
+
+		SVGTransform(IAmGroot* iMap) : SVGVisualProperty(iMap) { id("transform"); }
+		SVGTransform(const SVGTransform& other) = delete;
+		SVGTransform& operator=(const SVGTransform& rhs) = delete;
+
+
+
+		bool loadSelfFromChunk(const ByteSpan& inChunk) override
+		{
+            if (!parseTransform(inChunk, fMatrix)) {
+                return false;
+			}
+
+            set(true);
+            needsBinding(false);
+            
+			return true;
+		}
+
+        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        {
+            ctx->applyTransform(fMatrix);
+        }
+    };
+    
     //======================================================
     // SVGViewbox
     // A document may or may not have this property
     //======================================================
-
+    
     struct SVGViewbox : public SVGVisualProperty
     {
         static void registerFactory() {
@@ -1081,18 +1158,21 @@ namespace waavs {
         double width() const { return fRect.w; }
         double height() const { return fRect.h; }
 
+
+        
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
 			if (!parseViewBox(inChunk, fRect))
                 return false;
 
             set(true);
+            
             return true;
         }
 
+        // BUGBUG - need a bindSelfToContext()
     };
-
-
+    
 }
 
 
@@ -1260,23 +1340,30 @@ namespace waavs {
     {
         
         static void registerMarkerFactory() {
-            registerSVGAttribute("marker", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGMarkerAttribute>(nullptr,"marker"); node->loadFromAttributes(attrs);  return node; });
-            registerSVGAttribute("marker-start", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGMarkerAttribute>(nullptr,"marker-start"); node->loadFromAttributes(attrs);  return node; });
-            registerSVGAttribute("marker-mid", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGMarkerAttribute>(nullptr, "marker-mid"); node->loadFromAttributes(attrs);  return node; });
-            registerSVGAttribute("marker-end", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGMarkerAttribute>(nullptr, "marker-end"); node->loadFromAttributes(attrs);  return node; });
+            registerSVGAttribute("marker", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGMarkerAttribute>("marker"); node->loadFromAttributes(attrs);  return node; });
+            registerSVGAttribute("marker-start", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGMarkerAttribute>("marker-start"); node->loadFromAttributes(attrs);  return node; });
+            registerSVGAttribute("marker-mid", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGMarkerAttribute>("marker-mid"); node->loadFromAttributes(attrs);  return node; });
+            registerSVGAttribute("marker-end", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGMarkerAttribute>("marker-end"); node->loadFromAttributes(attrs);  return node; });
         }
 
-        std::shared_ptr<SVGViewable> fWrappedNode = nullptr;
+        std::shared_ptr<IViewable> fWrappedNode = nullptr;
 
         
-        SVGMarkerAttribute(IAmGroot* groot, const ByteSpan& name) : SVGVisualProperty(groot) { id(name); }
+        SVGMarkerAttribute(const ByteSpan& name) : SVGVisualProperty(nullptr) 
+        { 
+            id(name); 
+        }
         
-		std::shared_ptr<SVGViewable> markerNode() const
+		std::shared_ptr<IViewable> markerNode(IRenderSVG* ctx, IAmGroot* groot)
 		{
+            if (fWrappedNode == nullptr)
+            {
+                bindToContext(ctx, groot);
+            }
             return fWrappedNode;
 		}
         
-        void bindToGroot(IAmGroot* groot, SVGViewable* container) noexcept override
+        void bindToContext(IRenderSVG *ctx, IAmGroot* groot) noexcept override
         {
             
             if (chunk_starts_with_cstr(rawValue(), "url("))
@@ -1285,14 +1372,14 @@ namespace waavs {
 
                 if (fWrappedNode != nullptr)
                 {
-					fWrappedNode->bindToGroot(groot, container);
+					fWrappedNode->bindToContext(ctx, groot);
                     set(true);
                 }
             }
             needsBinding(false);
         }
         
-        bool loadSelfFromChunk(const ByteSpan& inChunk) override
+        bool loadSelfFromChunk(const ByteSpan& ) override
         {
 			autoDraw(false); // we mark it as invisible, because we don't want it drawing when attributes are drawn
 			// we only want it to draw when we're drawing during polyline/polygon drawing
@@ -1331,14 +1418,24 @@ namespace waavs {
         }
 
 
-        std::shared_ptr<SVGViewable> fClipNode{ nullptr };
+        std::shared_ptr<IViewable> fClipNode{ nullptr };
         BLVar fClipVar;
         
         
         SVGClipPathAttribute(IAmGroot* groot) : SVGVisualProperty(groot) { id("clip-path"); }
 
+        const BLVar getVariant(IRenderSVG*, IAmGroot*) noexcept override
+        {
+            if (fClipNode == nullptr)
+                return fClipVar;
 
-        bool loadFromUrl(IAmGroot* groot, const ByteSpan& inChunk)
+            // BUGBUG
+            //return fClipNode->getVariant();
+            return BLVar::null();
+        }
+
+        
+        bool loadFromUrl(IRenderSVG *ctx, IAmGroot* groot, const ByteSpan& inChunk)
         {
             if (nullptr == groot)
                 return false;
@@ -1356,7 +1453,7 @@ namespace waavs {
             // BUGBUG - this will not always be the case
             // as what we point to might be a gradient or pattern
             if (fClipNode->needsBinding())
-                fClipNode->bindToGroot(groot, nullptr);
+                fClipNode->bindToContext(ctx, groot);
 
             set(true);
 
@@ -1364,18 +1461,10 @@ namespace waavs {
         }
 
         
-		const BLVar getVariant() noexcept override
-		{
-            if (fClipNode == nullptr)
-                return fClipVar;
-            
-            // BUGBUG
-            //return fClipNode->getVariant();
-            return BLVar::null();
-		}
+
 
         // Let's get a connection to our referenced thing
-        void bindToGroot(IAmGroot* groot, SVGViewable* container) noexcept override
+        void bindToContext(IRenderSVG *ctx, IAmGroot* groot) noexcept override
         {
             ByteSpan str = rawValue();
 
@@ -1383,13 +1472,13 @@ namespace waavs {
             
             if (chunk_starts_with_cstr(str, "url("))
             {
-                loadFromUrl(groot, str);
+                loadFromUrl(ctx, groot, str);
             }
 
             needsBinding(false);
         }
         
-        bool loadSelfFromChunk(const ByteSpan& inChunk) override
+        bool loadSelfFromChunk(const ByteSpan& ) override
         {
             needsBinding(true);
             set(true);
@@ -1414,10 +1503,9 @@ namespace waavs {
         
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
-            needsBinding(false);
-            
 			bool success = getEnumValue(SVGVectorEffect, inChunk, (uint32_t &)fEffectKind);
             set(success);
+            needsBinding(false);
             
             return success;
         }
@@ -1431,6 +1519,3 @@ namespace waavs {
 		}
     };
 }
-
-
-

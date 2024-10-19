@@ -14,7 +14,6 @@
 
 
 #include "blend2d.h"
-
 #include "maths.h"
 #include "bspan.h"
 
@@ -98,12 +97,9 @@ namespace waavs {
 
             if (!err)
             {
-                //printf("loadFont() adding: %s\n", ff.familyName().data());
-                //BLBitSet aSet;
-				//blBitSetInit(&aSet);
+                //printf("FontHandler.loadFont() adding: %s\n", ff.familyName().data());
 
-				//ff.getCharacterCoverage(&aSet);
-				//printf("FontHandler::loadFont() coverage: %d\n", aSet.cardinality());
+
                 
                 fFontManager.addFace(ff);
                 fFamilyNames.push_back(std::string(ff.familyName().data()));
@@ -138,34 +134,7 @@ namespace waavs {
             return true;
         }
 
-        /*
-        // Do this only once to load in fonts
-        // NOTE:  You should do what is correct for your platform
-        // here to load fonts.
-        bool loadDefaultFonts()
-        {
-#ifdef _MSC_VER
-            // Load in some fonts to start
-            std::vector<const char*> fontNames{
-                "c:\\Windows\\Fonts\\arial.ttf",
-                "c:\\Windows\\Fonts\\calibri.ttf",
-                "c:\\Windows\\Fonts\\cascadiacode.ttf",
-                "c:\\Windows\\Fonts\\consola.ttf",
-                "c:\\Windows\\Fonts\\cour.ttf",
-                "c:\\Windows\\Fonts\\gothic.ttf",
-                "c:\\Windows\\Fonts\\segoui.ttf",
-                "c:\\Windows\\Fonts\\tahoma.ttf",
-                "c:\\Windows\\Fonts\\terminal.ttf",
-                "c:\\Windows\\Fonts\\times.ttf",
-                "c:\\Windows\\Fonts\\verdana.ttf",
-                "c:\\Windows\\Fonts\\wingding.ttf"
-            };
-            return loadFonts(fontNames);
-#else
-            return false;
-#endif
-        }
-        */
+
 
         float getAdjustedFontSize(float sz) const
         {
@@ -230,8 +199,8 @@ namespace waavs {
 					return true;
 
 				// Didn't find it, try the next one
-                printf("== FontHandler::selectFontFamily, NOT FOUND: ");
-                printChunk(name);
+                //printf("== FontHandler::selectFontFamily, NOT FOUND: ");
+                //printChunk(name);
             }
 
             // last chance, nothing else worked, so try loading our default, Arial

@@ -33,14 +33,14 @@ namespace waavs {
 
 		ByteSpan fSystemLanguage;
 
-		std::unordered_map<ByteSpan, std::shared_ptr<SVGVisualNode>, ByteSpanHash, ByteSpanEquivalent> fLanguageNodes{};
-		std::shared_ptr<SVGVisualNode> fDefaultNode{ nullptr };
-		std::shared_ptr<SVGVisualNode> fSelectedNode{ nullptr };
+		std::unordered_map<ByteSpan, std::shared_ptr<IViewable>, ByteSpanHash, ByteSpanEquivalent> fLanguageNodes{};
+		std::shared_ptr<IViewable> fDefaultNode{ nullptr };
+		std::shared_ptr<IViewable> fSelectedNode{ nullptr };
 
-		SVGSwitchElement(IAmGroot* root) noexcept : SVGGraphicsElement(root) {}
+		SVGSwitchElement(IAmGroot* root) noexcept : SVGGraphicsElement() {}
 
 
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) override
 		{
 
 			// Get the system language
@@ -56,7 +56,7 @@ namespace waavs {
 			}
 
 			if (nullptr != fSelectedNode)
-				fSelectedNode->bindToGroot(groot, container);
+				fSelectedNode->bindToContext(ctx, groot);
 		}
 
 		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
@@ -66,7 +66,7 @@ namespace waavs {
 			}
 		}
 
-		bool addNode(std::shared_ptr<SVGVisualNode> node, IAmGroot* groot) override
+		bool addNode(std::shared_ptr<ISVGElement> node, IAmGroot* groot) override
 		{
 			// If the node has a language attribute, add it to the language map
 			auto lang = node->getVisualProperty("systemLanguage");

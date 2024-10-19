@@ -146,6 +146,7 @@ namespace waavs {
 				fCacheContext.clear();
 
 				BLRect fr = frame();
+				
 				//ctx->clipToRect(fr);
 
 				//ctx->push();

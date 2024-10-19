@@ -56,12 +56,15 @@ namespace waavs {
 
 
 
-		DisplayCaptureElement(IAmGroot* aroot) :SVGGraphicsElement(aroot) {}
+		DisplayCaptureElement(IAmGroot* ) 
+			:SVGGraphicsElement() {}
 
-		const BLVar getVariant() noexcept override
+		const BLVar getVariant(IRenderSVG *ctx, IAmGroot *groot) noexcept override
 		{
 			if (fVar.isNull())
 			{
+				bindToContext(ctx, groot);
+				
 				fSnapper.update();
 				fPattern.setImage(fSnapper.getImage());
 				fVar.assign(fPattern);
@@ -70,8 +73,17 @@ namespace waavs {
 			return fVar;
 		}
 
+		void fixupSelfStyleAttributes(IRenderSVG* , IAmGroot* ) override
+		{
+			fSrcSpan = getAttribute("src");
+
+			parse64i(getAttribute("capX"), fCapX);
+			parse64i(getAttribute("capY"), fCapY);
+			parse64i(getAttribute("capWidth"), fCapWidth);
+			parse64i(getAttribute("capHeight"), fCapHeight);
+		}
 		
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) override
 		{
 
 			// We need to resolve the size of the user space
@@ -87,19 +99,10 @@ namespace waavs {
 				dpi = groot->dpi();
 			}
 
-			if (nullptr != container) {
-				BLRect cFrame = container->getBBox();
-				w = cFrame.w;
-				h = cFrame.h;
-			}
 
-
-			fSrcSpan = getAttribute("src");
-
-			parse64i(getAttribute("capX"), fCapX);
-			parse64i(getAttribute("capY"), fCapY);
-			parse64i(getAttribute("capWidth"), fCapWidth);
-			parse64i(getAttribute("capHeight"), fCapHeight);
+			BLRect cFrame = ctx->localFrame();
+			w = cFrame.w;
+			h = cFrame.h;
 
 
 			fDimX.loadFromChunk(getAttribute("x"));
@@ -144,12 +147,12 @@ namespace waavs {
 		}
 
 		
-		void update(IAmGroot* groot) override
+		void updateSelf(IAmGroot* ) override
 		{
 			fSnapper.update();
 		}
 		
-		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+		void drawSelf(IRenderSVG* ctx, IAmGroot* ) override
 		{	
 			int lWidth = (int)fSnapper.width();
 			int lHeight = (int)fSnapper.height();

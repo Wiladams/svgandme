@@ -45,25 +45,27 @@ namespace waavs {
 				node->visible(false);
 
 				return node;
-			};
+				};
 		}
 
 		// id
-		double fHorizAdvX;
-		double fHorizOriginX;
-		double fHorizOriginY;
-		double fVertAdvY;
-		double fVertOriginX;
-		double fVertOriginY;
+		double fHorizAdvX{ 0 };
+		double fHorizOriginX{ 0 };
+		double fHorizOriginY{ 0 };
+		double fVertAdvY{ 0 };
+		double fVertOriginX{ 0 };
+		double fVertOriginY{ 0 };
 
-		SVGFontNode(IAmGroot* aroot)
-			: SVGGraphicsElement(aroot)
+		SVGFontNode(IAmGroot* )
+			: SVGGraphicsElement()
+			, fHorizAdvX{ 0 }
+			, fHorizOriginX{0}
 		{
 			isStructural(false);
 		}
 
 
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 
 
@@ -144,10 +146,10 @@ namespace waavs {
 		std::string fOverlinePosition;
 		std::string fOverlineThickness;
 
-		SVGFontFaceNode(IAmGroot* iMap) :SVGGraphicsElement(iMap) {}
+		SVGFontFaceNode(IAmGroot* iMap) :SVGGraphicsElement() {}
 
 
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 
 
@@ -199,12 +201,12 @@ namespace waavs {
 		double fVertOriginY{ 0 };
 		BLPath fPath{};
 		
-		SVGMissingGlyphNode(IAmGroot* aroot)
-			: SVGGraphicsElement(aroot)
+		SVGMissingGlyphNode(IAmGroot* )
+			: SVGGraphicsElement()
 		{
 		}
 
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{	
 			parseNumber(getAttribute("horiz-adv-x"), fHorizAdvX);
 			parseNumber(getAttribute("vert-adv-y"), fVertAdvY);
@@ -216,8 +218,8 @@ namespace waavs {
 			if (!d)
 				return;
 
-			auto success = blpathparser::parsePath(d, fPath);
-			fPath.shrink();
+			if (blpathparser::parsePath(d, fPath))
+				fPath.shrink();
 
 			needsBinding(false);
 		}
@@ -251,7 +253,7 @@ namespace waavs {
 
 		SVGGlyphNode(IAmGroot* iMap) :SVGPathBasedGeometry(iMap) {}
 
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 			//SVGGeometryElement::loadSelfFromXmlElement(elem, groot);
 
@@ -270,8 +272,8 @@ namespace waavs {
 			if (!d)
 				return;
 
-			auto success = blpathparser::parsePath(d, fPath);
-			fPath.shrink();
+			if (blpathparser::parsePath(d, fPath))
+				fPath.shrink();
 		}
 
 	};
@@ -305,14 +307,14 @@ namespace waavs {
 		}
 
 
-		SVGFontFaceSrcNode(IAmGroot* iMap) :SVGGraphicsElement(iMap) {}
+		SVGFontFaceSrcNode(IAmGroot* iMap) :SVGGraphicsElement() {}
 
 	};
 	
 	//=========================================================
 	// SVGFontFaceNameNode
 	//=========================================================
-	struct SVGFontFaceNameNode : public SVGVisualNode
+	struct SVGFontFaceNameNode : public SVGGraphicsElement
 	{
 		static void registerFactory() {
 			getSVGSingularCreationMap()["font-face-name"] = [](IAmGroot* groot, const XmlElement& elem) {
@@ -324,13 +326,13 @@ namespace waavs {
 
 		ByteSpan fFaceName{};
 
-		SVGFontFaceNameNode(IAmGroot* iMap) :SVGVisualNode(iMap) { visible(false); }
+		SVGFontFaceNameNode(IAmGroot* iMap) :SVGGraphicsElement() { visible(false); }
 
 		const ByteSpan& faceName() const {
 			return fFaceName;
 		}
 		
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* ) override
 		{
 			fFaceName = getAttribute("name");
 		}

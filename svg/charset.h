@@ -1,6 +1,7 @@
 #pragma once
 
 #include <bitset>
+#include "definitions.h"
 
 namespace waavs {
 

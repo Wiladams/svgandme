@@ -28,7 +28,7 @@ namespace waavs {
 		bool fHasMarkers{ false };
 
 		SVGPathBasedGeometry(IAmGroot* iMap)
-			:SVGGraphicsElement(iMap)
+			:SVGGraphicsElement()
 		{
 		}
 
@@ -41,13 +41,6 @@ namespace waavs {
 
 			BLBox bbox{};
 			fPath.getBoundingBox(&bbox);
-
-
-			if (fHasTransform) {
-				auto leftTop = fTransform.mapPoint(bbox.x0, bbox.y0);
-				auto rightBottom = fTransform.mapPoint(bbox.x1, bbox.y1);
-				return BLRect(leftTop.x, leftTop.y, rightBottom.x - leftTop.x, rightBottom.y - leftTop.y);
-			}
 
 			return BLRect(bbox.x0, bbox.y0, bbox.x1 - bbox.x0, bbox.y1 - bbox.y0);
 		}
@@ -63,9 +56,8 @@ namespace waavs {
 			return BLRect(bbox.x0, bbox.y0, (bbox.x1 - bbox.x0), (bbox.y1 - bbox.y0));
 		}
 
-		void bindPropertiesToGroot(IAmGroot* groot, SVGViewable* container) override
+		bool checkForMarkers()
 		{
-			SVGGraphicsElement::bindPropertiesToGroot(groot, container);
 
 			// figure out if we have any markers set
 			auto mStart = getAttribute("marker-start");
@@ -78,8 +70,14 @@ namespace waavs {
 				fHasMarkers = true;
 			}
 			
+			return fHasMarkers;
 		}
 
+		void fixupSelfStyleAttributes(IRenderSVG* ctx, IAmGroot* groot) override
+		{
+			checkForMarkers();
+		}
+		
 		bool drawMarker(IRenderSVG* ctx, const ByteSpan propname, MarkerPosition pos, const BLPoint& p1, const BLPoint& p2, const BLPoint& p3, IAmGroot* groot)
 		{
 			std::shared_ptr<SVGVisualProperty> prop = getVisualProperty(propname);
@@ -98,8 +96,8 @@ namespace waavs {
 			if (nullptr == marker)
 				return false;
 
-			// get the marker node, as shared_ptr<SVGViewable>
-			auto aNode = marker->markerNode();
+			// get the marker node, as shared_ptr<IViewable>
+			auto aNode = marker->markerNode(ctx, groot);
 			if (nullptr == aNode)
 				return false;
 
@@ -164,7 +162,7 @@ namespace waavs {
 			const BLPoint* verts = fPath.vertexData();
 			size_t numVerts = fPath.size();
 			int vertOffset{ 0 };
-			int nVerts = 0;
+			//int nVerts = 0;
 			
 			uint8_t lastCmd = CMD_INVALID;
 			BLPoint lastMoveTo{};
@@ -408,7 +406,7 @@ namespace waavs {
 		*/
 
 		
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{	
 			double dpi = 96;
 			double w = 1.0;
@@ -419,12 +417,11 @@ namespace waavs {
 				dpi = groot->dpi();
 			}
 
-			if (nullptr != container)
-			{
-				BLRect cFrame = container->getBBox();
+
+				BLRect cFrame = ctx->localFrame();
 				w = cFrame.w;
 				h = cFrame.h;
-			}
+
 			
 			SVGDimension fDimX1{};
 			SVGDimension fDimY1{};
@@ -491,7 +488,7 @@ namespace waavs {
 		}
 		
 
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 			double dpi = 96;
 			double w = 1.0;
@@ -502,12 +499,11 @@ namespace waavs {
 				dpi = groot->dpi();
 			}
 			
-			if (container)
-			{
-				BLRect cFrame = container->getBBox();
+
+				BLRect cFrame = ctx->localFrame();
 				w = cFrame.w;
 				h = cFrame.h;
-			}
+
 
 			SVGDimension fX{};
 			SVGDimension fY{};
@@ -609,7 +605,7 @@ namespace waavs {
 		SVGCircleElement(IAmGroot* iMap) :SVGPathBasedGeometry(iMap) {}
 
 		
-		void resolvePosition(IAmGroot *groot, SVGViewable* container) override
+		void bindSelfToContext(IRenderSVG *ctx, IAmGroot *groot) override
 		{
 			double dpi = 96;
 			double w = 1.0;
@@ -620,11 +616,11 @@ namespace waavs {
 				dpi = groot->dpi();
 			}
 			
-			if (container) {
-				BLRect cFrame = container->getBBox();
+
+			BLRect cFrame = ctx->localFrame();
 				w = cFrame.w;
 				h = cFrame.h;
-			}
+
 			
 			SVGDimension fCx{};
 			SVGDimension fCy{};
@@ -671,7 +667,7 @@ namespace waavs {
 			return BLRect(geom.cx - geom.rx, geom.cy - geom.ry, geom.rx * 2, geom.ry * 2);
 		}
 		
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 			double dpi = 96;
 			double w = 1.0;
@@ -682,12 +678,11 @@ namespace waavs {
 				dpi = groot->dpi();
 			}
 			
-			if (nullptr != container)
-			{
-				BLRect cFrame = container->getBBox();
-				w = cFrame.w;
-				h = cFrame.h;
-			}
+
+			BLRect cFrame = ctx->localFrame();
+			w = cFrame.w;
+			h = cFrame.h;
+
 			
 
 			SVGDimension fCx{};
@@ -754,7 +749,7 @@ namespace waavs {
 			}
 		}
 		
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 			loadPoints(getAttribute("points"));
 			fPath.shrink();
@@ -794,9 +789,10 @@ namespace waavs {
 		SVGPolygonElement(IAmGroot* iMap) 
 			:SVGPolylineElement(iMap) {}
 
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-			SVGPolylineElement::resolvePosition(groot, container);
+			SVGPolylineElement::bindSelfToContext(ctx, groot);
+			
 			fPath.close();
 			fPath.shrink();
 		}
@@ -837,18 +833,13 @@ namespace waavs {
 		{
 		}
 		
-		void loadPath()
+		virtual void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 			auto d = getAttribute("d");
 			if (d) {
 				auto success = blpathparser::parsePath(d, fPath);
 				fPath.shrink();
 			}
-		}
-		
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
-		{		
-			loadPath();
 		}
 
 

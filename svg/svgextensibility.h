@@ -40,9 +40,8 @@ namespace waavs {
 		SVGForeignObjectElement(IAmGroot* aroot)
 			: SVGGraphicsElement(aroot) {}
 
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		void resolvePosition(IRenderSVG *ctx, IAmGroot* groot) override
 		{
-
 			double dpi = 96;
 			double w = 1.0;
 			double h = 1.0;
@@ -50,9 +49,12 @@ namespace waavs {
 			if (groot)
 			{
 				dpi = groot->dpi();
-				w = groot->canvasWidth();
-				h = groot->canvasHeight();
 			}
+			
+			auto cFrame = ctx->localFrame();
+			w = cFrame.w;
+			h = cFrame.h;
+			
 
 			// The intended destination
 			SVGDimension fDimX{};

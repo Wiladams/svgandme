@@ -26,7 +26,7 @@ namespace waavs {
 		double fOpacity = 1;
 		BLRgba32 fColor{ 0xff000000 };
 
-		SVGStopNode(IAmGroot* groot) :SVGObject() {}
+		SVGStopNode() :SVGObject() {}
 
 		double offset() const { return fOffset; }
 		double opacity() const { return fOpacity; }
@@ -89,11 +89,16 @@ namespace waavs {
 
 			
 
-			BLVar aVar = paint.getVariant();
+			BLVar aVar = paint.getVariant(nullptr, nullptr);
 			uint32_t colorValue = 0;
 			auto res = blVarToRgba32(&aVar, &colorValue);
 			fColor.value = colorValue;
 
+		}
+		
+		void bindToContext(IRenderSVG*, IAmGroot*) noexcept override
+		{
+			// nothing to see here, part of SVGObject abstract
 		}
 	};
 	
@@ -108,13 +113,14 @@ namespace waavs {
 
 		BLGradient fGradient{};
 		BLVar fGradientVar{};
+		BLExtendMode fSpreadMethod{ BL_EXTEND_MODE_PAD };
 		SpaceUnitsKind fGradientUnits{ SVG_SPACE_OBJECT };
 		ByteSpan fTemplateReference{};
 
 
 		// Constructor
-		SVGGradient(IAmGroot* aroot)
-			:SVGGraphicsElement(aroot)
+		SVGGradient(IAmGroot* )
+			:SVGGraphicsElement()
 		{
 			fGradient.setExtendMode(BL_EXTEND_MODE_PAD);
 			isStructural(false);
@@ -124,113 +130,100 @@ namespace waavs {
 
 		SVGGradient operator=(const SVGGradient& other) = delete;
 
-		const BLVar getVariant() noexcept override
+		// getVariant()
+		//
+		// Whomever is using us for paint is calling in here to get
+		// our paint variant.  This is the place to construct
+		// the thing.
+		const BLVar getVariant(IRenderSVG *ctx, IAmGroot *groot) noexcept override
 		{
+			bindToContext(ctx, groot);
+			needsBinding(true);
+			BLVar tmpVar{};
+			tmpVar = fGradient;
+			return tmpVar;
+			
+			/*
+			// If we've never gone through, load the gradient
+			if (needsBinding() || fGradientVar.isNull())
+			{
+				bindToContext(ctx, groot);
+				fGradientVar = fGradient;
+			}
+			
+			
+			// Now that we know what we have
+			if (fGradientUnits == SVG_SPACE_OBJECT) {
+				BLVar tmpVar{};
+				tmpVar = fGradient;
+				needsBinding(true);
+				
+				return tmpVar;
+			}
+
 			return fGradientVar;
+			*/
 		}
 
-		// Load a URL Reference
-		void resolveReference(IAmGroot* groot, SVGViewable* container)
+		// resolveReference()
+		// 
+		// We want to copy all relevant data from the reference.
+		// Most importantly, we need the color stops.
+		// then we need the coordinate system (userspace or bounding box
+		//
+		void resolveReference(IRenderSVG* ctx, IAmGroot* groot)
 		{
+			// no template to reference?  Return immediately
+			if (!fTemplateReference)
+				return;
 
-			if (fTemplateReference)
+
+			// Get the referred to element
+			auto node = groot->findNodeByHref(fTemplateReference);
+
+			// try to cast to SVGGradient
+			auto gnode = std::dynamic_pointer_cast<SVGGradient>(node);
+
+			// if we can't cast, then we can't resolve the reference
+			// so return immediately
+			if (!gnode)
+				return;
+
+			// Make sure the template binds, so we can get values out of it
+			BLVar aVar = node->getVariant(ctx, groot);
+			
+			// Get the gradientUnits to start
+			fGradientUnits = gnode->fGradientUnits;
+			
+			
+			if (aVar.isGradient())
 			{
-				auto idValue = chunk_trim(fTemplateReference, xmlwsp);
-
-				// The first character could be '.' or '#'
-				// so we need to skip past that
-				if (*idValue == '.' || *idValue == '#')
-					idValue++;
-
-				if (!idValue)
-					return;
-
-				// lookup the thing we're referencing
-				auto node = groot->getElementById(idValue);
+				// BUGBUG - we need to take care here to assign
+				// the right stuff based on what kind of gradient
+				// we are.
+				// Start with just assigning the stops
+				BLGradient& tmpGradient = aVar.as<BLGradient>();
 
 
-				if (node != nullptr)
+				// assign stops from tmpGradient
+				const BLGradientStop* stops = tmpGradient.stops();
+				size_t gcount = tmpGradient.size();
+				fGradient.resetStops();
+				fGradient.assignStops(stops, gcount);
+
+				// transform matrix if it already exists and
+				// we had set a new one as well
+				// otherwise, just set the new one
+				if (tmpGradient.hasTransform())
 				{
-					// That node itself might need to be bound
-					//if (node->needsBinding())
-					//	node->bindToGroot(groot);
-					node->bindToGroot(groot, container);
-
-					const BLVar& aVar = node->getVariant();
-
-					if (aVar.isGradient())
-					{
-						// BUGBUG - we need to take care here to assign
-						// the right stuff based on what kind of gradient
-						// we are.
-						// Start with just assigning the stops
-						const BLGradient& tmpGradient = aVar.as<BLGradient>();
-
-						//fGradient = tmpGradient;
-						//if (fHasGradientTransform)
-						//{
-						//	fGradient.setTransform(fGradientTransform);
-						//}
-					
-						///*
-						// assign stops from tmpGradient
-						fGradient.assignStops(tmpGradient.stops(), tmpGradient.size());
-
-						// transform matrix if it already exists and
-						// we had set a new one as well
-						// otherwise, just set the new one
-						if (tmpGradient.hasTransform())
-						{
-							if (fHasGradientTransform)
-							{
-								BLMatrix2D tmpMatrix = tmpGradient.transform();
-								tmpMatrix.transform(fGradientTransform);
-								fGradient.setTransform(tmpMatrix);
-							}
-							else
-							{
-								fGradient.setTransform(tmpGradient.transform());
-							}
-						}
-						else if (fHasGradientTransform)
-						{
-							fGradient.setTransform(fGradientTransform);
-						}
-						//*/
-
-					}
+					fGradient.setTransform(tmpGradient.transform());
 				}
 			}
-			else if (fHasGradientTransform) {
-				fGradient.setTransform(fGradientTransform);
-			}
 
-			fGradientVar = fGradient;
 
 		}
 
 
-		void resolvePosition(IAmGroot* groot, SVGViewable* container)
-		{
-			// See if we have a template reference
-			if (getAttribute("href"))
-				fTemplateReference = getAttribute("href");
-			else if (getAttribute("xlink:href"))
-				fTemplateReference = getAttribute("xlink:href");
-
-			// Whether we've loaded a template or not
-			// load the common attributes for gradients
-			BLExtendMode extendMode = BL_EXTEND_MODE_PAD;
-			if (getEnumValue(SVGExtendMode, getAttribute("extendMode"), (uint32_t &)extendMode))
-			{
-				fGradient.setExtendMode((BLExtendMode)extendMode);
-			}
-
-
-			// read the gradientUnits
-			getEnumValue(SVGSpaceUnits, getAttribute("gradientUnits"), (uint32_t &)fGradientUnits);
-			fHasGradientTransform = parseTransform(getAttribute("gradientTransform"), fGradientTransform);
-		}
 
 		//
 		// The only nodes here should be stop nodes
@@ -242,15 +235,26 @@ namespace waavs {
 				return;
 			}
 
-			SVGStopNode stop(groot);
-			stop.loadFromXmlElement(elem, groot);
+			SVGStopNode stopnode{};
+			stopnode.loadFromXmlElement(elem, groot);
 
-			auto offset = stop.offset();
-			auto acolor = stop.color();
+			auto offset = stopnode.offset();
+			auto acolor = stopnode.color();
 
 			fGradient.addStop(offset, acolor);
 
 		}
+
+		void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*) override
+		{
+			// See if we have a template reference
+			if (getAttribute("href"))
+				fTemplateReference = getAttribute("href");
+			else if (getAttribute("xlink:href"))
+				fTemplateReference = getAttribute("xlink:href");
+
+		}
+		
 
 	};
 
@@ -287,30 +291,29 @@ namespace waavs {
 			fGradient.setType(BL_GRADIENT_TYPE_LINEAR);
 		}
 
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		
+		void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) override
 		{
-			SVGGradient::resolvePosition(groot, container);
+			// Start by resolving any reference, if there is one
+			resolveReference(ctx, groot);
+			
 
 			double dpi = 96;
-			double w = 1.0;
-			double h = 1.0;
 
 			if (nullptr != groot)
 			{
 				dpi = groot->dpi();
-				w = groot->canvasWidth();
-				h = groot->canvasHeight();
 			}
 
-
+			
 			// Get current values, in case we've already
 			// loaded from a template
 			BLLinearGradientValues values{ 0,0,0,1 };// = fGradient.linear();
 
-			SVGDimension fX1{ 0,SVG_LENGTHTYPE_PERCENTAGE };
-			SVGDimension fY1{ 0,SVG_LENGTHTYPE_NUMBER };
-			SVGDimension fX2{ 100,SVG_LENGTHTYPE_PERCENTAGE };
-			SVGDimension fY2{ 0,SVG_LENGTHTYPE_PERCENTAGE };
+			SVGDimension fX1; //{ 0, SVG_LENGTHTYPE_PERCENTAGE };
+			SVGDimension fY1; //{ 0, SVG_LENGTHTYPE_NUMBER };
+			SVGDimension fX2; //{ 100, SVG_LENGTHTYPE_PERCENTAGE };
+			SVGDimension fY2; //{ 0, SVG_LENGTHTYPE_PERCENTAGE };
 			
 			fX1.loadFromChunk(getAttribute("x1"));
 			fY1.loadFromChunk(getAttribute("y1"));
@@ -318,19 +321,84 @@ namespace waavs {
 			fY2.loadFromChunk(getAttribute("y2"));
 
 			
-			if (fGradientUnits == SVG_SPACE_USER)
+			// Before we go any further, get our current gradientUnits
+			// this should override whatever was set if we had referred to a template
+			// if there is NOT a gradientUnits attribute, then we'll either
+			// be using the one that came from a template (if there was one)
+			// or we'll just be sticking with the default value
+			if (getEnumValue(SVGSpreadMethod, getAttribute("spreadMethod"), (uint32_t&)fSpreadMethod))
 			{
-				if (fX1.isSet())
-					values.x0 = fX1.calculatePixels(w, 0, dpi);
-				if (fY1.isSet())
-					values.y0 = fY1.calculatePixels(h, 0, dpi);
-				if (fX2.isSet())
-					values.x1 = fX2.calculatePixels(w, 0, dpi);
-				if (fY2.isSet())
-					values.y1 = fY2.calculatePixels(h, 0, dpi);
+				fGradient.setExtendMode((BLExtendMode)fSpreadMethod);
 			}
-			else
+
+			getEnumValue(SVGSpaceUnits, getAttribute("gradientUnits"), (uint32_t&)fGradientUnits);
+
+			fHasGradientTransform = parseTransform(getAttribute("gradientTransform"), fGradientTransform);
+
+
+
+			
+			if (fGradientUnits == SVG_SPACE_OBJECT )
 			{
+				BLRect oFrame = ctx->objectFrame();
+				double w = oFrame.w;
+				double h = oFrame.h;
+				auto x = oFrame.x;
+				auto y = oFrame.y;
+				
+				if (fX1.isSet()) {
+					if (fX1.fUnits == SVG_LENGTHTYPE_NUMBER) {
+						if (fX1.value() <= 1.0)
+							values.x0 = x + (fX1.value() * w);
+						else
+							values.x0 = x + fX1.value();
+					} else
+						values.x0 = x + fX1.calculatePixels(w, 0, dpi);
+
+				} else
+					values.x0 = x + 0;
+
+				if (fY1.isSet()) {
+					if (fY1.fUnits == SVG_LENGTHTYPE_NUMBER) {
+						if (fY1.value() <= 1.0)
+							values.y0 = y + (fY1.value() * h);
+						else
+							values.y0 = y + fY1.value();
+					} else 
+						values.y0 = y + fY1.calculatePixels(h, 0, dpi);
+				} else
+					values.y0 = y + 0;
+
+
+				if (fX2.isSet()) {
+					if (fX2.fUnits == SVG_LENGTHTYPE_NUMBER) {
+						if (fX2.value() <= 1.0)
+							values.x1 = x + (fX2.value() * w);
+						else
+							values.x1 = x + fX2.value();
+					} else
+						values.x1 = x + fX2.calculatePixels(w, 0, dpi);
+				} else
+					values.x1 = x + w;
+				
+				if (fY2.isSet()) {
+					if (fY2.fUnits == SVG_LENGTHTYPE_NUMBER) {
+						if (fY2.value() <= 1.0)
+							values.y1 = y + (fY2.value() * h);
+						else
+							values.y1 = y + fY2.value();
+					} else
+						values.y1 = y + fY2.calculatePixels(h, 0, dpi);
+				} else
+					values.y1 = y + 0;
+
+			}
+			else if (fGradientUnits == SVG_SPACE_USER)
+			{
+				BLRect lFrame = ctx->localFrame();
+				double w = lFrame.w;
+				double h = lFrame.h;
+				
 				if (fX1.isSet())
 					values.x0 = fX1.calculatePixels(w, 0, dpi);
 				if (fY1.isSet())
@@ -341,9 +409,19 @@ namespace waavs {
 					values.y1 = fY2.calculatePixels(h, 0, dpi);
 			}
 
-			resolveReference(groot, container);
+
+			
+
+
+			
+
+
 			
 			fGradient.setValues(values);
+			if (fHasGradientTransform) {
+				fGradient.setTransform(fGradientTransform);
+			}
+			
 			fGradientVar = fGradient;
 
 		}
@@ -391,29 +469,25 @@ namespace waavs {
 			fGradient.setType(BL_GRADIENT_TYPE_RADIAL);
 		}
 
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) override
 		{
-			SVGGradient::resolvePosition(groot, container);
-
+			// Start by resolving any reference, if there is one
+			resolveReference(ctx, groot);
+			
 			double dpi = 96;
-			double w = 1.0;
-			double h = 1.0;
-
 			if (nullptr != groot)
 			{
 				dpi = groot->dpi();
-				w = groot->canvasWidth();
-				h = groot->canvasHeight();
 			}
 
 
 			BLRadialGradientValues values = fGradient.radial();
 
-			SVGDimension fCx{ 50, SVG_LENGTHTYPE_PERCENTAGE };
-			SVGDimension fCy{ 50, SVG_LENGTHTYPE_PERCENTAGE };
-			SVGDimension fR{ 50, SVG_LENGTHTYPE_PERCENTAGE };
-			SVGDimension fFx{ 50, SVG_LENGTHTYPE_PERCENTAGE, false };
-			SVGDimension fFy{ 50, SVG_LENGTHTYPE_PERCENTAGE, false };
+			SVGDimension fCx;	// { 50, SVG_LENGTHTYPE_PERCENTAGE };
+			SVGDimension fCy;	//  { 50, SVG_LENGTHTYPE_PERCENTAGE };
+			SVGDimension fR;	// { 50, SVG_LENGTHTYPE_PERCENTAGE };
+			SVGDimension fFx;	// { 50, SVG_LENGTHTYPE_PERCENTAGE, false };
+			SVGDimension fFy;	// { 50, SVG_LENGTHTYPE_PERCENTAGE, false };
 			
 			fCx.loadFromChunk(getAttribute("cx"));
 			fCy.loadFromChunk(getAttribute("cy"));
@@ -421,20 +495,127 @@ namespace waavs {
 			fFx.loadFromChunk(getAttribute("fx"));
 			fFy.loadFromChunk(getAttribute("fy"));
 			
-			values.x0 = fCx.calculatePixels(w, 0, dpi);
-			values.y0 = fCy.calculatePixels(h, 0, dpi);
-			values.r0 = fR.calculatePixels(w, 0, dpi);
 
-			if (fFx.isSet())
-				values.x1 = fFx.calculatePixels(w, 0, dpi);
-			else
-				values.x1 = values.x0;
-			if (fFy.isSet())
-				values.y1 = fFy.calculatePixels(h, 0, dpi);
-			else
-				values.y1 = values.y0;
+			// Before we go any further, get our current gradientUnits
+			// this should override whatever was set if we had referred to a template
+			// if there is NOT a gradientUnits attribute, then we'll either
+			// be using the one that came from a template (if there was one)
+			// or we'll just be sticking with the default value
+			if (getEnumValue(SVGSpreadMethod, getAttribute("spreadMethod"), (uint32_t&)fSpreadMethod))
+			{
+				fGradient.setExtendMode((BLExtendMode)fSpreadMethod);
+			}
 
-			resolveReference(groot, container);
+			getEnumValue(SVGSpaceUnits, getAttribute("gradientUnits"), (uint32_t&)fGradientUnits);
+
+			fHasGradientTransform = parseTransform(getAttribute("gradientTransform"), fGradientTransform);
+
+			
+			if (fGradientUnits == SVG_SPACE_OBJECT)
+			{
+				BLRect oFrame = ctx->objectFrame();
+				auto w = oFrame.w;
+				auto h = oFrame.h;
+				auto x = oFrame.x;
+				auto y = oFrame.y;
+				
+				if (fCx.isSet()) {
+					if (fCx.fUnits == SVG_LENGTHTYPE_NUMBER) {
+						if (fCx.value() <= 1.0)
+							values.x0 = x + (fCx.value() * w);
+						else
+							values.x0 = x + fCx.value();
+					}
+					else
+						values.x0 = x + fCx.calculatePixels(w, 0, dpi);
+
+				}
+				else
+					values.x0 = x + (w*0.50);	// default to center of object
+
+				if (fCy.isSet()) {
+					if (fCy.fUnits == SVG_LENGTHTYPE_NUMBER) {
+						if (fCy.value() <= 1.0)
+							values.y0 = y + (fCy.value() * h);
+						else
+							values.y0 = y + fCy.value();
+					}
+					else
+						values.y0 = y + fCy.calculatePixels(h, 0, dpi);
+
+				}
+				else
+					values.y0 = y + (h * 0.50);	// default to center of object
+				
+				
+				if (fR.isSet()) {
+					if (fR.fUnits == SVG_LENGTHTYPE_NUMBER) {
+						if (fR.value() <= 1.0) {
+							values.r0 = calculateDistance(fR.value() * 100, w, h);
+						}
+						else
+							values.r0 = fR.value();
+					}
+					else
+						values.r0 = fR.calculatePixels(w, 0, dpi);
+
+				}
+				else
+					values.r0 = (w * 0.50);	// default to center of object
+				
+
+				if (fFx.isSet()) {
+					if (fFx.fUnits == SVG_LENGTHTYPE_NUMBER) {
+						if (fFx.value() <= 1.0)
+							values.x1 = x + (fFx.value() * w);
+						else
+							values.x1 = x + fFx.value();
+					}
+					else
+						values.x1 = x + fFx.calculatePixels(w, 0, dpi);
+				}
+				else
+					values.x1 = values.x0;
+
+				
+				if (fFy.isSet()) {
+					if (fFy.fUnits == SVG_LENGTHTYPE_NUMBER) {
+						if (fFy.value() <= 1.0)
+							values.y1 = y + (fFy.value() * h);
+						else
+							values.y1 = y + fFy.value();
+					}
+					else
+						values.y1 = y + fFy.calculatePixels(h, 0, dpi);
+
+				}
+				else
+					values.y1 = values.y0;
+
+			}
+			else if (fGradientUnits == SVG_SPACE_USER)
+			{
+				BLRect lFrame = ctx->localFrame();
+				double w = lFrame.w;
+				double h = lFrame.h;
+				
+				values.x0 = fCx.calculatePixels(w, 0, dpi);
+				values.y0 = fCy.calculatePixels(h, 0, dpi);
+				values.r0 = fR.calculatePixels(w, 0, dpi);
+
+				if (fFx.isSet())
+					values.x1 = fFx.calculatePixels(w, 0, dpi);
+				else
+					values.x1 = values.x0;
+				
+				if (fFy.isSet())
+					values.y1 = fFy.calculatePixels(h, 0, dpi);
+				else
+					values.y1 = values.y0;
+
+			}
+			
+
 			
 			fGradient.setValues(values);
 			fGradientVar = fGradient;
@@ -487,9 +668,9 @@ namespace waavs {
 		}
 
 
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) override
 		{
-			SVGGradient::resolvePosition(groot, container);
+			SVGGradient::bindSelfToContext(ctx, groot);
 
 			double dpi = 96;
 			double w = 1.0;
@@ -537,7 +718,7 @@ namespace waavs {
 			else if (values.repeat == 0)
 				values.repeat = 1.0;
 			
-			resolveReference(groot, container);
+			resolveReference(ctx, groot);
 			
 			fGradient.setValues(values);
 			fGradientVar = fGradient;
@@ -553,7 +734,7 @@ namespace waavs {
 	// You could represent this as a linear gradient with a single color
 	// but this is the way to do it for SVG 2.0
 	//============================================================
-	struct SVGSolidColorElement : public SVGVisualNode
+	struct SVGSolidColorElement : public SVGGraphicsElement
 	{
 		static void registerFactory() {
 			getSVGSingularCreationMap()["solidColor"] = [](IAmGroot* groot, const XmlElement& elem) {
@@ -566,15 +747,15 @@ namespace waavs {
 
 		SVGPaint fPaint{ nullptr };
 
-		SVGSolidColorElement(IAmGroot* aroot) :SVGVisualNode(aroot) {}
+		SVGSolidColorElement(IAmGroot* ) :SVGGraphicsElement() {}
 
 
-		const BLVar getVariant() noexcept override
+		const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
 		{
-			return fPaint.getVariant();
+			return fPaint.getVariant(ctx, groot);
 		}
 
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 			fPaint.loadFromChunk(getAttribute("solid-color"));
 

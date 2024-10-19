@@ -35,14 +35,18 @@ namespace waavs {
 
 		virtual void onDocumentLoad()
 		{
-
+			// clear background
 		}
 		
 		virtual void resetFromDocument(SVGDocumentHandle doc, FontHandler* fh = nullptr) noexcept
 		{
+			// clear context
+			fCacheContext.clear();
+
 			fDocument = doc;
 
 			auto sFrame = fDocument->frame();
+			//auto sFrame = fDocument->getBBox();
 			setBounds(sFrame);
 			setNeedsRedraw(true);
 			onDocumentLoad();

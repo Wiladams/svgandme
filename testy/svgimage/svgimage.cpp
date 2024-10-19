@@ -45,7 +45,7 @@ static void loadFontDirectory(const char* dir)
 static void setupFonts()
 {
 	loadFontDirectory("c:\\Windows\\Fonts");
-    //gFontHandler.loadDefaultFonts();
+
 
 }
 
@@ -78,21 +78,14 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 
 void quik()
 {
-	printf("%4d NORMAL\n", SVGPaintOrderAttribute::createInstructions("normal"));
-	printf("%4d fill\n", SVGPaintOrderAttribute::createInstructions("fill"));
-	printf("%4d fill stroke\n", SVGPaintOrderAttribute::createInstructions("fill stroke"));
-	printf("%4d fill stroke markers\n", SVGPaintOrderAttribute::createInstructions("fill stroke markers"));
-	printf("==============================================\n");
-	printf("%4d stroke\n", SVGPaintOrderAttribute::createInstructions("stroke"));
-	printf("%4d stroke fill\n", SVGPaintOrderAttribute::createInstructions("stroke fill"));
-	printf("%4d stroke fill markers\n", SVGPaintOrderAttribute::createInstructions("stroke fill markers"));
-	printf("==============================================\n");
-	printf("%4d markers\n", SVGPaintOrderAttribute::createInstructions("markers"));
-	printf("%4d markers fill\n", SVGPaintOrderAttribute::createInstructions("markers fill"));
-	printf("%4d markers fill stroke\n", SVGPaintOrderAttribute::createInstructions("markers fill stroke"));
-	printf("==============================================\n");
-	printf("%4d markers stroke fill\n", SVGPaintOrderAttribute::createInstructions("markers stroke fill"));
-	printf("%4d markers stroke\n", SVGPaintOrderAttribute::createInstructions("markers stroke"));
+	ByteSpan a("darkRed");
+	ByteSpan b("darkred");
+	
+	auto ahash = fnv1a_32_case_insensitive(a.data(), a.size());
+	auto bhash = fnv1a_32_case_insensitive(b.data(), b.size());
+
+	printf("Hash A: 0x%08x  B: 0x%08x\n", ahash, bhash);
+
 
 
 
@@ -102,7 +95,7 @@ void quik()
 
 int main(int argc, char **argv)
 {
-	//quik();
+	quik();
 
 	if (argc < 2)
     {

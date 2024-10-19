@@ -21,7 +21,7 @@ namespace waavs {
 		StrokeWidth = 1
 	};
 
-	struct SVGMarkerElement : public SVGGraphicsElement
+	struct SVGMarkerElement : public SVGContainer
 	{
 		static void registerFactory()
 		{
@@ -36,7 +36,7 @@ namespace waavs {
 		}
 
 		// Fields
-		SVGViewbox fViewbox{};
+		//SVGViewbox fViewbox{};
 		SVGDimension fDimRefX{};
 		SVGDimension fDimRefY{};
 		SVGDimension fDimMarkerWidth{};
@@ -49,9 +49,13 @@ namespace waavs {
 		double fRefY = 0;
 		double fMarkerWidth{ 3 };
 		double fMarkerHeight{ 3 };
+		
+		double scaleX = 1.0;
+		double scaleY = 1.0;
 
+		
 		SVGMarkerElement(IAmGroot* root)
-			: SVGGraphicsElement(root)
+			: SVGContainer()
 		{
 			isStructural(false);
 		}
@@ -59,14 +63,104 @@ namespace waavs {
 		const SVGOrient& orientation() const { return fOrientation; }
 
 
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		//
+ // createPortal
+ // 
+ // This code establishes the coordinate space for the element, and 
+ // its child nodes.
+ // 
+		void createPortal(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-			auto preserveAspectRatio = getAttribute("preserveAspectRatio");
-
-
-			if (getAttribute("viewBox")) {
-				fViewbox.loadFromChunk(getAttribute("viewBox"));
+			double dpi = 96;
+			if (nullptr != groot)
+			{
+				dpi = groot->dpi();
 			}
+
+			// Get the current container frame
+			BLRect cFrame = ctx->localFrame();
+			double w = cFrame.w;
+			double h = cFrame.h;
+
+			BLRect fSceneFrame{};
+			BLRect fSurfaceFrame{};
+
+
+			// Get the aspect ratio
+			getEnumValue(SVGAspectRatioEnum, getAttribute("preserveAspectRatio"), (uint32_t&)fPreserveAspectRatio);
+
+
+			// Load parameters for the portal
+			SVGVariableSize fDimX{};
+			SVGVariableSize fDimY{};
+			SVGVariableSize fDimWidth{};
+			SVGVariableSize fDimHeight{};
+
+			fDimX.loadFromChunk(getAttribute("x"));
+			fDimY.loadFromChunk(getAttribute("y"));
+			fDimWidth.loadFromChunk(getAttribute("width"));
+			fDimHeight.loadFromChunk(getAttribute("height"));
+
+			// Load parameters for the viewbox
+			BLRect viewboxRect{};
+			bool haveViewbox = parseViewBox(getAttribute("viewBox"), viewboxRect);
+
+
+
+			if (fDimWidth.isSet() || fDimHeight.isSet())
+			{
+				// When calculating these, if the attribute was not set, the 'length' will 
+				// be the value returned.
+				fSurfaceFrame.w = fDimWidth.calculatePixels(ctx->font(), w, 0, dpi);
+				fSurfaceFrame.h = fDimHeight.calculatePixels(ctx->font(), h, 0, dpi);
+
+				// For these, we want to use a default value of '0' if they were not
+				// explicitly set.  
+				// For these, we start with default values of '0', and only
+				// change them if they were explicitly set.
+				if (fDimX.isSet())
+					fSurfaceFrame.x = fDimX.calculatePixels(ctx->font(), w, 0, dpi);
+
+				if (fDimY.isSet())
+					fSurfaceFrame.y = fDimY.calculatePixels(ctx->font(), h, 0, dpi);
+
+
+			}
+			else {
+				// If no width and height were set, then we want the
+				// surface frame to match the 'viewBox' attribute
+				// and if that was not set, then we want to return immediately
+				// because it's an error to not have at least one of them set
+				if (haveViewbox)
+					fSurfaceFrame = viewboxRect;
+				else
+					return;
+
+			}
+
+			fViewport.surfaceFrame(fSurfaceFrame);
+
+			// If the viewbox is set, then use that as the scene frame
+			// if not, then use the surfaceframe as the scene frame for 
+			// an identity transform
+			if (haveViewbox)
+			{
+				fViewport.sceneFrame(viewboxRect);
+			}
+			else
+			{
+				fViewport.sceneFrame(fSurfaceFrame);
+			}
+
+		}
+		
+		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+		{
+			createPortal(ctx, groot);
+			
+			BLRect viewboxRect{};
+			bool haveViewbox = parseViewBox(getAttribute("viewBox"), viewboxRect);
+			
 
 			if (getAttribute("refX")) {
 				fDimRefX.loadFromChunk(getAttribute("refX"));
@@ -100,45 +194,51 @@ namespace waavs {
 			
 			if (fDimMarkerWidth.isSet())
 				fMarkerWidth = fDimMarkerWidth.calculatePixels();
-			else if (fViewbox.isSet())
-				fMarkerWidth = fViewbox.width();
+			else if (haveViewbox)
+				fMarkerWidth = viewboxRect.w;
 
 			if (fDimMarkerHeight.isSet())
 				fMarkerHeight = fDimMarkerHeight.calculatePixels();
-			else if (fViewbox.isSet())
-				fMarkerHeight = fViewbox.height();
+			else if (haveViewbox)
+				fMarkerHeight = viewboxRect.h;
 
 			if (fDimRefX.isSet())
 				fRefX = fDimRefX.calculatePixels();
-			else if (fViewbox.isSet())
-				fRefX = fViewbox.x();
-		}
+			else if (haveViewbox)
+				fRefX = viewboxRect.x;
 
-		void applyAttributes(IRenderSVG* ctx, IAmGroot* groot) override
-		{
-			SVGGraphicsElement::applyAttributes(ctx, groot);
+			if (fDimRefY.isSet())
+				fRefY = fDimRefY.calculatePixels();
+			else if (haveViewbox)
+				fRefY = viewboxRect.y;
+
 
 			double sWidth = ctx->strokeWidth();
-			double scaleX = 1.0;
-			double scaleY = 1.0;
-
+			
 			if (fMarkerUnits == StrokeWidth)
 			{
-				// scale == strokeWidth
 				scaleX = sWidth;
 				scaleY = sWidth;
-				ctx->scale(scaleX, scaleY);
 			}
 			else
 			{
-				if (fViewbox.isSet())
+				if (haveViewbox)
 				{
-					scaleX = fMarkerWidth / fViewbox.width();
-					scaleY = fMarkerHeight / fViewbox.height();
-					ctx->scale(scaleX, scaleY);
+					scaleX = fMarkerWidth / viewboxRect.w;
+					scaleY = fMarkerHeight / viewboxRect.h;
 				}
 				// No scaling
 			}
+			
+		}
+
+		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+		{
+			SVGContainer::drawSelf(ctx, groot);
+			
+			ctx->scale(scaleX, scaleY);
+
+
 
 
 			ctx->translate(-fDimRefX.calculatePixels(), -fDimRefY.calculatePixels());

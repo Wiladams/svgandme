@@ -147,7 +147,7 @@ namespace waavs {
         }
 
         // addAlias
-        bool addAlias(const char* alias)
+        bool addAlias(const char* )
         {
             return false;
         }

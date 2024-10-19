@@ -28,6 +28,14 @@ namespace waavs {
 			const std::filesystem::path filePath(name);
 			fFilename = filePath.filename().string();
 
+			// render to a blank context once to get size of things
+			IRenderSVG ctx(doc->fontHandler());
+			ctx.setContainerFrame(BLRect(0, 0, sIconSize, sIconSize));
+			doc->draw(&ctx, doc.get());
+
+			auto objFr = doc->frame();
+
+			
 			fDocIcon.resetFromDocument(doc, fDocument->fontHandler());
 
 			ViewNavigator nav;

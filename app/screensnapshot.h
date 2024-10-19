@@ -88,7 +88,7 @@ public:
         int lWidth = (int)width();
         int lHeight = (int)height();
         intptr_t lStride = (intptr_t)stride();
-        BLResult bResult = blImageInitAsFromData(&fImage, lWidth, lHeight, BL_FORMAT_PRGB32, data(), lStride, BLDataAccessFlags::BL_DATA_ACCESS_RW, nullptr, nullptr);
+        blImageInitAsFromData(&fImage, lWidth, lHeight, BL_FORMAT_PRGB32, data(), lStride, BLDataAccessFlags::BL_DATA_ACCESS_RW, nullptr, nullptr);
     }
 
     const BLImage& getImage() const

@@ -133,7 +133,7 @@ namespace waavs {
 
 
 		SVGImageElement(IAmGroot* root)
-			: SVGGraphicsElement(root) 
+			: SVGGraphicsElement() 
 		{
 			needsBinding(true);
 		}
@@ -141,11 +141,11 @@ namespace waavs {
 		BLRect frame() const override
 		{
 
-			if (fHasTransform) {
-				auto leftTop = fTransform.mapPoint(fX, fY);
-				auto rightBottom = fTransform.mapPoint(fX + fWidth, fY + fHeight);
-				return BLRect(leftTop.x, leftTop.y, rightBottom.x - leftTop.x, rightBottom.y - leftTop.y);
-			}
+			//if (fHasTransform) {
+			//	auto leftTop = fTransform.mapPoint(fX, fY);
+			//	auto rightBottom = fTransform.mapPoint(fX + fWidth, fY + fHeight);
+			//	return BLRect(leftTop.x, leftTop.y, rightBottom.x - leftTop.x, rightBottom.y - leftTop.y);
+			//}
 
 			return BLRect(fX, fY, fWidth, fHeight);
 		}
@@ -155,12 +155,17 @@ namespace waavs {
 			return BLRect(fX, fY, fWidth, fHeight);
 		}
 		
-		const BLVar getVariant() noexcept override
+		const BLVar getVariant(IRenderSVG *ctx, IAmGroot *groot) noexcept override
 		{
+			if (fImageVar.isNull())
+			{
+				bindSelfToContext(ctx, groot);
+			}
+			
 			return fImageVar;
 		}
 
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 			double dpi = 96;
 			double w = 1.0;
@@ -171,11 +176,10 @@ namespace waavs {
 				dpi = groot->dpi();
 			}
 			
-			if (nullptr != container)
-			{
-				w = groot->canvasWidth();
-				h = groot->canvasHeight();
-			}
+			auto cFrame = ctx->localFrame();
+			w = cFrame.w;	// groot->canvasWidth();
+			h = cFrame.h;	// groot->canvasHeight();
+
 
 			SVGDimension fDimX{};
 			SVGDimension fDimY{};

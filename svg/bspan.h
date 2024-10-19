@@ -132,7 +132,7 @@ namespace waavs {
 
 
 		ByteSpan& operator++() noexcept { return operator+=(1); }			// prefix notation ++y
-		ByteSpan& operator++(int i) noexcept { return operator+=(1); }       // postfix notation y++
+		ByteSpan& operator++(int ) noexcept { return operator+=(1); }       // postfix notation y++
 
 
 
@@ -314,8 +314,10 @@ namespace waavs {
 				return false;
 
 			for (size_t i = 0; i < a.size(); ++i) {
+				//if (TOLOWER(a[i]) != TOLOWER(b[i]))  // Case-insensitive comparison
 				if (std::tolower(a[i]) != std::tolower(b[i]))  // Case-insensitive comparison
-					return false;
+
+				return false;
 			}
 			
 			return true;
@@ -333,10 +335,8 @@ namespace waavs
 	INLINE ByteSpan chunk_trim(const ByteSpan& a, const charset& skippable) noexcept;
 	INLINE ByteSpan chunk_skip_wsp(const ByteSpan& a) noexcept;
 
-
 	INLINE bool chunk_starts_with_char(const ByteSpan& a, const uint8_t b) noexcept;
 	INLINE bool chunk_starts_with_cstr(const ByteSpan& a, const char* b) noexcept;
-
 
 	INLINE bool chunk_ends_with_char(const ByteSpan& a, const uint8_t b) noexcept;
 	INLINE bool chunk_ends_with_cstr(const ByteSpan& a, const char* b) noexcept;
@@ -345,8 +345,6 @@ namespace waavs
 	INLINE ByteSpan chunk_find_char(const ByteSpan& a, char c) noexcept;
 	INLINE bool chunk_find(const ByteSpan& src, const ByteSpan& str, ByteSpan& value) noexcept;
 	INLINE ByteSpan chunk_find_cstr(const ByteSpan& a, const char* c) noexcept;
-
-
 
 }
 
@@ -617,7 +615,7 @@ namespace waavs
 	{
 		uint8_t* beginattrValue = nullptr;
 		uint8_t* endattrValue = nullptr;
-		uint8_t quote{};
+		//uint8_t quote{};
 
 		// Skip white space before the quoted bytes
 		src = chunk_ltrim(src, chrWspChars);

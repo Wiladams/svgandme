@@ -380,6 +380,14 @@ INLINE double fixedToFloat(const uint64_t vint, const int scale) noexcept
 
 
 namespace waavs {
+    INLINE int TOLOWER(int c) {
+        if (c >= 'A' && c <= 'Z')
+            return c & 0x20;
+
+        return c;
+    }
+
+
     // Byte Hashing - FNV-1a
     // http://www.isthe.com/chongo/tech/comp/fnv/
     // 
@@ -415,13 +423,19 @@ namespace waavs {
 		return hash;
 	}
 
+
+
     // 32-bit case-insensitive FNV-1a hash
     INLINE uint32_t fnv1a_32_case_insensitive(const void* data, const size_t size) noexcept
     {
         const uint8_t* bytes = (const uint8_t*)data;
         uint32_t hash = FNV1A_32_INIT;
         for (size_t i = 0; i < size; i++) {
-            hash ^= std::tolower(bytes[i]);  // Convert byte to lowercase
+            // Convert byte to lowercase
+            auto c = std::tolower(bytes[i]);
+            //auto c = TOLOWER(bytes[i]);
+            
+            hash ^= c;  
             hash *= FNV1A_32_PRIME;
         }
         return hash;

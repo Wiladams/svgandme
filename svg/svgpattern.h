@@ -20,7 +20,7 @@ namespace waavs {
 	// https://www.svgbackgrounds.com/category/pattern/
 	// https://www.visiwig.com/patterns/
 	//============================================================
-	struct SVGPatternElement :public SVGGraphicsElement
+	struct SVGPatternElement :public SVGContainer
 	{
 		static void registerSingularNode()
 		{
@@ -47,284 +47,318 @@ namespace waavs {
 
 
 		SpaceUnitsKind fPatternUnits{ SpaceUnitsKind::SVG_SPACE_OBJECT };
+		SpaceUnitsKind fPatternContentUnits{ SpaceUnitsKind::SVG_SPACE_USER };
+		BLExtendMode fExtendMode{ BL_EXTEND_MODE_REPEAT };
+		
+		
 		BLMatrix2D fPatternTransform{};
-
-		BLPattern fPattern{};
-
-		BLImage fCachedImage{};
+		BLMatrix2D fContentTransform{};
+		bool fHasPatternTransform{ false };
+		
 		ByteSpan fTemplateReference{};
+		
+		BLImage fCachedImage{};
+
 		BLRect fBBox{};
 
 		ViewPort fViewport{};
-
-
-		// Raw attribute values
 		SVGViewbox fViewbox{};
 
-		SVGPatternExtendMode fExtendMode{ nullptr };
 
-		SVGPatternElement(IAmGroot* aroot)
-			:SVGGraphicsElement(aroot)
+		BLPattern fPattern{};
+		BLVar fPatternVar{};
+
+		SVGDimension fDimX{};
+		SVGDimension fDimY{};
+		SVGDimension fDimWidth{};
+		SVGDimension fDimHeight{};
+		
+		
+		SVGPatternElement(IAmGroot* )
+			:SVGContainer()
 		{
 			fPattern.setExtendMode(BL_EXTEND_MODE_PAD);
 			fPatternTransform = BLMatrix2D::makeIdentity();
+			fContentTransform = BLMatrix2D::makeIdentity();
 
 			isStructural(false);
 		}
 
+
+		
+		const BLVar getVariant(IRenderSVG *ctx, IAmGroot *groot) noexcept override
+		{ 
+			bindToContext(ctx, groot);
+			//needsBinding(true);
+
+			// Create image and draw into it right here
+			// Att this point, all attributes have been captured
+			// and all dimensions are known.
+			// So, we can size a bitmap and draw into it
+			drawIntoCache(ctx, groot);
+			
+			BLVar tmpVar{};
+			tmpVar = fPattern;
+			return tmpVar;
+		}
+		
 		BLRect getBBox() const override
 		{
 			return fBBox;
 		}
 
 
-		void resolveReferences(IAmGroot* groot, const ByteSpan& inChunk)
+		void resolveReference(IRenderSVG *ctx, IAmGroot* groot)
 		{
+			// Quick return if there is no template reference
+			if (!fTemplateReference)
+				return;
+			
 			// return early if we can't do a lookup
-			if (nullptr == groot)
-			{
-				printf("SVGPatternNode::resolveReferences - groot == null\n");
+			if (!groot)
 				return;
-			}
 
-			ByteSpan str = inChunk;
+			// Try to find the referenced node
+			auto node = groot->findNodeByHref(fTemplateReference);
 
-			auto node = groot->findNodeByHref(inChunk);
-
-
-			// return early if we could not lookup the node
-			if (nullptr == node)
-			{
-				printf("SVGPatternNode::resolveReferences - node == null\n");
+			if (!node)
 				return;
-			}
+
+			// Make sure the template binds, so we can get values out of it
+			BLVar aVar = node->getVariant(ctx, groot);
+			
+			// Cast the node to a SVGPatternElement, so we get get some properties from it
+			auto pattNode = dynamic_pointer_cast<SVGPatternElement>(node);
+
+			if (!pattNode)
+				return;
 
 
-			// That node itself might need to be bound
-			//if (node->needsBinding())
-			node->bindToGroot(groot, this);
-
-			const BLVar& aVar = node->getVariant();
-
+			// save patternUnits
+			// save patternContentUnits
+			fPatternUnits = pattNode->fPatternUnits;
+			fPatternContentUnits = pattNode->fPatternContentUnits;
+			
+			
 			if (aVar.isPattern())
 			{
-				const BLPattern& tmpPattern = aVar.as<BLPattern>();
+				BLPattern& tmpPattern = aVar.as<BLPattern>();
 
 				// pull out whatever values we can inherit
 				fPattern = tmpPattern;
+
+				if (tmpPattern.hasTransform())
+				{
+					fPattern.setTransform(tmpPattern.transform());
+				}
 			}
 		}
 
-		// 
-		// Resolve template reference
-		// fix coordinate system
-		//
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*) override
 		{
-			if (nullptr == groot)
-				return;
-
-
-			// We need to resolve the size of the user space
-			// start out with some information from groot
-			double dpi = 96;
-			double w = 1.0;
-			double h = 1.0;
-
-			// The width and height can default to the size of the canvas
-			// we are rendering to.
-			if (nullptr != groot)
-			{
-				dpi = groot->dpi();
-			}
-
-			if (nullptr != container) {
-				BLRect cFrame = container->getBBox();
-				w = cFrame.w;
-				h = cFrame.h;
-			}
-
-
-			SVGDimension fDimX{};
-			SVGDimension fDimY{};
-			SVGDimension fDimWidth{};
-			SVGDimension fDimHeight{};
-
-			fDimX.loadFromChunk(getAttribute("x"));
-			fDimY.loadFromChunk(getAttribute("y"));
-			fDimWidth.loadFromChunk(getAttribute("width"));
-			fDimHeight.loadFromChunk(getAttribute("height"));
-
-
-			fBBox.x = fDimX.calculatePixels(w, 0, dpi);
-			fBBox.y = fDimY.calculatePixels(h, 0, dpi);
-			fBBox.w = fDimWidth.calculatePixels(w, 0, dpi);
-			fBBox.h = fDimHeight.calculatePixels(h, 0, dpi);
-
-			fViewport.sceneFrame(getBBox());
-
-
-			getEnumValue(SVGSpaceUnits, getAttribute("patternUnits"), (uint32_t &)fPatternUnits);
-			fViewbox.loadFromChunk(getAttribute("viewBox"));
-			parseTransform(getAttribute("patternTransform"), fPatternTransform);
-
-
-			if (fViewbox.isSet()) {
-				fViewport.sceneFrame(fViewbox.fRect);
-
-				if (!fDimWidth.isSet() || !fDimHeight.isSet()) {
-					fBBox = fViewbox.fRect;
-				}
-
-			}
-			else if (!fDimWidth.isSet() || !fDimHeight.isSet()) {
-				fBBox.w = w;
-				fBBox.h = h;
-				fViewport.sceneFrame(getBBox());
-			}
-
-			fViewport.surfaceFrame(getBBox());
-
-
-
 			// See if we have a template reference
 			if (getAttribute("href"))
 				fTemplateReference = getAttribute("href");
 			else if (getAttribute("xlink:href"))
 				fTemplateReference = getAttribute("xlink:href");
 
-			//
-			// Resolve the templateReference if it exists
-			if (fTemplateReference) {
-				resolveReferences(groot, fTemplateReference);
+		}
+		
+		// 
+		// Resolve template reference
+		// fix coordinate system
+		//
+
+		void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) override
+		{
+			resolveReference(ctx, groot);
+			createPortal(ctx, groot);
+			
+			// We need to resolve the size of the user space
+			// start out with some information from groot
+			double dpi = 96;
+
+
+			// The width and height can default to the size of the canvas
+			// we are rendering to.
+			if (groot)
+				dpi = groot->dpi();
+
+
+
+
+
+			fDimX.loadFromChunk(getAttribute("x"));
+			fDimY.loadFromChunk(getAttribute("y"));
+			fDimWidth.loadFromChunk(getAttribute("width"));
+			fDimHeight.loadFromChunk(getAttribute("height"));
+			fViewbox.loadFromChunk(getAttribute("viewBox"));
+			
+			getEnumValue(SVGSpaceUnits, getAttribute("patternUnits"), (uint32_t&)fPatternUnits);
+			getEnumValue(SVGSpaceUnits, getAttribute("patternContentUnits"), (uint32_t&)fPatternContentUnits);
+			fHasPatternTransform = parseTransform(getAttribute("patternTransform"), fPatternTransform);
+
+			// We use the 'patternUnits' to determine the coordinate system for evaluating
+			// x,y,width,height
+			// Which are then used to calculate the size of the backing store
+			// we will draw into (fBBox)
+			if (fPatternUnits == SVG_SPACE_OBJECT)
+			{
+				// If we're using the object bounding box, we need to get the bounding box
+				// of the currently active object
+				// then coordinates should be percentage, or decimal (0..1) of those dimensions 
+				BLRect oFrame = ctx->objectFrame();
+				double w = oFrame.w;
+				double h = oFrame.h;
+				auto x = oFrame.x;
+				auto y = oFrame.y;
+				
+				// X position
+				if (fDimX.isSet()) {
+					if (fDimX.fUnits == SVG_LENGTHTYPE_NUMBER) {
+						if (fDimX.value() <= 1.0)
+							fBBox.x = x + (fDimX.value() * w);
+						else
+							fBBox.x = x + fDimX.value();
+					}
+					else
+						fBBox.x = x + fDimX.calculatePixels(w, 0, dpi);
+				}
+				else
+					fBBox.x = x + 0;
+				
+				// Y position
+				if (fDimY.isSet()) {
+					if (fDimY.fUnits == SVG_LENGTHTYPE_NUMBER) {
+						if (fDimY.value() <= 1.0)
+							fBBox.y = y + (fDimY.value() * h);
+						else
+							fBBox.y = y + fDimY.value();
+					}
+					else
+						fBBox.y = y + fDimY.calculatePixels(h, 0, dpi);
+				}
+				else
+					fBBox.y = y + 0;
+
+
+				// Width
+				if (fDimWidth.isSet()) {
+					if (fDimWidth.fUnits == SVG_LENGTHTYPE_NUMBER) {
+						if (fDimWidth.value() <= 1.0)
+							fBBox.w = fDimWidth.value() * w;
+						else
+							fBBox.w = fDimWidth.value();
+					}
+					else
+						fBBox.w = fDimWidth.calculatePixels(w, 0, dpi);
+				}
+				else
+					fBBox.w = w;
+
+				// Height
+				if (fDimHeight.isSet()) {
+					if (fDimHeight.fUnits == SVG_LENGTHTYPE_NUMBER) {
+						if (fDimHeight.value() <= 1.0)
+							fBBox.h = fDimHeight.value() * h;
+						else
+							fBBox.h = fDimHeight.value();
+					}
+					else
+						fBBox.h = fDimHeight.calculatePixels(h, 0, dpi);
+				}
+				else
+					fBBox.h = h;
 			}
+			else if (fPatternUnits == SVG_SPACE_USER)
+			{
+				BLRect cFrame = ctx->localFrame();
+				double w = cFrame.w;
+				double h = cFrame.h;
+
+				fBBox.x = fDimX.calculatePixels(w, 0, dpi);
+				fBBox.y = fDimY.calculatePixels(h, 0, dpi);
+				fBBox.w = fDimWidth.calculatePixels(w, 0, dpi);
+				fBBox.h = fDimHeight.calculatePixels(h, 0, dpi);
+			}
+
+			fViewport.surfaceFrame(BLRect(0,0,fBBox.w, fBBox.h));
+			fViewport.sceneFrame(BLRect(0, 0, fBBox.w, fBBox.h));
+
+			// If objectBoundingBox, then coordinates are normalized
+			// so we set a viewport of 0,0,1,1, to streth to fit bounding box
+			if (fPatternContentUnits == SVG_SPACE_OBJECT) {
+
+				fViewport.sceneFrame(BLRect(0,0,1,1));
+				fContentTransform = fViewport.sceneToSurfaceTransform();
+			}
+			//else if (fPatternContentUnits == SVG_SPACE_USER)
+			//{
+			//	BLRect cFrame = ctx->localFrame();
+			//	double w = cFrame.w;
+			//	double h = cFrame.h;
+
+			//	fViewport.sceneFrame(BLRect(0, 0, w, h));
+			//}
+
+			fPattern.translate(fBBox.x, fBBox.y);
+			
+			fPatternTransform = fViewport.sceneToSurfaceTransform();
+			//fPatternTransform = fViewport.surfaceToSceneTransform();
+
+
+			//fPattern.setTransform(fPatternTransform);
 
 			// Whether it was a reference or not, set the extendMode
-			fExtendMode.loadFromChunk(getAttribute("extendMode"));
-			if (fExtendMode.isSet())
-			{
-				fPattern.setExtendMode(fExtendMode.value());
-			}
-			else {
-				fPattern.setExtendMode(BL_EXTEND_MODE_REPEAT);
-
-			}
-			/*
-						else {
-							//BLRectI bbox{};
-							// start out with an initial size for the backing buffer
-							int iWidth = (int)cWidth;
-							int iHeight = (int)cHeight;
-
-							// If a viewbox exists, then it determines the size
-							// of the pattern, and thus the size of the backing store
-							if (fViewbox.isSet())
-							{
-								if (fDimWidth.isSet() && fDimHeight.isSet())
-								{
-									iWidth = (int)fDimWidth.calculatePixels();
-									iHeight = (int)fDimHeight.calculatePixels();
-								}
-								else {
-
-									// If a viewbox is set, then the 'width' and 'height' parameters
-									// are ignored
-									//bbox.reset(0, 0, fViewbox.width(), fViewbox.height());
-									iWidth = (int)fViewbox.width();
-									iHeight = (int)fViewbox.height();
-								}
-							}
-							else {
-								// If we don't have a viewbox, then the bbox can be either
-								// 1) A specified width and height
-								// 2) A percentage width and height of the pattern's children
-
-								if (fDimWidth.isSet() && fDimHeight.isSet())
-								{
-									BLRect bbox = frame();
-									iWidth = (int)bbox.w;
-									iHeight = (int)bbox.h;
-
-
-									// if the units on the fWidth == '%', then take the size of the pattern box
-									// and use that as the width, and then calculate the percentage of that
-									if (fDimWidth.units() == SVGDimensionUnits::SVG_UNITS_USER)
-									{
-										if (fDimWidth.value() < 1.0)
-										{
-											iWidth = (int)(bbox.w * fDimWidth.value());
-										}
-										else
-										{
-											iWidth = (int)fDimWidth.value();
-										}
-										if (fDimHeight.value() < 1.0)
-										{
-											iHeight = (int)(bbox.h * fDimHeight.value());
-										}
-										else
-										{
-											iHeight = (int)fDimHeight.value();
-										}
-										//iWidth = (int)fWidth.calculatePixels(iWidth,0,dpi);
-										//iHeight = (int)fHeight.calculatePixels(iHeight,0,dpi);
-									}
-									else {
-										//iWidth = (int)fWidth.calculatePixels();
-										//iHeight = (int)fHeight.calculatePixels();
-
-										//iWidth = (int)fWidth.calculatePixels(bbox.w, 0, dpi);
-										//iHeight = (int)fHeight.calculatePixels(bbox.h, 0, dpi);
-									}
-
-								}
-								else {
-									BLRect bbox = frame();
-									iWidth = (int)bbox.w;
-									iHeight = (int)bbox.h;
-								}
-							}
-
-							width = iWidth;
-							height = iHeight;
-
-						}
-						*/
-
-
+			getEnumValue(SVGExtendMode, getAttribute("extendMode"), (uint32_t&)fExtendMode);
+			fPattern.setExtendMode(fExtendMode);
 
 		}
 
-		void bindToGroot(IAmGroot* groot, SVGViewable* container) noexcept override
+		void drawIntoCache(IRenderSVG* ctx, IAmGroot* groot)
 		{
-			SVGGraphicsElement::bindToGroot(groot, container);
+			auto box = getBBox();
 
-			// create the backing buffer based on the specified sizes
-			fCachedImage.create(static_cast<int>(fBBox.w), static_cast<int>(fBBox.h), BL_FORMAT_PRGB32);
+			fCachedImage.create(static_cast<int>(box.w), static_cast<int>(box.h), BL_FORMAT_PRGB32);
+			IRenderSVG ictx(ctx->fontHandler());
+			ictx.begin(fCachedImage);
 
-			// Render out content into the backing buffer
-			IRenderSVG ctx(groot->fontHandler());
-			ctx.begin(fCachedImage);
-			ctx.setCompOp(BL_COMP_OP_SRC_COPY);
-			ctx.clearAll();
-			ctx.noStroke();
 
-			draw(&ctx, groot);
+			ictx.renew();
+			ictx.clear();
 
-			ctx.flush();
-			ctx.end();
 
-			// apply the patternTransform
-			// maybe do a translate on x, y?
+			draw(&ictx, groot);
 
-			// assign that BLImage to the pattern object
-			fPattern.setTransform(fPatternTransform);
+			ictx.flush();
+			ictx.end();
+
 			fPattern.setImage(fCachedImage);
-
-			fVar = fPattern;
-
 		}
 
+		
+		void draw(IRenderSVG* ctx, IAmGroot* groot) override
+		{
+			if (!visible())
+				return;
+
+			if (needsBinding())
+			{
+				bindToContext(ctx, groot);
+			}
+			
+			ctx->push();
+			
+			ctx->objectFrame(getBBox());
+			
+			applyProperties(ctx, groot);
+			drawSelf(ctx, groot);
+
+			drawChildren(ctx, groot);
+
+			ctx->pop();
+		}
+		
 	};
 	
 }

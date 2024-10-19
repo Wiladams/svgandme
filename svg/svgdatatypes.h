@@ -6,13 +6,14 @@
 
 
 #include "blend2d.h"
-#include "bspan.h"
 
+#include "bspan.h"
 #include "membuff.h"
 #include "base64.h"
 #include "converters.h"
 #include "svgenums.h"
 #include "maths.h"
+#include "viewport.h"
 
 //
 // Parsing routines for the core SVG data types
@@ -261,6 +262,15 @@ namespace waavs
         return false;
     }
     
+    //
+    // calculateDistance()
+    // 
+    // To calculate distances when using a percentage value on a radius of something
+    //
+    static INLINE double calculateDistance(const double percentage, const double width, const double height) noexcept
+    {
+		return percentage / 100.0 * sqrt(width * width + height * height);
+    }
     
     struct SVGDimension 
     {
@@ -303,8 +313,8 @@ namespace waavs
             case SVG_LENGTHTYPE_MM:			return fValue / 25.4f * dpi;
             case SVG_LENGTHTYPE_CM:			return fValue / 2.54f * dpi;
             case SVG_LENGTHTYPE_IN:			return fValue * dpi;
-            case SVG_LENGTHTYPE_EMS:			return fValue * length;         // length should represent 'em' height of font                 
-            case SVG_LENGTHTYPE_EXS:		    return fValue * length * 0.52f;          // x-height, fontHeight * 0.52.
+            case SVG_LENGTHTYPE_EMS:			return fValue * length;                 // length should represent 'em' height of font                 
+			case SVG_LENGTHTYPE_EXS:		    return fValue * length * 0.52f;          // x-height, fontHeight * 0.52., assuming length is font height
             case SVG_LENGTHTYPE_PERCENTAGE:
                 double clampedVal = waavs::clamp(fValue, 0.0, 100.0);
                 return orig + ((clampedVal / 100.0f) * length);
@@ -334,6 +344,173 @@ namespace waavs
         }
     };
 
+    // This is meanto to represent the many different ways
+    // a size can be specified
+       //
+    // SVGFontSize (font-size)
+    //
+    // This is fairly complex.  There are several categories of sizes
+    // Absolute size values (FontSizeKeywordKind, SVGFontSizeKeywordEnum)
+    //  xx-small
+    //   x-small
+    //     small
+    //     medium
+    //     large
+    //   x-large
+    //  xx-large
+    // xxx-large
+    // 
+    // Relative size values
+    //   smaller
+    //   larger
+    // 
+    // Length values
+    //   px, pt, pc, cm, mm, in, em, ex, ch, rem, vw, vh, vmin, vmax
+    // 
+    // Percentage values
+    //   100%
+    // math
+    //   calc(100% - 10px)
+    // 
+    // Global values
+    //   inherit, initial, revert, revert-layer, unset
+    //
+    // So, there are two steps to figuring out what the value should
+    // be.  
+    // 1) Figure out which of these categories of measures is being used
+    // 2) Figure out what the actual value is
+    // Other than the length values, we need to figure out at draw time
+    // what the actual value is, because we need to know what the current value
+    // is, and calculate relative to that.
+    //
+    struct SVGVariableSize
+    {
+        ByteSpan fSpanValue{};
+        SVGSizeKind fKindOfSize{ SVG_SIZE_KIND_INVALID };
+        
+        uint32_t fUnits{ SVG_LENGTHTYPE_NUMBER };
+        double fValue{ 0.0 };
+
+        bool fHasValue{ false };
+
+ 
+        SVGVariableSize() = default;
+        SVGVariableSize(const SVGDimension& other) = delete;
+/*
+        SVGVariableSize(double value, unsigned short units, bool setValue = true)
+            : fValue(value)
+            , fUnits(units)
+            , fHasValue(setValue)
+        {
+        }
+
+        SVGVariableSize& operator=(const SVGDimension& rhs)
+        {
+            fValue = rhs.fValue;
+            fUnits = rhs.fUnits;
+            fHasValue = rhs.fHasValue;
+
+            return *this;
+        }
+*/
+        bool isSet() const { return fHasValue; }
+        double value() const { return fValue; }
+        unsigned short units() const { return fUnits; }
+
+        // Using the units and other information, calculate the actual value
+        double calculatePixels(const BLFont& font, double length = 1.0, double orig = 0, double dpi = 96) const
+        {
+            auto &fm = font.metrics();
+            double fontSize = fm.size;
+            float emHeight = (fm.ascent + fm.descent);
+            
+            if (!isSet())
+                return length;
+            
+            switch (fKindOfSize)
+            {
+                case SVG_SIZE_KIND_ABSOLUTE: {
+                    switch (fUnits) {
+					    case SVG_SIZE_ABSOLUTE_XX_SMALL: return (3.0 / 5.0) * fontSize;
+						case SVG_SIZE_ABSOLUTE_X_SMALL: return (3.0 / 4.0) * fontSize;
+						case SVG_SIZE_ABSOLUTE_SMALL: return (8.0 / 9.0) * fontSize;
+                        case SVG_SIZE_ABSOLUTE_MEDIUM:  return fontSize;
+						case SVG_SIZE_ABSOLUTE_LARGE: return (6.0 / 5.0) * fontSize;
+						case SVG_SIZE_ABSOLUTE_X_LARGE: return (3.0 / 2.0) * fontSize;
+						case SVG_SIZE_ABSOLUTE_XX_LARGE: return 2.0 * fontSize;
+						case SVG_SIZE_ABSOLUTE_XXX_LARGE: return 3.0 * fontSize;
+                    }
+                }break;
+
+                case SVG_SIZE_KIND_LENGTH: {
+                    switch (fUnits) {
+                        case SVG_LENGTHTYPE_UNKNOWN:     return fValue;
+                        case SVG_LENGTHTYPE_NUMBER:		return fValue;                  // User units and PX units are the same
+                        case SVG_LENGTHTYPE_PX:			return fValue;                  // User units and px units are the same
+                        case SVG_LENGTHTYPE_PT:			return fValue / 72.0f * dpi;
+                        case SVG_LENGTHTYPE_PC:			return fValue / 6.0f * dpi;
+                        case SVG_LENGTHTYPE_MM:			return fValue / 25.4f * dpi;
+                        case SVG_LENGTHTYPE_CM:			return fValue / 2.54f * dpi;
+                        case SVG_LENGTHTYPE_IN:			return fValue * dpi;
+                        case SVG_LENGTHTYPE_EMS:		return fValue * emHeight;                 // length should represent 'em' height of font                 
+                        case SVG_LENGTHTYPE_EXS:		return fValue * fm.xHeight;          // x-height, fontHeight * 0.52., assuming length is font height
+                        case SVG_LENGTHTYPE_PERCENTAGE:
+                            return orig + ((fValue / 100.0f) * length);
+                            break;
+                    }
+                }
+
+                default:
+                    return fValue;
+            }
+
+            return fValue;
+        }
+
+        bool loadFromChunk(const ByteSpan& inChunk)
+        {
+            fSpanValue = chunk_ltrim(inChunk, xmlwsp);
+
+            // don't change the state of 'hasValue'
+            // if we previously parsed something, and now
+            // we're being asked to parse again, just leave
+            // the old state if there's nothing new
+            if (!fSpanValue)
+                return false;
+            
+			// Figure out what kind of value we have based
+            // on looking at the various enums
+            uint32_t enumval{ 0 };
+            if (fSpanValue == "math") {
+                fKindOfSize = SVG_SIZE_KIND_MATH;
+				fHasValue = true;
+
+            }
+            else if (getEnumValue(SVGSizeAbsoluteEnum, fSpanValue, enumval))
+            {
+                fKindOfSize = SVG_SIZE_KIND_ABSOLUTE;
+                fUnits = enumval;
+                fHasValue = true;
+
+            }
+            else if (getEnumValue(SVGSizeRelativeEnum, fSpanValue, enumval))
+            {
+				fKindOfSize = SVG_SIZE_KIND_RELATIVE;
+                fUnits = enumval;
+                fHasValue = true;
+
+            }
+            else {
+                ByteSpan numValue = fSpanValue;
+                if (!readNumber(numValue, fValue))
+                    return false;
+				fKindOfSize = SVG_SIZE_KIND_LENGTH;
+                fHasValue = parseDimensionUnits(numValue, fUnits);
+            }
+            
+            return true;
+        }
+    };
 }
 
 
@@ -641,7 +818,6 @@ namespace waavs {
             {
                 unsigned int outBuffSize = base64::getDecodeOutputSize(value.size());
                 MemBuff outBuff(outBuffSize);
-                //char * outBuff{ new char[outBuffSize]{} };
                 
                 auto decodedSize = base64::decode((const char*)value.data(), value.size(), outBuff.data());
 
@@ -669,45 +845,22 @@ namespace waavs {
 }
 
 namespace waavs {
-    // Could be used as bitfield
-    enum MarkerPosition {
 
-        MARKER_POSITION_START = 0,
-        MARKER_POSITION_MIDDLE = 1,
-        MARKER_POSITION_END = 2,
-        MARKER_POSITION_ALL = 3
-    };
-
-    // determines the orientation of a marker
-    enum class MarkerOrientation
-    {
-        MARKER_ORIENT_AUTO,
-        MARKER_ORIENT_AUTOSTARTREVERSE,
-        MARKER_ORIENT_ANGLE,
-        MARKER_ORIENT_INVALID = 255,
-    };
 
     static bool parseMarkerOrientation(const ByteSpan& inChunk, MarkerOrientation& orient)
     {
-
-        if (inChunk == "auto")
+        uint32_t value;
+        
+        if (getEnumValue(MarkerOrientationEnum, inChunk, value))
         {
-            orient = MarkerOrientation::MARKER_ORIENT_AUTO;
+            orient = static_cast<MarkerOrientation>(value);
             return true;
         }
-        else if (inChunk == "auto-start-reverse")
-        {
-            orient = MarkerOrientation::MARKER_ORIENT_AUTOSTARTREVERSE;
-            return true;
-        }
-        else // if (inChunk == "angle")
-        {
-            orient = MarkerOrientation::MARKER_ORIENT_ANGLE;
-            return true;
-        }
-
-
-        return false;
+        
+        // Assume the orientation is an angle
+        orient = MarkerOrientation::MARKER_ORIENT_ANGLE;
+        
+        return true;
     }
 }
 
@@ -717,10 +870,7 @@ namespace waavs {
 
 
    
-//================================================
-// SVGTransform
-// Transformation matrix
-//================================================
+
 
 namespace waavs
 {

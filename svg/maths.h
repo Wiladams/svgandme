@@ -333,7 +333,7 @@ namespace waavs {
 namespace waavs
 {
     // Vector Sequence Operations
-    INLINE int          size(const vec2f& a);
+    INLINE constexpr int          size(const vec2f& a);
     INLINE const float* begin(const vec2f& a);
     INLINE const float* end(const vec2f& a);
     INLINE float*       begin(vec2f& a);
@@ -1240,7 +1240,7 @@ namespace waavs
 namespace waavs
 {
     // Vector Sequence Operations
-    INLINE int          size(const vec2f& a) { return 2; }
+    INLINE constexpr int          size(const vec2f& ) { return 2; }
     INLINE const float* begin(const vec2f& a) { return &a.x; }
     INLINE const float* end(const vec2f& a) { return &a.x + 2; }
     INLINE float* begin(vec2f& a) { return &a.x; }
@@ -1330,11 +1330,11 @@ namespace waavs
 namespace waavs
 {
     // Vector Sequence Operations
-    INLINE int          size(const vec3f& a) { return 2; }
+    INLINE int          size(const vec3f& ) { return 3; }
     INLINE const float* begin(const vec3f& a) { return &a.x; }
-    INLINE const float* end(const vec3f& a) { return &a.x + 2; }
+    INLINE const float* end(const vec3f& a) { return &a.x + 3; }
     INLINE float* begin(vec3f& a) { return &a.x; }
-    INLINE float* end(vec3f& a) { return &a.x + 2; }
+    INLINE float* end(vec3f& a) { return &a.x + 3; }
     INLINE const float* data(const vec3f& a) { return &a.x; }
     INLINE float* data(vec3f& a) { return &a.x; }
 
@@ -1435,7 +1435,7 @@ namespace waavs
 namespace waavs
 {
     // Vector sequence operations.
-    INLINE int          size(const vec4f& a) { return 4; }
+    INLINE int          size(const vec4f& ) { return 4; }
     INLINE const float* begin(const vec4f& a) { return &a.x; }
     INLINE const float* end(const vec4f& a) { return &a.x + 4; }
     INLINE float* begin(vec4f& a) { return &a.x; }
@@ -1652,7 +1652,7 @@ namespace waavs
     INLINE vec3i xyz(const vec4i& a) { return { a.x, a.y, a.z }; }
 
     // Vector sequence operations.
-    INLINE int        size(const vec2i& a) { return 2; }
+    INLINE int        size(const vec2i& ) { return 2; }
     INLINE const int* begin(const vec2i& a) { return &a.x; }
     INLINE const int* end(const vec2i& a) { return &a.x + 2; }
     INLINE int* begin(vec2i& a) { return &a.x; }
@@ -1724,7 +1724,7 @@ namespace waavs
     INLINE void  swap(vec2i& a, vec2i& b) { std::swap(a, b); }
 
     // Vector sequence operations.
-    INLINE int        size(const vec3i& a) { return 3; }
+    INLINE int        size(const vec3i& ) { return 3; }
     INLINE const int* begin(const vec3i& a) { return &a.x; }
     INLINE const int* end(const vec3i& a) { return &a.x + 3; }
     INLINE int* begin(vec3i& a) { return &a.x; }
@@ -1816,7 +1816,7 @@ namespace waavs
     INLINE void  swap(vec3i& a, vec3i& b) { std::swap(a, b); }
 
     // Vector sequence operations.
-    INLINE int        size(const vec3b& a) { return 4; }
+    INLINE int        size(const vec3b& ) { return 4; }
     INLINE const uint8_t* begin(const vec3b& a) { return &a.x; }
     INLINE const uint8_t* end(const vec3b& a) { return &a.x + 4; }
     INLINE uint8_t* begin(vec3b& a) { return &a.x; }
@@ -1825,7 +1825,7 @@ namespace waavs
     INLINE uint8_t* data(vec3b& a) { return &a.x; }
     
     // Vector sequence operations.
-    INLINE int        size(const vec4b& a) { return 4; }
+    INLINE int        size(const vec4b& ) { return 4; }
     INLINE const uint8_t* begin(const vec4b& a) { return &a.x; }
     INLINE const uint8_t* end(const vec4b& a) { return &a.x + 4; }
     INLINE uint8_t* begin(vec4b& a) { return &a.x; }
@@ -1836,7 +1836,7 @@ namespace waavs
 
 
     // Vector sequence operations.
-    INLINE int        size(const vec4i& a) { return 4; }
+    INLINE int        size(const vec4i& ) { return 4; }
     INLINE const int* begin(const vec4i& a) { return &a.x; }
     INLINE const int* end(const vec4i& a) { return &a.x + 4; }
     INLINE int* begin(vec4i& a) { return &a.x; }
@@ -2066,7 +2066,7 @@ namespace waavs
     }
 
     // Matrix sequencing
-    INLINE int          size(const mat4f& a) { return 16; }
+    INLINE int          size(const mat4f& ) { return 16; }
     INLINE const float* begin(const mat4f& a) { return begin(a.x); }
     INLINE const float* end(const mat4f& a) { return end(a.x); }
 

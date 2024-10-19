@@ -556,7 +556,7 @@ static LRESULT HandleTouchMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
 
         // Convert from screen coordinates to local
         // client coordinates
-        auto bResult = ::ScreenToClient(hwnd, &PT);
+        ::ScreenToClient(hwnd, &PT);
 
         // Assign x,y the client area value of the touch point
         e.x = (float)PT.x;
@@ -1332,9 +1332,6 @@ bool static prolog()
     setupNetworking();
 
     setupDpi();
-
-    // Typography initialization
-    //loadDefaultFonts();
 
     // set the canvas a default size to start
     // but don't show it

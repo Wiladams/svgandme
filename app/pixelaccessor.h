@@ -32,8 +32,8 @@ struct IContainPixels
     constexpr const size_t height() const noexcept { return fHeight; }
     constexpr const ptrdiff_t stride() const noexcept { return fStride; }   // number of bytes to advance between rows
 
-    virtual uint8_t* rowPointer(const int y) = 0;
-    virtual const uint8_t* rowPointer(const int y) const = 0;
+    virtual uint8_t* rowPointer(const size_t y) = 0;
+    virtual const uint8_t* rowPointer(const size_t y) const = 0;
 };
 
 
@@ -63,7 +63,7 @@ struct PixelArray : public IContainPixels
     BLImage fImage{};                     // BLImage to hold the pixel data
 
     PixelArray() { ; }
-    PixelArray(void* d, const int w, const int h, const ptrdiff_t s, PixelOrientation o=PixelOrientation::TopToBottom)
+    PixelArray(void* d, const size_t w, const size_t h, const ptrdiff_t s, PixelOrientation o=PixelOrientation::TopToBottom)
     {
         reset(d, w, h, s, o);
     }
@@ -78,7 +78,7 @@ struct PixelArray : public IContainPixels
     const uint8_t* data() const noexcept { return fData; }  // this one's not editable
 
     // take the specified parameters as our own
-    void reset(void* d = nullptr, const int w = 0, const int h = 0, const ptrdiff_t s = 0, const PixelOrientation o=PixelOrientation::TopToBottom)
+    bool reset(void* d = nullptr, const size_t w = 0, const size_t h = 0, const ptrdiff_t s = 0, const PixelOrientation o=PixelOrientation::TopToBottom)
     {
         fData = (uint8_t*)d;
         fWidth = w;
@@ -89,13 +89,14 @@ struct PixelArray : public IContainPixels
 
         // Create blend2d image
         fImage.reset();
-        BLResult br = fImage.createFromData(w, h, BL_FORMAT_PRGB32, fData, fStride);
+        BLResult br = fImage.createFromData(static_cast<int>(w), static_cast<int>(h), BL_FORMAT_PRGB32, fData, fStride);
 
+        return br == BLResultCode::BL_SUCCESS;
         //printf("Result createfromData(): %d\n", br);
     }
 
     // Get a pointer to the beginning of a row
-    uint8_t* rowPointer(const int y) override
+    uint8_t* rowPointer(const size_t y) override
     {
         if (fOrientation == PixelOrientation::TopToBottom)
             return (&fData[y * stride()]);
@@ -104,7 +105,7 @@ struct PixelArray : public IContainPixels
         return(&fData[(height() - y - 1) * stride()]);
     }
 
-    const uint8_t* rowPointer(const int y) const override
+    const uint8_t* rowPointer(const size_t y) const override
     {
         if (fOrientation == PixelOrientation::TopToBottom)
             return (&fData[y * stride()]);
@@ -141,12 +142,12 @@ struct PixelAccessor : public PixelArray
 
 
     // Return a pointer to a specific pixel
-    TP* pixelPointer(const int x, const int y)
+    TP* pixelPointer(const size_t x, const size_t y)
     {
         return &((TP*)rowPointer(y))[x];
     }
     
-    const INLINE TP* pixelPointer(const int x, const int y) const
+    const INLINE TP* pixelPointer(const size_t x, const size_t y) const
     {
         return &((TP*)rowPointer(y))[x];
     }
@@ -154,7 +155,7 @@ struct PixelAccessor : public PixelArray
     // Retrieve a single pixel
 // This one does no bounds checking, so the behavior is undefined
 // if the coordinates are beyond the boundary
-    virtual TP getPixel(const int x, const int y) const
+    virtual TP getPixel(const size_t x, const size_t y) const
     {
         return *pixelPointer(x, y);
     }
@@ -162,7 +163,7 @@ struct PixelAccessor : public PixelArray
     // Set a single pixel value
 // Assume range checking has already occured
 // Perform SRCCOPY operation on a pixel
-    virtual void setPixel(const int x, const int y, const TP& c)
+    virtual void setPixel(const size_t x, const size_t y, const TP& c)
     {
         pixelPointer(x, y)[0] = c;
     }
@@ -174,8 +175,8 @@ struct PixelAccessor : public PixelArray
     {
         // Could use memset_l if we check size
         // of TP == 4
-        for (int row = 0; row < height(); row++)
-            for (int col = 0; col < width(); col++)
+        for (int row = 0; row < static_cast<int>(height()); row++)
+            for (size_t col = 0; col < static_cast<int>(width()); col++)
                 setPixel(col, row, c);
     }
 };

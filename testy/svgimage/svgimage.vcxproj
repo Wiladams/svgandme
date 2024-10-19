@@ -157,7 +157,6 @@
     <ClInclude Include="..\..\svg\geometry.h" />
     <ClInclude Include="..\..\svg\irendersvg.h" />
     <ClInclude Include="..\..\svg\maths.h" />
-    <ClInclude Include="..\..\svg\placeable.h" />
     <ClInclude Include="..\..\svg\svg.h" />
     <ClInclude Include="..\..\svg\svgattributes.h" />
     <ClInclude Include="..\..\svg\svgcolors.h" />

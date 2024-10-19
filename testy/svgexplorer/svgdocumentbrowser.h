@@ -16,7 +16,7 @@ namespace waavs {
 		
 		bool fAnimate{ false };
 		bool fPerformTransform{ true };
-		bool fUseCheckerBackground{ true };
+		bool fUseCheckerBackground{ false };
 		
 		SVGBrowsingView(const BLRect &aframe)
 			:SVGCachedDocument(aframe)

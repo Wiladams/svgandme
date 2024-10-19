@@ -114,7 +114,7 @@ namespace waavs
             // if we're opening for writing, then we don't want to 
             // limit the size in CreateFileMappingA
             LARGE_INTEGER psize;
-            BOOL bResult = ::GetFileSizeEx(filehandle, &psize);
+            ::GetFileSizeEx(filehandle, &psize);
             int64_t size = psize.QuadPart;
 
             // Open mapping

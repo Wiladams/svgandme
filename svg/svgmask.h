@@ -49,7 +49,7 @@ namespace waavs {
 
 		// Instance Constructor
 		SVGMaskElement(IAmGroot* groot)
-			: SVGGraphicsElement(groot)
+			: SVGGraphicsElement()
 		{
 			isStructural(false);
 			//fUseCacheIsolation = true;
@@ -64,7 +64,7 @@ namespace waavs {
 			// parent->getVar()
 			// BLPattern* pattern = new BLPattern(parent->getVar());
 			// ctx->setFillStyle(pattern);
-			ctx->fillMask(BLPoint(0, 0), fCachedImage);
+			//ctx->fillMask(BLPoint(0, 0), fCachedImage);
 
 		}
 	};

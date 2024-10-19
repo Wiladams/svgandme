@@ -81,8 +81,8 @@ namespace waavs {
 		std::unordered_map<std::string, BLImage> fFilterImages;
 		
 		
-		SVGFilterElement(IAmGroot* aroot)
-			: SVGGraphicsElement(aroot)
+		SVGFilterElement(IAmGroot* )
+			: SVGGraphicsElement()
 		{
 			isStructural(false);
 		}
@@ -107,7 +107,7 @@ namespace waavs {
 			return true;
 		}
 
-		virtual bool addNode(std::shared_ptr < SVGVisualNode > node, IAmGroot* groot)
+		virtual bool addNode(std::shared_ptr < ISVGElement > node, IAmGroot* groot)
 		{
 			// if superclass fails to add the node, then forget it
 			if (!SVGGraphicsElement::addNode(node, groot))
@@ -118,11 +118,8 @@ namespace waavs {
 			return true;
 		}
 
-		//void loadVisualProperties(const XmlAttributeCollection& attrs, IAmGroot* groot) override
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-			//SVGGraphicsElement::loadVisualProperties(attrs, groot);
-
 			fX.loadFromChunk(getAttribute("x"));
 			fY.loadFromChunk(getAttribute("y"));
 			fWidth.loadFromChunk(getAttribute("width"));
@@ -162,8 +159,8 @@ namespace waavs {
 
 
 
-		SVGFeBlendElement(IAmGroot* aroot)
-			: SVGGraphicsElement(aroot)
+		SVGFeBlendElement(IAmGroot* )
+			: SVGGraphicsElement()
 		{
 			isStructural(true);
 		}
@@ -197,8 +194,8 @@ namespace waavs {
 
 
 
-		SVGFeComponentTransferElement(IAmGroot* aroot)
-			: SVGGraphicsElement(aroot)
+		SVGFeComponentTransferElement(IAmGroot* )
+			: SVGGraphicsElement()
 		{
 			isStructural(true);
 		}
@@ -235,8 +232,8 @@ namespace waavs {
 
 
 
-		SVGFeCompositeElement(IAmGroot* aroot)
-			: SVGGraphicsElement(aroot)
+		SVGFeCompositeElement(IAmGroot* )
+			: SVGGraphicsElement()
 		{
 			isStructural(true);
 		}
@@ -271,8 +268,8 @@ namespace waavs {
 		}
 
 
-		SVGFeColorMatrixElement(IAmGroot* aroot)
-			: SVGGraphicsElement(aroot)
+		SVGFeColorMatrixElement(IAmGroot* )
+			: SVGGraphicsElement()
 		{
 			isStructural(true);
 		}
@@ -306,8 +303,8 @@ namespace waavs {
 		}
 
 
-		SVGFeConvolveMatrixElement(IAmGroot* aroot)
-			: SVGGraphicsElement(aroot)
+		SVGFeConvolveMatrixElement(IAmGroot* )
+			: SVGGraphicsElement()
 		{
 			isStructural(true);
 		}
@@ -342,8 +339,8 @@ namespace waavs {
 		}
 
 
-		SVGFeDiffuseLightingElement(IAmGroot* aroot)
-			: SVGGraphicsElement(aroot)
+		SVGFeDiffuseLightingElement(IAmGroot* )
+			: SVGGraphicsElement()
 		{
 			isStructural(true);
 		}
@@ -378,8 +375,8 @@ namespace waavs {
 		}
 
 
-		SVGFeDisplacementMapElement(IAmGroot* aroot)
-			: SVGGraphicsElement(aroot)
+		SVGFeDisplacementMapElement(IAmGroot* )
+			: SVGGraphicsElement()
 		{
 			isStructural(true);
 		}
@@ -414,8 +411,8 @@ namespace waavs {
 		}
 
 
-		SVGFeDistantLightElement(IAmGroot* aroot)
-			: SVGGraphicsElement(aroot)
+		SVGFeDistantLightElement(IAmGroot* )
+			: SVGGraphicsElement()
 		{
 			isStructural(true);
 		}
@@ -452,8 +449,8 @@ namespace waavs {
 
 
 
-		SVGFeFloodElement(IAmGroot* aroot)
-			: SVGGraphicsElement(aroot)
+		SVGFeFloodElement(IAmGroot* )
+			: SVGGraphicsElement()
 		{
 			isStructural(true);
 		}
@@ -491,13 +488,13 @@ namespace waavs {
 
 		SVGDimension fStdDeviation;
 		
-		SVGFeGaussianBlurElement(IAmGroot* aroot)
-			: SVGGraphicsElement(aroot)
+		SVGFeGaussianBlurElement(IAmGroot* )
+			: SVGGraphicsElement()
 		{
 			isStructural(true);
 		}
 
-		void resolvePosition(IAmGroot* groot, SVGViewable* container) override
+		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 			fStdDeviation.loadFromChunk(getAttribute("stdDeviation"));
 		}
@@ -532,8 +529,8 @@ namespace waavs {
 		}
 
 
-		SVGFeOffsetElement(IAmGroot* aroot)
-			: SVGGraphicsElement(aroot)
+		SVGFeOffsetElement(IAmGroot* )
+			: SVGGraphicsElement()
 		{
 			isStructural(true);
 		}
@@ -569,8 +566,8 @@ namespace waavs {
 
 
 
-		SVGFeTurbulenceElement(IAmGroot* aroot)
-			: SVGGraphicsElement(aroot)
+		SVGFeTurbulenceElement(IAmGroot* )
+			: SVGGraphicsElement()
 		{
 			isStructural(true);
 		}

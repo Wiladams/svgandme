@@ -29,55 +29,12 @@ static double gZoomFactor = 0.1;
 
 // Animation management
 bool gAnimate = false;
-bool gPerformTransform = true;
-bool gCheckerBackground = true;
+bool gPerformTransform = false;
+
 
 // Create one of these first, so factory constructor will run
 static SVGFactory gSVG;
 
-
-// Checkboard pattern for background
-#include <stdio.h>
-#define MULTILINE_String(...) #__VA_ARGS__
-
-const char* checkerStr = R"||(
-	<svg width = "100%" height = "100%" xmlns = "http://www.w3.org/2000/svg">								
-	<!--Define a checkerboard pattern-->															
-	<defs>																							
-	<pattern id = "checkerboard" width = "20" height = "20" patternUnits = "userSpaceOnUse">		
-	<rect width = "10" height = "10" fill = "lightgray" />
-	<rect x = "10" width = "10" height = "10" fill = "darkgray" />									
-	<rect y = "10" width = "10" height = "10" fill = "darkgray" />									
-	<rect x = "10" y = "10" width = "10" height = "10" fill = "lightgray" />						
-	</pattern>																					
-	</defs>																						
-	
-	<!--Background with checkerboard pattern-->														
-	<rect width = "100%" height = "100%" fill = 'url(#checkerboard)' />								
-	</svg>
-)||";
-
-ByteSpan gCheckboardSpan(checkerStr);
-
-static std::shared_ptr<SVGDocument> checkerboardDoc{};
-
-
-SVGDocument goDownDoc(svgicons::goDownStr, 64, 64);
-SVGDocument goUpDoc(svgicons::goUpStr, 64, 64);
-SVGDocument goLeftDoc(svgicons::goLeftStr, 64, 64);
-SVGDocument goRightDoc(svgicons::goRightStr, 22, 22);
-
-SVGDocument goRight32(svgicons::goRightStr, 32, 32);
-SVGDocument goRight64(svgicons::goRightStr, 64, 64);
-SVGDocument goRight128(svgicons::goRightStr, 128, 128);
-
-
-
-static void quicktest()
-{
-	uint64_t outValue = 0;
-	parseHex64u("feedface", outValue);
-}
 
 
 // docFromFilename
@@ -103,43 +60,19 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 	return aDoc;
 }
 
-static void drawIcon(SVGDocument &doc, double x, double y)
-{
 
-	// Draw the icon
-	gDrawingContext.push();
-	gDrawingContext.translate(x, y);
-	doc.draw(&gDrawingContext, &doc);
-	gDrawingContext.pop();
-}
 
-static void drawFurniture()
+static void drawBackground()
 {
 	gDrawingContext.renew();
-
-	gDrawingContext.push();
-	
-	// draw the checkerboard pattern into the context
-	// do it before any transformation occurs
-	if (checkerboardDoc != nullptr && gCheckerBackground)
-		checkerboardDoc->draw(&gDrawingContext, checkerboardDoc.get());
-	
-	// draw some icons
-	//drawIcon(goLeftDoc, 0, 10);
-	//drawIcon(goRightDoc, 24, 16);
-	//drawIcon(goUpDoc, 12, 0);
-	//drawIcon(goDownDoc, 12, 22);
-	
-	//drawIcon(goRight32, 10, 100);
-	//drawIcon(goRight64, 10, 140);
-	//drawIcon(goRight128, 10, 220);
-	
-	gDrawingContext.pop();
+	//gDrawingContext.push();
+	//gDrawingContext.pop();
 }
 
-static void drawDocument(std::shared_ptr<SVGDocument> doc)
+static void drawDocument()
 {
-	drawFurniture();
+	//gDrawingContext.background(BLRgba32(0xffA6A6A6));
+	gDrawingContext.background(BLRgba32(0xffffffff));
 
 	//double startTime = seconds();
 
@@ -149,8 +82,8 @@ static void drawDocument(std::shared_ptr<SVGDocument> doc)
 
 
 	// draw the document into the ctx
-	if (doc != nullptr)
-		doc->draw(&gDrawingContext, doc.get());
+	if (gDoc != nullptr)
+		gDoc->draw(&gDrawingContext, gDoc.get());
 
 	gDrawingContext.flush();
 	
@@ -158,9 +91,16 @@ static void drawDocument(std::shared_ptr<SVGDocument> doc)
 	//printf("Drawing Duration: %f\n", endTime - startTime);
 }
 
-static void refreshDoc()
+static void drawForeground()
+{
+
+}
+
+static void draw()
 {	
-	drawDocument(gDoc);
+	drawBackground();
+	drawDocument();
+	drawForeground();
 }
 
 static void resetView()
@@ -168,8 +108,6 @@ static void resetView()
 	gViewPort.reset();
 	gViewPort.sceneFrame(BLRect(0, 0, canvasWidth, canvasHeight));
 	gViewPort.surfaceFrame(BLRect(0, 0, canvasWidth, canvasHeight));
-
-	checkerboardDoc = SVGDocument::createFromChunk(gCheckboardSpan, &getFontHandler(), canvasWidth, canvasHeight, systemPpi);
 
 }
 
@@ -190,16 +128,24 @@ static void onFileDrop(const FileDropEvent& fde)
 
 		if (gDoc != nullptr)
 		{
+			// We have loaded the un-processed document
+			// Draw into an empty context at least once to resolve references
+			// and fix sizes.
+			IRenderSVG ctx(&getFontHandler());
+			ctx.setContainerFrame(BLRect(0, 0, canvasWidth, canvasHeight));
+			gDoc->draw(&ctx, gDoc.get());
+			
+			auto objFr = gDoc->frame();
+			
 			resetView();
 
-			auto objFr = gDoc->frame();
+
 			
 			// Set the initial viewport
 			gViewPort.surfaceFrame({ 0, 0, (double)canvasWidth, (double)canvasHeight });
-			//gViewPort.surfaceFrame(objFr);
 			gViewPort.sceneFrame(objFr);
 			
-			refreshDoc();
+			draw();
 			break;
 		}
 
@@ -207,7 +153,7 @@ static void onFileDrop(const FileDropEvent& fde)
 }
 
 // Create a routine to respond to frameevents
-static void onFrameEvent(const FrameCountEvent& fe)
+static void onFrameEvent(const FrameCountEvent& )
 {
 	//printf("frameEvent: %d\n", (int)fe.frameCount);
 	//appFrameBuffer().setAllPixels(vec4b{ 0x00,0xff,0x00,0xff });
@@ -217,9 +163,11 @@ static void onFrameEvent(const FrameCountEvent& fe)
 		if (gAnimate)
 		{
 			gDoc->update(gDoc.get());
-			refreshDoc();
+			draw();
 		}
 	}
+	
+
 	screenRefresh();
 
 
@@ -230,7 +178,7 @@ static void onResizeEvent(const ResizeEvent& re)
 {
 	//printf("onResizeEvent: %d x %d\n", re.width, re.height);
 	gDrawingContext.begin(appFrameBuffer().image());
-	refreshDoc();
+	draw();
 }
 
 // Pan
@@ -241,7 +189,7 @@ static void pan(double dx, double dy)
 	//printf("SVGViewer::pan(%3.2f, %3.2f)\n", dx, dy);
 
 	gViewPort.translateBy(-dx, -dy);
-	refreshDoc();
+	draw();
 }
 
 
@@ -253,14 +201,14 @@ static void pan(double dx, double dy)
 static void zoomBy(double z, double cx = 0, double cy = 0)
 {
 	gViewPort.scaleBy(z, z, cx, cy);
-	refreshDoc();
+	draw();
 
 }
 
 static void rotateBy(double r, double cx = 0, double cy = 0)
 {
 	gViewPort.rotateBy(r, cx, cy);
-	refreshDoc();
+	draw();
 }
 
 static void onMouseEvent(const MouseEvent& e)
@@ -355,15 +303,10 @@ static void onKeyboardEvent(const KeyboardEvent& ke)
 			case 'A':
 				gAnimate = !gAnimate;
 			break;
-				
-			case 'C':
-				gCheckerBackground = !gCheckerBackground;
-				refreshDoc();
-			break;
 
 			case 'T':
 				gPerformTransform = !gPerformTransform;
-				refreshDoc();
+				draw();
 			break;
 		}
 	}
@@ -371,23 +314,20 @@ static void onKeyboardEvent(const KeyboardEvent& ke)
 
 static void setupFonts()
 {
-	loadDefaultFonts();
-	//loadFontDirectory("c:\\windows\\fonts");
+	//loadDefaultFonts();
+	loadFontDirectory("c:\\windows\\fonts");
+	loadFontDirectory("d:\\commonfonts");
 	//loadFontDirectory("..\\resources");
-	//loadFontDirectory("d:\\commonfonts");
+
 	
 	gDrawingContext.fontHandler(&getFontHandler());
 }
 
 
 // called once before main loop is running
-static void setup()
+void setup()
 {
     //printf("setup()\n");
-    
-	//gSVG.registerNodeTypes();
-	
-	quicktest();
 	
 	setupFonts();
 	
@@ -410,18 +350,15 @@ static void setup()
 	subscribe(onKeyboardEvent);
 	
 	// clear the buffer to white to start
-	appFrameBuffer().setAllPixels(vec4b{ 0xFF,0xff,0xff,0xff });
+	appFrameBuffer().setAllPixels(vec4b{ 0xFF,0xff,0xff,0x00 });
 	BLContextCreateInfo ctxInfo{};
-	//ctxInfo.threadCount = 4;
-	ctxInfo.threadCount = 0;
+	ctxInfo.threadCount = 4;
+	//ctxInfo.threadCount = 0;
 	gDrawingContext.begin(appFrameBuffer().image(), &ctxInfo);
 		
 	// Set the initial viewport
 	gViewPort.surfaceFrame({0, 0, (double)canvasWidth, (double)canvasHeight});
 	
-	// Create initial checkerboard document
-	checkerboardDoc = SVGDocument::createFromChunk(gCheckboardSpan, &getFontHandler(), canvasWidth, canvasHeight, systemPpi);
-
 	// Load extension elements
 	// I really want to be able to do this here
 	// but there is an issue with the global variable that

@@ -62,9 +62,6 @@
     <ClInclude Include="..\..\svg\xmlscan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\placeable.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\svg\bithacks.h">
       <Filter>Header Files</Filter>
     </ClInclude>

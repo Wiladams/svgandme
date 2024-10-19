@@ -36,6 +36,7 @@ namespace waavs {
             , fFrameRate(fps)
             , fIsRecording(false)
             , fCurrentFrame(0)
+            , fMaxFrames(maxFrames)
         {
             fCodec.findByName("QOI");
         }

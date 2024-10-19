@@ -1,7 +1,7 @@
 #pragma once
 
 //
-// SVG Enumerator handling
+// SVG Enum handling
 //
 // There are numerous enums in SVG, and we want to quickly convert between their
 // textual representation, and their numeric value.  
@@ -26,6 +26,38 @@
 #include "wsenum.h"
 
 
+namespace waavs {
+	enum AspectRatioKind : uint32_t {
+		SVG_ASPECT_RATIO_NONE = 0,
+		SVG_ASPECT_RATIO_XMINYMIN = 1,
+		SVG_ASPECT_RATIO_XMIDYMIN = 2,
+		
+		SVG_ASPECT_RATIO_XMAXYMIN = 3,
+		SVG_ASPECT_RATIO_XMINYMID = 4,
+		SVG_ASPECT_RATIO_XMIDYMID = 5,		// default
+		SVG_ASPECT_RATIO_XMAXYMID = 6,
+		SVG_ASPECT_RATIO_XMINYMAX = 7,
+		SVG_ASPECT_RATIO_XMIDYMAX = 8,
+		SVG_ASPECT_RATIO_XMAXYMAX = 9,
+		SVG_ASPECT_RATIO_MEET = 10,
+		SVG_ASPECT_RATIO_SLICE = 11
+	};
+
+	static WSEnum SVGAspectRatioEnum = {
+		{"none", AspectRatioKind::SVG_ASPECT_RATIO_NONE},
+		{"xMinYMin", AspectRatioKind::SVG_ASPECT_RATIO_XMINYMIN},
+		{"xMidYMin", AspectRatioKind::SVG_ASPECT_RATIO_XMIDYMIN},
+		{"xMaxYMin", AspectRatioKind::SVG_ASPECT_RATIO_XMAXYMIN},
+		{"xMinYMid", AspectRatioKind::SVG_ASPECT_RATIO_XMINYMID},
+		{"xMidYMid", AspectRatioKind::SVG_ASPECT_RATIO_XMIDYMID},
+		{"xMaxYMid", AspectRatioKind::SVG_ASPECT_RATIO_XMAXYMID},
+		{"xMinYMax", AspectRatioKind::SVG_ASPECT_RATIO_XMINYMAX},
+		{"xMidYMax", AspectRatioKind::SVG_ASPECT_RATIO_XMIDYMAX},
+		{"xMaxYMax", AspectRatioKind::SVG_ASPECT_RATIO_XMAXYMAX},
+		{"meet", AspectRatioKind::SVG_ASPECT_RATIO_MEET},
+		{"slice", AspectRatioKind::SVG_ASPECT_RATIO_SLICE}
+	};
+}
 
 namespace waavs {
 	enum PaintOrderKind : uint32_t {
@@ -54,6 +86,87 @@ namespace waavs {
 		{ "objectBoundingBox", SpaceUnitsKind::SVG_SPACE_OBJECT }
 	};
 	
+
+	
+
+}
+
+namespace waavs {
+	// Could be used as bitfield
+	enum MarkerPosition : uint32_t {
+
+		MARKER_POSITION_START = 0,
+		MARKER_POSITION_MIDDLE = 1,
+		MARKER_POSITION_END = 2,
+		MARKER_POSITION_ALL = 3
+	};
+
+	// determines the orientation of a marker
+	enum MarkerOrientation : uint32_t
+	{
+		MARKER_ORIENT_AUTO,
+		MARKER_ORIENT_AUTOSTARTREVERSE,
+		MARKER_ORIENT_ANGLE,
+		MARKER_ORIENT_INVALID = 255,
+	};
+
+
+	static WSEnum MarkerOrientationEnum = {
+		{"auto", MarkerOrientation::MARKER_ORIENT_AUTO},
+		{"auto-start-reverse", MarkerOrientation::MARKER_ORIENT_AUTOSTARTREVERSE},
+	};
+}
+
+namespace waavs {
+	// Represents which of the many different ways you can specify
+	// the size of a font is being used.
+	enum SVGSizeKind : uint32_t
+	{
+		SVG_SIZE_KIND_INVALID = 0,
+		SVG_SIZE_KIND_ABSOLUTE = 1,
+		SVG_SIZE_KIND_RELATIVE = 2,
+		SVG_SIZE_KIND_LENGTH = 3,
+		SVG_SIZE_KIND_PERCENTAGE = 4,
+		SVG_SIZE_KIND_MATH = 5,
+		SVG_SIZE_KIND_GLOBAL = 6,
+	};
+
+	// SVG_SIZE_KIND_ABSOLUTE
+	enum SVGSizeAbsoluteKind : uint32_t
+	{
+		SVG_SIZE_ABSOLUTE_XX_SMALL = 1,
+		SVG_SIZE_ABSOLUTE_X_SMALL = 2,
+		SVG_SIZE_ABSOLUTE_SMALL = 3,
+		SVG_SIZE_ABSOLUTE_MEDIUM = 4,
+		SVG_SIZE_ABSOLUTE_LARGE = 5,
+		SVG_SIZE_ABSOLUTE_X_LARGE = 6,
+		SVG_SIZE_ABSOLUTE_XX_LARGE = 7,
+		SVG_SIZE_ABSOLUTE_XXX_LARGE = 8,
+	};
+
+	static WSEnum SVGSizeAbsoluteEnum = {
+	{"xx-small", SVGSizeAbsoluteKind::SVG_SIZE_ABSOLUTE_XX_SMALL},
+	{"x-small", SVGSizeAbsoluteKind::SVG_SIZE_ABSOLUTE_X_SMALL},
+	{"small", SVGSizeAbsoluteKind::SVG_SIZE_ABSOLUTE_SMALL},
+	{"medium", SVGSizeAbsoluteKind::SVG_SIZE_ABSOLUTE_MEDIUM},
+	{"large", SVGSizeAbsoluteKind::SVG_SIZE_ABSOLUTE_LARGE},
+	{"x-large", SVGSizeAbsoluteKind::SVG_SIZE_ABSOLUTE_X_LARGE},
+	{"xx-large", SVGSizeAbsoluteKind::SVG_SIZE_ABSOLUTE_XX_LARGE},
+	{"xxx-large", SVGSizeAbsoluteKind::SVG_SIZE_ABSOLUTE_XXX_LARGE},
+	};
+
+	enum SVGSizeRelativeKind : uint32_t
+	{
+		SVG_SIZE_RELATIVE_LARGER = 1,
+		SVG_SIZE_RELATIVE_SMALLER = 2,
+	};
+
+	static WSEnum SVGSizeRelativeEnum = {
+		{"larger", SVGSizeRelativeKind::SVG_SIZE_RELATIVE_LARGER},
+		{"smaller", SVGSizeRelativeKind::SVG_SIZE_RELATIVE_SMALLER},
+	};
+
+	// SVG_SIZE_KIND_LENGTH
 	enum SVGLengthKind : uint32_t {
 		SVG_LENGTHTYPE_UNKNOWN = 0,
 		SVG_LENGTHTYPE_NUMBER = 1,
@@ -67,7 +180,7 @@ namespace waavs {
 		SVG_LENGTHTYPE_PT = 9,
 		SVG_LENGTHTYPE_PC = 10,
 	};
-	
+
 	static WSEnum SVGDimensionEnum = {
 		{"",SVG_LENGTHTYPE_NUMBER },
 		{"px", SVG_LENGTHTYPE_PX},
@@ -80,12 +193,11 @@ namespace waavs {
 		{"em", SVG_LENGTHTYPE_EMS},
 		{"ex", SVG_LENGTHTYPE_EXS}
 	};
-	
+
 
 }
 
 namespace waavs {
-	
     // Text Alignment
     enum TXTALIGNMENT : uint32_t
     {

@@ -45,8 +45,8 @@ namespace waavs {
 
 
 		// Instance Constructor
-		SVGAElement(IAmGroot* aroot)
-			: SVGGraphicsElement(aroot) {}
+		SVGAElement(IAmGroot* )
+			: SVGGraphicsElement() {}
 
 	};
 }

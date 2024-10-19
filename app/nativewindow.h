@@ -68,7 +68,7 @@ namespace waavs {
         int getWidth()
         {
             RECT wRect;
-            BOOL bResult = ::GetWindowRect(fHandle, &wRect);
+            ::GetWindowRect(fHandle, &wRect);
             int cx = wRect.right - wRect.left;
             return cx;
         }
@@ -76,7 +76,7 @@ namespace waavs {
         int getHeight()
         {
             RECT wRect;
-            BOOL bResult = GetWindowRect(fHandle, &wRect);
+            ::GetWindowRect(fHandle, &wRect);
             int cy = wRect.bottom - wRect.top;
 
             return cy;
@@ -97,7 +97,7 @@ namespace waavs {
         {
             // Get current size of window
             RECT wRect;
-            BOOL bResult = ::GetWindowRect(fHandle, &wRect);
+            ::GetWindowRect(fHandle, &wRect);
 
             // Set the new size of the window based on the client area
             RECT cRect = { 0,0,awidth,aheight };

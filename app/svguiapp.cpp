@@ -25,13 +25,13 @@ static VOIDROUTINE gSetupHandler = nullptr;
 
 
 // Typography
-static bool loadFont(const char* filename, BLFontFace& ff) noexcept
+bool loadFont(const char* filename, BLFontFace& ff) noexcept
 {
 	bool success = getFontHandler().loadFontFace(filename, ff);
 	return success;
 }
 
-static bool loadFontDirectory(const char* dir) noexcept
+bool loadFontDirectory(const char* dir) noexcept
 {
 	const std::filesystem::path fontPath(dir);
 
@@ -58,21 +58,13 @@ static bool loadFontDirectory(const char* dir) noexcept
 				BLFontFace ff{};
 				bool success = getFontHandler().loadFontFace(dir_entry.path().generic_string().c_str(), ff);
 			}
-				
-			//if (endsWith(dir_entry.path().generic_string(), ".ttf") ||
-			//	endsWith(dir_entry.path().generic_string(), ".TTF") ||
-			//	endsWith(dir_entry.path().generic_string(), ".otf"))
-			//{
-			//	BLFontFace ff{};
-			//	bool success = gFontHandler.loadFontFace(dir_entry.path().generic_string().c_str(), ff);
-			//}
 		}
 	}
 
 	return true;
 }
 
-static bool loadDefaultFonts() noexcept
+bool loadDefaultFonts() noexcept
 {
 	// Load in some fonts to start
 	std::vector<const char*> fontNames{
@@ -92,12 +84,7 @@ static bool loadDefaultFonts() noexcept
 	return getFontHandler().loadFonts(fontNames);
 }
 
-static bool loadFontFiles(std::vector<const char*> filenames)
-{
-	getFontHandler().loadFonts(filenames);
 
-	return true;
-}
 
 static void registerAppHandlers()
 {
