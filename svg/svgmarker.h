@@ -16,10 +16,6 @@ namespace waavs {
 
 	// Reference: https://svg-art.ru/?page_id=855
 	//=================================================
-	enum MarkerUnits {
-		UserSpaceOnUse = 0,
-		StrokeWidth = 1
-	};
 
 	struct SVGMarkerElement : public SVGContainer
 	{
@@ -36,19 +32,16 @@ namespace waavs {
 		}
 
 		// Fields
-		//SVGViewbox fViewbox{};
 		SVGDimension fDimRefX{};
 		SVGDimension fDimRefY{};
-		SVGDimension fDimMarkerWidth{};
-		SVGDimension fDimMarkerHeight{};
-		uint32_t fMarkerUnits{ StrokeWidth };
+
+		SpaceUnitsKind fMarkerUnits{ SpaceUnitsKind::SVG_SPACE_STROKEWIDTH };
 		SVGOrient fOrientation{ nullptr };
 
 		// Resolved field values
 		double fRefX = 0;
 		double fRefY = 0;
-		double fMarkerWidth{ 3 };
-		double fMarkerHeight{ 3 };
+
 		
 		double scaleX = 1.0;
 		double scaleY = 1.0;
@@ -64,11 +57,11 @@ namespace waavs {
 
 
 		//
- // createPortal
- // 
- // This code establishes the coordinate space for the element, and 
- // its child nodes.
- // 
+		// createPortal
+		// 
+		// This code establishes the coordinate space for the element, and 
+		// its child nodes.
+		// 
 		void createPortal(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 			double dpi = 96;
@@ -77,54 +70,59 @@ namespace waavs {
 				dpi = groot->dpi();
 			}
 
-			// Get the current container frame
-			BLRect cFrame = ctx->localFrame();
-			double w = cFrame.w;
-			double h = cFrame.h;
-
-			BLRect fSceneFrame{};
-			BLRect fSurfaceFrame{};
+			getEnumValue(MarkerUnitEnum, getAttribute("markerUnits"), (uint32_t&)fMarkerUnits);
 
 
+			double sWidth = ctx->strokeWidth();
+			double w = 3;
+			double h = 3;
+			if (fMarkerUnits == SpaceUnitsKind::SVG_SPACE_STROKEWIDTH)
+			{
+				w = sWidth;
+				h = sWidth;
+			}
+			else
+			{
+				BLRect cFrame = ctx->localFrame();
+				w = cFrame.w;
+				h = cFrame.h;
+			}
+
+				
 			// Get the aspect ratio
 			getEnumValue(SVGAspectRatioEnum, getAttribute("preserveAspectRatio"), (uint32_t&)fPreserveAspectRatio);
 
 
 			// Load parameters for the portal
-			SVGVariableSize fDimX{};
-			SVGVariableSize fDimY{};
 			SVGVariableSize fDimWidth{};
 			SVGVariableSize fDimHeight{};
 
-			fDimX.loadFromChunk(getAttribute("x"));
-			fDimY.loadFromChunk(getAttribute("y"));
-			fDimWidth.loadFromChunk(getAttribute("width"));
-			fDimHeight.loadFromChunk(getAttribute("height"));
+			// If these are not specified, then we use default values of '3'
+			fDimWidth.loadFromChunk(getAttribute("markerWidth"));
+			fDimHeight.loadFromChunk(getAttribute("markerHeight"));
 
+			
 			// Load parameters for the viewbox
 			BLRect viewboxRect{};
 			bool haveViewbox = parseViewBox(getAttribute("viewBox"), viewboxRect);
 
+			BLRect fSceneFrame{};
+			BLRect fSurfaceFrame{};
+			
+			// Set default surfaceFrame
+			fSurfaceFrame = { 0,0,3.0,3.0 };
 
-
+			
 			if (fDimWidth.isSet() || fDimHeight.isSet())
-			{
-				// When calculating these, if the attribute was not set, the 'length' will 
-				// be the value returned.
-				fSurfaceFrame.w = fDimWidth.calculatePixels(ctx->font(), w, 0, dpi);
-				fSurfaceFrame.h = fDimHeight.calculatePixels(ctx->font(), h, 0, dpi);
-
-				// For these, we want to use a default value of '0' if they were not
-				// explicitly set.  
-				// For these, we start with default values of '0', and only
-				// change them if they were explicitly set.
-				if (fDimX.isSet())
-					fSurfaceFrame.x = fDimX.calculatePixels(ctx->font(), w, 0, dpi);
-
-				if (fDimY.isSet())
-					fSurfaceFrame.y = fDimY.calculatePixels(ctx->font(), h, 0, dpi);
-
-
+			{	
+				if (fDimWidth.isSet())
+				{
+					fSurfaceFrame.w = fDimWidth.calculatePixels(ctx->font(), w, 0, dpi);
+				}
+				if (fDimHeight.isSet())
+				{
+					fSurfaceFrame.h = fDimHeight.calculatePixels(ctx->font(), h, 0, dpi);
+				}
 			}
 			else {
 				// If no width and height were set, then we want the
@@ -133,9 +131,10 @@ namespace waavs {
 				// because it's an error to not have at least one of them set
 				if (haveViewbox)
 					fSurfaceFrame = viewboxRect;
-				else
+				else {
+					visible(false);
 					return;
-
+				}
 			}
 
 			fViewport.surfaceFrame(fSurfaceFrame);
@@ -158,9 +157,6 @@ namespace waavs {
 		{
 			createPortal(ctx, groot);
 			
-			BLRect viewboxRect{};
-			bool haveViewbox = parseViewBox(getAttribute("viewBox"), viewboxRect);
-			
 
 			if (getAttribute("refX")) {
 				fDimRefX.loadFromChunk(getAttribute("refX"));
@@ -169,66 +165,12 @@ namespace waavs {
 				fDimRefY.loadFromChunk(getAttribute("refY"));
 			}
 
-			if (getAttribute("markerWidth")) {
-				fDimMarkerWidth.loadFromChunk(getAttribute("markerWidth"));
-			}
-
-			if (getAttribute("markerHeight")) {
-				fDimMarkerHeight.loadFromChunk(getAttribute("markerHeight"));
-			}
-
-			if (getAttribute("markerUnits")) {
-				auto units = getAttribute("markerUnits");
-				if (units == "strokeWidth") {
-					fMarkerUnits = StrokeWidth;
-				}
-				else if (units == "userSpaceOnUse") {
-					fMarkerUnits = UserSpaceOnUse;
-				}
-			}
-
 			if (getAttribute("orient")) {
 				fOrientation.loadFromChunk(getAttribute("orient"));
 			}
 			
-			
-			if (fDimMarkerWidth.isSet())
-				fMarkerWidth = fDimMarkerWidth.calculatePixels();
-			else if (haveViewbox)
-				fMarkerWidth = viewboxRect.w;
-
-			if (fDimMarkerHeight.isSet())
-				fMarkerHeight = fDimMarkerHeight.calculatePixels();
-			else if (haveViewbox)
-				fMarkerHeight = viewboxRect.h;
-
-			if (fDimRefX.isSet())
-				fRefX = fDimRefX.calculatePixels();
-			else if (haveViewbox)
-				fRefX = viewboxRect.x;
-
-			if (fDimRefY.isSet())
-				fRefY = fDimRefY.calculatePixels();
-			else if (haveViewbox)
-				fRefY = viewboxRect.y;
 
 
-			double sWidth = ctx->strokeWidth();
-			
-			if (fMarkerUnits == StrokeWidth)
-			{
-				scaleX = sWidth;
-				scaleY = sWidth;
-			}
-			else
-			{
-				if (haveViewbox)
-				{
-					scaleX = fMarkerWidth / viewboxRect.w;
-					scaleY = fMarkerHeight / viewboxRect.h;
-				}
-				// No scaling
-			}
 			
 		}
 
@@ -236,11 +178,7 @@ namespace waavs {
 		{
 			SVGContainer::drawSelf(ctx, groot);
 			
-			ctx->scale(scaleX, scaleY);
-
-
-
-
+			//ctx->scale(scaleX, scaleY);
 			ctx->translate(-fDimRefX.calculatePixels(), -fDimRefY.calculatePixels());
 		}
 

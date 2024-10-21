@@ -161,7 +161,7 @@ static void portalChanged(const bool& changed)
 	refreshDoc();
 }
 
-static void fileSelected(const SVGFileIcon& fIcon)
+static void fileSelected(const FileIcon& fIcon)
 {
 	gBrowsingView.resetFromDocument(fIcon.document());
 }
@@ -250,7 +250,7 @@ static void setup()
 	// Set the initial viewport
 	gBrowsingView.subscribe(portalChanged);
 	gFileListView.Topic<bool>::subscribe(portalChanged);
-	gFileListView.Topic<SVGFileIcon>::subscribe(fileSelected);
+	gFileListView.Topic<FileIcon>::subscribe(fileSelected);
 
 	refreshDoc();
 }

@@ -137,7 +137,7 @@ namespace waavs {
 
             fRawValue = s;
 
-            return loadSelfFromChunk(fRawValue);
+            return this->loadSelfFromChunk(fRawValue);
         }
 
         virtual bool loadFromAttributes(const XmlAttributeCollection& attrs)
@@ -166,23 +166,48 @@ namespace waavs {
             //printf("SVGVisualProperty::draw == ");
             //printChunk(fRawValue);
             if (needsBinding())
-                bindToContext(ctx, groot);
+                this->bindToContext(ctx, groot);
             
             if (isSet())
-                drawSelf(ctx, groot);
+                this->drawSelf(ctx, groot);
         }
 
     };
 
-    // Collection of property constructors
-    static std::unordered_map<ByteSpan, std::function<std::shared_ptr<SVGVisualProperty>(const XmlAttributeCollection& attrs)>, ByteSpanHash, ByteSpanEquivalent> gSVGAttributeCreation;
 
-    // Convenient function to register property constructors
-    static void registerSVGAttribute(const ByteSpan& name, std::function<std::shared_ptr<SVGVisualProperty>(const XmlAttributeCollection& attrs)> func)
+    //===================================================
+    // Handling attribute conversion to properties
+    // 
+    // Collection of property constructors
+    using SVGAttributeToPropertyConverter = std::function<std::shared_ptr<SVGVisualProperty>(const XmlAttributeCollection& attrs)>;
+    using SVGPropertyConstructorMap = std::unordered_map<ByteSpan, SVGAttributeToPropertyConverter, ByteSpanHash, ByteSpanEquivalent>;
+
+
+    static SVGPropertyConstructorMap & getPropertyConstructionMap()
     {
-        gSVGAttributeCreation[name] = func;
+        static SVGPropertyConstructorMap gSVGAttributeCreation{};
+        
+        return gSVGAttributeCreation;
     }
 
+    // Convenient function to register property constructors
+    static void registerSVGAttribute(const ByteSpan& name, SVGAttributeToPropertyConverter func)
+    {
+        getPropertyConstructionMap()[name] = func;
+    }
+
+    static SVGAttributeToPropertyConverter getAttributeConverter(const ByteSpan &name)
+    {
+        // Next, see if there is a property registered for the attribute
+        auto & mapper = getPropertyConstructionMap();
+        auto it = mapper.find(name);
+        if (it != mapper.end())
+        {
+            return it->second;
+        }
+
+        return nullptr;
+    }
 }
 
 
@@ -210,13 +235,13 @@ namespace waavs {
             if (it != fDefinitions.end())
                 return it->second;
 
-            printf("SVGDocument::getElementById, FAIL: ");
-            printChunk(name);
+            //printf("SVGDocument::getElementById, FAIL: ");
+            //printChunk(name);
 
             return {};
         }
         
-        //virtual std::shared_ptr<SVGViewable> findNodeByHref(const ByteSpan& href) = 0;
+
         // Load a URL Reference
         virtual std::shared_ptr<IViewable> findNodeByHref(const ByteSpan& inChunk)
         {
@@ -233,7 +258,7 @@ namespace waavs {
                 return nullptr;
 
             // lookup the thing we're referencing
-            return getElementById(id);
+            return this->getElementById(id);
         }
         
         //virtual std::shared_ptr<SVGViewable> findNodeByUrl(const ByteSpan& inChunk) = 0;
@@ -255,7 +280,7 @@ namespace waavs {
             id = chunk_trim(id, "\"");
             id = chunk_trim(id, "'");
 
-            return findNodeByHref(id);
+            return this->findNodeByHref(id);
         }
         
 
@@ -271,8 +296,8 @@ namespace waavs {
             if (it != fEntities.end())
                 return it->second;
 
-            printf("SVGDocument::findEntity(), FAIL: ");
-            printChunk(name);
+            //printf("SVGDocument::findEntity(), FAIL: ");
+            //printChunk(name);
 
             return ByteSpan{};
         }
@@ -502,7 +527,7 @@ namespace waavs {
 
             auto anode = createSingularNode(elem, groot);
             if (anode != nullptr) {
-                addNode(anode, groot);
+                this->addNode(anode, groot);
             }
             else {
                 //printf("SVGGraphicsElement::loadSelfClosingNode UNKNOWN[%s]\n", toString(elem.name()).c_str());
@@ -544,7 +569,7 @@ namespace waavs {
             // to the list of nodes.
             auto node = createContainerNode(iter, groot);
             if (node != nullptr) {
-                addNode(node, groot);
+                this->addNode(node, groot);
             }
             else {
                 auto node = getSVGContainerCreationMap()["g"](groot, iter);
@@ -611,7 +636,7 @@ namespace waavs {
         {
             // First, loadFromXmlElement because we're sitting on our opening element
             // and we need to gather our own attributes
-            loadFromXmlElement(*iter, groot);
+            this->loadFromXmlElement(*iter, groot);
             
             buildState = BUILD_STATE_OPEN;
 
@@ -642,29 +667,29 @@ namespace waavs {
                 case BUILD_STATE_OPEN:
                 {
                     if (elem.isSelfClosing()) {
-                        loadSelfClosingNode(elem, groot);
+                        this->loadSelfClosingNode(elem, groot);
                     }
                     else if (elem.isStart())
                     {
-                        loadCompoundNode(iter, groot);
+                        this->loadCompoundNode(iter, groot);
                     }
                     else if (elem.isEnd())
                     {
                         // Close the current element
                         buildState = BUILD_STATE_CLOSE;
-                        loadEndTag(elem, groot);
+                        this->loadEndTag(elem, groot);
                     }
                     else if (elem.isContent())
                     {
-                        loadContentNode(elem, groot);
+                        this->loadContentNode(elem, groot);
                     }
                     else if (elem.isCData())
                     {
-                        loadCDataNode(elem, groot);
+                        this->loadCDataNode(elem, groot);
                     }
                     else if (elem.isComment())
                     {
-                        loadComment(elem, groot);
+                        this->loadComment(elem, groot);
                     }
                     else
                     {
@@ -686,10 +711,13 @@ namespace waavs {
         }
         
         // Tell children to fixup their style attributes
-        virtual void fixupSelfStyleAttributes(IRenderSVG* , IAmGroot* ) {}
+        virtual void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*) 
+        {
+            printf("fixupSelfStyleAttributes\n");
+        }
 
 
-        void fixupStyleAttributes(IRenderSVG* ctx, IAmGroot* groot)
+        void fixupStyleAttributes(IRenderSVG* ctx, IAmGroot* groot) override
         {
             // First, lookup CSS based on tagname
             // See if there's an element selector for the current element
@@ -753,7 +781,7 @@ namespace waavs {
             //        fAttributes.addAttribute("stroke", colorValue);
             //    }
             //}
-            fixupSelfStyleAttributes(ctx, groot);
+            this->fixupSelfStyleAttributes(ctx, groot);
 
             // Use up some of the attributes
             ByteSpan display = fAttributes.getAttribute("display");
@@ -764,6 +792,10 @@ namespace waavs {
                 if (display == "none")
                     visible(false);
             }
+
+            // Get transformation matrix if it exists as early as possible
+            // but after attributes have been set.
+            fHasTransform = parseTransform(getAttribute("transform"), fTransform);
 
         }
         
@@ -798,13 +830,13 @@ namespace waavs {
         
         void update(IAmGroot* groot) override
         {
-            updateProperties(groot);
-            updateSelf(groot);
-            updateChildren(groot);
+            this->updateProperties(groot);
+            this->updateSelf(groot);
+            this->updateChildren(groot);
         }
 
 
-
+        /*
         virtual void bindChildrenToContext(IRenderSVG* ctx, IAmGroot* groot)
         {
             //  BUGBUG need to set localFrame on context??
@@ -813,8 +845,8 @@ namespace waavs {
                 node->bindToContext(ctx, groot);
             }
         }
-
-        
+        */
+        /*
         virtual void bindPropertiesToContext(IRenderSVG* ctx, IAmGroot* groot)
         {
             // This requires lookups, so if we don't have a root()
@@ -830,9 +862,9 @@ namespace waavs {
                 prop.second->bindToContext(ctx, groot);
             }
         }
+        */
         
-        
-        virtual void bindSelfToContext(IRenderSVG* , IAmGroot* ) { ; }
+
 
         
         // convertAttributesToProperties
@@ -844,26 +876,18 @@ namespace waavs {
             //
             for (auto& attr : fAttributes.attributes())
             {
-                // Next, see if there is a property registered for the attribute
-                auto it = gSVGAttributeCreation.find(attr.first);
-                if (it != gSVGAttributeCreation.end())
+                // Find an attribute to property converter, if it exists
+                auto propertyMapper = getAttributeConverter(attr.first);
+                if (propertyMapper)
                 {
-                    // BUGBUG - we should pass in both the current attribute chunk
-                    // and the collection of attributes
-                    // That way, those places that only need the chunk can be quick
-                    // and save another lookup.
-                    // Those that need more attributes from the collection can have them
-                    //auto prop = it->second(attr.second);
-                    auto prop = it->second(fAttributes);
+                    auto prop = propertyMapper(fAttributes);
                     if (prop != nullptr)
-                    {
                         fVisualProperties[attr.first] = prop;
-                    }
                 }
             }
         }
 
-
+        virtual void bindSelfToContext(IRenderSVG*, IAmGroot*) { ; }
 
 
         // For compound nodes (which have children) we want to 
@@ -874,13 +898,10 @@ namespace waavs {
         // so just override bindToGroot
         void bindToContext(IRenderSVG* ctx, IAmGroot* groot) noexcept override
         {
-            fixupStyleAttributes(ctx, groot);
+            this->fixupStyleAttributes(ctx, groot);
             convertAttributesToProperties(ctx, groot);
 
-			fHasTransform = parseTransform(getAttribute("transform"), fTransform);
-            
-            
-            bindSelfToContext(ctx, groot);
+            this->bindSelfToContext(ctx, groot);
 
             needsBinding(false);
         }
@@ -891,9 +912,6 @@ namespace waavs {
             if (fHasTransform)  //fTransform.type() != BL_MATRIX2D_TYPE_IDENTITY)
                 ctx->applyTransform(fTransform);
 
-            // BUGBUG - It might be useful to pass in the visual object
-            // as additional context for attributes such as gradients
-            // that might need that
             for (auto& prop : fVisualProperties) {
                 if (prop.second->autoDraw() && prop.second->isSet())
                     prop.second->draw(ctx, groot);
@@ -922,29 +940,22 @@ namespace waavs {
             if (!visible())
                 return;
 
-
-            
             ctx->push();
 
             if (needsBinding())
-                bindToContext(ctx, groot);
+                this->bindToContext(ctx, groot);
             
             // Should have valid bounding box by now
             // so set objectFrame on the context
 			ctx->objectFrame(getBBox());
             
-            applyProperties(ctx, groot);
-            drawSelf(ctx, groot);
+            this->applyProperties(ctx, groot);
+            this->drawSelf(ctx, groot);
 
-            drawChildren(ctx, groot);
+            this->drawChildren(ctx, groot);
 
             ctx->pop();
         }
-
-
-
-
-        
     };
 }
 

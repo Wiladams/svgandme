@@ -10,27 +10,29 @@
 namespace waavs {
 
 
-	struct SVGFileIcon : public GraphicView, public Topic<SVGFileIcon>
+	struct FileIcon : public GraphicView, public Topic<FileIcon>
 	{
-		static constexpr int sIconSize = 24;
+
 
 		std::string fFullPath;
 		std::string fFilename;
 		SVGDocumentHandle fDocument;
 		SVGCachedDocument fDocIcon;
-
-		SVGFileIcon(const std::string& name, SVGDocumentHandle doc, const BLRect& rect={0,0,128,24})
+		double fIconSize = 24;
+		
+		FileIcon(const std::string& name, SVGDocumentHandle doc, size_t iconSize=24, const BLRect& rect={0,0,128,24})
 			: GraphicView(rect)
 			, fFullPath(name)
 			, fDocument(doc)
-			, fDocIcon(BLRect(0,0, sIconSize, sIconSize), nullptr)
+			, fDocIcon(BLRect(0,0, iconSize, iconSize), nullptr)
+			, fIconSize(iconSize)
 		{
 			const std::filesystem::path filePath(name);
 			fFilename = filePath.filename().string();
 
 			// render to a blank context once to get size of things
 			IRenderSVG ctx(doc->fontHandler());
-			ctx.setContainerFrame(BLRect(0, 0, sIconSize, sIconSize));
+			ctx.setContainerFrame(BLRect(0, 0, iconSize, iconSize));
 			doc->draw(&ctx, doc.get());
 
 			auto objFr = doc->frame();
@@ -39,7 +41,7 @@ namespace waavs {
 			fDocIcon.resetFromDocument(doc, fDocument->fontHandler());
 
 			ViewNavigator nav;
-			nav.setFrame(BLRect(2, 1, sIconSize, sIconSize));
+			nav.setFrame(BLRect(2, 1, iconSize, iconSize));
 			nav.setBounds(doc->frame());
 			fDocIcon.setSceneToSurfaceTransform(nav.sceneToSurfaceTransform());
 
@@ -74,21 +76,57 @@ namespace waavs {
 			fDocIcon.draw(ctx);
 
 			BLRect fr = frame();
-			ctx->fillText(fFilename.c_str(), 4+sIconSize, fr.h - 6);
+			ctx->fillText(fFilename.c_str(), 4+ fIconSize, fr.h - 6);
+		}
+
+
+	};
+	using SVGFileIconHandle = std::shared_ptr<FileIcon>;
+
+
+	//======================================================
+	// 24x24
+	struct FileIconSmall : public FileIcon 
+	{
+		static constexpr int sSmallIconSize = 24;
+		
+		FileIconSmall(const std::string& name, SVGDocumentHandle doc, const BLRect& fr = { 0,0,128,24 })
+			: FileIcon(name, doc, sSmallIconSize, BLRect(fr.x, fr.y, fr.w, sSmallIconSize))
+		{
 		}
 
 		// Create an instance
-		static std::shared_ptr<SVGFileIcon> create(const std::string &name, SVGDocumentHandle doc, const BLRect &fr) 
+		static std::shared_ptr<FileIcon> create(const std::string& name, SVGDocumentHandle doc, const BLRect& fr)
 		{
-			auto icon = std::make_shared<SVGFileIcon>(name, doc, fr);
+			auto icon = std::make_shared<FileIconSmall>(name, doc, fr);
 			return icon;
 		}
 	};
-	using SVGFileIconHandle = std::shared_ptr<SVGFileIcon>;
+	
+
+	//======================================================
+	// 64x64 icon of file contents
+	struct FileIconLarge : public FileIcon 
+	{
+		static constexpr int sLargeIconSize = 64;
+		
+		FileIconLarge(const std::string& name, SVGDocumentHandle doc, const BLRect& fr = { 0,0,128,24 })
+			: FileIcon(name, doc, sLargeIconSize, BLRect(fr.x, fr.y, fr.w, sLargeIconSize))
+		{
+		}
+		
+		// Create an instance
+		static std::shared_ptr<FileIcon> create(const std::string& name, SVGDocumentHandle doc, const BLRect& fr)
+		{
+			auto icon = std::make_shared<FileIconSmall>(name, doc, fr);
+			return icon;
+		}
+	};
 
 
+	
 
-	struct SVGFileListView : public SVGCachedView, public Topic<bool>, public Topic<SVGFileIcon>
+	struct SVGFileListView : public SVGCachedView, public Topic<bool>, public Topic<FileIcon>
 	{
 		static constexpr size_t sCellHeight = (24 + 2);
 
@@ -119,10 +157,10 @@ namespace waavs {
 			//Topic<bool>::notify(value);
 		}
 
-		void handleFileSelected(const SVGFileIcon& fIcon)
+		void handleFileSelected(const FileIcon& fIcon)
 		{
 			//printf("File Selected: %s\n", fIcon.fileName().c_str());
-			Topic<SVGFileIcon>::notify(fIcon);
+			Topic<FileIcon>::notify(fIcon);
 		}
 
 		bool addFile(const std::string& filename)
@@ -141,8 +179,8 @@ namespace waavs {
 			auto doc = SVGDocument::createFromChunk(aspan, &getFontHandler(), canvasWidth, canvasHeight, systemDpi);
 
 			int nFiles = fFileList.size();
-			auto anItem = SVGFileIcon::create(filename, doc, BLRect(3,nFiles*(sCellHeight),250,24));
-			anItem->subscribe([this](const SVGFileIcon& fIcon) {this->handleFileSelected(fIcon); });
+			auto anItem = FileIconSmall::create(filename, doc, BLRect(3,nFiles*(sCellHeight),250,24));
+			anItem->subscribe([this](const FileIcon& fIcon) {this->handleFileSelected(fIcon); });
 
 			fFileList.push_back(anItem);
 

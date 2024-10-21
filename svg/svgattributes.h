@@ -1079,6 +1079,7 @@ namespace waavs {
 
 
 namespace waavs {
+    /*
     //================================================
     // SVGTransform
     // Transformation matrix
@@ -1114,12 +1115,12 @@ namespace waavs {
             ctx->applyTransform(fMatrix);
         }
     };
-    
+    */
     //======================================================
     // SVGViewbox
     // A document may or may not have this property
     //======================================================
-    
+    /*
     struct SVGViewbox : public SVGVisualProperty
     {
         static void registerFactory() {
@@ -1172,7 +1173,7 @@ namespace waavs {
 
         // BUGBUG - need a bindSelfToContext()
     };
-    
+    */
 }
 
 

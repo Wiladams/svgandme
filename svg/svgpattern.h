@@ -20,7 +20,7 @@ namespace waavs {
 	// https://www.svgbackgrounds.com/category/pattern/
 	// https://www.visiwig.com/patterns/
 	//============================================================
-	struct SVGPatternElement :public SVGContainer
+	struct SVGPatternElement : public SVGGraphicsElement
 	{
 		static void registerSingularNode()
 		{
@@ -45,7 +45,7 @@ namespace waavs {
 			registerSingularNode();
 		}
 
-
+		AspectRatioKind fPreserveAspectRatio{ AspectRatioKind::SVG_ASPECT_RATIO_XMIDYMID };
 		SpaceUnitsKind fPatternUnits{ SpaceUnitsKind::SVG_SPACE_OBJECT };
 		SpaceUnitsKind fPatternContentUnits{ SpaceUnitsKind::SVG_SPACE_USER };
 		BLExtendMode fExtendMode{ BL_EXTEND_MODE_REPEAT };
@@ -57,25 +57,31 @@ namespace waavs {
 		
 		ByteSpan fTemplateReference{};
 		
-		BLImage fCachedImage{};
 
-		BLRect fBBox{};
 
+		BLRect viewboxRect{};
+		bool haveViewbox{ false };
+
+
+		// Things we'll need to calculate
+		BLRect fObjectBoundingBox;
+		BLRect fPatternBoundingBox;
+		BLPoint fPatternOffset{ 0,0 };
+		BLPoint fPatternContentScale{ 1.0,1.0 };
+		
 		ViewPort fViewport{};
-		SVGViewbox fViewbox{};
+		//BLRect fSceneFrame{};
+		//BLRect fSurfaceFrame{};
 
 
+		BLImage fPatternCache{};
 		BLPattern fPattern{};
 		BLVar fPatternVar{};
 
-		SVGDimension fDimX{};
-		SVGDimension fDimY{};
-		SVGDimension fDimWidth{};
-		SVGDimension fDimHeight{};
 		
 		
 		SVGPatternElement(IAmGroot* )
-			:SVGContainer()
+			:SVGGraphicsElement()
 		{
 			fPattern.setExtendMode(BL_EXTEND_MODE_PAD);
 			fPatternTransform = BLMatrix2D::makeIdentity();
@@ -88,8 +94,8 @@ namespace waavs {
 		
 		const BLVar getVariant(IRenderSVG *ctx, IAmGroot *groot) noexcept override
 		{ 
-			bindToContext(ctx, groot);
-			//needsBinding(true);
+			//bindToContext(ctx, groot);
+
 
 			// Create image and draw into it right here
 			// Att this point, all attributes have been captured
@@ -104,7 +110,7 @@ namespace waavs {
 		
 		BLRect getBBox() const override
 		{
-			return fBBox;
+			return fPatternBoundingBox;
 		}
 
 
@@ -154,7 +160,15 @@ namespace waavs {
 			}
 		}
 
-		void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*) override
+		// fixupSelfStyleAttributes
+		//
+		// This is the earliest opportunity to load raw attribute
+		// values, after styling has been applied.
+		//
+		// We want to load things here that are invariant between 
+		// coordinate spaces, mostly enums, transform, and viewbox.
+		//
+		void fixupSelfStyleAttributes(IRenderSVG *ctx, IAmGroot *groot) override
 		{
 			// See if we have a template reference
 			if (getAttribute("href"))
@@ -162,8 +176,139 @@ namespace waavs {
 			else if (getAttribute("xlink:href"))
 				fTemplateReference = getAttribute("xlink:href");
 
+			// Get the aspect ratio, and spacial units
+			getEnumValue(SVGAspectRatioEnum, getAttribute("preserveAspectRatio"), (uint32_t&)fPreserveAspectRatio);
+			getEnumValue(SVGSpaceUnits, getAttribute("patternUnits"), (uint32_t&)fPatternUnits);
+			getEnumValue(SVGSpaceUnits, getAttribute("patternContentUnits"), (uint32_t&)fPatternContentUnits);
+
+
+			haveViewbox = parseViewBox(getAttribute("viewBox"), viewboxRect);
+
+			fHasPatternTransform = parseTransform(getAttribute("patternTransform"), fPatternTransform);
+
+			getEnumValue(SVGExtendMode, getAttribute("extendMode"), (uint32_t&)fExtendMode);
 		}
 		
+		//
+		// createPortal
+		// 
+		// This code establishes the coordinate space for the element, and 
+		// its child nodes.
+		// 
+		void createPortal(IRenderSVG* ctx, IAmGroot* groot)
+		{
+			double dpi = 96;
+			if (nullptr != groot)
+			{
+				dpi = groot->dpi();
+			}
+
+			// First, we want to know the size of the object we're going to be
+			// rendered into
+			BLRect objectBoundingBox = ctx->objectFrame();
+			// We also want to know the size of the container the object is in
+			BLRect containerBoundingBox = ctx->localFrame();
+			
+			// Load parameters for the portal
+			SVGVariableSize fDimX{};
+			SVGVariableSize fDimY{};
+			SVGVariableSize fDimWidth{};
+			SVGVariableSize fDimHeight{};
+
+
+			fDimX.loadFromChunk(getAttribute("x"));
+			fDimY.loadFromChunk(getAttribute("y"));
+			fDimWidth.loadFromChunk(getAttribute("width"));
+			fDimHeight.loadFromChunk(getAttribute("height"));
+
+			// We need to calculate the fPatternBoundingBox
+			// this is based on the patternUnits
+			// Set default surfaceFrame
+			if (fPatternUnits == SVG_SPACE_OBJECT)
+			{
+				// Start with the offset
+				if (fDimX.isSet())
+					fPatternBoundingBox.x = fDimX.calculatePixels(ctx->font(), objectBoundingBox.w, 0, dpi, fPatternUnits);
+				if (fDimY.isSet())
+					fPatternBoundingBox.y = fDimY.calculatePixels(ctx->font(), objectBoundingBox.h, 0, dpi, fPatternUnits);
+
+				
+				if (fDimWidth.isSet())
+					fPatternBoundingBox.w = fDimWidth.calculatePixels(ctx->font(), objectBoundingBox.w, 0, dpi, fPatternUnits);
+				if (fDimHeight.isSet())
+					fPatternBoundingBox.h = fDimHeight.calculatePixels(ctx->font(), objectBoundingBox.h, 0, dpi, fPatternUnits);
+
+				fPatternOffset.x = fPatternBoundingBox.x;
+				fPatternOffset.y = fPatternBoundingBox.y;
+
+
+				
+			}
+			else if (fPatternUnits == SVG_SPACE_USER)
+			{
+				// Start with the offset					// Start with the offset
+				if (fDimX.isSet())
+					fPatternBoundingBox.x = fDimX.calculatePixels(ctx->font(), containerBoundingBox.w, 0, dpi, fPatternUnits);
+				if (fDimY.isSet())
+					fPatternBoundingBox.y = fDimY.calculatePixels(ctx->font(), containerBoundingBox.h, 0, dpi, fPatternUnits);
+
+
+				if (fDimWidth.isSet())
+					fPatternBoundingBox.w = fDimWidth.calculatePixels(ctx->font(), containerBoundingBox.w, 0, dpi, fPatternUnits);
+				if (fDimHeight.isSet())
+					fPatternBoundingBox.h = fDimHeight.calculatePixels(ctx->font(), containerBoundingBox.h, 0, dpi, fPatternUnits);
+
+				
+				fPatternOffset.x = fPatternBoundingBox.x;
+				fPatternOffset.y = fPatternBoundingBox.y;
+				
+			}
+
+			if (fPatternContentUnits == SVG_SPACE_OBJECT)
+			{
+				if (!haveViewbox) {
+					fPatternContentScale = { objectBoundingBox.w, objectBoundingBox.h };
+				}
+				else {
+					fPatternContentScale = { fPatternBoundingBox.w / viewboxRect.w, fPatternBoundingBox.h / viewboxRect.h };
+				}
+			}
+			else if (fPatternContentUnits == SVG_SPACE_USER)
+			{
+				if (!haveViewbox) {
+					fPatternContentScale = { 1.0,1.0 };
+				}
+				else {
+					fPatternContentScale = { fPatternBoundingBox.w / viewboxRect.w, fPatternBoundingBox.h / viewboxRect.h };
+				}
+
+			}
+			
+
+
+			/*
+			// Now we need to calculate the coordinate transformation for the content area
+			fViewport.surfaceFrame(fSurfaceFrame);
+			fViewport.sceneFrame(fSurfaceFrame);
+
+			// If the fPatternContentUnits == SVG_SPACE_OBJECT
+			// Then we need to figure out the scalable sceneFrame
+			if (fPatternContentUnits == SVG_SPACE_OBJECT) {
+				if (haveViewbox)
+				{
+					//fViewport.surfaceFrame(objectBoundingBox);
+					fViewport.sceneFrame(viewboxRect);
+				}
+				else {
+					//fViewport.surfaceFrame(objectBoundingBox);
+					fViewport.sceneFrame(BLRect(0, 0, 1, 1));
+				}
+			}
+			*/
+
+
+		}
+
 		// 
 		// Resolve template reference
 		// fix coordinate system
@@ -174,6 +319,8 @@ namespace waavs {
 			resolveReference(ctx, groot);
 			createPortal(ctx, groot);
 			
+			//fBBox = fSurfaceFrame;
+
 			// We need to resolve the size of the user space
 			// start out with some information from groot
 			double dpi = 96;
@@ -185,155 +332,46 @@ namespace waavs {
 				dpi = groot->dpi();
 
 
-
-
-
-			fDimX.loadFromChunk(getAttribute("x"));
-			fDimY.loadFromChunk(getAttribute("y"));
-			fDimWidth.loadFromChunk(getAttribute("width"));
-			fDimHeight.loadFromChunk(getAttribute("height"));
-			fViewbox.loadFromChunk(getAttribute("viewBox"));
 			
-			getEnumValue(SVGSpaceUnits, getAttribute("patternUnits"), (uint32_t&)fPatternUnits);
-			getEnumValue(SVGSpaceUnits, getAttribute("patternContentUnits"), (uint32_t&)fPatternContentUnits);
-			fHasPatternTransform = parseTransform(getAttribute("patternTransform"), fPatternTransform);
-
-			// We use the 'patternUnits' to determine the coordinate system for evaluating
-			// x,y,width,height
-			// Which are then used to calculate the size of the backing store
-			// we will draw into (fBBox)
-			if (fPatternUnits == SVG_SPACE_OBJECT)
-			{
-				// If we're using the object bounding box, we need to get the bounding box
-				// of the currently active object
-				// then coordinates should be percentage, or decimal (0..1) of those dimensions 
-				BLRect oFrame = ctx->objectFrame();
-				double w = oFrame.w;
-				double h = oFrame.h;
-				auto x = oFrame.x;
-				auto y = oFrame.y;
-				
-				// X position
-				if (fDimX.isSet()) {
-					if (fDimX.fUnits == SVG_LENGTHTYPE_NUMBER) {
-						if (fDimX.value() <= 1.0)
-							fBBox.x = x + (fDimX.value() * w);
-						else
-							fBBox.x = x + fDimX.value();
-					}
-					else
-						fBBox.x = x + fDimX.calculatePixels(w, 0, dpi);
-				}
-				else
-					fBBox.x = x + 0;
-				
-				// Y position
-				if (fDimY.isSet()) {
-					if (fDimY.fUnits == SVG_LENGTHTYPE_NUMBER) {
-						if (fDimY.value() <= 1.0)
-							fBBox.y = y + (fDimY.value() * h);
-						else
-							fBBox.y = y + fDimY.value();
-					}
-					else
-						fBBox.y = y + fDimY.calculatePixels(h, 0, dpi);
-				}
-				else
-					fBBox.y = y + 0;
-
-
-				// Width
-				if (fDimWidth.isSet()) {
-					if (fDimWidth.fUnits == SVG_LENGTHTYPE_NUMBER) {
-						if (fDimWidth.value() <= 1.0)
-							fBBox.w = fDimWidth.value() * w;
-						else
-							fBBox.w = fDimWidth.value();
-					}
-					else
-						fBBox.w = fDimWidth.calculatePixels(w, 0, dpi);
-				}
-				else
-					fBBox.w = w;
-
-				// Height
-				if (fDimHeight.isSet()) {
-					if (fDimHeight.fUnits == SVG_LENGTHTYPE_NUMBER) {
-						if (fDimHeight.value() <= 1.0)
-							fBBox.h = fDimHeight.value() * h;
-						else
-							fBBox.h = fDimHeight.value();
-					}
-					else
-						fBBox.h = fDimHeight.calculatePixels(h, 0, dpi);
-				}
-				else
-					fBBox.h = h;
-			}
-			else if (fPatternUnits == SVG_SPACE_USER)
-			{
-				BLRect cFrame = ctx->localFrame();
-				double w = cFrame.w;
-				double h = cFrame.h;
-
-				fBBox.x = fDimX.calculatePixels(w, 0, dpi);
-				fBBox.y = fDimY.calculatePixels(h, 0, dpi);
-				fBBox.w = fDimWidth.calculatePixels(w, 0, dpi);
-				fBBox.h = fDimHeight.calculatePixels(h, 0, dpi);
-			}
-
-			fViewport.surfaceFrame(BLRect(0,0,fBBox.w, fBBox.h));
-			fViewport.sceneFrame(BLRect(0, 0, fBBox.w, fBBox.h));
-
-			// If objectBoundingBox, then coordinates are normalized
-			// so we set a viewport of 0,0,1,1, to streth to fit bounding box
-			if (fPatternContentUnits == SVG_SPACE_OBJECT) {
-
-				fViewport.sceneFrame(BLRect(0,0,1,1));
-				fContentTransform = fViewport.sceneToSurfaceTransform();
-			}
-			//else if (fPatternContentUnits == SVG_SPACE_USER)
-			//{
-			//	BLRect cFrame = ctx->localFrame();
-			//	double w = cFrame.w;
-			//	double h = cFrame.h;
-
-			//	fViewport.sceneFrame(BLRect(0, 0, w, h));
-			//}
-
-			fPattern.translate(fBBox.x, fBBox.y);
+			// Need to apply the various transformations before drawing
+			fPattern.resetTransform();
+			fPattern.translate(-fPatternOffset.x, -fPatternOffset.y);
 			
-			fPatternTransform = fViewport.sceneToSurfaceTransform();
-			//fPatternTransform = fViewport.surfaceToSceneTransform();
+			// This is to properly scale the drawing within the context
+			//auto & scTform = fViewport.sceneToSurfaceTransform();
+			//fPattern.applyTransform(scTform);
+			
+			//if (fHasPatternTransform)
+			//	fPattern.applyTransform(fPatternTransform);
 
 
-			//fPattern.setTransform(fPatternTransform);
 
 			// Whether it was a reference or not, set the extendMode
-			getEnumValue(SVGExtendMode, getAttribute("extendMode"), (uint32_t&)fExtendMode);
 			fPattern.setExtendMode(fExtendMode);
 
 		}
 
 		void drawIntoCache(IRenderSVG* ctx, IAmGroot* groot)
 		{
+			bindToContext(ctx, groot);
+
 			auto box = getBBox();
 
-			fCachedImage.create(static_cast<int>(box.w), static_cast<int>(box.h), BL_FORMAT_PRGB32);
+			fPatternCache.create(static_cast<int>(fPatternBoundingBox.w), static_cast<int>(fPatternBoundingBox.h), BL_FORMAT_PRGB32);
 			IRenderSVG ictx(ctx->fontHandler());
-			ictx.begin(fCachedImage);
+			ictx.begin(fPatternCache);
 
 
 			ictx.renew();
 			ictx.clear();
-
+			ictx.scale(fPatternContentScale.x, fPatternContentScale.y);
 
 			draw(&ictx, groot);
 
 			ictx.flush();
 			ictx.end();
 
-			fPattern.setImage(fCachedImage);
+			fPattern.setImage(fPatternCache);
 		}
 
 		

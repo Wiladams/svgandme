@@ -27,6 +27,17 @@
 
 
 namespace waavs {
+	enum SpaceUnitsKind : uint32_t {
+		SVG_SPACE_USER = 0,
+		SVG_SPACE_OBJECT = 1,
+		SVG_SPACE_STROKEWIDTH=2
+	};
+
+	static WSEnum SVGSpaceUnits = {
+		{ "userSpaceOnUse", SpaceUnitsKind::SVG_SPACE_USER },
+		{ "objectBoundingBox", SpaceUnitsKind::SVG_SPACE_OBJECT }
+	};
+	
 	enum AspectRatioKind : uint32_t {
 		SVG_ASPECT_RATIO_NONE = 0,
 		SVG_ASPECT_RATIO_XMINYMIN = 1,
@@ -75,21 +86,8 @@ namespace waavs {
 	};
 }
 
-namespace waavs {
-	enum SpaceUnitsKind : uint32_t {
-		SVG_SPACE_USER = 0,
-		SVG_SPACE_OBJECT = 1
-	};
-	
-	static WSEnum SVGSpaceUnits = {
-		{ "userSpaceOnUse", SpaceUnitsKind::SVG_SPACE_USER },
-		{ "objectBoundingBox", SpaceUnitsKind::SVG_SPACE_OBJECT }
-	};
-	
 
-	
 
-}
 
 namespace waavs {
 	// Could be used as bitfield
@@ -114,6 +112,13 @@ namespace waavs {
 	static WSEnum MarkerOrientationEnum = {
 		{"auto", MarkerOrientation::MARKER_ORIENT_AUTO},
 		{"auto-start-reverse", MarkerOrientation::MARKER_ORIENT_AUTOSTARTREVERSE},
+	};
+
+
+
+	static WSEnum MarkerUnitEnum = {
+		{"strokeWidth", SpaceUnitsKind::SVG_SPACE_STROKEWIDTH},
+		{"userSpaceOnUse", SpaceUnitsKind::SVG_SPACE_USER},
 	};
 }
 

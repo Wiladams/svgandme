@@ -269,7 +269,7 @@ namespace waavs
     //
     static INLINE double calculateDistance(const double percentage, const double width, const double height) noexcept
     {
-		return percentage / 100.0 * sqrt(width * width + height * height);
+		return percentage / 100.0 * std::sqrt((width * width) + (height * height));
     }
     
     struct SVGDimension 
@@ -418,7 +418,7 @@ namespace waavs
         unsigned short units() const { return fUnits; }
 
         // Using the units and other information, calculate the actual value
-        double calculatePixels(const BLFont& font, double length = 1.0, double orig = 0, double dpi = 96) const
+        double calculatePixels(const BLFont& font, double length = 1.0, double orig = 0, double dpi = 96, SpaceUnitsKind units= SpaceUnitsKind::SVG_SPACE_USER) const
         {
             auto &fm = font.metrics();
             double fontSize = fm.size;
@@ -445,7 +445,17 @@ namespace waavs
                 case SVG_SIZE_KIND_LENGTH: {
                     switch (fUnits) {
                         case SVG_LENGTHTYPE_UNKNOWN:     return fValue;
-                        case SVG_LENGTHTYPE_NUMBER:		return fValue;                  // User units and PX units are the same
+                        case SVG_LENGTHTYPE_NUMBER:
+                            // User units and PX units are the same
+                            if (units == SpaceUnitsKind::SVG_SPACE_OBJECT) {
+								if (fValue <= 1.0) {
+									return orig + (fValue * length);
+								}
+                                return orig + fValue;
+							}
+
+							return fValue;
+
                         case SVG_LENGTHTYPE_PX:			return fValue;                  // User units and px units are the same
                         case SVG_LENGTHTYPE_PT:			return fValue / 72.0f * dpi;
                         case SVG_LENGTHTYPE_PC:			return fValue / 6.0f * dpi;
