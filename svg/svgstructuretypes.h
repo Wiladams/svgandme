@@ -713,7 +713,7 @@ namespace waavs {
         // Tell children to fixup their style attributes
         virtual void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*) 
         {
-            printf("fixupSelfStyleAttributes\n");
+           // printf("fixupSelfStyleAttributes\n");
         }
 
 
@@ -834,35 +834,6 @@ namespace waavs {
             this->updateSelf(groot);
             this->updateChildren(groot);
         }
-
-
-        /*
-        virtual void bindChildrenToContext(IRenderSVG* ctx, IAmGroot* groot)
-        {
-            //  BUGBUG need to set localFrame on context??
-            for (auto& node : fNodes)
-            {
-                node->bindToContext(ctx, groot);
-            }
-        }
-        */
-        /*
-        virtual void bindPropertiesToContext(IRenderSVG* ctx, IAmGroot* groot)
-        {
-            // This requires lookups, so if we don't have a root()
-            // we need to return immediately
-            if (nullptr == groot) {
-                printf("SVGVisualNode::bindPropertiesToContext, ERROR - NO ROOT()\n");
-                return;
-            }
-
-            // Bind all the accumulated visual properties
-            for (auto& prop : fVisualProperties)
-            {
-                prop.second->bindToContext(ctx, groot);
-            }
-        }
-        */
         
 
 

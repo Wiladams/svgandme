@@ -363,6 +363,12 @@ namespace waavs {
 			return BLRect{ };
 		}
 
+		void update(IAmGroot *groot) override 
+		{ 
+			fWrappedNode->update(groot);
+		}
+
+		
 		void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) override
 		{
 			double dpi = 96;

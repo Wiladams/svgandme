@@ -7,12 +7,14 @@
 
 #include "mappedfile.h"
 #include "svguiapp.h"
-#include "svgicons.h"
+#include "svgwaavs.h"
+
 #include "svgcacheddocument.h"
 
 #include "svgdocumentbrowser.h"
 #include "svgfilelistview.h"
 #include "bgselector.h"
+#include "svgicons.h"
 
 using namespace waavs;
 
@@ -45,7 +47,7 @@ IRenderSVG gDrawingContext(nullptr);
 
 
 // Animation management
-bool gAnimate = true;
+bool gAnimate = false;
 bool gPerformTransform = true;
 bool gCheckerBackground = true;
 
@@ -130,17 +132,17 @@ static void onFileDrop(const FileDropEvent& fde)
 static void onFrameEvent(const FrameCountEvent& fe)
 {
 	//printf("frameEvent: %d\n", (int)fe.frameCount);
-	//appFrameBuffer().setAllPixels(vec4b{ 0x00,0xff,0x00,0xff });
-	// update current document
 
+	// update current document
+	gBrowsingView.onFrameEvent(fe);
+	
 	if (gAnimate)
 	{
-		//gDoc->update(gDoc.get());
 		refreshDoc();
 	}
-
-	screenRefresh();
-
+	else {
+		screenRefresh();
+	}
 
 	gRecorder.saveFrame();
 }
@@ -164,6 +166,7 @@ static void portalChanged(const bool& changed)
 static void fileSelected(const FileIcon& fIcon)
 {
 	gBrowsingView.resetFromDocument(fIcon.document());
+	refreshDoc();
 }
 
 static void onMouseEvent(const MouseEvent& e)
@@ -223,7 +226,7 @@ static void setup()
 	// Setup runtime specific stuff
 	createAppWindow(APP_WIDTH, APP_HEIGHT, "SVG Explorer");
 	dropFiles();
-	frameRate(20);
+	frameRate(15);
 
 	// register to receive various events
 	subscribe(onFileDrop);
@@ -252,5 +255,7 @@ static void setup()
 	gFileListView.Topic<bool>::subscribe(portalChanged);
 	gFileListView.Topic<FileIcon>::subscribe(fileSelected);
 
+	DisplayCaptureElement::registerFactory();
+	
 	refreshDoc();
 }

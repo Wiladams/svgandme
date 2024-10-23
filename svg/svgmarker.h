@@ -64,6 +64,7 @@ namespace waavs {
 		// 
 		void createPortal(IRenderSVG* ctx, IAmGroot* groot) override
 		{
+			/*
 			double dpi = 96;
 			if (nullptr != groot)
 			{
@@ -150,7 +151,7 @@ namespace waavs {
 			{
 				fViewport.sceneFrame(fSurfaceFrame);
 			}
-
+			*/
 		}
 		
 		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override

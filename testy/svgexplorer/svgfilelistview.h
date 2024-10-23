@@ -18,7 +18,7 @@ namespace waavs {
 		std::string fFilename;
 		SVGDocumentHandle fDocument;
 		SVGCachedDocument fDocIcon;
-		double fIconSize = 24;
+		double fIconSize{};
 		
 		FileIcon(const std::string& name, SVGDocumentHandle doc, size_t iconSize=24, const BLRect& rect={0,0,128,24})
 			: GraphicView(rect)
@@ -67,16 +67,18 @@ namespace waavs {
 
 		void drawForeground(IRenderSVG* ctx) override
 		{
+			ctx->fill(BLRgba32(0xff000000));
+			BLRect fr = frame();
+			ctx->fillText(fFilename.c_str(), 4 + fIconSize, fr.h - 6);
+			
 			ctx->strokeWidth(3);
-			ctx->strokeRect(BLRect(1, 1, frame().w-2, frame().h-2), BLRgba32(0xff7fA0A0));
+			ctx->strokeRect(BLRect(1, 1, fr.w-2, fr.h-2), BLRgba32(0xff7fA0A0));
 		}
 
+		
 		void drawSelf(IRenderSVG* ctx)
 		{
 			fDocIcon.draw(ctx);
-
-			BLRect fr = frame();
-			ctx->fillText(fFilename.c_str(), 4+ fIconSize, fr.h - 6);
 		}
 
 
@@ -108,17 +110,17 @@ namespace waavs {
 	// 64x64 icon of file contents
 	struct FileIconLarge : public FileIcon 
 	{
-		static constexpr int sLargeIconSize = 64;
+		static size_t iconSize() { static constexpr size_t sIconSize=64;  return sIconSize; }
 		
 		FileIconLarge(const std::string& name, SVGDocumentHandle doc, const BLRect& fr = { 0,0,128,24 })
-			: FileIcon(name, doc, sLargeIconSize, BLRect(fr.x, fr.y, fr.w, sLargeIconSize))
+			: FileIcon(name, doc, iconSize(), BLRect(fr.x, fr.y, fr.w, iconSize()))
 		{
 		}
 		
 		// Create an instance
 		static std::shared_ptr<FileIcon> create(const std::string& name, SVGDocumentHandle doc, const BLRect& fr)
 		{
-			auto icon = std::make_shared<FileIconSmall>(name, doc, fr);
+			auto icon = std::make_shared<FileIconLarge>(name, doc, fr);
 			return icon;
 		}
 	};
@@ -128,8 +130,11 @@ namespace waavs {
 
 	struct SVGFileListView : public SVGCachedView, public Topic<bool>, public Topic<FileIcon>
 	{
-		static constexpr size_t sCellHeight = (24 + 2);
-
+		static size_t cellHeight() {
+			return FileIconLarge::iconSize() + 2;
+		}
+	
+		
 		ViewNavigator fNavigator{};
 		std::list<SVGFileIconHandle> fFileList{};
 
@@ -179,7 +184,8 @@ namespace waavs {
 			auto doc = SVGDocument::createFromChunk(aspan, &getFontHandler(), canvasWidth, canvasHeight, systemDpi);
 
 			int nFiles = fFileList.size();
-			auto anItem = FileIconSmall::create(filename, doc, BLRect(3,nFiles*(sCellHeight),250,24));
+			//auto anItem = FileIconSmall::create(filename, doc, BLRect(3,nFiles*(sCellHeight),250,24));
+			auto anItem = FileIconLarge::create(filename, doc, BLRect(3,nFiles*(cellHeight()),250,24));
 			anItem->subscribe([this](const FileIcon& fIcon) {this->handleFileSelected(fIcon); });
 
 			fFileList.push_back(anItem);
@@ -189,7 +195,7 @@ namespace waavs {
 
 		bool getIconIndex(float x, float y, size_t &idx) const
 		{
-			static constexpr float iconHeight = sCellHeight;
+			static  float iconHeight = cellHeight();
 			size_t maxIdx = fFileList.size()-1;
 
 			idx = static_cast<size_t>(y / iconHeight);
@@ -261,7 +267,7 @@ namespace waavs {
 				{
 					// roll wheel towards user
 					// scroll 'down' the list
-					double maxY = (fFileList.size()*sCellHeight) - frame().h;
+					double maxY = (fFileList.size()*cellHeight()) - frame().h;
 					if (b.y >= maxY)
 						return;
 				}

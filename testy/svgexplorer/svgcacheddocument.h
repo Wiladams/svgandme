@@ -33,6 +33,15 @@ namespace waavs {
 		}
 
 
+		virtual void onFrameEvent(const FrameCountEvent& fe)
+		{
+			if (fDocument != nullptr)
+			{
+				setNeedsRedraw(true);
+				fDocument->update(fDocument.get());
+			}
+		}
+		
 		virtual void onDocumentLoad()
 		{
 			// clear background

@@ -78,9 +78,12 @@ namespace waavs {
 			checkForMarkers();
 		}
 		
-		bool drawMarker(IRenderSVG* ctx, const ByteSpan propname, MarkerPosition pos, const BLPoint& p1, const BLPoint& p2, const BLPoint& p3, IAmGroot* groot)
+		bool drawMarker(IRenderSVG* ctx, IAmGroot* groot, const ByteSpan propname, MarkerPosition pos, const BLPoint& p1, const BLPoint& p2, const BLPoint& p3)
 		{
 			std::shared_ptr<SVGVisualProperty> prop = getVisualProperty(propname);
+			
+
+
 			
 			// Look for the default marker if the specified one is not found
 			if (nullptr == prop)
@@ -107,27 +110,37 @@ namespace waavs {
 
 
 			BLPoint transP{};
+			BLRgba32 transC{};
 
 			switch (pos)
 			{
 			case MarkerPosition::MARKER_POSITION_START:
 				transP = p1;
+				transC = BLRgba32(0x7fff0000);
+
 				break;
 			case MarkerPosition::MARKER_POSITION_MIDDLE:
 				transP = p2;
+				transC = BLRgba32(0x7f00ff00);
 				break;
 			case MarkerPosition::MARKER_POSITION_END:
 				transP = p2;
+				transC = BLRgba32(0x7f0000ff);
 				break;
 			}
 
+			// BUGBUG - red (start), green (mid), blue(end)
+			ctx->fillCircle(transP.x, transP.y, 2, transC);
+
+
+
 			// Use the three given points to calculate the angle of rotation 
 			// from the markerNode
-			//double rads = markerNode->orientation().calculateRadians(pos, p1, p2, p3);
 			double rads = markerNode->orientation().calcRadians(pos, p1, p2, p3);
 			
 			//printf("angle: %f  Normalized: %f\n", degrees(rads), degrees(radians_normalize(rads)));
 			
+			// BUGBUG
 			// Draw lines reprsenting the two vectors
 			//ctx->strokeLine(p1, p2, BLRgba32(0xFFff0000));
 			//ctx->strokeLine(p2, p3, BLRgba32(0xFF0000FF));
@@ -146,7 +159,197 @@ namespace waavs {
 		}
 
 
-		
+		void drawMarkers(IRenderSVG* ctx, IAmGroot* groot)
+		{
+			// early return if we don't have markers
+			if (!fHasMarkers)
+				return;
+
+
+			static const uint8_t CMD_INVALID = 0xffu;
+
+			ByteSpan cmdSpan(fPath.commandData(), fPath.commandDataEnd());
+
+			const BLPoint* verts = fPath.vertexData();
+			size_t numVerts = fPath.size();
+			int vertOffset{ 0 };
+
+			// Array of 3 points which represent current vectors
+			BLPoint vecpts[3]{};
+
+			uint8_t lastCmd = CMD_INVALID;
+			BLPoint lastMoveTo{};
+			BLPoint lastOnPoint{};
+
+			//printf("Command Size: %d  Path Size: %d\n", cmdSpan.size(), fPath.size());
+
+			while (cmdSpan)
+			{
+				int nVerts = 0;
+				uint8_t cmd = cmdSpan[0];
+				//printf("COORD: %d %f, %f\n", cmd, verts[vertOffset].x, verts[vertOffset].y);
+
+				switch (cmd)
+				{
+					// For the MOVE command, it's a first point, so in order to calculate an angle
+					// we need a following point, if it exists.  If it doesn't exist, then we 
+					// just use the same point twice
+				case BL_PATH_CMD_MOVE: {
+					// how many points/commands to consume after this
+					nVerts = 1;
+
+					vecpts[0] = verts[vertOffset];
+					vecpts[1] = verts[vertOffset];
+					vecpts[2] = verts[vertOffset];
+
+					lastMoveTo = verts[vertOffset];
+					lastOnPoint = verts[vertOffset];
+
+					// If there is a next command, decide the second point
+					// based on what that command might be.
+					if (cmdSpan.size() > 1)
+					{
+						vecpts[1] = verts[vertOffset + 1];
+
+						uint8_t nextCmd = cmdSpan[1];
+						switch (nextCmd) {
+						case BL_PATH_CMD_ON:
+						case BL_PATH_CMD_CUBIC:
+						case BL_PATH_CMD_QUAD:
+							//vecpts[1] = verts[vertOffset + 1];
+							break;
+
+						case BL_PATH_CMD_CLOSE:
+						case BL_PATH_CMD_MOVE:
+						default:
+							vecpts[1] = vecpts[0];
+						}
+					}
+
+					drawMarker(ctx, groot, "marker-start", MarkerPosition::MARKER_POSITION_START, vecpts[0], vecpts[1], vecpts[2]);
+
+					lastCmd = BL_PATH_CMD_MOVE;
+				}
+				break;
+
+
+				// This is a complex case.  
+				// Normally, we'd see a CMD_ON after a CMD_MOVE, but we could see a CMD_ON after a CMD_CUBIC
+				case BL_PATH_CMD_ON: {
+					nVerts = 1; // number of Vertices to consume
+
+					vecpts[0] = lastOnPoint;
+					vecpts[1] = verts[vertOffset];
+					vecpts[2] = verts[vertOffset];
+
+
+					// If there is another command, then we can decide the third point
+					if (cmdSpan.size() > 1)
+					{
+						uint8_t nextCmd = cmdSpan[1];
+						switch (nextCmd) {
+						case BL_PATH_CMD_ON:
+						case BL_PATH_CMD_CUBIC:
+							vecpts[2] = verts[vertOffset + 1];
+							drawMarker(ctx, groot, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, vecpts[0], vecpts[1], vecpts[2]);
+							lastOnPoint = vecpts[1];
+							break;
+
+						case BL_PATH_CMD_CLOSE:
+							vecpts[2] = lastMoveTo;
+							drawMarker(ctx, groot, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, vecpts[0], vecpts[1], vecpts[2]);
+							lastOnPoint = vecpts[1];
+							break;
+
+						case BL_PATH_CMD_MOVE:
+						default:
+							vecpts[2] = vecpts[1];
+							drawMarker(ctx, groot, "marker-end", MarkerPosition::MARKER_POSITION_END, verts[vertOffset - 1], verts[vertOffset], verts[vertOffset]);
+							lastOnPoint = vecpts[1];
+						}
+					}
+					else {
+						// If there is no next command, then this is an 'end', so we should use the end marker if it exists
+						drawMarker(ctx, groot, "marker-end", MarkerPosition::MARKER_POSITION_END, vecpts[0], vecpts[1], vecpts[2]);
+					}
+
+					lastCmd = BL_PATH_CMD_ON;
+					lastOnPoint = vecpts[1];
+				}
+				break;
+
+				case BL_PATH_CMD_QUAD:
+					nVerts = 2;
+					//drawMarker(ctx, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, verts[vertOffset], verts[vertOffset], verts[vertOffset+1], groot);
+					break;
+
+				case BL_PATH_CMD_CONIC:
+					//! Cubic-to control point (always used as a pair of commands).
+					printf("BL_PATH_CMD_CONIC\n");
+					break;
+
+				case BL_PATH_CMD_CUBIC: {
+					nVerts = 3;
+					vecpts[0] = verts[vertOffset + 1];
+					vecpts[1] = verts[vertOffset + 2];
+					vecpts[2] = verts[vertOffset + 2];
+
+					if (cmdSpan.size() > 1)
+					{
+						uint8_t nextCmd = cmdSpan[1];
+						switch (nextCmd) {
+						case BL_PATH_CMD_ON:
+						case BL_PATH_CMD_CUBIC:
+							vecpts[2] = verts[vertOffset + 3];
+							drawMarker(ctx, groot, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, vecpts[0], vecpts[1], vecpts[2]);
+							break;
+
+						case BL_PATH_CMD_CLOSE:
+							vecpts[2] = lastMoveTo;
+							drawMarker(ctx, groot, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, vecpts[0], vecpts[1], vecpts[2]);
+							break;
+
+						case BL_PATH_CMD_MOVE:
+						default:
+							vecpts[2] = vecpts[1];
+							drawMarker(ctx, groot, "marker-end", MarkerPosition::MARKER_POSITION_END, vecpts[0], vecpts[1], vecpts[2]);
+						}
+					}
+					else {
+						// If there is no next command, then this is an 'end', so we should use the end marker if it exists
+						drawMarker(ctx, groot, "marker-end", MarkerPosition::MARKER_POSITION_END, vecpts[0], vecpts[1], vecpts[2]);
+					}
+
+					lastCmd = BL_PATH_CMD_CUBIC;
+					lastOnPoint = verts[vertOffset + 2];
+				}
+				break;
+
+				case BL_PATH_CMD_CLOSE: {
+					vecpts[0] = lastOnPoint;
+					vecpts[1] = lastMoveTo;
+
+					vecpts[2] = vecpts[1];
+					if (numVerts > 1)
+						vecpts[2] = verts[1];
+
+					nVerts = 1;
+
+					drawMarker(ctx, groot, "marker-end", MarkerPosition::MARKER_POSITION_END, vecpts[0], vecpts[1], vecpts[2]);
+
+					lastCmd = BL_PATH_CMD_CLOSE;
+					lastOnPoint = vecpts[1];
+				}
+				break;
+
+				}
+
+				cmdSpan += nVerts;
+				vertOffset += nVerts;
+			}
+		}
+
+		/*
 		// traverse the points of the path
 		// drawing a marker at each point
 		void drawMarkers(IRenderSVG* ctx, IAmGroot* groot)
@@ -162,7 +365,7 @@ namespace waavs {
 			const BLPoint* verts = fPath.vertexData();
 			size_t numVerts = fPath.size();
 			int vertOffset{ 0 };
-			//int nVerts = 0;
+
 			
 			uint8_t lastCmd = CMD_INVALID;
 			BLPoint lastMoveTo{};
@@ -174,7 +377,7 @@ namespace waavs {
 			{
 				int nVerts = 0;
 				uint8_t cmd = cmdSpan[0];
-				//printf("COORD: %d %f, %f\n", cmd, verts[vertOffset].x, verts[vertOffset].y);
+				printf("COORD: %d %f, %f\n", cmd, verts[vertOffset].x, verts[vertOffset].y);
 
 				switch (cmd)
 				{
@@ -332,7 +535,7 @@ namespace waavs {
 				vertOffset += nVerts;
 			}
 		}
-
+		*/
 		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 			// Get the paint order from the context

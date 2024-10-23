@@ -7,6 +7,7 @@
 
 
 #include <functional>
+#include <memory>
 
 #include "svgattributes.h"
 #include "svgstructuretypes.h"
@@ -64,8 +65,8 @@ namespace waavs {
 
 
 		// Things we'll need to calculate
-		BLRect fObjectBoundingBox;
-		BLRect fPatternBoundingBox;
+		BLRect fObjectBoundingBox{};
+		BLRect fPatternBoundingBox{};
 		BLPoint fPatternOffset{ 0,0 };
 		BLPoint fPatternContentScale{ 1.0,1.0 };
 		
@@ -134,7 +135,7 @@ namespace waavs {
 			BLVar aVar = node->getVariant(ctx, groot);
 			
 			// Cast the node to a SVGPatternElement, so we get get some properties from it
-			auto pattNode = dynamic_pointer_cast<SVGPatternElement>(node);
+			auto pattNode = std::dynamic_pointer_cast<SVGPatternElement>(node);
 
 			if (!pattNode)
 				return;
@@ -283,29 +284,6 @@ namespace waavs {
 				}
 
 			}
-			
-
-
-			/*
-			// Now we need to calculate the coordinate transformation for the content area
-			fViewport.surfaceFrame(fSurfaceFrame);
-			fViewport.sceneFrame(fSurfaceFrame);
-
-			// If the fPatternContentUnits == SVG_SPACE_OBJECT
-			// Then we need to figure out the scalable sceneFrame
-			if (fPatternContentUnits == SVG_SPACE_OBJECT) {
-				if (haveViewbox)
-				{
-					//fViewport.surfaceFrame(objectBoundingBox);
-					fViewport.sceneFrame(viewboxRect);
-				}
-				else {
-					//fViewport.surfaceFrame(objectBoundingBox);
-					fViewport.sceneFrame(BLRect(0, 0, 1, 1));
-				}
-			}
-			*/
-
 
 		}
 
@@ -341,8 +319,8 @@ namespace waavs {
 			//auto & scTform = fViewport.sceneToSurfaceTransform();
 			//fPattern.applyTransform(scTform);
 			
-			//if (fHasPatternTransform)
-			//	fPattern.applyTransform(fPatternTransform);
+			if (fHasPatternTransform)
+				fPattern.applyTransform(fPatternTransform);
 
 
 

@@ -360,9 +360,6 @@ void setup()
 	gViewPort.surfaceFrame({0, 0, (double)canvasWidth, (double)canvasHeight});
 	
 	// Load extension elements
-	// I really want to be able to do this here
-	// but there is an issue with the global variable that
-	// contains the registration table
 	DisplayCaptureElement::registerFactory();
 	//SVGScriptElement::registerFactory();
 }

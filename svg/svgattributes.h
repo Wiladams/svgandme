@@ -1191,7 +1191,7 @@ namespace waavs {
     struct SVGOrient
     {
         double fAngle{ 0 };
-        MarkerOrientation fOrientation{ MarkerOrientation::MARKER_ORIENT_AUTO };
+        MarkerOrientation fOrientation{ MarkerOrientation::MARKER_ORIENT_ANGLE };
 
 
         SVGOrient(IAmGroot* groot) {}
@@ -1235,25 +1235,32 @@ namespace waavs {
         }
 
 
-        // Given the specified orientation, and a path, calculate the angle
-        // of rotation for the marker
+        // calculate the angle between line segments
         // return the value in radians
-		
+        //
+        // Noteworthy:
+        /*
+            // Calculate the angle based on the tangent
+            double ang1 = radians_normalize(atan2(p2.y - p1.y, p2.x-p1.x));
+            double ang2 = radians_normalize(atan2(p2.y - p3.y, p2.x-p3.x));
+
+            double angle = ang1;
+        */
+        
 
         
         double calcRadians(MarkerPosition pos, const BLPoint& p1, const BLPoint& p2, const BLPoint& p3) const
         {
+            double angle = fAngle;
+
+            
             if (fOrientation == MarkerOrientation::MARKER_ORIENT_ANGLE)
             {
                 // fAngle is already in radians
                 return fAngle;
             }
             
-			// Calculate the angle based on the tangent
-            double ang1 = radians_normalize(atan2(p2.y - p1.y, p2.x-p1.x));
-			double ang2 = radians_normalize(atan2(p2.y - p3.y, p2.x-p3.x));
-
-            double angle = ang1;
+            // get the angle between the vectors
 
             
 
@@ -1261,23 +1268,30 @@ namespace waavs {
             {
             case MARKER_POSITION_START:
             {
+                // angle is between the first point, and the second point
+                angle = angleOfTwoPointVector(p1, p2);
+
+                
+                // If the marker is at the start, and orient='auto-start-reverse',
+                // then we want to flip the angle 180 degrees, which we can do 
+                // by adding 'pi' to it, as that's half a circle.
                 if (fOrientation == MarkerOrientation::MARKER_ORIENT_AUTOSTARTREVERSE)
                     angle = angle + waavs::pi;
             }
             break;
 
             case MARKER_POSITION_MIDDLE:
-                angle = (ang2 - ang1) / 2.0;
+                angle = angleBetweenVectors(p1, p2, p3);
+                angle = angle / 2.0;
                 break;
 
             case MARKER_POSITION_END:
-                //if (fOrientation == MarkerOrientation::MARKER_ORIENT_AUTOSTARTREVERSE)
-                //    return ang1 + waavs::pi;
+                angle = angleOfTwoPointVector(p1, p2);
                 break;
             }
             
-            //printf("calcRadians: %3.2f (%3.2f, %3.2f)\n", angle, ang1, ang2);
-
+            //printf("calcRadians::MARKER_POSITION: %d - %3.2f\n", pos, waavs::degrees(angle));
+            
             return radians_normalize(angle);
         }
 
@@ -1329,6 +1343,42 @@ namespace waavs {
 
             
             return ang;
+        }
+
+        static double angleOfSinglePointVector(const BLPoint& p1)
+        {
+            return atan2(p1.y, p1.x);
+        }
+        
+        static double angleOfTwoPointVector(const BLPoint& p1, const BLPoint& p2)
+        {
+			double dy = p2.y - p1.y;
+			double dx = p2.x - p1.x;
+			return atan2(dy, dx);
+        }
+        
+        static double angleBetweenVectors(const BLPoint& p1, const BLPoint& p2, const BLPoint& p3)
+        {
+            // Vector 1: p1 -> p2
+            double v1x = p2.x - p1.x;
+            double v1y = p2.y - p1.y;
+
+            // Vector 2: p2 -> p3
+            double v2x = p3.x - p2.x;
+            double v2y = p3.y - p2.y;
+
+            // Dot product of vectors
+            double dotProduct = v1x * v2x + v1y * v2y;
+
+            // Magnitude of vectors
+            double magV1 = sqrt(v1x * v1x + v1y * v1y);
+            double magV2 = sqrt(v2x * v2x + v2y * v2y);
+
+            // Cosine of the angle
+            double angle = dotProduct / (magV1 * magV2);
+
+            // return Angle in radians
+            return angle;
         }
     };
 }

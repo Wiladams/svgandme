@@ -49,46 +49,20 @@ static void setupFonts()
 
 }
 
-/*
-static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
-{
-	auto mapped = waavs::MappedFile::create_shared(filename);
 
-	// if the mapped file does not exist, return
-	if (mapped == nullptr)
-	{
-		printf("File not found: %s\n", filename);
-		return nullptr;
-	}
-
-
-	ByteSpan aspan(mapped->data(), mapped->size());
-	std::shared_ptr<SVGDocument> aDoc = SVGDocument::createFromChunk(aspan, &gFontHandler, canvasWidth, canvasHeight, systemPpi);
-	if (aDoc != nullptr) {
-		SVGDocument* groot = aDoc.get();
-		aDoc->bindToGroot(groot, nullptr);
-	}
-
-	return aDoc;
-}
-*/
 
 #define CAN_WIDTH 640
 #define CAN_HEIGHT 480
 
 void quik()
 {
-	ByteSpan a("darkRed");
-	ByteSpan b("darkred");
-	
-	auto ahash = fnv1a_32_case_insensitive(a.data(), a.size());
-	auto bhash = fnv1a_32_case_insensitive(b.data(), b.size());
+	BLPoint p2{ 10,90 };
+	BLPoint p1{ 10,10 };
+	BLPoint p3{ 1,0 };
 
-	printf("Hash A: 0x%08x  B: 0x%08x\n", ahash, bhash);
+	auto ang = SVGOrient::angleOfTwoPointVector(p1, p2);
 
-
-
-
+	printf("ang: %f\n", waavs::degrees(ang));
 
 }
 
