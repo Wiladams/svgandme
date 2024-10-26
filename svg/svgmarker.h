@@ -8,7 +8,7 @@
 
 #include "svgattributes.h"
 #include "svgstructuretypes.h"
-
+#include "svgviewport.h"
 
 namespace waavs {
 	//=================================================
@@ -17,7 +17,7 @@ namespace waavs {
 	// Reference: https://svg-art.ru/?page_id=855
 	//=================================================
 
-	struct SVGMarkerElement : public SVGContainer
+	struct SVGMarkerElement : public SVGGraphicsElement
 	{
 		static void registerFactory()
 		{
@@ -32,8 +32,9 @@ namespace waavs {
 		}
 
 		// Fields
-		SVGDimension fDimRefX{};
-		SVGDimension fDimRefY{};
+		SVGViewport fViewport{};
+		SVGVariableSize fDimRefX{};
+		SVGVariableSize fDimRefY{};
 
 		SpaceUnitsKind fMarkerUnits{ SpaceUnitsKind::SVG_SPACE_STROKEWIDTH };
 		SVGOrient fOrientation{ nullptr };
@@ -43,15 +44,28 @@ namespace waavs {
 		double fRefY = 0;
 
 		
-		double scaleX = 1.0;
-		double scaleY = 1.0;
-
+		BLPoint fMarkerContentScale{ 1,1 };
+		BLPoint fMarkerTranslation{ 0,0 };
+		BLRect fMarkerBoundingBox{ 0,0,3,3 };
+		BLRect fViewbox{};
+		
 		
 		SVGMarkerElement(IAmGroot* root)
-			: SVGContainer()
+			: SVGGraphicsElement()
 		{
 			isStructural(false);
 		}
+
+		BLRect frame() const override
+		{
+			return fViewport.getBBox();
+		}
+		
+		BLRect getBBox() const override
+		{
+			return fViewport.getBBox();
+		}
+		
 
 		const SVGOrient& orientation() const { return fOrientation; }
 
@@ -62,125 +76,125 @@ namespace waavs {
 		// This code establishes the coordinate space for the element, and 
 		// its child nodes.
 		// 
-		void createPortal(IRenderSVG* ctx, IAmGroot* groot) override
+		
+		void createPortal(IRenderSVG *ctx, IAmGroot *groot)
 		{
-			/*
+			// First, we want to know the size of the object we're going to be
+			// rendered into
+			// We also want to know the size of the container the object is in
+			BLRect objectBoundingBox = ctx->objectFrame();
+			BLRect containerBoundingBox = ctx->localFrame();
+			
+			
 			double dpi = 96;
 			if (nullptr != groot)
 			{
 				dpi = groot->dpi();
 			}
 
-			getEnumValue(MarkerUnitEnum, getAttribute("markerUnits"), (uint32_t&)fMarkerUnits);
-
-
-			double sWidth = ctx->strokeWidth();
-			double w = 3;
-			double h = 3;
-			if (fMarkerUnits == SpaceUnitsKind::SVG_SPACE_STROKEWIDTH)
-			{
-				w = sWidth;
-				h = sWidth;
-			}
-			else
-			{
-				BLRect cFrame = ctx->localFrame();
-				w = cFrame.w;
-				h = cFrame.h;
-			}
-
-				
-			// Get the aspect ratio
-			getEnumValue(SVGAspectRatioEnum, getAttribute("preserveAspectRatio"), (uint32_t&)fPreserveAspectRatio);
-
-
 			// Load parameters for the portal
-			SVGVariableSize fDimWidth{};
-			SVGVariableSize fDimHeight{};
+			SVGDimension fDimWidth{};
+			SVGDimension fDimHeight{};
 
 			// If these are not specified, then we use default values of '3'
 			fDimWidth.loadFromChunk(getAttribute("markerWidth"));
 			fDimHeight.loadFromChunk(getAttribute("markerHeight"));
-
+			bool haveViewbox = parseViewBox(getAttribute("viewBox"), fViewbox);
+			fViewport.loadFromAttributes(fAttributes);
 			
-			// Load parameters for the viewbox
-			BLRect viewboxRect{};
-			bool haveViewbox = parseViewBox(getAttribute("viewBox"), viewboxRect);
+			double sWidth = ctx->strokeWidth();
 
-			BLRect fSceneFrame{};
-			BLRect fSurfaceFrame{};
-			
-			// Set default surfaceFrame
-			fSurfaceFrame = { 0,0,3.0,3.0 };
-
-			
-			if (fDimWidth.isSet() || fDimHeight.isSet())
-			{	
+			// First, we setup the marker bounding box
+			// This is determined based on the markerWidth, and markerHeight
+			// attributes.
+			if (fMarkerUnits == SpaceUnitsKind::SVG_SPACE_STROKEWIDTH)
+			{
+				// We use the strokeWidth to scale the marker
+				// If the dimension type is percentage, then calculate
+				// based on a percentage of the stroke width
+				// If the dimension is a number, then use that number, and 
+				// multiply it by the strokeWidth
 				if (fDimWidth.isSet())
 				{
-					fSurfaceFrame.w = fDimWidth.calculatePixels(ctx->font(), w, 0, dpi);
+					if (fDimWidth.isPercentage())
+					{
+						fMarkerBoundingBox.w = fDimWidth.calculatePixels(sWidth);
+					}
+					else
+					{
+						fMarkerBoundingBox.w = fDimWidth.calculatePixels() * sWidth;
+					}
 				}
+				
 				if (fDimHeight.isSet())
 				{
-					fSurfaceFrame.h = fDimHeight.calculatePixels(ctx->font(), h, 0, dpi);
+					if (fDimWidth.isPercentage())
+					{
+						fMarkerBoundingBox.h = fDimHeight.calculatePixels(sWidth);
+					}
+					else {
+						fMarkerBoundingBox.h = fDimHeight.calculatePixels() * sWidth;
+					}
 				}
 			}
-			else {
-				// If no width and height were set, then we want the
-				// surface frame to match the 'viewBox' attribute
-				// and if that was not set, then we want to return immediately
-				// because it's an error to not have at least one of them set
-				if (haveViewbox)
-					fSurfaceFrame = viewboxRect;
-				else {
-					visible(false);
-					return;
+			else if (fMarkerUnits == SpaceUnitsKind::SVG_SPACE_USER)
+			{
+				if (fDimWidth.isSet())
+				{
+					fMarkerBoundingBox.w = fDimWidth.calculatePixels(containerBoundingBox.w)*sWidth;
+				}
+
+				if (fDimHeight.isSet())
+				{
+					fMarkerBoundingBox.h = fDimHeight.calculatePixels(containerBoundingBox.h)*sWidth;
 				}
 			}
-
-			fViewport.surfaceFrame(fSurfaceFrame);
-
-			// If the viewbox is set, then use that as the scene frame
-			// if not, then use the surfaceframe as the scene frame for 
-			// an identity transform
-			if (haveViewbox)
-			{
-				fViewport.sceneFrame(viewboxRect);
+			
+			// Now that we have the markerBoundingBox settled, we need to calculate an additional 
+			// scaling for the content area if a viewBox is specified
+			
+			if (haveViewbox) {
+				fMarkerContentScale.x = fMarkerBoundingBox.w / fViewbox.w;
+				fMarkerContentScale.y = fMarkerBoundingBox.h / fViewbox.h;
 			}
-			else
-			{
-				fViewport.sceneFrame(fSurfaceFrame);
-			}
-			*/
+			
+			fDimRefX.parseValue(fMarkerTranslation.x, ctx->font(), fMarkerBoundingBox.w, 0, dpi);
+			fDimRefY.parseValue(fMarkerTranslation.y, ctx->font(), fMarkerBoundingBox.h, 0, dpi);
+
+
+			fViewport.fViewport.surfaceFrame(fMarkerBoundingBox);
+
+
+
 		}
 		
-		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+		virtual void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*)
+		{
+			// printf("fixupSelfStyleAttributes\n");
+			getEnumValue(MarkerUnitEnum, getAttribute("markerUnits"), (uint32_t&)fMarkerUnits);
+			//getEnumValue(SVGAspectRatioEnum, getAttribute("preserveAspectRatio"), (uint32_t&)fPreserveAspectRatio);
+
+			fDimRefX.loadFromChunk(getAttribute("refX"));
+			fDimRefY.loadFromChunk(getAttribute("refY"));
+			fOrientation.loadFromChunk(getAttribute("orient"));
+
+		}
+
+		
+		void bindSelfToContext(IRenderSVG *ctx, IAmGroot *groot) override 
 		{
 			createPortal(ctx, groot);
-			
 
-			if (getAttribute("refX")) {
-				fDimRefX.loadFromChunk(getAttribute("refX"));
-			}
-			if (getAttribute("refY")) {
-				fDimRefY.loadFromChunk(getAttribute("refY"));
-			}
-
-			if (getAttribute("orient")) {
-				fOrientation.loadFromChunk(getAttribute("orient"));
-			}
-			
-
-
-			
 		}
+
 
 		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-			SVGContainer::drawSelf(ctx, groot);
+			//createPortal(ctx, groot);
 			
-			//ctx->scale(scaleX, scaleY);
-			ctx->translate(-fDimRefX.calculatePixels(), -fDimRefY.calculatePixels());
+			ctx->scale(fMarkerContentScale.x, fMarkerContentScale.y);
+			ctx->translate(-fMarkerTranslation.x, -fMarkerTranslation.y);
+
 		}
 
 		void drawChildren(IRenderSVG* ctx, IAmGroot* groot) override

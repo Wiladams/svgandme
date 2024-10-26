@@ -9,22 +9,47 @@
 
 namespace waavs {
 
-    static std::map<int, std::string> elemTypeNames = {
-     {XML_ELEMENT_TYPE_INVALID, "INVALID"}
-    ,{XML_ELEMENT_TYPE_CONTENT, "CONTENT"}
-    ,{XML_ELEMENT_TYPE_SELF_CLOSING, "SELF_CLOSING"}
-    ,{XML_ELEMENT_TYPE_START_TAG, "START_TAG"}
-    ,{XML_ELEMENT_TYPE_END_TAG, "END_TAG"}
-    ,{XML_ELEMENT_TYPE_COMMENT, "COMMENT"}
-    ,{XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION, "PROCESSING_INSTRUCTION"}
-    ,{XML_ELEMENT_TYPE_CDATA, "CDATA"}
-    ,{XML_ELEMENT_TYPE_XMLDECL, "XMLDECL"}
-    ,{XML_ELEMENT_TYPE_DOCTYPE, "DOCTYPE"}
-    };
 
+    // printXmlElement
+    // Print some basic information about an XML element
+    // The name, they type, and the attribute values
     static void printXmlElement(const XmlElement& elem)
     {
-        
+        /*
+		static WSEnum xmlTypeMap = {
+			{ "ELEMENT", 0 },
+			{ "ATTRIBUTE", 1 },
+			{ "TEXT", 2 },
+			{ "CDATA", 3 },
+			{ "ENTITY_REF", 4 },
+			{ "ENTITY", 5 },
+			{ "PI", 6 },
+			{ "COMMENT", 7 },
+			{ "DOC", 8 },
+			{ "DOC_TYPE", 9 },
+			{ "DOC_FRAG", 10 },
+			{ "NOTATION", 11 },
+			{ "WHITESPACE", 12 },
+			{ "SIGNIFICANT_WHITESPACE", 13 },
+			{ "END_ELEMENT", 14 },
+			{ "END_ENTITY", 15 },
+			{ "XML_DECL", 16 }
+		};
+        */
+        static std::map<int, std::string> elemTypeNames = {
+         {XML_ELEMENT_TYPE_INVALID, "INVALID"}
+        ,{XML_ELEMENT_TYPE_CONTENT, "CONTENT"}
+        ,{XML_ELEMENT_TYPE_SELF_CLOSING, "SELF_CLOSING"}
+        ,{XML_ELEMENT_TYPE_START_TAG, "START_TAG"}
+        ,{XML_ELEMENT_TYPE_END_TAG, "END_TAG"}
+        ,{XML_ELEMENT_TYPE_COMMENT, "COMMENT"}
+        ,{XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION, "PROCESSING_INSTRUCTION"}
+        ,{XML_ELEMENT_TYPE_CDATA, "CDATA"}
+        ,{XML_ELEMENT_TYPE_XMLDECL, "XMLDECL"}
+        ,{XML_ELEMENT_TYPE_DOCTYPE, "DOCTYPE"}
+        };
+
+
         printf("[[");
 
         switch (elem.kind())

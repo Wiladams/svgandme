@@ -188,6 +188,7 @@
     <ClInclude Include="..\..\svg\svgclip.h" />
     <ClInclude Include="..\..\svg\svgcolors.h" />
     <ClInclude Include="..\..\svg\svgconditional.h" />
+    <ClInclude Include="..\..\svg\svgcontainer.h" />
     <ClInclude Include="..\..\svg\svgcss.h" />
     <ClInclude Include="..\..\svg\svgdatatypes.h" />
     <ClInclude Include="..\..\svg\svgdocument.h" />
@@ -209,7 +210,9 @@
     <ClInclude Include="..\..\svg\svgstructure.h" />
     <ClInclude Include="..\..\svg\svgstructuretypes.h" />
     <ClInclude Include="..\..\svg\svgstyle.h" />
+    <ClInclude Include="..\..\svg\svgsymbol.h" />
     <ClInclude Include="..\..\svg\svgtext.h" />
+    <ClInclude Include="..\..\svg\svgviewport.h" />
     <ClInclude Include="..\..\svg\utf8.h" />
     <ClInclude Include="..\..\svg\viewport.h" />
     <ClInclude Include="..\..\svg\wsenum.h" />

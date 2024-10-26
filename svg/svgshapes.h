@@ -138,14 +138,12 @@ namespace waavs {
 			// from the markerNode
 			double rads = markerNode->orientation().calcRadians(pos, p1, p2, p3);
 			
-			//printf("angle: %f  Normalized: %f\n", degrees(rads), degrees(radians_normalize(rads)));
-			
-			// BUGBUG
-			// Draw lines reprsenting the two vectors
-			//ctx->strokeLine(p1, p2, BLRgba32(0xFFff0000));
-			//ctx->strokeLine(p2, p3, BLRgba32(0xFF0000FF));
+			BLRect objectFrame = markerNode->getBBox();
+			BLRect containerFrame = ctx->localFrame();
 			
 			ctx->push();
+			//ctx->objectFrame(objectFrame);
+			
 			ctx->translate(transP);
 			ctx->rotate(rads);
 
@@ -166,6 +164,7 @@ namespace waavs {
 				return;
 
 
+			
 			static const uint8_t CMD_INVALID = 0xffu;
 
 			ByteSpan cmdSpan(fPath.commandData(), fPath.commandDataEnd());
@@ -182,7 +181,8 @@ namespace waavs {
 			BLPoint lastOnPoint{};
 
 			//printf("Command Size: %d  Path Size: %d\n", cmdSpan.size(), fPath.size());
-
+			ctx->push();
+			
 			while (cmdSpan)
 			{
 				int nVerts = 0;
@@ -209,7 +209,7 @@ namespace waavs {
 					// based on what that command might be.
 					if (cmdSpan.size() > 1)
 					{
-						vecpts[1] = verts[vertOffset + 1];
+						vecpts[1] = verts[vertOffset + nVerts];
 
 						uint8_t nextCmd = cmdSpan[1];
 						switch (nextCmd) {
@@ -250,7 +250,7 @@ namespace waavs {
 						switch (nextCmd) {
 						case BL_PATH_CMD_ON:
 						case BL_PATH_CMD_CUBIC:
-							vecpts[2] = verts[vertOffset + 1];
+							vecpts[2] = verts[vertOffset + nVerts];
 							drawMarker(ctx, groot, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, vecpts[0], vecpts[1], vecpts[2]);
 							lastOnPoint = vecpts[1];
 							break;
@@ -300,7 +300,7 @@ namespace waavs {
 						switch (nextCmd) {
 						case BL_PATH_CMD_ON:
 						case BL_PATH_CMD_CUBIC:
-							vecpts[2] = verts[vertOffset + 3];
+							vecpts[2] = verts[vertOffset + nVerts];
 							drawMarker(ctx, groot, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, vecpts[0], vecpts[1], vecpts[2]);
 							break;
 
@@ -347,195 +347,11 @@ namespace waavs {
 				cmdSpan += nVerts;
 				vertOffset += nVerts;
 			}
+
+			ctx->pop();
 		}
 
-		/*
-		// traverse the points of the path
-		// drawing a marker at each point
-		void drawMarkers(IRenderSVG* ctx, IAmGroot* groot)
-		{
-			// early return if we don't have markers
-			if (!fHasMarkers)
-				return;
-				
-			static const uint8_t CMD_INVALID = 0xffu;
-			
-			ByteSpan cmdSpan(fPath.commandData(), fPath.commandDataEnd());
 
-			const BLPoint* verts = fPath.vertexData();
-			size_t numVerts = fPath.size();
-			int vertOffset{ 0 };
-
-			
-			uint8_t lastCmd = CMD_INVALID;
-			BLPoint lastMoveTo{};
-			BLPoint lastOnPoint{};
-			
-			//printf("Command Size: %d  Path Size: %d\n", cmdSpan.size(), fPath.size());
-			
-			while (cmdSpan)
-			{
-				int nVerts = 0;
-				uint8_t cmd = cmdSpan[0];
-				printf("COORD: %d %f, %f\n", cmd, verts[vertOffset].x, verts[vertOffset].y);
-
-				switch (cmd)
-				{
-					// For the MOVE command, it's a first point, so in order to calculate an angle
-					// we need a following point, if it exists.  If it doesn't exist, then we 
-					// just use the same point twice
-					case BL_PATH_CMD_MOVE: {
-						nVerts = 1;
-						BLPoint p1 = verts[vertOffset];
-						BLPoint p2 = p1;
-						lastMoveTo = p1;
-						lastOnPoint = p1;
-						
-						// If there is a next command, decide the second point
-						// based on what that command might be.
-						if (cmdSpan.size() > 1)
-						{
-							uint8_t nextCmd = cmdSpan[1];
-							switch (nextCmd) {
-								case BL_PATH_CMD_ON:
-								p2 = verts[vertOffset + 1];
-								break;
-
-								case BL_PATH_CMD_CUBIC:
-									p2 = verts[vertOffset + 1];
-
-								break;
-									
-								case BL_PATH_CMD_QUAD:
-									p2 = verts[vertOffset + 1];
-								break;
-									
-								case BL_PATH_CMD_CLOSE:
-								case BL_PATH_CMD_MOVE:
-								default:
-									p2 = p1;
-							}
-						}
-
-						drawMarker(ctx, "marker-start", MarkerPosition::MARKER_POSITION_START, p1, p2, p2, groot);
-
-						lastCmd = BL_PATH_CMD_MOVE;
-					}
-					break;
-
-					// This is a complex case.  
-					// Normally, we'd see a CMD_ON after a CMD_MOVE, but we could see a CMD_ON after a CMD_CUBIC
-					
-					case BL_PATH_CMD_ON: {
-						nVerts = 1; // number of Vertices to consume
-
-						BLPoint p1 = lastOnPoint;
-						BLPoint p2 = verts[vertOffset];
-						BLPoint p3 = p2;
-
-						// If there is another command, then we can decide the third point
-						if (cmdSpan.size() > 1)
-						{
-							uint8_t nextCmd = cmdSpan[1];
-							switch (nextCmd) {
-								case BL_PATH_CMD_ON:
-								case BL_PATH_CMD_CUBIC:
-									p3 = verts[vertOffset + 1];
-									drawMarker(ctx, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, p1, p2, p3, groot);
-									lastOnPoint = p2;
-								break;
-								
-								case BL_PATH_CMD_CLOSE:
-									p3 = lastMoveTo;
-									drawMarker(ctx, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, p1, p2, p3, groot);
-									lastOnPoint = p2;
-								break;
-									
-								case BL_PATH_CMD_MOVE:
-								default:
-									p3 = p2;
-									drawMarker(ctx, "marker-end", MarkerPosition::MARKER_POSITION_END, verts[vertOffset - 1], verts[vertOffset], verts[vertOffset], groot);
-									lastOnPoint = p2;
-							}
-						}
-						else {
-							// If there is no next command, then this is an 'end', so we should use the end marker if it exists
-							drawMarker(ctx, "marker-end", MarkerPosition::MARKER_POSITION_END, verts[vertOffset - 1], verts[vertOffset], verts[vertOffset], groot);
-						}
-						
-						lastCmd = BL_PATH_CMD_ON;
-						lastOnPoint = p2;
-					}
-					break;
-
-					case BL_PATH_CMD_QUAD:
-						nVerts = 2;
-						//drawMarker(ctx, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, verts[vertOffset], verts[vertOffset], verts[vertOffset+1], groot);
-					break;
-
-					case BL_PATH_CMD_CONIC:
-					//! Cubic-to control point (always used as a pair of commands).
-						printf("BL_PATH_CMD_CONIC\n");
-					break;
-					
-					case BL_PATH_CMD_CUBIC: {
-						nVerts = 3;
-						BLPoint p1 = verts[vertOffset + 1];
-						BLPoint p2 = verts[vertOffset+2];
-						BLPoint p3 = p2;
-						if (cmdSpan.size() > 1)
-						{
-							uint8_t nextCmd = cmdSpan[1];
-							switch (nextCmd) {
-							case BL_PATH_CMD_ON:
-							case BL_PATH_CMD_CUBIC:
-								p3 = verts[vertOffset + 3];
-								drawMarker(ctx, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, p1, p2, p3, groot);
-								break;
-								
-							case BL_PATH_CMD_CLOSE:
-								p3 = lastMoveTo;
-								drawMarker(ctx, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, p1, p2, p3, groot);
-								break;
-
-							case BL_PATH_CMD_MOVE:
-							default:
-								p3 = p2;
-								drawMarker(ctx, "marker-end", MarkerPosition::MARKER_POSITION_END, p1, p2, p3, groot);
-							}
-						}
-						else {
-							// If there is no next command, then this is an 'end', so we should use the end marker if it exists
-							drawMarker(ctx, "marker-end", MarkerPosition::MARKER_POSITION_END, p1, p2, p3, groot);
-						}
-						
-						lastCmd = BL_PATH_CMD_CUBIC;
-						lastOnPoint = verts[vertOffset + 2];
-					}
-					break;
-
-					case BL_PATH_CMD_CLOSE: {
-						BLPoint p1 = lastOnPoint;
-						BLPoint p2 = lastMoveTo;
-						BLPoint p3 = p2;
-						if (numVerts > 1)
-							p3 = verts[1];
-						
-						nVerts = 1;
-
-						drawMarker(ctx, "marker-end", MarkerPosition::MARKER_POSITION_END, p1, p2, p3, groot);
-
-						lastCmd = BL_PATH_CMD_CLOSE;
-						lastOnPoint = p2;
-					}
-					break;
-				}
-
-				cmdSpan+= nVerts;
-				vertOffset += nVerts;
-			}
-		}
-		*/
 		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 			// Get the paint order from the context

@@ -42,6 +42,7 @@
 #include "svgstructure.h"
 #include "svgshapes.h"
 #include "svgstyle.h"
+#include "svgsymbol.h"
 #include "svgpattern.h"
 #include "svgfont.h"
 #include "svgfilter.h"
@@ -134,10 +135,28 @@ namespace waavs {
 		double canvasHeight() const override { return fCanvasHeight; }
         void canvasSize(const double w, const double h) { fCanvasWidth = w; fCanvasHeight = h; }
         
+		BLRect frame() const override { return BLRect(0, 0, fCanvasWidth, fCanvasHeight); }
         
+        // This should be size of document elements
         BLRect getBBox() const override 
         {
-			return BLRect(0, 0, fCanvasWidth, fCanvasHeight);
+            BLRect extent{};
+            bool firstOne = true;
+
+            // traverse the graphics
+            // expand bounding box to include their frames, without alternation
+            for (auto& g : fNodes)	// std::shared_ptr<IGraphic> g
+            {
+                if (firstOne) {
+                    extent = g->getBBox();
+                    firstOne = false;
+                }
+                else {
+                    expandRect(extent, g->frame());
+                }
+            }
+
+            return extent;
         }
         
         std::shared_ptr<CSSStyleSheet> styleSheet() override { return fStyleSheet; }
@@ -150,7 +169,7 @@ namespace waavs {
         
         void draw(IRenderSVG * ctx, IAmGroot* groot) override
         {
-            ctx->setContainerFrame(getBBox());
+            ctx->setContainerFrame(frame());
             
             SVGGraphicsElement::draw(ctx, groot);
         }

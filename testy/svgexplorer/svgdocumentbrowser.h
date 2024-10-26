@@ -86,22 +86,25 @@ namespace waavs {
 			{
 				switch (ke.keyCode)
 				{
-				case 'A':
-					fAnimate = !fAnimate;
-					setNeedsRedraw(true);
-					notify(true);
+					// Turn on animation
+					case 'A':
+						fAnimate = !fAnimate;
+						setNeedsRedraw(true);
+						notify(true);
 					break;
 
-				case 'C':
-					fUseCheckerBackground = !fUseCheckerBackground;
-					setNeedsRedraw(true);
-					notify(true);
+					// Display checkboard background
+					case 'C':
+						fUseCheckerBackground = !fUseCheckerBackground;
+						setNeedsRedraw(true);
+						notify(true);
 					break;
 
-				case 'T':
-					fPerformTransform = !fPerformTransform;
-					setNeedsRedraw(true);
-					notify(true);
+					// Allow for mouse driven transformation
+					case 'T':
+						fPerformTransform = !fPerformTransform;
+						setNeedsRedraw(true);
+						notify(true);
 					break;
 				}
 			}

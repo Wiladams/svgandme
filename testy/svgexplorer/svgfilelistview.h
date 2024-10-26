@@ -42,7 +42,7 @@ namespace waavs {
 
 			ViewNavigator nav;
 			nav.setFrame(BLRect(2, 1, iconSize, iconSize));
-			nav.setBounds(doc->frame());
+			nav.setBounds(doc->getBBox());
 			fDocIcon.setSceneToSurfaceTransform(nav.sceneToSurfaceTransform());
 
 		}
@@ -159,7 +159,7 @@ namespace waavs {
 			setSceneToSurfaceTransform(fNavigator.sceneToSurfaceTransform());
 
 			setNeedsRedraw(true);
-			//Topic<bool>::notify(value);
+			Topic<bool>::notify(value);
 		}
 
 		void handleFileSelected(const FileIcon& fIcon)

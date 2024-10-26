@@ -209,8 +209,8 @@ namespace waavs
 		{
 			return it->second;
 		}
-        printf("UNKNOWN COLOR: ");
-		printChunk(colorName);
+        //printf("UNKNOWN COLOR: ");
+		//printChunk(colorName);
         
         return BLRgba32(128, 128, 128);
     }

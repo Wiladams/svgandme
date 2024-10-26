@@ -64,12 +64,6 @@ namespace waavs {
 		/*
 		void drawBackground(IRenderSVG *ctx) override
 		{	
-			// Draw a background into cache
-			ctx->background(BLRgba32(0xffffff00));
-			ctx->stroke(BLRgba32(0xffff0000));
-			auto fr = frame();
-			ctx->strokeLine(0, 0, fr.w, fr.h);
-			ctx->strokeLine(0, fr.h, fr.w, 0);
 		}
 		*/
 

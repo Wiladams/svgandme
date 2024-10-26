@@ -1360,23 +1360,29 @@ namespace waavs {
         static double angleBetweenVectors(const BLPoint& p1, const BLPoint& p2, const BLPoint& p3)
         {
             // Vector 1: p1 -> p2
-            double v1x = p2.x - p1.x;
-            double v1y = p2.y - p1.y;
+            //BLPoint v1{ p2.x - p1.x, p2.y - p1.y };
+            double v1dx = p2.x - p1.x;
+            double v1dy = p2.y - p1.y;
 
             // Vector 2: p2 -> p3
+			// BLPoint v2{ p3.x - p2.x, p3.y - p2.y};
             double v2x = p3.x - p2.x;
             double v2y = p3.y - p2.y;
 
             // Dot product of vectors
-            double dotProduct = v1x * v2x + v1y * v2y;
+            double dotProduct = v1dx * v2x + v1dy * v2y;
 
             // Magnitude of vectors
-            double magV1 = sqrt(v1x * v1x + v1y * v1y);
-            double magV2 = sqrt(v2x * v2x + v2y * v2y);
+            double magV1 = std::sqrt(v1dx * v1dx + v1dy * v1dy);
+            double magV2 = std::sqrt(v2x * v2x + v2y * v2y);
 
             // Cosine of the angle
-            double angle = dotProduct / (magV1 * magV2);
+            // cos(theta)
+            double costheta = dotProduct / (magV1 * magV2);
 
+            // calculate the actual angle
+			double angle = std::acos(costheta);
+            
             // return Angle in radians
             return angle;
         }

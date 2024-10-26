@@ -13,7 +13,7 @@
 #include "maths.h"
 
 #include "svgdatatypes.h"
-
+#include "svgcss.h"
 #include "irendersvg.h"
 #include "uievent.h"
 #include "collections.h"
@@ -710,7 +710,7 @@ namespace waavs {
             }
         }
         
-        // Tell children to fixup their style attributes
+
         virtual void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*) 
         {
            // printf("fixupSelfStyleAttributes\n");
@@ -721,39 +721,42 @@ namespace waavs {
         {
             // First, lookup CSS based on tagname
             // See if there's an element selector for the current element
-            if (!name().empty())
-            {
-                auto esel = groot->styleSheet()->getElementSelector(name());
-                if (esel != nullptr)
+            if (groot != nullptr) {
+                if (!name().empty())
                 {
-                    fAttributes.mergeAttributes(esel->attributes());
+                    auto esel = groot->styleSheet()->getElementSelector(name());
+                    if (esel != nullptr)
+                    {
+                        fAttributes.mergeAttributes(esel->attributes());
+                    }
                 }
-            }
 
-            // Check for id selector if we have one
-            if (id())
-            {
-                auto idsel = groot->styleSheet()->getIDSelector(id());
-                if (idsel != nullptr)
+                // Check for id selector if we have one
+                if (id())
                 {
-                    fAttributes.mergeAttributes(idsel->attributes());
+                    auto idsel = groot->styleSheet()->getIDSelector(id());
+                    if (idsel != nullptr)
+                    {
+                        fAttributes.mergeAttributes(idsel->attributes());
+                    }
                 }
-            }
 
-            // Lookup any attributes based on the class, if specified
-            ByteSpan classChunk = fClassAttribute;
-            while (classChunk)
-            {
-                // peel a word off the front
-                auto classId = chunk_token(classChunk, chrWspChars);
-
-                auto csel = groot->styleSheet()->getClassSelector(classId);
-                if (csel != nullptr)
+                // Lookup any attributes based on the class, if specified
+                ByteSpan classChunk = fClassAttribute;
+                while (classChunk)
                 {
-                    fAttributes.mergeAttributes(csel->attributes());
-                }
-                else {
-                    //printf("SVGVisualNode::bindPropertiesToGroot, ERROR - NO CLASS SELECTOR FOR %s\n", toString(classId).c_str());
+                    // peel a word off the front
+                    auto classId = chunk_token(classChunk, chrWspChars);
+
+
+                    auto csel = groot->styleSheet()->getClassSelector(classId);
+                    if (csel != nullptr)
+                    {
+                        fAttributes.mergeAttributes(csel->attributes());
+                    }
+                    else {
+                        //printf("SVGVisualNode::bindPropertiesToGroot, ERROR - NO CLASS SELECTOR FOR %s\n", toString(classId).c_str());
+                    }
                 }
             }
 
@@ -931,159 +934,7 @@ namespace waavs {
 }
 
 
-namespace waavs {
-    //
-    // SVGContainer
-    //
-    // A base class element for all SVG elements that can contain other elements.
-    // The container helps facilitate the proper creation of a coordinate space.
-    // This should be applied to the following containers that support 'viewBox'
-    // svg
-    // symbol
-    // marker
-    // pattern
-    // view
-    //
 
-    struct SVGContainer : public SVGGraphicsElement
-    {
-        ViewPort fViewport{};
-        AspectRatioKind fPreserveAspectRatio{ AspectRatioKind::SVG_ASPECT_RATIO_XMIDYMID };
-        
-        SVGContainer()
-            : SVGGraphicsElement()
-        {
-            needsBinding(true);
-        }
-
-        BLRect frame() const override
-        {
-            //if (fViewbox.isSet()) {
-            //	return fViewbox.fRect;
-            //}
-
-            return fViewport.surfaceFrame();
-        }
-
-        BLRect getBBox() const override
-        {
-            return fViewport.surfaceFrame();
-        }
-
-        //
-        // createPortal
-        // 
-        // This code establishes the coordinate space for the element, and 
-        // its child nodes.
-        // 
-        virtual void createPortal(IRenderSVG* ctx, IAmGroot* groot)
-        {
-            double dpi = 96;
-            if (nullptr != groot)
-            {
-                dpi = groot->dpi();
-            }
-
-            // Get the current container frame
-            BLRect cFrame = ctx->localFrame();
-            double w = cFrame.w;
-            double h = cFrame.h;
-
-            BLRect fSceneFrame{};
-            BLRect fSurfaceFrame{};
-
-            
-            // Get the aspect ratio
-            getEnumValue(SVGAspectRatioEnum, getAttribute("preserveAspectRatio"), (uint32_t&)fPreserveAspectRatio);
-
-            
-            // Load parameters for the portal
-            SVGVariableSize fDimX{};
-            SVGVariableSize fDimY{};
-            SVGVariableSize fDimWidth{};
-            SVGVariableSize fDimHeight{};
-            
-            fDimX.loadFromChunk(getAttribute("x"));
-            fDimY.loadFromChunk(getAttribute("y"));
-            fDimWidth.loadFromChunk(getAttribute("width"));
-            fDimHeight.loadFromChunk(getAttribute("height"));
-
-            // Load parameters for the viewbox
-            BLRect viewboxRect{};
-            bool haveViewbox = parseViewBox(getAttribute("viewBox"), viewboxRect);
-
-
-            
-            if (fDimWidth.isSet() || fDimHeight.isSet())
-            {
-                // When calculating these, if the attribute was not set, the 'length' will 
-                // be the value returned.
-                fSurfaceFrame.w = fDimWidth.calculatePixels(ctx->font(), w, 0, dpi);
-                fSurfaceFrame.h = fDimHeight.calculatePixels(ctx->font(), h, 0, dpi);
-
-                // For these, we want to use a default value of '0' if they were not
-                // explicitly set.  
-                // For these, we start with default values of '0', and only
-                // change them if they were explicitly set.
-                if (fDimX.isSet())
-                    fSurfaceFrame.x = fDimX.calculatePixels(ctx->font(), w, 0, dpi);
-
-                if (fDimY.isSet())
-                    fSurfaceFrame.y = fDimY.calculatePixels(ctx->font(), h, 0, dpi);
-
-
-            }
-            else {
-                // If no width and height were set, then we want the
-                // surface frame to match the 'viewBox' attribute
-                // and if that was not set, then we want to return immediately
-                // because it's an error to not have at least one of them set
-                if (haveViewbox)
-                    fSurfaceFrame = viewboxRect;
-                else
-                    return;
-
-            }
-
-            fViewport.surfaceFrame(fSurfaceFrame);
-
-            // If the viewbox is set, then use that as the scene frame
-            // if not, then use the surfaceframe as the scene frame for 
-            // an identity transform
-            if (haveViewbox)
-            {
-                fViewport.sceneFrame(viewboxRect);
-            }
-            else
-            {
-                fViewport.sceneFrame(fSurfaceFrame);
-            }
-
-        }
-
-        //
-        // drawSelf()
-        // 
-        // This is called before the child nodes are drawn.  
-        // We apply the transform, ensuring the coordinate system
-        // is properly established.
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
-        {
-            // Clipping doesn't quite work out, because it's a non-transformed
-            // rectangle on the context, and it's only a rectangle, not a shape
-            // it will not transform along with the context
-            //ctx->clip(fSurfaceFrame);
-
-            // We do an 'applyTransform' instead of 'setTransform'
-            // because there might already be a transform on the context
-            // and we want to build upon that, rather than replace it.
-            //ctx->setTransform(fViewport.sceneToSurfaceTransform());
-            ctx->applyTransform(fViewport.sceneToSurfaceTransform());
-            ctx->setContainerFrame(fViewport.surfaceFrame());
-        }
-
-    };
-}
 
 
 

@@ -17,9 +17,7 @@
 #include <unordered_map>
 
 #include "svgattributes.h"
-#include "viewport.h"
-#include "svgstructuretypes.h"
-
+#include "svgcontainer.h"
 
 
 namespace waavs {
@@ -45,22 +43,12 @@ namespace waavs {
 		}
 
 
-		
 		SVGSVGElement(IAmGroot* )
 			: SVGContainer()
 		{
 			needsBinding(true);
 		}
 
-		void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) noexcept override
-		{
-			createPortal(ctx, groot);
-			
-			//needsBinding(false);
-		}
-
-
-		
 	};
 	
 	//================================================
@@ -103,203 +91,10 @@ namespace waavs {
 		}
 	};
 
-	//============================================================
-	// 	SVGDefsNode
-	// This node is here to hold onto definitions of other nodes
-	//============================================================
-	struct SVGDefsNode : public SVGGraphicsElement
-	{
-		static void registerSingularNode()
-		{
-			getSVGSingularCreationMap()["defs"] = [](IAmGroot* groot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGDefsNode>(groot);
-				node->loadFromXmlElement(elem, groot);
-				//node->visible(false);
-
-				return node;
-				};
-		}
-
-		// Static constructor to register factory method in map
-		static void registerFactory()
-		{
-			registerContainerNode("defs",
-				[](IAmGroot* groot, XmlElementIterator& iter) {
-					auto node = std::make_shared<SVGDefsNode>(groot);
-					node->loadFromXmlIterator(iter, groot);
-					//node->visible(false);
-
-					return node;
-				});
-			
-
-			registerSingularNode();
-		}
-
-		// Instance Constructor
-		SVGDefsNode(IAmGroot* )
-			: SVGGraphicsElement()
-		{
-			isStructural(false);
-			visible(false);
-		}
-
-	};
 
 	
-	//=================================================
-	//
-	// SVGDescNode
-	// https://www.w3.org/TR/SVG11/struct.html#DescElement
-	// 
-	struct SVGDescNode : public SVGGraphicsElement
-	{
-		static void registerSingularNode()
-		{
-			getSVGSingularCreationMap()["desc"] = [](IAmGroot* groot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGDescNode>(groot);
-				node->loadFromXmlElement(elem, groot);
-
-				return node;
-				};
-		}
-
-		// Static constructor to register factory method in map
-		static void registerFactory()
-		{
-			registerContainerNode("desc",
-				[](IAmGroot* groot, XmlElementIterator& iter) {
-					auto node = std::make_shared<SVGDescNode>(groot);
-					node->loadFromXmlIterator(iter, groot);
-
-					return node;
-				});
-			
-
-			registerSingularNode();
-		}
-
-		ByteSpan fContent{};
-
-		// Instance Constructor
-		SVGDescNode(IAmGroot* )
-			: SVGGraphicsElement()
-		{
-			isStructural(false);
-			visible(false);
-		}
-
-		const ByteSpan& content() const { return fContent; }
-		
-		// Load the text content if it exists
-		void loadContentNode(const XmlElement& elem, IAmGroot* groot) override
-		{
-			fContent = elem.data();
-		}
-	};
-	
-
-	
-	//=================================================
-	// SVGTitleNode
-	// 	   https://www.w3.org/TR/SVG11/struct.html#TitleElement
-	// Capture the title of the SVG document
-	//=================================================
-	struct SVGTitleNode : public SVGGraphicsElement
-	{
-		static void registerSingularNode()
-		{
-			getSVGSingularCreationMap()["title"] = [](IAmGroot* groot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGTitleNode>(groot);
-				node->loadFromXmlElement(elem, groot);
-				node->visible(false);
-
-				return node;
-				};
-		}
-
-		// Static constructor to register factory method in map
-		static void registerFactory()
-		{
-			registerContainerNode("title",
-				[](IAmGroot* groot, XmlElementIterator& iter) {
-					auto node = std::make_shared<SVGTitleNode>(groot);
-					node->loadFromXmlIterator(iter, groot);
-					node->visible(false);
-
-					return node;
-				});
-			
-
-			registerSingularNode();
-		}
-
-		ByteSpan fContent{};
-
-		// Instance Constructor
-		SVGTitleNode(IAmGroot* )
-			: SVGGraphicsElement() {}
-
-		const ByteSpan& content() const { return fContent; }
-		
-		// Load the text content if it exists
-		void loadContentNode(const XmlElement& elem, IAmGroot* groot) override
-		{
-			fContent = elem.data();
-		}
-	};
-	
-
-	//===========================================
-// SVGSymbolNode
-// Notes:  An SVGSymbol can create its own local coordinate system
-// if a viewBox is specified.  We need to take into account the aspectRatio
-// as well to be totally correct.
-// As an enhancement, we'd like to take into account style information
-// such as allowing the width and height to be specified in an style
-// sheet or inline style attribute
-//===========================================
-	struct SVGSymbolNode : public SVGContainer
-	{
-		static void registerFactory()
-		{
-			registerContainerNode("symbol",
-				[](IAmGroot* groot, XmlElementIterator& iter) {
-					auto node = std::make_shared<SVGSymbolNode>(groot);
-					node->loadFromXmlIterator(iter, groot);
-
-					return node;
-				});
-		}
-
-		SVGDimension fRefX{};
-		SVGDimension fRefY{};
 
 
-		SVGSymbolNode(IAmGroot* root) 
-			: SVGContainer()
-		{
-			isStructural(false);
-		}
-
-		
-		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
-		{
-			SVGContainer::drawSelf(ctx, groot);
-			ctx->translate(-fRefX.calculatePixels(), -fRefY.calculatePixels());
-		}
-		
-
-		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
-		{
-			fRefX.loadFromChunk(getAttribute("refX"));
-			fRefY.loadFromChunk(getAttribute("refY"));
-
-			createPortal(ctx, groot);
-		}
-
-
-	};
 	
 
 	
@@ -337,15 +132,16 @@ namespace waavs {
 		std::shared_ptr<IViewable> fWrappedNode{ nullptr };
 
 
-		double x{ 0 };
-		double y{ 0 };
-		double width{ 0 };
-		double height{ 0 };
-
-		SVGDimension fDimX{};
-		SVGDimension fDimY{};
-		SVGDimension fDimWidth{};
-		SVGDimension fDimHeight{};
+		//double x{ 0 };
+		//double y{ 0 };
+		//double width{ 0 };
+		//double height{ 0 };
+		BLRect fBoundingBox{};
+		
+		SVGVariableSize fDimX{};
+		SVGVariableSize fDimY{};
+		SVGVariableSize fDimWidth{};
+		SVGVariableSize fDimHeight{};
 
 
 		SVGUseElement(const SVGUseElement& other) = delete;
@@ -363,43 +159,30 @@ namespace waavs {
 			return BLRect{ };
 		}
 
+		BLRect getBBox() const override
+		{
+			return fBoundingBox;
+			
+			//if (fWrappedNode != nullptr)
+			//	return fWrappedNode->getBBox();
+			
+			//return fBoundingBox;
+		}
+		
 		void update(IAmGroot *groot) override 
 		{ 
+			if (!fWrappedNode)
+				return;
+			
 			fWrappedNode->update(groot);
 		}
 
-		
-		void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) override
+		virtual void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*)
 		{
-			double dpi = 96;
-			double w = 1.0;
-			double h = 1.0;
-
-			if (nullptr != groot)
-			{
-				dpi = groot->dpi();
-			}
-
-
-			BLRect cFrame = ctx->localFrame();
-			w = cFrame.w;
-			h = cFrame.h;
-
-
 			fDimX.loadFromChunk(getAttribute("x"));
 			fDimY.loadFromChunk(getAttribute("y"));
 			fDimWidth.loadFromChunk(getAttribute("width"));
 			fDimHeight.loadFromChunk(getAttribute("height"));
-
-
-			if (fDimX.isSet())
-				x = fDimX.calculatePixels(w, 0, dpi);
-			if (fDimY.isSet())
-				y = fDimY.calculatePixels(h, 0, dpi);
-			if (fDimWidth.isSet())
-				width = fDimWidth.calculatePixels(w, 0, dpi);
-			if (fDimHeight.isSet())
-				height = fDimHeight.calculatePixels(h, 0, dpi);
 
 			// look for the href, or xlink:href attribute
 			auto href = getAttribute("xlink:href");
@@ -408,7 +191,31 @@ namespace waavs {
 				href = getAttribute("href");
 			}
 
-			fWrappedID = chunk_trim(href,chrWspChars);
+			fWrappedID = chunk_trim(href, chrWspChars);
+		}
+		
+		
+		void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) override
+		{
+			double dpi = 96;
+
+
+			if (nullptr != groot)
+			{
+				dpi = groot->dpi();
+			}
+
+
+			BLRect objectBoundingBox = ctx->objectFrame();
+			BLRect containerFrame = ctx->localFrame();
+			
+			fDimX.parseValue(fBoundingBox.x, ctx->font(), objectBoundingBox.w, 0, dpi);
+			fDimY.parseValue(fBoundingBox.y, ctx->font(), objectBoundingBox.h, 0, dpi);
+			fDimWidth.parseValue(fBoundingBox.w, ctx->font(), objectBoundingBox.w, 0, dpi);
+			fDimHeight.parseValue(fBoundingBox.h, ctx->font(), objectBoundingBox.h, 0, dpi);
+			
+
+
 			if (fWrappedID) {
 				fWrappedNode = groot->findNodeByHref(fWrappedID);
 			}
@@ -434,12 +241,160 @@ namespace waavs {
 			
 			
 			ctx->push();
-			ctx->translate(x, y);
+			ctx->translate(fBoundingBox.x, fBoundingBox.y);
+			
 			// Draw the wrapped graphic
+			ctx->objectFrame(fBoundingBox);
 			fWrappedNode->draw(ctx, groot);
 
 			ctx->pop();
 		}
 
+	};
+
+	//============================================================
+	// 	SVGDefsNode
+	// This node is here to hold onto definitions of other nodes
+	//============================================================
+	struct SVGDefsNode : public SVGGraphicsElement
+	{
+		static void registerSingularNode()
+		{
+			getSVGSingularCreationMap()["defs"] = [](IAmGroot* groot, const XmlElement& elem) {
+				auto node = std::make_shared<SVGDefsNode>(groot);
+				node->loadFromXmlElement(elem, groot);
+				//node->visible(false);
+
+				return node;
+				};
+		}
+
+		// Static constructor to register factory method in map
+		static void registerFactory()
+		{
+			registerContainerNode("defs",
+				[](IAmGroot* groot, XmlElementIterator& iter) {
+					auto node = std::make_shared<SVGDefsNode>(groot);
+					node->loadFromXmlIterator(iter, groot);
+					//node->visible(false);
+
+					return node;
+				});
+
+
+			registerSingularNode();
+		}
+
+		// Instance Constructor
+		SVGDefsNode(IAmGroot*)
+			: SVGGraphicsElement()
+		{
+			isStructural(false);
+			visible(false);
+		}
+
+	};
+
+
+	//=================================================
+	//
+	// SVGDescNode
+	// https://www.w3.org/TR/SVG11/struct.html#DescElement
+	// 
+	struct SVGDescNode : public SVGGraphicsElement
+	{
+		static void registerSingularNode()
+		{
+			getSVGSingularCreationMap()["desc"] = [](IAmGroot* groot, const XmlElement& elem) {
+				auto node = std::make_shared<SVGDescNode>(groot);
+				node->loadFromXmlElement(elem, groot);
+
+				return node;
+				};
+		}
+
+		// Static constructor to register factory method in map
+		static void registerFactory()
+		{
+			registerContainerNode("desc",
+				[](IAmGroot* groot, XmlElementIterator& iter) {
+					auto node = std::make_shared<SVGDescNode>(groot);
+					node->loadFromXmlIterator(iter, groot);
+
+					return node;
+				});
+
+
+			registerSingularNode();
+		}
+
+		ByteSpan fContent{};
+
+		// Instance Constructor
+		SVGDescNode(IAmGroot*)
+			: SVGGraphicsElement()
+		{
+			isStructural(false);
+			visible(false);
+		}
+
+		const ByteSpan& content() const { return fContent; }
+
+		// Load the text content if it exists
+		void loadContentNode(const XmlElement& elem, IAmGroot* groot) override
+		{
+			fContent = elem.data();
+		}
+	};
+
+
+
+	//=================================================
+	// SVGTitleNode
+	// 	   https://www.w3.org/TR/SVG11/struct.html#TitleElement
+	// Capture the title of the SVG document
+	//=================================================
+	struct SVGTitleNode : public SVGGraphicsElement
+	{
+		static void registerSingularNode()
+		{
+			getSVGSingularCreationMap()["title"] = [](IAmGroot* groot, const XmlElement& elem) {
+				auto node = std::make_shared<SVGTitleNode>(groot);
+				node->loadFromXmlElement(elem, groot);
+				node->visible(false);
+
+				return node;
+				};
+		}
+
+		// Static constructor to register factory method in map
+		static void registerFactory()
+		{
+			registerContainerNode("title",
+				[](IAmGroot* groot, XmlElementIterator& iter) {
+					auto node = std::make_shared<SVGTitleNode>(groot);
+					node->loadFromXmlIterator(iter, groot);
+					node->visible(false);
+
+					return node;
+				});
+
+
+			registerSingularNode();
+		}
+
+		ByteSpan fContent{};
+
+		// Instance Constructor
+		SVGTitleNode(IAmGroot*)
+			: SVGGraphicsElement() {}
+
+		const ByteSpan& content() const { return fContent; }
+
+		// Load the text content if it exists
+		void loadContentNode(const XmlElement& elem, IAmGroot* groot) override
+		{
+			fContent = elem.data();
+		}
 	};
 }

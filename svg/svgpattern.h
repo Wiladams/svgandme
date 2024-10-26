@@ -46,7 +46,7 @@ namespace waavs {
 			registerSingularNode();
 		}
 
-		AspectRatioKind fPreserveAspectRatio{ AspectRatioKind::SVG_ASPECT_RATIO_XMIDYMID };
+
 		SpaceUnitsKind fPatternUnits{ SpaceUnitsKind::SVG_SPACE_OBJECT };
 		SpaceUnitsKind fPatternContentUnits{ SpaceUnitsKind::SVG_SPACE_USER };
 		BLExtendMode fExtendMode{ BL_EXTEND_MODE_REPEAT };
@@ -59,7 +59,7 @@ namespace waavs {
 		ByteSpan fTemplateReference{};
 		
 
-
+		AspectRatioKind fPreserveAspectRatio{ AspectRatioKind::SVG_ASPECT_RATIO_XMIDYMID };
 		BLRect viewboxRect{};
 		bool haveViewbox{ false };
 

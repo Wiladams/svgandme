@@ -22,14 +22,14 @@ ViewPort gViewPort{};
 
 
 // For mouse management
-static bool gIsDragging = false;
+static bool gIsDragging{ false };
 static vec2f gDragPos{ 0,0 };
 static double gZoomFactor = 0.1;
 
 
 // Animation management
-bool gAnimate = false;
-bool gPerformTransform = false;
+bool gAnimate{ false };
+bool gPerformTransform{ true };
 
 
 // Create one of these first, so factory constructor will run
@@ -135,7 +135,8 @@ static void onFileDrop(const FileDropEvent& fde)
 			ctx.setContainerFrame(BLRect(0, 0, canvasWidth, canvasHeight));
 			gDoc->draw(&ctx, gDoc.get());
 			
-			auto objFr = gDoc->frame();
+			BLRect objFr = gDoc->getBBox();
+			//auto objFr = gDoc->frame();
 			
 			resetView();
 

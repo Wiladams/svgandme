@@ -6,8 +6,9 @@
 // Mainly parsing numeric types
 //
 
-#include "bspan.h"
 
+#include "bspan.h"
+#include "maths.h"
 
 namespace waavs {
     static INLINE uint8_t  hexToDec(const uint8_t vIn) noexcept
@@ -265,7 +266,7 @@ namespace waavs {
                 s.fStart = startAt;
                 read_u64(s, expPart);
                 startAt = s.fStart;
-                res = res * powd(10, double(expSign * double(expPart)));
+                res = res * std::pow(10, double(expSign * double(expPart)));
             }
         }
         s.fStart = startAt;

@@ -301,6 +301,9 @@ namespace waavs
         double value() const { return fValue; }
         unsigned short units() const { return fUnits; }
         
+		bool isPercentage() const { return fUnits == SVG_LENGTHTYPE_PERCENTAGE; }
+		bool isNumber() const { return fUnits == SVG_LENGTHTYPE_NUMBER; }
+        
         // Using the units and other information, calculate the actual value
         double calculatePixels(double length = 1.0, double orig = 0, double dpi = 96) const
         {
@@ -316,8 +319,9 @@ namespace waavs
             case SVG_LENGTHTYPE_EMS:			return fValue * length;                 // length should represent 'em' height of font                 
 			case SVG_LENGTHTYPE_EXS:		    return fValue * length * 0.52f;          // x-height, fontHeight * 0.52., assuming length is font height
             case SVG_LENGTHTYPE_PERCENTAGE:
-                double clampedVal = waavs::clamp(fValue, 0.0, 100.0);
-                return orig + ((clampedVal / 100.0f) * length);
+                //double clampedVal = waavs::clamp(fValue, 0.0, 100.0);
+                //return orig + ((clampedVal / 100.0f) * length);
+                return orig + (fValue / 100.0f) * length;
             }
 
             return fValue;
@@ -417,6 +421,15 @@ namespace waavs
         double value() const { return fValue; }
         unsigned short units() const { return fUnits; }
 
+        bool parseValue(double& value, const BLFont& font, double length = 1.0, double orig = 0, double dpi = 96, SpaceUnitsKind units = SpaceUnitsKind::SVG_SPACE_USER) const
+        {
+            if (!isSet())
+                return false;
+
+            value = calculatePixels(font, length, orig, dpi, units);
+            return true;
+        }
+
         // Using the units and other information, calculate the actual value
         double calculatePixels(const BLFont& font, double length = 1.0, double orig = 0, double dpi = 96, SpaceUnitsKind units= SpaceUnitsKind::SVG_SPACE_USER) const
         {
@@ -424,11 +437,13 @@ namespace waavs
             double fontSize = fm.size;
             float emHeight = (fm.ascent + fm.descent);
             
-            if (!isSet())
-                return length;
+
             
             switch (fKindOfSize)
             {
+                if (!isSet())
+                    return length;
+                
                 case SVG_SIZE_KIND_ABSOLUTE: {
                     switch (fUnits) {
 					    case SVG_SIZE_ABSOLUTE_XX_SMALL: return (3.0 / 5.0) * fontSize;
@@ -443,6 +458,9 @@ namespace waavs
                 }break;
 
                 case SVG_SIZE_KIND_LENGTH: {
+                    if (!isSet())
+                        return fValue;
+                    
                     switch (fUnits) {
                         case SVG_LENGTHTYPE_UNKNOWN:     return fValue;
                         case SVG_LENGTHTYPE_NUMBER:
@@ -454,16 +472,16 @@ namespace waavs
                                 return orig + fValue;
 							}
 
-							return fValue;
+							return orig+fValue;
 
-                        case SVG_LENGTHTYPE_PX:			return fValue;                  // User units and px units are the same
-                        case SVG_LENGTHTYPE_PT:			return fValue / 72.0f * dpi;
-                        case SVG_LENGTHTYPE_PC:			return fValue / 6.0f * dpi;
-                        case SVG_LENGTHTYPE_MM:			return fValue / 25.4f * dpi;
-                        case SVG_LENGTHTYPE_CM:			return fValue / 2.54f * dpi;
-                        case SVG_LENGTHTYPE_IN:			return fValue * dpi;
-                        case SVG_LENGTHTYPE_EMS:		return fValue * emHeight;                 // length should represent 'em' height of font                 
-                        case SVG_LENGTHTYPE_EXS:		return fValue * fm.xHeight;          // x-height, fontHeight * 0.52., assuming length is font height
+                        case SVG_LENGTHTYPE_PX:			return orig+fValue;                  // User units and px units are the same
+                        case SVG_LENGTHTYPE_PT:			return orig+((fValue / 72.0f) * dpi);
+                        case SVG_LENGTHTYPE_PC:			return ((fValue / 6.0f) * dpi);
+                        case SVG_LENGTHTYPE_MM:			return ((fValue / 25.4f) * dpi);
+                        case SVG_LENGTHTYPE_CM:			return ((fValue / 2.54f) * dpi);
+                        case SVG_LENGTHTYPE_IN:			return (fValue * dpi);
+                        case SVG_LENGTHTYPE_EMS:		return (fValue * emHeight);                 // length should represent 'em' height of font                 
+                        case SVG_LENGTHTYPE_EXS:		return (fValue * fm.xHeight);          // x-height, fontHeight * 0.52., assuming length is font height
                         case SVG_LENGTHTYPE_PERCENTAGE:
                             return orig + ((fValue / 100.0f) * length);
                             break;
