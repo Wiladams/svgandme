@@ -54,30 +54,19 @@ static void setupFonts()
 #define CAN_WIDTH 640
 #define CAN_HEIGHT 480
 
-void quik()
-{
-	BLPoint p2{ 10,90 };
-	BLPoint p1{ 10,10 };
-	BLPoint p3{ 1,0 };
-
-	auto ang = SVGOrient::angleOfTwoPointVector(p1, p2);
-
-	printf("ang: %f\n", waavs::degrees(ang));
-
-}
-
 
 int main(int argc, char **argv)
 {
-	quik();
 
+	printf("argc: %d\n", argc);
+	
 	if (argc < 2)
     {
         printf("Usage: svgimage <xml file>  [output file]\n");
         return 1;
     }
 	
-	//setupFonts();
+	setupFonts();
 
     // create an mmap for the specified file
     const char* filename = argv[1];
@@ -99,10 +88,19 @@ int main(int argc, char **argv)
 
 
 	
+	// We have loaded the un-processed document
+	// Draw into an empty context at least once to resolve references
+	// and fix sizes.
+	IRenderSVG actx(&gFontHandler);
+	actx.setContainerFrame(BLRect(0, 0, CAN_WIDTH, CAN_HEIGHT));
+	gDoc->draw(&actx, gDoc.get());
 
+	
+	// Now that we've processed the document, we have correct sizing
 	// Get the frame size from the document
 	// This is the extent of the document, in user units
-	BLRect sceneFrame = gDoc->frame();
+	BLRect sceneFrame = gDoc->getBBox();
+	//BLRect sceneFrame = gDoc->frame();
 	printf("viewport: %3.0f %3.0f %3.0f %3.0f\n", sceneFrame.x, sceneFrame.y, sceneFrame.w, sceneFrame.h);
 
 	// Create a rectangle the size of the BLImage we want to render into
@@ -136,7 +134,7 @@ int main(int argc, char **argv)
 	// Save the image from the drawing context out to a file
 	// or do whatever you're going to do with it
 	const char* outfilename = nullptr;
-	printf("argc: %d\n", argc);
+
 	
 	if (argc >= 3)
 		outfilename = argv[2];

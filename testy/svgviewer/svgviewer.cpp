@@ -339,7 +339,7 @@ void setup()
 
 	//layered();
 	// set app window size and title
-	createAppWindow(1024, 768, "SVGViewer");
+	createAppWindow(1920, 1080, "SVGViewer");
 	
 	gRecorder.reset(&appFrameBuffer().image(), "frame", 15, 0);
 	

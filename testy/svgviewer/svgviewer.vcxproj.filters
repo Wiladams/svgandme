@@ -191,5 +191,8 @@
     <ClInclude Include="..\..\svg\svgsymbol.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\app\stopwatch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

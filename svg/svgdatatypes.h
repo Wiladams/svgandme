@@ -441,10 +441,12 @@ namespace waavs
             
             switch (fKindOfSize)
             {
-                if (!isSet())
-                    return length;
+
                 
                 case SVG_SIZE_KIND_ABSOLUTE: {
+                    if (!isSet())
+                        return length;
+
                     switch (fUnits) {
 					    case SVG_SIZE_ABSOLUTE_XX_SMALL: return (3.0 / 5.0) * fontSize;
 						case SVG_SIZE_ABSOLUTE_X_SMALL: return (3.0 / 4.0) * fontSize;
