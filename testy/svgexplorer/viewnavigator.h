@@ -18,12 +18,17 @@ namespace waavs {
 	//
 	struct ViewNavigator: public Topic<bool>
 	{
+	private:
 		ViewPort fPortal{};
 
 		bool fIsDragging = false;
 		BLPoint fDragPos{ 0,0 };
+		
+		double fBaseAngle = 2.0;
 		double fZoomFactor = 0.1;
-
+		double fSpeedFactor = 1.0;
+		
+	public:
 		void resetNavigator() {
 			fPortal.reset();
 			fIsDragging = false;
@@ -31,6 +36,22 @@ namespace waavs {
 			fZoomFactor = 0.1;
 		}
 
+
+		void speedFactor(double newFac)
+		{
+			fSpeedFactor = newFac;
+		}
+		double speedFactor() const { return fSpeedFactor; }
+
+
+		
+		// Adjusting zooming factor
+		void zoomFactor(double newFac)
+		{
+			fZoomFactor = newFac;
+		}
+		double zoomFactor() const { return fZoomFactor; }
+		
 		// Setting scene and surface frames
 		// setting and getting surface frame
 		void setFrame(const BLRect& fr) { fPortal.surfaceFrame(fr); }
@@ -43,12 +64,12 @@ namespace waavs {
 
 		BLPoint sceneToSurface(double x, double y) const
 		{
-			return fPortal.sceneToSurface(x, y);
+			return fPortal.mapSceneToSurface(x, y);
 		}
 
 		BLPoint surfaceToScene(double x, double y) const
 		{
-			return fPortal.surfaceToScene(x, y);
+			return fPortal.mapSurfaceToScene(x, y);
 		}
 
 		// Retrieving the transformations
@@ -56,19 +77,14 @@ namespace waavs {
 		const BLMatrix2D & surfaceToSceneTransform() const { return fPortal.surfaceToSceneTransform(); }
 
 
-		// Coordinates are in object space
-		// so calculate new objectFrame
 		void lookAt(double cx, double cy)
 		{
-			BLRect oFrame = bounds();
-			auto w = oFrame.w;
-			auto h = oFrame.h;
-			oFrame.x = cx - w / 2;
-			oFrame.y = cy - h / 2;
+			fPortal.lookAt(cx, cy);
 
-			setBounds(oFrame);
+			// notify subscribers that the transform changed
 			notify(true);
 		}
+		
 
 		// Actions that will change the transformations
 		// Pan
@@ -114,77 +130,82 @@ namespace waavs {
 		// 
 		// Navigation based on mouse events
 		//
+		void mouseStartDrag(float x, float y)
+		{
+			fIsDragging = true;
+			fDragPos = { x, y };
+		}
+		
+		void mouseEndDrag(float x, float y)
+		{
+			fIsDragging = false;
+		}
+		
+		void mouseUpdateDrag(float x, float y)
+		{
+			auto lastPos = fPortal.mapSurfaceToScene(fDragPos.x, fDragPos.y);
+			auto currPos = fPortal.mapSurfaceToScene(x, y);
+
+			double dx = currPos.x - lastPos.x;
+			double dy = currPos.y - lastPos.y;
+
+			panBy(dx, dy);
+			fDragPos = { x, y };
+		}
+
+		// mouse scroll wheel, typically in the top of the mouse, between buttons
+		// We want to use the mouse wheel to 'zoom' in and out of the view
+		void mouseHandleWheel(float x, float y, float delta)
+		{
+			if (delta < 0)
+				zoomBy(1.0 + (fZoomFactor*fSpeedFactor), x, y);
+			else
+				zoomBy(1.0 - (fZoomFactor*fSpeedFactor), x, y);
+		}
+		
+		// Horizontal mouse wheel, typpically on the side of the mouse
+		// Rotate around central point
+		void mouseHandleHWheel(float x, float y, float delta)
+		{
+			if (delta < 0)
+				rotateBy(waavs::radians(fBaseAngle*fSpeedFactor), x, y);
+			else
+				rotateBy(waavs::radians(-fBaseAngle * fSpeedFactor), x, y);
+		}
+
 		void onMouseEvent(const MouseEvent& e)
 		{
-			MouseEvent lev = e;
-			lev.x = float((double)e.x);
-			lev.y = float((double)e.y);
-
-			//printf("SVGViewer::mouseEvent: %f,%f\n", lev.x, lev.y);
-
 			switch (e.activity)
 			{
-				// When the mouse is pressed, get into the 'dragging' state
-			case MOUSEPRESSED:
-				fIsDragging = true;
-				fDragPos = { e.x, e.y };
+				case MOUSEPRESSED:
+					if (e.lbutton)
+						mouseStartDrag(e.x, e.y);
+					else if (e.xbutton2)	// faster
+						speedFactor(speedFactor() * 1.2);
+					else if (e.xbutton1)	// slower
+						speedFactor(speedFactor() * 0.8);
 				break;
 
-				// When the mouse is released, get out of the 'dragging' state
-			case MOUSERELEASED:
-				fIsDragging = false;
+				case MOUSERELEASED:
+					mouseEndDrag(e.x, e.y);
 				break;
 
-			case MOUSEMOVED:
-			{
-				auto lastPos = fPortal.surfaceToScene(fDragPos.x, fDragPos.y);
-				auto currPos = fPortal.surfaceToScene(e.x, e.y);
-
-				//printf("SVGView::mouseEvent - currPos = %3.2f, %3.2f\n", currPos.x, currPos.y);
-
-				if (fIsDragging)
+				case MOUSEMOVED:
 				{
-					double dx = currPos.x - lastPos.x;
-					double dy = currPos.y - lastPos.y;
-
-					// print mouse lastPos and currPos
-					//printf("-----------------------------\n");
-					//printf("lastPos = %3.2f, %3.2f\n", lastPos.x, lastPos.y);
-
-					//printf("dx = %3.2f, dy = %3.2f\n", dx, dy);
-
-					panBy(dx, dy);
-					fDragPos = { e.x, e.y };
+					if (fIsDragging)
+					{
+						mouseUpdateDrag(e.x, e.y);
+					}
 				}
-			}
-			break;
+				break;
 
-			// We want to use the mouse wheel to 'zoom' in and out of the view
-			// We will only zoom when the 'alt' key is pressed
-			// Naked scroll might be used for something else
-			case MOUSEWHEEL:
-			{
-				//printf("SVGView: MOUSEWHEEL\n");
+				case MOUSEWHEEL:
+					mouseHandleWheel(e.x, e.y, e.delta);
+				break;
 
-				if (e.delta < 0)
-					zoomBy(1.0 + fZoomFactor, lev.x, lev.y);
-				else
-					zoomBy(1.0 - fZoomFactor, lev.x, lev.y);
-			}
-			break;
-
-
-			// Horizontal mouse wheel
-			// Rotate around central point
-			case MOUSEHWHEEL:
-			{
-				//printf("SVGView: MOUSEHWHEEL\n");
-				if (e.delta < 0)
-					rotateBy(waavs::radians(5.0f), lev.x, lev.y);
-				else
-					rotateBy(waavs::radians(-5.0f), lev.x, lev.y);
-			}
-			break;
+				case MOUSEHWHEEL:
+					mouseHandleHWheel(e.x, e.y, e.delta);
+				break;
 
 			}
 

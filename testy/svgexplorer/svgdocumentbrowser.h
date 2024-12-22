@@ -31,8 +31,8 @@ namespace waavs {
 		
 		void onDocumentLoad() override
 		{
-			fNavigator.setBounds(fDocument->frame());
-			setBounds(fDocument->frame());
+			fNavigator.setBounds(fDocument->getBBox());
+			setBounds(fDocument->getBBox());
 			
 			setSceneToSurfaceTransform(fNavigator.sceneToSurfaceTransform());
 		}

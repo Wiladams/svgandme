@@ -171,6 +171,9 @@ static void fileSelected(const FileIcon& fIcon)
 
 static void onMouseEvent(const MouseEvent& e)
 {
+	//printf("svgexplorer::onMouseEvent: %d XButton1: %d XButtons2: %d %3f %3f\n", e.activity, e.xbutton1, e.xbutton2, e.x, e.y);
+
+	
 	if (gBrowsingView.contains(e.x, e.y))
 		gBrowsingView.onMouseEvent(e);
 	else if (gFileListView.contains(e.x, e.y))

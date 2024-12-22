@@ -30,19 +30,21 @@ namespace waavs {
 			const std::filesystem::path filePath(name);
 			fFilename = filePath.filename().string();
 
-			// render to a blank context once to get size of things
-			IRenderSVG ctx(doc->fontHandler());
-			ctx.setContainerFrame(BLRect(0, 0, iconSize, iconSize));
-			doc->draw(&ctx, doc.get());
-
-			auto objFr = doc->frame();
-
 			
 			fDocIcon.resetFromDocument(doc, fDocument->fontHandler());
 
 			ViewNavigator nav;
+			BLRect bbox = doc->getBBox();
+			double cx = (bbox.x + bbox.w) / 2.0;
+			double cy = (bbox.y + bbox.h) / 2.0;
+			
 			nav.setFrame(BLRect(2, 1, iconSize, iconSize));
-			nav.setBounds(doc->getBBox());
+			nav.setBounds(bbox);
+
+			// center the icon in the frame
+			nav.lookAt(cx, cy);
+
+
 			fDocIcon.setSceneToSurfaceTransform(nav.sceneToSurfaceTransform());
 
 		}
@@ -64,15 +66,24 @@ namespace waavs {
 			}
 		}
 
+		void drawBackground(IRenderSVG* ctx) override 
+		{
+			BLRect fr = frame();
+			ctx->strokeWidth(3);
+			ctx->strokeRect(BLRect(1, 1, fr.w - 2, fr.h - 2), BLRgba32(0xff7fA0A0));
+
+		}
 
 		void drawForeground(IRenderSVG* ctx) override
 		{
+			// Draw border around file icon
+			ctx->strokeRect(fDocIcon.frame(), BLRgba32(0xffffE0E0));
+			
+			// Draw border around whole listing
 			ctx->fill(BLRgba32(0xff000000));
 			BLRect fr = frame();
 			ctx->fillText(fFilename.c_str(), 4 + fIconSize, fr.h - 6);
 			
-			ctx->strokeWidth(3);
-			ctx->strokeRect(BLRect(1, 1, fr.w-2, fr.h-2), BLRgba32(0xff7fA0A0));
 		}
 
 		

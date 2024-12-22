@@ -46,7 +46,6 @@ static void setupFonts()
 {
 	loadFontDirectory("c:\\Windows\\Fonts");
 
-
 }
 
 
@@ -86,21 +85,11 @@ int main(int argc, char **argv)
     if (gDoc == nullptr)
         return 1;
 
-
-	
-	// We have loaded the un-processed document
-	// Draw into an empty context at least once to resolve references
-	// and fix sizes.
-	IRenderSVG actx(&gFontHandler);
-	actx.setContainerFrame(BLRect(0, 0, CAN_WIDTH, CAN_HEIGHT));
-	gDoc->draw(&actx, gDoc.get());
-
 	
 	// Now that we've processed the document, we have correct sizing
 	// Get the frame size from the document
 	// This is the extent of the document, in user units
 	BLRect sceneFrame = gDoc->getBBox();
-	//BLRect sceneFrame = gDoc->frame();
 	printf("viewport: %3.0f %3.0f %3.0f %3.0f\n", sceneFrame.x, sceneFrame.y, sceneFrame.w, sceneFrame.h);
 
 	// Create a rectangle the size of the BLImage we want to render into

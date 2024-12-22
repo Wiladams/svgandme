@@ -131,9 +131,9 @@ static void onFileDrop(const FileDropEvent& fde)
 			// We have loaded the un-processed document
 			// Draw into an empty context at least once to resolve references
 			// and fix sizes.
-			IRenderSVG ctx(&getFontHandler());
-			ctx.setContainerFrame(BLRect(0, 0, canvasWidth, canvasHeight));
-			gDoc->draw(&ctx, gDoc.get());
+			//IRenderSVG ctx(&getFontHandler());
+			//ctx.setContainerFrame(BLRect(0, 0, canvasWidth, canvasHeight));
+			//gDoc->draw(&ctx, gDoc.get());
 			
 			BLRect objFr = gDoc->getBBox();
 			//auto objFr = gDoc->frame();

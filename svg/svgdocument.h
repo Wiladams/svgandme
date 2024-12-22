@@ -57,6 +57,7 @@ namespace waavs {
     //
     struct SVGDocument : public  SVGGraphicsElement, public IAmGroot 
     {
+        
         MemBuff fSourceMem{};
         
 		FontHandler* fFontHandler = nullptr;
@@ -145,14 +146,15 @@ namespace waavs {
 
             // traverse the graphics
             // expand bounding box to include their frames, without alternation
-            for (auto& g : fNodes)	// std::shared_ptr<IGraphic> g
+            for (auto& g : fNodes)
             {
                 if (firstOne) {
                     extent = g->getBBox();
                     firstOne = false;
                 }
                 else {
-                    expandRect(extent, g->frame());
+					expandRect(extent, g->getBBox());
+                    //expandRect(extent, g->frame());
                 }
             }
 
@@ -296,6 +298,11 @@ namespace waavs {
 
             loadFromXmlIterator(iter, this);
             
+            // render into a blank context to get sizing
+            IRenderSVG actx(fh);
+            actx.setContainerFrame(BLRect(0, 0, 640, 480));
+            draw(&actx, this);
+            
             return true;
         }
 
@@ -314,7 +321,8 @@ namespace waavs {
         
     };
 
-	using SVGDocumentHandle = std::shared_ptr<SVGDocument>;
+    using SVGDocumentHandle = std::shared_ptr<SVGDocument>;
+
 }
 
 
