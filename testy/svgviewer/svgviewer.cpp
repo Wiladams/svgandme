@@ -18,7 +18,7 @@ IRenderSVG gDrawingContext(nullptr);
 
 // Reference to currently active document
 std::shared_ptr<SVGDocument> gDoc{ nullptr };
-ViewPort gViewPort{};
+ViewPort gViewPort{};	// BUGBUG - this should be replaced with a viewnavigator
 
 
 // For mouse management
@@ -235,8 +235,8 @@ static void onMouseEvent(const MouseEvent& e)
 
 		case MOUSEMOVED:
 		{
-			auto lastPos = gViewPort.surfaceToScene(gDragPos.x, gDragPos.y);
-			auto currPos = gViewPort.surfaceToScene(e.x, e.y);
+			auto lastPos = gViewPort.mapSurfaceToScene(gDragPos.x, gDragPos.y);
+			auto currPos = gViewPort.mapSurfaceToScene(e.x, e.y);
 
 			//printf("SVGView::mouseEvent - currPos = %3.2f, %3.2f\n", currPos.x, currPos.y);
 

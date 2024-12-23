@@ -177,6 +177,7 @@ namespace waavs {
 		{
 			switch (e.activity)
 			{
+				// we can use the xbutton2 and  xbutton1 buttons to increment or decrement speed
 				case MOUSEPRESSED:
 					if (e.lbutton)
 						mouseStartDrag(e.x, e.y);

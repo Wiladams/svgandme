@@ -62,7 +62,10 @@ struct PixelArray : public IContainPixels
     uint8_t* fData = nullptr;
     BLImage fImage{};                     // BLImage to hold the pixel data
 
-    PixelArray() { ; }
+    PixelArray() 
+    {
+	    fImage.reset();
+    }
     PixelArray(void* d, const size_t w, const size_t h, const ptrdiff_t s, PixelOrientation o=PixelOrientation::TopToBottom)
     {
         reset(d, w, h, s, o);
@@ -88,7 +91,7 @@ struct PixelArray : public IContainPixels
         fOrientation = o;
 
         // Create blend2d image
-        fImage.reset();
+        //fImage.reset();
         BLResult br = fImage.createFromData(static_cast<int>(w), static_cast<int>(h), BL_FORMAT_PRGB32, fData, fStride);
 
         return br == BLResultCode::BL_SUCCESS;
