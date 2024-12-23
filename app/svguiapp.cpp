@@ -97,15 +97,16 @@ static void registerAppHandlers()
 
 
 	// Get the general app routines
-	// onLoad()
+	// setup()
 	gSetupHandler = (VOIDROUTINE)::GetProcAddress(hInst, "setup");
 
 }
 
 void onLoad()
 {
-	//printf("onLoad\n");
-
+	printf("onLoad\n");
+	printf("Physical DPI: %d\n", physicalDpi);
+	
 	registerAppHandlers();
 
 	// if setup() exists, call that

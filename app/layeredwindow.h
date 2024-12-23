@@ -58,24 +58,24 @@ public:
 
     }
 
-    int getLastError() {return fLastError;}
-    int getWidth() {return fSize.cx;}
-    int getHeight() {return fSize.cy;}
+    int getLastError() const {return fLastError;}
+    int getWidth() const {return fSize.cx;}
+    int getHeight() const {return fSize.cy;}
 
-
+    // Called when the window is supposed to display itself
     bool display(HWND win, HDC source)
     {
         fInfo.hdcSrc = source;
         RECT wRect;
-        BOOL bResult = GetWindowRect(win, &wRect);
+        BOOL bResult = ::GetWindowRect(win, &wRect);
         
         fWindowPosition.x = wRect.left;
         fWindowPosition.y = wRect.top;
         
-        bResult = UpdateLayeredWindowIndirect(win, &fInfo);
+        bResult = ::UpdateLayeredWindowIndirect(win, &fInfo);
 
         if (!bResult) {
-            fLastError = GetLastError();
+            fLastError = ::GetLastError();
             return false;
         }
 

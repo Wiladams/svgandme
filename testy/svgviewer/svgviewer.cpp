@@ -55,7 +55,7 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 
 	
 	ByteSpan aspan(mapped->data(), mapped->size());
-	std::shared_ptr<SVGDocument> aDoc = SVGDocument::createFromChunk(aspan, &getFontHandler(), canvasWidth, canvasHeight, systemPpi);
+	std::shared_ptr<SVGDocument> aDoc = SVGDocument::createFromChunk(aspan, &getFontHandler(), canvasWidth, canvasHeight, physicalDpi);
 	
 	return aDoc;
 }

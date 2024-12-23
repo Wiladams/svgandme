@@ -22,7 +22,8 @@
 #include <memory>
 #include <future>
 
-#include <shellapi.h>   // for drag-drop support
+#include <shellapi.h>           // for drag-drop support
+#include <ShellScalingApi.h>    // For GetDpiForMonitor
 
 #include "layeredwindow.h"
 #include "stopwatch.h"
@@ -70,8 +71,7 @@ unsigned int gSystemThreadCount=0;  // how many compute threads the system repor
 
 static StopWatch gAppClock;
 
-User32Window * gAppWindow = nullptr;
-User32PixelMap gAppFrameBuffer;
+
 
 bool gIsLayered = false;
 
@@ -81,12 +81,12 @@ int canvasWidth = 0;
 int canvasHeight = 0;
 uint8_t* canvasPixelData = nullptr;
 size_t canvasStride = 0;
-//PixelArray canvasPixelArray;
 
-int displayWidth = 0;
-int displayHeight= 0;
-unsigned int systemDpi = 96;    // 96 == px measurement
-unsigned int systemPpi = 192;   // starting pixel density
+
+int rawPixelHeight = 0;
+int rawPixelWidth = 0;
+//unsigned int systemDpi = 96;    // 96 == px measurement
+unsigned int physicalDpi = 192;   // starting pixel density
 
 // Stuff related to rate of displaying frames
 float fFrameRate = 1;
@@ -121,7 +121,12 @@ static Joystick gJoystick1(JOYSTICKID1);
 static Joystick gJoystick2(JOYSTICKID2);
 
 
-User32PixelMap& appFrameBuffer() {return gAppFrameBuffer;}
+User32PixelMap& appFrameBuffer() 
+{
+    static User32PixelMap gAppFrameBuffer{};
+
+    return gAppFrameBuffer;
+}
 
 
 //
@@ -199,15 +204,15 @@ void screenRefresh()
     if (!gIsLayered) {
         // if we're not layered, then do a regular
         // sort of WM_PAINT based drawing
-        //InvalidateRect(gAppWindow->getHandle(), NULL, 1);
-		::RedrawWindow(gAppWindow->getHandle(), NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+        //InvalidateRect(getAppWindow()->getHandle(), NULL, 1);
+		::RedrawWindow(getAppWindow()->getHandle(), NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
     }
     else {
         // This is the workhorse of displaying directly
         // to the screen.  Everything to be displayed
         // must be in the FrameBuffer, even window chrome
         LayeredWindowInfo lw(canvasWidth, canvasHeight);
-        lw.display(gAppWindow->getHandle(), appFrameBuffer().bitmapDC());
+        lw.display(getAppWindow()->getHandle(), appFrameBuffer().bitmapDC());
     }
 }
 
@@ -217,12 +222,12 @@ void screenRefresh()
 //
 void show()
 {
-    gAppWindow->show();
+    getAppWindow()->show();
 }
 
 void hide()
 {
-    gAppWindow->hide();
+    getAppWindow()->hide();
 }
 
 void cursor()
@@ -661,7 +666,7 @@ static LRESULT HandlePaintMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
     int SrcWidth = canvasWidth;
     int SrcHeight = canvasHeight;
 
-    BITMAPINFO info = gAppFrameBuffer.bitmapInfo();
+    BITMAPINFO info = appFrameBuffer().bitmapInfo();
     
     // Make sure we sync all current drawing
     // BUGBUG - we don't have a way to guarantee this
@@ -672,7 +677,7 @@ static LRESULT HandlePaintMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
         DestWidth,DestHeight,
         xSrc,ySrc,
         SrcWidth, SrcHeight,
-        gAppFrameBuffer.data(),&info,
+        appFrameBuffer().data(), &info,
         DIB_RGB_COLORS,
         SRCCOPY);
         
@@ -913,10 +918,10 @@ void halt() {
 // Turn raw input on
 void rawInput()
 {
-    HWND localWindow = gAppWindow->getHandle();
+    HWND localWindow = getAppWindow()->getHandle();
 
-    HID_RegisterDevice(gAppWindow->getHandle(), HID_MOUSE);
-    HID_RegisterDevice(gAppWindow->getHandle(), HID_KEYBOARD);
+    HID_RegisterDevice(getAppWindow()->getHandle(), HID_MOUSE);
+    HID_RegisterDevice(getAppWindow()->getHandle(), HID_KEYBOARD);
 }
 
 // turn raw input off
@@ -930,8 +935,8 @@ void noRawInput()
 // Turn old school joystick support on
 void joystick()
 {
-    gJoystick1.attachToWindow(gAppWindow->getHandle());
-    gJoystick2.attachToWindow(gAppWindow->getHandle());
+    gJoystick1.attachToWindow(getAppWindow()->getHandle());
+    gJoystick2.attachToWindow(getAppWindow()->getHandle());
 }
 
 // Turn old school joystick support off
@@ -944,14 +949,14 @@ void noJoystick()
 // Turning Touch input on
 bool touch()
 {
-    BOOL bResult = ::RegisterTouchWindow(gAppWindow->getHandle(), 0);
+    BOOL bResult = ::RegisterTouchWindow(getAppWindow()->getHandle(), 0);
     return (bResult != 0);
 }
 
 // Turn touch input off
 bool noTouch()
 {
-    BOOL bResult = ::UnregisterTouchWindow(gAppWindow->getHandle());
+    BOOL bResult = ::UnregisterTouchWindow(getAppWindow()->getHandle());
     return (bResult != 0);
 }
 
@@ -959,21 +964,21 @@ bool noTouch()
 bool isTouch()
 {
     ULONG flags = 0;
-    BOOL bResult = ::IsTouchWindow(gAppWindow->getHandle(), &flags);
+    BOOL bResult = ::IsTouchWindow(getAppWindow()->getHandle(), &flags);
     return (bResult != 0);
 }
 
 // Turn on drop file support
 bool dropFiles()
 {
-    ::DragAcceptFiles(gAppWindow->getHandle(),TRUE);
+    ::DragAcceptFiles(getAppWindow()->getHandle(),TRUE);
     return true;
 }
 
 // Turn off drop file support
 bool noDropFiles()
 {
-    ::DragAcceptFiles(gAppWindow->getHandle(), FALSE);
+    ::DragAcceptFiles(getAppWindow()->getHandle(), FALSE);
     return true;
 }
 
@@ -984,16 +989,16 @@ static LONG gLastWindowStyle=0;
 
 void layered()
 {
-    gAppWindow->addExtendedStyle(WS_EX_LAYERED | WS_EX_NOREDIRECTIONBITMAP);
-    gLastWindowStyle = gAppWindow->setWindowStyle(WS_POPUP);
+    getAppWindow()->addExtendedStyle(WS_EX_LAYERED | WS_EX_NOREDIRECTIONBITMAP);
+    gLastWindowStyle = getAppWindow()->setWindowStyle(WS_POPUP);
 
     gIsLayered = true;
 }
 
 void noLayered()
 {
-    gAppWindow->removeExtendedStyle(WS_EX_LAYERED|WS_EX_NOREDIRECTIONBITMAP);
-    gAppWindow->setWindowStyle(gLastWindowStyle);
+    getAppWindow()->removeExtendedStyle(WS_EX_LAYERED|WS_EX_NOREDIRECTIONBITMAP);
+    getAppWindow()->setWindowStyle(gLastWindowStyle);
 
     gIsLayered = false;
 }
@@ -1006,7 +1011,7 @@ bool isLayered()
 // Change the window title
 void windowTitle(const char* title)
 {
-	gAppWindow->setTitle(title);
+	getAppWindow()->setTitle(title);
 }
 
 // Set an opacity value between 0.0 and 1.0
@@ -1014,23 +1019,23 @@ void windowTitle(const char* title)
 // less than that makes the whole window more transparent
 void windowOpacity(float o)
 {
-    gAppWindow->setOpacity(o);
+    getAppWindow()->setOpacity(o);
 }
 
 void setCanvasPosition(int x, int y)
 {
-    gAppWindow->moveTo(x, y);
+    getAppWindow()->moveTo(x, y);
 }
 
 bool setCanvasSize(long aWidth, long aHeight)
 {
-    gAppFrameBuffer.init(aWidth, aHeight);
+    appFrameBuffer().init(aWidth, aHeight);
 
     canvasWidth = aWidth;
     canvasHeight = aHeight;
 
-    canvasPixelData = gAppFrameBuffer.data();
-    canvasStride = gAppFrameBuffer.stride();
+    canvasPixelData = appFrameBuffer().data();
+    canvasStride = appFrameBuffer().stride();
 
     return true;
 }
@@ -1039,8 +1044,8 @@ bool setCanvasSize(long aWidth, long aHeight)
 void createAppWindow(long aWidth, long aHeight, const char* title)
 {
     setCanvasSize(aWidth, aHeight);
-    gAppWindow->setCanvasSize(aWidth, aHeight);
-    gAppWindow->setTitle(title);
+    getAppWindow()->setCanvasSize(aWidth, aHeight);
+    getAppWindow()->setTitle(title);
 
     showAppWindow();
 }
@@ -1048,7 +1053,7 @@ void createAppWindow(long aWidth, long aHeight, const char* title)
 // A basic Windows event loop
 void showAppWindow()
 {
-    gAppWindow->show();
+    getAppWindow()->show();
 }
 
 
@@ -1185,14 +1190,13 @@ static void run()
         gOnloadHandler();
     }
 
-    // Do a typical Windows message pump
 
-    //LRESULT res{};
 
     showAppWindow();
 
     gAppClock.reset();
 
+    // Do a typical Windows message pump
     while (true) {
         MSG msg{};
 
@@ -1257,9 +1261,43 @@ static void run()
 
 
 
-// Declare some standard Window Kinds we'll be using
-User32WindowClass gAppWindowKind("appwindow", CS_GLOBALCLASS | CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW, MsgHandler);
 
+// We want to capture the true physical screen pixel density
+// and not just the adjusted one.  Also, we want the entire process
+// to use high dpi, and not just logical dpi
+// ::SetThreadDpiAwarenessContext(dpiContext);   // only for a single thread
+// else
+// ::SetProcessDPIAware();
+
+static void setDPIAware()
+{
+    auto dpiContext = DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2;
+
+    // If Windows 10.0 or higher
+    ::SetProcessDpiAwarenessContext(dpiContext);
+
+	rawPixelWidth = ::GetSystemMetrics(SM_CXSCREEN);
+	rawPixelHeight = ::GetSystemMetrics(SM_CYSCREEN);
+    
+
+    // Create a DC to query EDID-basd physical size
+    // This won't be accurate if using a virtual terminal, or if the 
+    // monitor driver does not report it accurately
+    auto dhdc = CreateDC(TEXT("DISPLAY"), NULL, NULL, NULL);
+
+    // How big is the screen physically
+    // DeviceCaps gives it in millimeters, so we convert to inches
+    auto screenWidthInches = ::GetDeviceCaps(dhdc, HORZSIZE) / 25.4;
+    auto screenHeightInches = ::GetDeviceCaps(dhdc, VERTSIZE) / 25.4;
+
+
+    // Calculate physical DPI (using vertial dimensions)
+    double screenPpi = (double)rawPixelHeight / screenHeightInches;
+    physicalDpi = (unsigned int)std::round(screenPpi);
+
+    ::DeleteDC(dhdc);
+}
+/*
 static void setupDpi()
 {
     // Throughout the application, we want to know the true
@@ -1270,10 +1308,6 @@ static void setupDpi()
 
     // If Windows 10.0 or higher
     ::SetProcessDpiAwarenessContext(dpiContext);
-    //::SetThreadDpiAwarenessContext(dpiContext);
-    // else
-    //::SetProcessDPIAware();
-
 
     // based on logical inches
     systemDpi = ::GetDpiForSystem();
@@ -1283,12 +1317,9 @@ static void setupDpi()
     auto dpidisplayWidth = ::GetSystemMetricsForDpi(SM_CXSCREEN, systemDpi);
     auto dpidisplayHeight = ::GetSystemMetricsForDpi(SM_CYSCREEN, systemDpi);
 
-    displayWidth = ::GetSystemMetrics(SM_CXSCREEN);
-    displayHeight = ::GetSystemMetrics(SM_CYSCREEN);
-    //printf("appmain.prolog, width: %d  height: %d  DPI: %d\n", displayWidth, displayHeight, systemDpi);
-
-    //std::cout << "screen pixels: " << dpidisplayWidth << ", " << dpidisplayHeight << "  dpi: " << dpiDpi << std::endl;
-
+    rawPixelWidth = ::GetSystemMetrics(SM_CXSCREEN);
+    rawPixelHeight = ::GetSystemMetrics(SM_CYSCREEN);
+ 
     auto dhdc = CreateDC(TEXT("DISPLAY"), NULL, NULL, NULL);
 
     // How big is the screen physically
@@ -1301,12 +1332,12 @@ static void setupDpi()
     auto pixelHeight = ::GetDeviceCaps(dhdc, LOGPIXELSY);
 
     // Calculate real pixel density
-    //double screenHPpi = (double)dpidisplayWidth / screenWidthInches;
     double screenPpi = (double)dpidisplayHeight / screenHeightInches;
-    systemPpi = (unsigned int)screenPpi;
+    physicalDpi = (unsigned int)screenPpi;
 
     DeleteDC(dhdc);
 }
+*/
 
 // Initialize Windows networking
 static void setupNetworking()
@@ -1324,31 +1355,52 @@ static void setupNetworking()
 // in the very beginning
 // The most interesting initialization at the moment
 // is the networking subsystem
-bool static prolog()
+waavs::User32Window* getAppWindow()
 {
+    // Declare some standard Window Kinds we'll be using
+    User32WindowClass gAppWindowKind("appwindow", CS_GLOBALCLASS | CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW, MsgHandler);
+
+    
+    static waavs::User32Window* gAppWindow = nullptr;
+    
+    if (gAppWindow == nullptr)
+        gAppWindow = gAppWindowKind.createWindow("Application Window", 320, 240);
+
+    return gAppWindow;
+}
+
+static bool prolog()
+{
+    // initialize blend2d library
+    blRuntimeInit();
+    
     // get count of system threads to use later
     gSystemThreadCount = std::thread::hardware_concurrency();
 
     setupNetworking();
 
-    setupDpi();
+    setDPIAware();
+    //setupDpi();
 
     // set the canvas a default size to start
     // but don't show it
     setCanvasSize(320, 240);
-    gAppWindow = gAppWindowKind.createWindow("Application Window", 320, 240);
+    //gAppWindow = gAppWindowKind.createWindow("Application Window", 320, 240);
 
     return true;
 }
 
 // Do whatever cleanup needs to be done before
 // exiting application
-void static epilog()
+static void epilog()
 {   
     if (gOnUnloadHandler != nullptr) {
         gOnUnloadHandler();
     }
 
+    // shutdown the blend2d library
+    blRuntimeShutdown();
+    
     // shut down networking stack
     ::WSACleanup();
 }
@@ -1364,7 +1416,7 @@ void static epilog()
     
 //    By having both, we can control the startup in both cases.
 //
-int static ndtRun()
+static int ndtRun()
 {
     if (!prolog()) {
         printf("error in prolog\n");

@@ -88,7 +88,6 @@ APP_EXPORT extern int gargc;
 APP_EXPORT extern char **gargv;
 APP_EXPORT extern unsigned int gSystemThreadCount;
 
-APP_EXPORT extern waavs::User32Window * gAppWindow;
 
 
 // Keyboard Globals
@@ -109,10 +108,10 @@ APP_EXPORT extern float rawMouseX;
 APP_EXPORT extern float rawMouseY;
 
 // Globals we expect the user to consume
-APP_EXPORT extern int displayWidth;
-APP_EXPORT extern int displayHeight;
-APP_EXPORT extern unsigned int systemDpi;
-APP_EXPORT extern unsigned int systemPpi;
+APP_EXPORT extern int rawPixelWidth;
+APP_EXPORT extern int rawPixelHeight;
+APP_EXPORT extern unsigned int physicalDpi;
+//APP_EXPORT extern unsigned int systemDpi;
 
 APP_EXPORT extern int canvasWidth;
 APP_EXPORT extern int canvasHeight;
@@ -128,6 +127,7 @@ APP_EXPORT extern size_t canvasStride;
 // The control the lifetime of the environment, creation of primary window
 // and whether various parts of the IO system are present
 APP_EXPORT waavs::User32PixelMap& appFrameBuffer();
+APP_EXPORT waavs::User32Window* getAppWindow();
 
 
 APP_EXPORT void createAppWindow(long aWidth, long aHeight, const char* title);
