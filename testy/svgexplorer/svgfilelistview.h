@@ -12,8 +12,6 @@ namespace waavs {
 
 	struct FileIcon : public GraphicView, public Topic<FileIcon>
 	{
-
-
 		std::string fFullPath;
 		std::string fFilename;
 		SVGDocumentHandle fDocument;
@@ -30,7 +28,6 @@ namespace waavs {
 			const std::filesystem::path filePath(name);
 			fFilename = filePath.filename().string();
 
-			
 			fDocIcon.resetFromDocument(doc, fDocument->fontHandler());
 
 			ViewNavigator nav;

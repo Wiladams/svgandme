@@ -174,6 +174,7 @@
     <ClInclude Include="..\..\app\svguiapp.h" />
     <ClInclude Include="..\..\app\svgwaavs.h" />
     <ClInclude Include="..\..\app\user32pixelmap.h" />
+    <ClInclude Include="..\..\app\viewnavigator.h" />
     <ClInclude Include="..\..\svg\base64.h" />
     <ClInclude Include="..\..\svg\bithacks.h" />
     <ClInclude Include="..\..\svg\bspan.h" />

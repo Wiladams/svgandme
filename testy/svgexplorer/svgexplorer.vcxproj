@@ -158,7 +158,6 @@
     <ClInclude Include="svgdocumentbrowser.h" />
     <ClInclude Include="svgfilelistview.h" />
     <ClInclude Include="svgicons.h" />
-    <ClInclude Include="viewnavigator.h" />
     <ClInclude Include="svgcacheddocument.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

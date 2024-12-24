@@ -491,7 +491,7 @@ namespace waavs {
         {
             fXmlName.reset({});
             fElementKind = XML_ELEMENT_TYPE_INVALID;
-            fData = {};
+            fData.reset();
         }
 
         // determines whether the element is currently empty
@@ -561,9 +561,10 @@ namespace waavs {
     
     // XmlElementGenerator
     // A function to get the next element in an iteration
-    static XmlElement XmlElementGenerator(const XmlIteratorParams& params, XmlIteratorState& st)
+    static bool XmlElementGenerator(const XmlIteratorParams& params, XmlIteratorState& st, XmlElement &elem)
     {
-        XmlElement elem{};
+        elem.clear();
+        //XmlElement elem{};
 
         
         while (st.fSource)
@@ -597,7 +598,7 @@ namespace waavs {
                             st.fMark = st.fSource;
                             elem.reset(XML_ELEMENT_TYPE_CONTENT, content);
 
-                            return elem;
+                            return !elem.isEmpty();
                         }
                     }
 
@@ -663,7 +664,8 @@ namespace waavs {
 
                 elem.reset(kind, elementChunk);
 
-                return elem;
+                return !elem.isEmpty();
+
             }
             break;
 
@@ -675,9 +677,8 @@ namespace waavs {
             }
         }
 
-        //st.fSource = s;
         
-        return elem;
+        return !elem.isEmpty();
     }
     
     // XmlElementIterator
@@ -729,10 +730,11 @@ namespace waavs {
         XmlElementIterator& operator++(int) { next(); return *this; }
 
         // Return the current value of the iteration
-        const XmlElement & next() 
+        //const XmlElement & next(XmlElement& elem)
+        const bool next()
         {
-            fCurrentElement = XmlElementGenerator(fParams, fState);
-            return fCurrentElement;
+            bool validElement = XmlElementGenerator(fParams, fState, fCurrentElement);
+            return validElement;
         }
     };
 }

@@ -44,7 +44,8 @@ namespace waavs {
 		ByteSpan(const char* cstr) noexcept : fStart((const unsigned char*)cstr), fEnd((const unsigned char*)cstr + strlen(cstr)) {}
 		explicit ByteSpan(const void* data, size_t sz) noexcept :fStart((const unsigned char*)data), fEnd((const unsigned char*)data + sz) {}
 
-
+		// reset()
+		void reset() { fStart = nullptr; fEnd = nullptr; }
 
 		// Type conversions
 		explicit operator bool() const noexcept { return (fEnd - fStart) > 0; };

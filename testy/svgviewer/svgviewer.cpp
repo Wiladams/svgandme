@@ -9,16 +9,16 @@
 #include "svguiapp.h"
 #include "svgwaavs.h"
 #include "svgicons.h"
+#include "viewnavigator.h"
 
 using namespace waavs;
 
 // Drawing context used for drawing document
-// 	SvgDrawingContext ctx(&gFontHandler);
 IRenderSVG gDrawingContext(nullptr);
 
 // Reference to currently active document
 std::shared_ptr<SVGDocument> gDoc{ nullptr };
-ViewPort gViewPort{};	// BUGBUG - this should be replaced with a viewnavigator
+ViewNavigator gNavigator{};
 
 
 // For mouse management
@@ -65,8 +65,6 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 static void drawBackground()
 {
 	gDrawingContext.renew();
-	//gDrawingContext.push();
-	//gDrawingContext.pop();
 }
 
 static void drawDocument()
@@ -74,11 +72,11 @@ static void drawDocument()
 	//gDrawingContext.background(BLRgba32(0xffA6A6A6));
 	gDrawingContext.background(BLRgba32(0xffffffff));
 
-	//double startTime = seconds();
+	double startTime = seconds();
 
 	// setup any transform
 	if (gPerformTransform)
-		gDrawingContext.setTransform(gViewPort.sceneToSurfaceTransform());
+		gDrawingContext.setTransform(gNavigator.sceneToSurfaceTransform());
 
 
 	// draw the document into the ctx
@@ -87,7 +85,7 @@ static void drawDocument()
 
 	gDrawingContext.flush();
 	
-	//double endTime = seconds();
+	double endTime = seconds();
 	//printf("Drawing Duration: %f\n", endTime - startTime);
 }
 
@@ -105,11 +103,21 @@ static void draw()
 
 static void resetView()
 {
-	gViewPort.reset();
-	gViewPort.sceneFrame(BLRect(0, 0, canvasWidth, canvasHeight));
-	gViewPort.surfaceFrame(BLRect(0, 0, canvasWidth, canvasHeight));
+	gNavigator.resetNavigator();
+	gNavigator.setFrame(BLRect(0, 0, canvasWidth, canvasHeight));
+	gNavigator.setBounds(BLRect(0, 0, canvasWidth, canvasHeight));
 
 }
+
+static void handleChange(const bool&)
+{
+	//printf("svgviewer::handleChange\n");
+	draw();
+	
+	screenRefresh();
+
+}
+
 
 static void onFileDrop(const FileDropEvent& fde)
 {
@@ -143,10 +151,11 @@ static void onFileDrop(const FileDropEvent& fde)
 
 			
 			// Set the initial viewport
-			gViewPort.surfaceFrame({ 0, 0, (double)canvasWidth, (double)canvasHeight });
-			gViewPort.sceneFrame(objFr);
+			gNavigator.setFrame({ 0, 0, (double)canvasWidth, (double)canvasHeight });
+			gNavigator.setBounds(objFr);
 			
-			draw();
+			handleChange(true);
+
 			break;
 		}
 
@@ -166,7 +175,7 @@ static void onFrameEvent(const FrameCountEvent& fe)
 		if (gAnimate)
 		{
 			gDoc->update(gDoc.get());
-			draw();
+			handleChange(true);
 		}
 	}
 	
@@ -177,118 +186,25 @@ static void onFrameEvent(const FrameCountEvent& fe)
 	gRecorder.saveFrame();
 }
 
+
+
 static void onResizeEvent(const ResizeEvent& re)
 {
 	//printf("onResizeEvent: %d x %d\n", re.width, re.height);
 	gDrawingContext.begin(appFrameBuffer()->image());
-	draw();
-}
-
-// Pan
-// This is a translation, so it will move the viewport in the opposite direction
-// of the provided values
-static void pan(double dx, double dy)
-{
-	//printf("SVGViewer::pan(%3.2f, %3.2f)\n", dx, dy);
-
-	gViewPort.translateBy(-dx, -dy);
-	draw();
+	handleChange(true);
 }
 
 
-// zoomBy
-// Zoom in or out, by a specified amount (cumulative)  
-// z >  1.0 ==> zoom out, showing more of the scene
-// z <  1.0 ==> zoom 'in', focusing on a smaller portion of the scene.
-// The zoom can be centered around a specified point
-static void zoomBy(double z, double cx = 0, double cy = 0)
-{
-	gViewPort.scaleBy(z, z, cx, cy);
-	draw();
-
-}
-
-static void rotateBy(double r, double cx = 0, double cy = 0)
-{
-	gViewPort.rotateBy(r, cx, cy);
-	draw();
-}
 
 static void onMouseEvent(const MouseEvent& e)
 {
-	MouseEvent lev = e;
-	lev.x = float((double)e.x );
-	lev.y = float((double)e.y );
+	gNavigator.onMouseEvent(e);
 
-	//printf("SVGViewer::mouseEvent: %f,%f\n", lev.x, lev.y);
-	
-	switch (e.activity)
-	{
-		// When the mouse is pressed, get into the 'dragging' state
-		case MOUSEPRESSED:
-			gIsDragging = true;
-			gDragPos = { e.x, e.y };
-		break;
-
-		// When the mouse is released, get out of the 'dragging' state
-		case MOUSERELEASED:
-			gIsDragging = false;
-		break;
-
-		case MOUSEMOVED:
-		{
-			auto lastPos = gViewPort.mapSurfaceToScene(gDragPos.x, gDragPos.y);
-			auto currPos = gViewPort.mapSurfaceToScene(e.x, e.y);
-
-			//printf("SVGView::mouseEvent - currPos = %3.2f, %3.2f\n", currPos.x, currPos.y);
-
-			if (gIsDragging)
-			{
-				double dx = currPos.x - lastPos.x;
-				double dy = currPos.y - lastPos.y;
-
-				// print mouse lastPos and currPos
-				//printf("-----------------------------\n");
-				//printf("lastPos = %3.2f, %3.2f\n", lastPos.x, lastPos.y);
-
-				//printf("dx = %3.2f, dy = %3.2f\n", dx, dy);
-
-				pan(dx, dy);
-				gDragPos = { e.x, e.y };
-			}
-		}
-		break;
-
-		// We want to use the mouse wheel to 'zoom' in and out of the view
-		// We will only zoom when the 'alt' key is pressed
-		// Naked scroll might be used for something else
-		case MOUSEWHEEL:
-		{
-			//printf("SVGView: MOUSEWHEEL\n");
-
-			if (e.delta < 0)
-				zoomBy(1.0 + gZoomFactor, lev.x, lev.y);
-			else
-				zoomBy(1.0 - gZoomFactor, lev.x, lev.y);
-		}
-		break;
-
-		
-		// Horizontal mouse wheel
-		// Rotate around central point
-		case MOUSEHWHEEL:
-		{
-			//printf("SVGView: MOUSEHWHEEL\n");
-			if (e.delta < 0)
-				rotateBy(waavs::radians(5.0f), lev.x, lev.y);
-			else
-				rotateBy(waavs::radians(-5.0f), lev.x, lev.y);
-		}
-		break;
-		
-	}
-	
 }
+
+
+
 
 static void onKeyboardEvent(const KeyboardEvent& ke)
 {
@@ -309,7 +225,8 @@ static void onKeyboardEvent(const KeyboardEvent& ke)
 
 			case 'T':
 				gPerformTransform = !gPerformTransform;
-				draw();
+				handleChange(true);
+
 			break;
 		}
 	}
@@ -330,7 +247,6 @@ static void setupFonts()
 // called once before main loop is running
 void setup()
 {
-	
     //printf("setup()\n");
 	
 	setupFonts();
@@ -362,7 +278,9 @@ void setup()
 	gDrawingContext.begin(appFrameBuffer()->image(), &ctxInfo);
 		
 	// Set the initial viewport
-	gViewPort.surfaceFrame({0, 0, (double)canvasWidth, (double)canvasHeight});
+	//gViewPort.surfaceFrame({0, 0, (double)canvasWidth, (double)canvasHeight});
+	gNavigator.setFrame({ 0, 0, (double)canvasWidth, (double)canvasHeight });
+	gNavigator.subscribe(handleChange);
 	
 	// Load extension elements
 	DisplayCaptureElement::registerFactory();

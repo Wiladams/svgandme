@@ -397,6 +397,7 @@ static LRESULT HandleMouseMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
             break;
 
         default:
+            printf("UNKNOWN MOUSE\n");
             return res;
         break;
     }

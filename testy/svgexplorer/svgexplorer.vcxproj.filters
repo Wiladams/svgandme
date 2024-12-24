@@ -38,9 +38,6 @@
     <ClInclude Include="..\..\svg\viewport.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="viewnavigator.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="svgdocumentbrowser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
