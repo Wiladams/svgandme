@@ -165,6 +165,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\app\apphost.h" />
+    <ClInclude Include="..\..\app\d3dsnapshot.h" />
     <ClInclude Include="..\..\app\mappedfile.h" />
     <ClInclude Include="..\..\app\pixelaccessor.h" />
     <ClInclude Include="..\..\app\recorder.h" />

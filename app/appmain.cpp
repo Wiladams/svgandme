@@ -34,6 +34,8 @@
 
 using namespace waavs;
 
+static void processFrameTiming();
+
 // Some function signatures
 // WinMSGObserver - Function signature for Win32 message handler
 typedef LRESULT (*WinMSGObserver)(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -121,11 +123,12 @@ static Joystick gJoystick1(JOYSTICKID1);
 static Joystick gJoystick2(JOYSTICKID2);
 
 
-User32PixelMap& appFrameBuffer() 
+User32PixelMap * appFrameBuffer() 
 {
-    static User32PixelMap gAppFrameBuffer{};
-
-    return gAppFrameBuffer;
+    //static User32PixelMap gAppFrameBuffer{};
+	static std::unique_ptr<User32PixelMap> gAppFrameBuffer = std::make_unique<User32PixelMap>();
+   
+    return gAppFrameBuffer.get();
 }
 
 
@@ -205,14 +208,15 @@ void screenRefresh()
         // if we're not layered, then do a regular
         // sort of WM_PAINT based drawing
         //InvalidateRect(getAppWindow()->getHandle(), NULL, 1);
-		::RedrawWindow(getAppWindow()->getHandle(), NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+		//::RedrawWindow(getAppWindow()->getHandle(), NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+        ::RedrawWindow(getAppWindow()->getHandle(), NULL, NULL, RDW_INVALIDATE);
     }
     else {
         // This is the workhorse of displaying directly
         // to the screen.  Everything to be displayed
         // must be in the FrameBuffer, even window chrome
         LayeredWindowInfo lw(canvasWidth, canvasHeight);
-        lw.display(getAppWindow()->getHandle(), appFrameBuffer().bitmapDC());
+        lw.display(getAppWindow()->getHandle(), appFrameBuffer()->bitmapDC());
     }
 }
 
@@ -666,7 +670,7 @@ static LRESULT HandlePaintMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
     int SrcWidth = canvasWidth;
     int SrcHeight = canvasHeight;
 
-    BITMAPINFO info = appFrameBuffer().bitmapInfo();
+    BITMAPINFO info = appFrameBuffer()->bitmapInfo();
     
     // Make sure we sync all current drawing
     // BUGBUG - we don't have a way to guarantee this
@@ -677,7 +681,7 @@ static LRESULT HandlePaintMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
         DestWidth,DestHeight,
         xSrc,ySrc,
         SrcWidth, SrcHeight,
-        appFrameBuffer().data(), &info,
+        appFrameBuffer()->data(), &info,
         DIB_RGB_COLORS,
         SRCCOPY);
         
@@ -985,20 +989,22 @@ bool noDropFiles()
 //
 // Window management
 //
-static LONG gLastWindowStyle=0;
-
 void layered()
 {
-    getAppWindow()->addExtendedStyle(WS_EX_LAYERED | WS_EX_NOREDIRECTIONBITMAP);
-    gLastWindowStyle = getAppWindow()->setWindowStyle(WS_POPUP);
+    if (nullptr == getAppWindow())
+        return;
+    
+    getAppWindow()->setLayered(true);
 
     gIsLayered = true;
 }
 
 void noLayered()
 {
-    getAppWindow()->removeExtendedStyle(WS_EX_LAYERED|WS_EX_NOREDIRECTIONBITMAP);
-    getAppWindow()->setWindowStyle(gLastWindowStyle);
+    if (nullptr == getAppWindow())
+        return;
+    
+    getAppWindow()->setLayered(false);
 
     gIsLayered = false;
 }
@@ -1009,8 +1015,11 @@ bool isLayered()
 }
 
 // Change the window title
-void windowTitle(const char* title)
+void setWindowTitle(const char* title)
 {
+    if (nullptr == getAppWindow())
+        return;
+    
 	getAppWindow()->setTitle(title);
 }
 
@@ -1029,13 +1038,13 @@ void setCanvasPosition(int x, int y)
 
 bool setCanvasSize(long aWidth, long aHeight)
 {
-    appFrameBuffer().init(aWidth, aHeight);
+    appFrameBuffer()->init(aWidth, aHeight);
 
     canvasWidth = aWidth;
     canvasHeight = aHeight;
 
-    canvasPixelData = appFrameBuffer().data();
-    canvasStride = appFrameBuffer().stride();
+    canvasPixelData = appFrameBuffer()->data();
+    canvasStride = appFrameBuffer()->stride();
 
     return true;
 }
@@ -1056,6 +1065,38 @@ void showAppWindow()
     getAppWindow()->show();
 }
 
+static void processFrameTiming()
+{
+    // Do frame timing event dispatch
+    // 
+    // 
+    // We'll wait here until it's time to 
+    // signal the frame
+    //if (gAppClock.millis() > fNextMillis)
+    //{
+    fFrameCount++;
+
+    FrameCountEvent fce{};
+    fce.frameCount = fFrameCount;
+    fce.seconds = gAppClock.seconds();
+
+    gFrameCountEventTopic.notify(fce);
+
+
+
+    // catch up to next frame interval
+    // this will possibly result in dropped
+    // frames, but it will ensure we keep up
+    // to speed with the wall clock
+    //while (fNextMillis <= gAppClock.millis())
+    //{
+    //    fNextMillis += fInterval;
+    //}
+//}
+
+
+}
+
 
 //
 //    Generic Windows message handler
@@ -1065,85 +1106,109 @@ void showAppWindow()
 static LRESULT CALLBACK MsgHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     LRESULT res = 0;
+    
+    // Get pointer to window class from handle
+	User32Window* win = (User32Window*)::GetWindowLongPtr(hWnd, GWLP_USERDATA);
+    
+    switch (msg)
+    {
+        case WM_ERASEBKGND: {
+            //printf("WM_ERASEBKGND\n");
+            // return non-zero indicating we dealt with erasing the background
+            res = 1;
+            //if (gPaintHandler != nullptr) {
+            //    gPaintHandler(hWnd, msg, wParam, lParam);
+            //}
 
-    if ((msg >= WM_MOUSEFIRST) && (msg <= WM_MOUSELAST)) {
-        // Handle all mouse messages
-        HandleMouseMessage(hWnd, msg, wParam, lParam);
-    }
-    else if (msg == WM_INPUT) {
-		res = HandleRawInputMessage(hWnd, msg, wParam, lParam);
+            //RECT rect;
+            //if (::GetUpdateRect(hWnd, &rect, FALSE))
+            //{
+            //    ::ValidateRect(hWnd, NULL);
+            //}
+        }
+        break;
+            
+        case WM_PAINT: {
+            //printf("WM_PAINT\n");
+            if (gPaintHandler != nullptr) {
+                gPaintHandler(hWnd, msg, wParam, lParam);
+            }
 
-    }
-    else if (msg == WM_DESTROY) {
-        // By doing a PostQuitMessage(), a 
-        // WM_QUIT message will eventually find its way into the
-        // message queue.
-        ::PostQuitMessage(0);
-        return 0;
-    }
-    else if ((msg >= WM_KEYFIRST) && (msg <= WM_KEYLAST)) {
-        // Handle all keyboard messages
-        HandleKeyboardMessage(hWnd, msg, wParam, lParam);
-    }
-    else if ((msg >= MM_JOY1MOVE) && (msg <= MM_JOY2BUTTONUP)) {
-        //printf("MM_JOYxxx: %p\n", gJoystickHandler);
-        HandleJoystickMessage(hWnd, msg, wParam, lParam);
-    }
-    else if (msg == WM_TOUCH) {
-        //std::cout << "WM_TOUCH" << std::endl;
+            //RECT rect;
+            //if (::GetUpdateRect(hWnd, &rect, FALSE))
+            //{
+            //    ::ValidateRect(hWnd, NULL);
+            //}
+            }
+            break;
+            
+        case WM_MOVING:
+        case WM_WINDOWPOSCHANGING:
+            //printf("screen moving\n");
+            //screenRefresh();
+            processFrameTiming();
+            //::InvalidateRect(hWnd, NULL, 1);
+            break;
+            
+        case WM_SIZE:
+            HandleSizeMessage(hWnd, msg, wParam, lParam);
+            res = ::DefWindowProcA(hWnd, msg, wParam, lParam);
+            break;
+            
+        case WM_DESTROY:
+            // By doing a PostQuitMessage(), a 
+            // WM_QUIT message will eventually find its way into the
+            // message queue.
+            ::PostQuitMessage(0);
+            return 0;
+        break;
+        
+        case WM_INPUT:
+            res = HandleRawInputMessage(hWnd, msg, wParam, lParam);
+        break;
 
-        // Handle touch specific messages
-        HandleTouchMessage(hWnd, msg, wParam, lParam);
+        case WM_TOUCH:
+            res = HandleTouchMessage(hWnd, msg, wParam, lParam);
+            break;
+            
+        case WM_GESTURE:
+            // we will only receive WM_GESTURE if not receiving WM_TOUCH
+            HandleGestureMessage(hWnd, msg, wParam, lParam);
+            break;
+            
+        case WM_DROPFILES:
+            HandleFileDropMessage(hWnd, msg, wParam, lParam);
+            break;
+            
+        default:
+        {
+            if ((msg >= WM_MOUSEFIRST) && (msg <= WM_MOUSELAST)) {
+                // Handle all mouse messages
+                HandleMouseMessage(hWnd, msg, wParam, lParam);
+            }
+            else if ((msg >= WM_KEYFIRST) && (msg <= WM_KEYLAST)) {
+                // Handle all keyboard messages
+                HandleKeyboardMessage(hWnd, msg, wParam, lParam);
+            }
+            else if ((msg >= MM_JOY1MOVE) && (msg <= MM_JOY2BUTTONUP)) {
+                //printf("MM_JOYxxx: %p\n", gJoystickHandler);
+                HandleJoystickMessage(hWnd, msg, wParam, lParam);
+            }
+            else {
+                res = ::DefWindowProcA(hWnd, msg, wParam, lParam);
+            }
+        }
+        break;
     }
-    else if (msg == WM_GESTURE) {
-    // we will only receive WM_GESTURE if not receiving WM_TOUCH
 
-        HandleGestureMessage(hWnd, msg, wParam, lParam);
-    }
     //else if ((msg >= WM_NCPOINTERUPDATE) && (msg <= WM_POINTERROUTEDRELEASED)) {
     //    HandlePointerMessage(hWnd, msg, wParam, lParam);
     //}
-    else if (msg == WM_ERASEBKGND) {
-       // printf("WM_ERASEBKGND\n");
-        //if (gPaintHandler != nullptr) {
-        //    gPaintHandler(hWnd, msg, wParam, lParam);
-        //}
-
-        // return non-zero indicating we dealt with erasing the background
-        res = 1;
-    }
-    else if (msg == WM_PAINT) {
-        //printf("WM_PAINT\n");
-        if (gPaintHandler != nullptr) {
-            gPaintHandler(hWnd, msg, wParam, lParam);
-        }
-        //else
-        //{
-        //    res = ::DefWindowProcA(hWnd, msg, wParam, lParam);
-        //}
-        RECT rect;
-        if (GetUpdateRect(hWnd, &rect, FALSE))
-        {
-            ValidateRect(hWnd, NULL);
-        }
-    }
-    else if (msg == WM_DROPFILES) {
-        HandleFileDropMessage(hWnd, msg, wParam, lParam);
-    }
-    else if (msg == WM_SIZE) {
-        // Resize the canvas to match the new window size
-		// and redraw the canvas
-		HandleSizeMessage(hWnd, msg, wParam, lParam);
-        
-        res = ::DefWindowProcA(hWnd, msg, wParam, lParam);
-    }
-    else {
-		//printf("Unhandled message: %04x\n", msg);
-        res = ::DefWindowProcA(hWnd, msg, wParam, lParam);
-    }
 
     return res;
 }
+
+
 
 //
 // Look for the dynamic routines that will be used
@@ -1179,9 +1244,11 @@ static void registerHandlers()
 }
 
 
+
 static void run()
 {
-
+    static bool running = true;
+    
     // Make sure we have all the event handlers connected
     registerHandlers();
 
@@ -1190,16 +1257,54 @@ static void run()
         gOnloadHandler();
     }
 
-
-
     showAppWindow();
 
     gAppClock.reset();
 
     // Do a typical Windows message pump
-    while (true) {
-        MSG msg{};
+    MSG msg{};
+    
+    while (running) {
+        DWORD waitResult = MsgWaitForMultipleObjectsEx(
+            0,              // no kernel objects to wait on
+            nullptr,        // null because no kernel objects to wait on
+            fInterval,      // 1000 / fps
+            QS_ALLEVENTS,
+            MWMO_INPUTAVAILABLE);
+        
+        switch (waitResult)
+        {
+            case WAIT_OBJECT_0:
+                // Process all the messages that might be sitting
+                // in the message queue
+                while (PeekMessageA(&msg, nullptr, 0, 0, PM_REMOVE)) {
+                    if (msg.message == WM_QUIT) {
+                        running = false;
+                        break;
+                    }
+                    TranslateMessage(&msg);
+                    DispatchMessageA(&msg);
+                }
+            break;
 
+            case WAIT_TIMEOUT:
+                // Handle per frame logic
+                processFrameTiming();
+            break;
+
+            case WAIT_FAILED:
+                // If the wait failed for some reason other than
+                // timeout,break out and stop
+                running = false;
+            break;
+                
+            default:
+                // If there are any objects in the wait (like events)
+                // handle them here
+                break;
+        }
+
+        /*
         // we use peekmessage, so we don't stall on a GetMessage
         // should probably throw a wait here
         // WaitForSingleObject
@@ -1217,42 +1322,15 @@ static void run()
             ::DispatchMessageA(&msg);
         }
         else {
+            processFrameTiming();
+        }
+        */
 
-            // Do frame timing event dispatch
-            // 
-            // 
-            // We'll wait here until it's time to 
-            // signal the frame
-            if (gAppClock.millis() > fNextMillis)
-            {
-                fFrameCount++;
-
-                FrameCountEvent fce{};
-                fce.frameCount = fFrameCount;
-                fce.seconds = gAppClock.seconds();
-
-                gFrameCountEventTopic.notify(fce);
-
-
-
-                // catch up to next frame interval
-                // this will possibly result in dropped
-                // frames, but it will ensure we keep up
-                // to speed with the wall clock
-                while (fNextMillis <= gAppClock.millis())
-                {
-                    fNextMillis += fInterval;
-                }
-            }
-
-
-
-            // Give the user application some control to do what
-            // it wants
-            // call onLoop() if it exists
-            if (gOnLoopHandler != nullptr) {
-                gOnLoopHandler();
-            }
+        // Give the user application some control to do what
+        // it wants
+        // call onLoop() if it exists
+        if (gOnLoopHandler != nullptr) {
+            gOnLoopHandler();
         }
     }
     
@@ -1297,47 +1375,7 @@ static void setDPIAware()
 
     ::DeleteDC(dhdc);
 }
-/*
-static void setupDpi()
-{
-    // Throughout the application, we want to know the true
-    // physical dots per inch and screen resolution, so the
-    // first thing to do is to let Windows know we are Dpi aware
-    // set awareness based on monitor, and get change messages when it changes
-    auto dpiContext = DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2;
 
-    // If Windows 10.0 or higher
-    ::SetProcessDpiAwarenessContext(dpiContext);
-
-    // based on logical inches
-    systemDpi = ::GetDpiForSystem();
-
-    // Get the screen size
-    //auto dpiDpi = ::GetDpiFromDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
-    auto dpidisplayWidth = ::GetSystemMetricsForDpi(SM_CXSCREEN, systemDpi);
-    auto dpidisplayHeight = ::GetSystemMetricsForDpi(SM_CYSCREEN, systemDpi);
-
-    rawPixelWidth = ::GetSystemMetrics(SM_CXSCREEN);
-    rawPixelHeight = ::GetSystemMetrics(SM_CYSCREEN);
- 
-    auto dhdc = CreateDC(TEXT("DISPLAY"), NULL, NULL, NULL);
-
-    // How big is the screen physically
-    // DeviceCaps gives it in millimeters, so we convert to inches
-    auto screenWidthInches = ::GetDeviceCaps(dhdc, HORZSIZE) / 25.4;
-    auto screenHeightInches = ::GetDeviceCaps(dhdc, VERTSIZE) / 25.4;
-
-    // pixel count horizontally and vertically
-    auto pixelWidth = ::GetDeviceCaps(dhdc, LOGPIXELSX);
-    auto pixelHeight = ::GetDeviceCaps(dhdc, LOGPIXELSY);
-
-    // Calculate real pixel density
-    double screenPpi = (double)dpidisplayHeight / screenHeightInches;
-    physicalDpi = (unsigned int)screenPpi;
-
-    DeleteDC(dhdc);
-}
-*/
 
 // Initialize Windows networking
 static void setupNetworking()
@@ -1351,22 +1389,38 @@ static void setupNetworking()
         printf("Error setting up networking: 0x%x\n", res);
 }
 
-// do any initialization that needs to occur 
-// in the very beginning
-// The most interesting initialization at the moment
-// is the networking subsystem
-waavs::User32Window* getAppWindow()
+//! \brief Retrieves the main (singleton) application window.
+//
+//! This function returns a pointer to the main application window. On the first
+//! call, it creates a new window using the "appwindow" window class, which is
+//! registered with the given class styles and message handler. The newly
+//! created window measures 320 x 240. On subsequent calls, it returns the
+//! already-created window pointer, ensuring only one window instance is
+//! maintained for the entire application.
+//
+//! \note The returned window is created once and persists for the lifetime of
+//!       the application unless explicitly destroyed. If it is destroyed,
+//!       callers must handle re-creation or avoid further calls to this
+//!       function.
+//
+//! \return A pointer to the main application window (\c waavs::User32Window).
+//! 
+waavs::User32Window * getAppWindow()
 {
     // Declare some standard Window Kinds we'll be using
-    User32WindowClass gAppWindowKind("appwindow", CS_GLOBALCLASS | CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW, MsgHandler);
-
+    static User32WindowClass appWindowKind("appwindow", CS_GLOBALCLASS | CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW, MsgHandler);
+    static std::unique_ptr<waavs::User32Window> gAppWindow = nullptr;
     
-    static waavs::User32Window* gAppWindow = nullptr;
+    if (!gAppWindow)
+    {
+        int style = WS_OVERLAPPEDWINDOW;
+        int xstyle = 0;
+        WNDPROC handler = nullptr;
+        
+        gAppWindow = appWindowKind.createWindow("Application Window", 320, 240, style, xstyle, handler);
+    }
     
-    if (gAppWindow == nullptr)
-        gAppWindow = gAppWindowKind.createWindow("Application Window", 320, 240);
-
-    return gAppWindow;
+    return gAppWindow.get();
 }
 
 static bool prolog()

@@ -126,12 +126,12 @@ APP_EXPORT extern size_t canvasStride;
 // 
 // The control the lifetime of the environment, creation of primary window
 // and whether various parts of the IO system are present
-APP_EXPORT waavs::User32PixelMap& appFrameBuffer();
-APP_EXPORT waavs::User32Window* getAppWindow();
+APP_EXPORT waavs::User32PixelMap* appFrameBuffer();
+APP_EXPORT waavs::User32Window * getAppWindow();
 
 
 APP_EXPORT void createAppWindow(long aWidth, long aHeight, const char* title);
-APP_EXPORT void windowTitle(const char* title);
+APP_EXPORT void setWindowTitle(const char* title);
 APP_EXPORT void windowOpacity(float o);	// set overall opacity of window
 APP_EXPORT void showAppWindow();
 APP_EXPORT void halt();

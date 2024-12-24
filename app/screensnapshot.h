@@ -36,6 +36,9 @@
 #include "User32PixelMap.h"
 #include "stopwatch.h"
 
+
+
+
 class ScreenSnapper : public waavs::User32PixelMap
 {
     HDC fSourceDC=nullptr;

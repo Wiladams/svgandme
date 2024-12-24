@@ -104,8 +104,8 @@ static void registerAppHandlers()
 
 void onLoad()
 {
-	printf("onLoad\n");
-	printf("Physical DPI: %d\n", physicalDpi);
+	//printf("onLoad\n");
+	//printf("Physical DPI: %d\n", physicalDpi);
 	
 	registerAppHandlers();
 

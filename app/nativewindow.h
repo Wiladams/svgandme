@@ -33,7 +33,8 @@ namespace waavs {
         HWND fHandle;
         WNDCLASSEXA fClass{};
         bool fMouseInside = false;
-
+        LONG fLastWindowStyle{};
+        
         // Constructor taking an already allocated
         // window handle.  Use a WindowKind to allocate
         // an instance of a particular kind of window
@@ -48,10 +49,10 @@ namespace waavs {
             DestroyWindow(fHandle);
         }
 
-        HWND getHandle() { return fHandle; }
+        HWND getHandle() const { return fHandle; }
 
         // All the methods that are useful
-        bool isValid() { return fHandle != NULL; }
+        bool isValid() const { return fHandle != NULL; }
 
         // Hide the window
         void hide()
@@ -70,6 +71,7 @@ namespace waavs {
             RECT wRect;
             ::GetWindowRect(fHandle, &wRect);
             int cx = wRect.right - wRect.left;
+            
             return cx;
         }
 
@@ -122,6 +124,7 @@ namespace waavs {
                 return false;
 
             BOOL res = ::SetWindowTextA(getHandle(), title);
+            
             return res != 0;
         }
 
@@ -134,7 +137,8 @@ namespace waavs {
         // Set a style bit
         LONG setWindowStyle(int style)
         {
-            return SetWindowLongA(fHandle, GWL_STYLE, style);
+            auto res = ::SetWindowLongA(fHandle, GWL_STYLE, style);
+            return res;
         }
 
         // Remove a specific style bit, or set of bits
@@ -186,6 +190,33 @@ namespace waavs {
             }
 
             return 0;
+        }
+
+        bool setLayered(bool layered)
+        {
+            if (layered) {
+                addExtendedStyle(WS_EX_LAYERED | WS_EX_NOREDIRECTIONBITMAP);
+                fLastWindowStyle = setWindowStyle(WS_POPUP);
+            }
+            else {
+                removeExtendedStyle(WS_EX_LAYERED | WS_EX_NOREDIRECTIONBITMAP);
+                setWindowStyle(fLastWindowStyle);
+            }
+            
+            // Call this to ensure Windows actually updates the attributes
+            // before moving on
+            ::SetWindowPos(fHandle, 0, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+            
+            return true;
+        }
+        
+        int setNonLayered()
+        {
+            // Call this to ensure Windows actually updates the attributes
+            // before moving on
+            ::SetWindowPos(fHandle, 0, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
         }
     };
 
@@ -271,11 +302,10 @@ namespace waavs {
         int getLastError() const { return fLastError; }
         const char* getName() const { return fWndClass.lpszClassName; }
 
-        User32Window* createWindow(const char* title, int width, int height, int style = WS_OVERLAPPEDWINDOW, int xstyle = 0, WNDPROC handler = nullptr)
+        std::unique_ptr<User32Window> createWindow(const char* title, int width, int height, int style = WS_OVERLAPPEDWINDOW, int xstyle = 0, WNDPROC handler = nullptr)
         {
-            if (!isValid()) {
-                return nullptr;
-            }
+            if (!isValid())
+                return {};
 
             HMODULE hInst = fWndClass.hInstance;
 
@@ -296,13 +326,17 @@ namespace waavs {
                 fWndClass.hInstance,
                 NULL);
 
-            if (winHandle == nullptr) {
-                return nullptr;
-            }
+            if (winHandle == nullptr) 
+                return {};
+            
+			auto win = new User32Window(winHandle);
+            
+            // store the pointer to the class inside the window handle
+			::SetWindowLongPtr(winHandle, GWLP_USERDATA, (LONG_PTR)win);
+            
+			return std::unique_ptr<User32Window>(win);
 
-            User32Window* win = new User32Window(winHandle);
 
-            return win;
         }
     };
 }

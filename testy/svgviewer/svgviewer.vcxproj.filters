@@ -194,5 +194,8 @@
     <ClInclude Include="..\..\app\stopwatch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\app\d3dsnapshot.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

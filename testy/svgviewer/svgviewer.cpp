@@ -154,9 +154,11 @@ static void onFileDrop(const FileDropEvent& fde)
 }
 
 // Create a routine to respond to frameevents
-static void onFrameEvent(const FrameCountEvent& )
+static void onFrameEvent(const FrameCountEvent& fe)
 {
 	//printf("frameEvent: %d\n", (int)fe.frameCount);
+	//printf("Actual Frame Rate: %d\n", (int)(fe.frameCount / seconds()));
+	
 	//appFrameBuffer().setAllPixels(vec4b{ 0x00,0xff,0x00,0xff });
 	// update current document
 	if (gDoc != nullptr)
@@ -178,7 +180,7 @@ static void onFrameEvent(const FrameCountEvent& )
 static void onResizeEvent(const ResizeEvent& re)
 {
 	//printf("onResizeEvent: %d x %d\n", re.width, re.height);
-	gDrawingContext.begin(appFrameBuffer().image());
+	gDrawingContext.begin(appFrameBuffer()->image());
 	draw();
 }
 
@@ -328,20 +330,22 @@ static void setupFonts()
 // called once before main loop is running
 void setup()
 {
+	
     //printf("setup()\n");
 	
 	setupFonts();
 	
-	frameRate(20);
+	frameRate(30);
 	
     dropFiles();
 
 
 	//layered();
+	
 	// set app window size and title
 	createAppWindow(1920, 1080, "SVGViewer");
 	
-	gRecorder.reset(&appFrameBuffer().image(), "frame", 15, 0);
+	gRecorder.reset(&appFrameBuffer()->image(), "frame", 15, 0);
 	
 	// register to receive various events
 	subscribe(onFileDrop);
@@ -351,11 +355,11 @@ void setup()
 	subscribe(onKeyboardEvent);
 	
 	// clear the buffer to white to start
-	appFrameBuffer().setAllPixels(vec4b{ 0xFF,0xff,0xff,0x00 });
+	appFrameBuffer()->setAllPixels(vec4b{ 0xFF,0xff,0xff,0x00 });
 	BLContextCreateInfo ctxInfo{};
 	ctxInfo.threadCount = 4;
 	//ctxInfo.threadCount = 0;
-	gDrawingContext.begin(appFrameBuffer().image(), &ctxInfo);
+	gDrawingContext.begin(appFrameBuffer()->image(), &ctxInfo);
 		
 	// Set the initial viewport
 	gViewPort.surfaceFrame({0, 0, (double)canvasWidth, (double)canvasHeight});

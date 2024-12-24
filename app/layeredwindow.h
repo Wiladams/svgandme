@@ -58,6 +58,15 @@ public:
 
     }
 
+    // an alpha value of 255 means we'll use the per pixel alpha
+    // values.  Anything less than this, and we'll use the specified
+    // value for the whole window, rather than doing per  pixel
+    // alpha blending.
+    void setGlobalAlpha(BYTE alpha)
+    {
+        fBlendFunction.SourceConstantAlpha = alpha;
+    }
+    
     int getLastError() const {return fLastError;}
     int getWidth() const {return fSize.cx;}
     int getHeight() const {return fSize.cy;}

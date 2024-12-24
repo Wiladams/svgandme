@@ -826,6 +826,7 @@ namespace waavs {
     //=========================================================
     // SVGFillRule
     //=========================================================
+    /*
     static bool parseFillRule(const ByteSpan& inChunk, BLFillRule& value)
     {
         if (inChunk == "nonzero")
@@ -837,7 +838,7 @@ namespace waavs {
 
         return true;
     }
-    
+    */
     struct SVGFillRuleAttribute : public SVGVisualProperty
     {
         static void registerFactory() {
