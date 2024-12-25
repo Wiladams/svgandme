@@ -335,8 +335,6 @@ static LRESULT HandleMouseMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
 	    case WM_MBUTTONDBLCLK:
 	    case WM_RBUTTONDBLCLK:
             e.activity = MOUSEDOUBLECLICKED;
-
-
             break;
 
         case WM_MOUSEMOVE:

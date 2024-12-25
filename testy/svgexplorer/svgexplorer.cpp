@@ -150,7 +150,7 @@ static void onFrameEvent(const FrameCountEvent& fe)
 static void onResizeEvent(const ResizeEvent& re)
 {
 	//printf("onResizeEvent: %d x %d\n", re.width, re.height);
-	gDrawingContext.begin(appFrameBuffer().image());
+	gDrawingContext.begin(appFrameBuffer()->image());
 	refreshDoc();
 }
 
@@ -180,6 +180,8 @@ static void onMouseEvent(const MouseEvent& e)
 		gFileListView.onMouseEvent(e);
 }
 
+static double recordBeginTime{};
+
 static void onKeyboardEvent(const KeyboardEvent& ke)
 {
 	
@@ -193,6 +195,15 @@ static void onKeyboardEvent(const KeyboardEvent& ke)
 		case VK_PLAY:
 		case VK_PAUSE:
 		case 'R':
+			if (!gRecorder.isRecording())
+				recordBeginTime = seconds();
+			else
+			{
+				double duration = seconds() - recordBeginTime;
+				double fps = gRecorder.frameCount() / duration;
+
+				printf("Recording - Seconds: %f  Frames: %d  FPS: %f\n", duration, gRecorder.frameCount(), fps);
+			}
 			gRecorder.toggleRecording();
 			break;
 
@@ -229,7 +240,7 @@ static void setup()
 	// Setup runtime specific stuff
 	createAppWindow(APP_WIDTH, APP_HEIGHT, "SVG Explorer");
 	dropFiles();
-	frameRate(15);
+	frameRate(60);
 
 	// register to receive various events
 	subscribe(onFileDrop);
@@ -242,14 +253,14 @@ static void setup()
 	// Setup application specific items
 	setupFonts();
 
-	gRecorder.reset(&appFrameBuffer().image(), "frame", 15, 0);
+	gRecorder.reset(&appFrameBuffer()->image(), "frame", 15, 0);
 
 	// clear the buffer to white to start
-	appFrameBuffer().setAllPixels(vec4b{ 0xFF,0xff,0xff,0xff });
+	appFrameBuffer()->setAllPixels(vec4b{ 0xFF,0xff,0xff,0xff });
 	BLContextCreateInfo ctxInfo{};
 	ctxInfo.threadCount = 4;
 	//ctxInfo.threadCount = 0;
-	gDrawingContext.begin(appFrameBuffer().image(), &ctxInfo);
+	gDrawingContext.begin(appFrameBuffer()->image(), &ctxInfo);
 
 	//gFileListView.setFontHandler(&getFontHandler());
 

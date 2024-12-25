@@ -17,6 +17,8 @@ namespace waavs {
 		SVGDocumentHandle fDocument;
 		SVGCachedDocument fDocIcon;
 		double fIconSize{};
+		bool fIsHover{ false };
+		bool fIsSelected{ false };
 		
 		FileIcon(const std::string& name, SVGDocumentHandle doc, size_t iconSize=24, const BLRect& rect={0,0,128,24})
 			: GraphicView(rect)
@@ -49,7 +51,13 @@ namespace waavs {
 		const std::string& fileName() const { return fFilename; }
 		SVGDocumentHandle document() const { return fDocument; }
 
-
+		void setSelected(bool isSelected) {fIsSelected = isSelected;}
+		bool isSelected() const { return fIsSelected; }
+		
+		void setHover(bool isHover) {fIsHover = isHover;}
+		bool isHover() const { return fIsHover; }
+		
+		// Handle mouse activity
 		void onMouseEvent(const MouseEvent& e)
 		{
 			MouseEvent le = e;
@@ -67,7 +75,11 @@ namespace waavs {
 		{
 			BLRect fr = frame();
 			ctx->strokeWidth(3);
-			ctx->strokeRect(BLRect(1, 1, fr.w - 2, fr.h - 2), BLRgba32(0xff7fA0A0));
+
+			if (isSelected())
+				ctx->strokeRect(BLRect(1, 1, fr.w - 2, fr.h - 2), BLRgba32(0xff7f2f2f));
+			else
+				ctx->strokeRect(BLRect(1, 1, fr.w - 2, fr.h - 2), BLRgba32(0xff7fA0A0));
 
 		}
 
@@ -76,11 +88,16 @@ namespace waavs {
 			// Draw border around file icon
 			ctx->strokeRect(fDocIcon.frame(), BLRgba32(0xffffE0E0));
 			
-			// Draw border around whole listing
-			ctx->fill(BLRgba32(0xff000000));
+			// Draw Draw the icon's filename
+
 			BLRect fr = frame();
+			ctx->fill(BLRgba32(0xff000000));
 			ctx->fillText(fFilename.c_str(), 4 + fIconSize, fr.h - 6);
 			
+			// Draw the mouse hover state
+			if (isHover())
+				ctx->fillRect(0,0,fr.w, fr.h, BLRgba32(0x80A0A0A0));
+
 		}
 
 		
@@ -145,7 +162,8 @@ namespace waavs {
 		
 		ViewNavigator fNavigator{};
 		std::list<SVGFileIconHandle> fFileList{};
-
+		SVGFileIconHandle fHoverIcon{};
+		SVGFileIconHandle fSelectedIcon{};
 
 		SVGFileListView(const BLRect& aframe, FontHandler *fh)
 			:SVGCachedView(aframe, fh)
@@ -160,14 +178,18 @@ namespace waavs {
 			setNeedsRedraw(true);
 		}
 
-
+		void refresh()
+		{
+			setNeedsRedraw(true);
+			Topic<bool>::notify(true);
+		}
+		
 		void handleViewChange(const bool &value)
 		{
 			//setBounds(fNavigator.bounds());
 			setSceneToSurfaceTransform(fNavigator.sceneToSurfaceTransform());
 
-			setNeedsRedraw(true);
-			Topic<bool>::notify(value);
+			refresh();
 		}
 
 		void handleFileSelected(const FileIcon& fIcon)
@@ -251,22 +273,51 @@ namespace waavs {
 			//Topic<bool>::notify(true);
 		}
 
+		// Handle complex mouse interactions
 		void onMouseEvent(const MouseEvent& e)
 		{
+			// Mouse event is given in window client area coordinates
+			// so, we need to convert to bounds coordinates
 			MouseEvent le = e;
 			le.x -= static_cast<float>(frame().x);
 			le.y -= static_cast<float>(frame().y);
 			
-			// Adjust mouse event location based on fNavigator transformation
-			//fNavigator.
+			// We need to know where the mouse event is in the scene's
+			// coordinate system, which is probably transformed.
 			auto lexy = fNavigator.surfaceToScene(le.x, le.y);
-			//printf("LEXY: %3f, %3f\n", lexy.x, lexy.y);
+
 			le.x = lexy.x;
 			le.y = lexy.y;
 
+			// Lastly, we only want to pass wheel scrolls to the navigator
+			// as that turns into a pan on the list of files.
+			// The mouse released, we deal with locally, as that is a file
+			// being selected.
 			switch (le.activity)
 			{
+				case MOUSEMOVED:
+				{
+					// figure out which icon we're over
+					// and draw a highlight over it
+					if (fHoverIcon != nullptr)
+						fHoverIcon->setHover(false);
+					
+					size_t idx = 0;
+					if (getIconIndex(le.x, le.y, idx))
+					{
+						fHoverIcon = getIconHandle(idx);
+						if (fHoverIcon != nullptr)
+						{
+							fHoverIcon->setHover(true);
+						}
 
+					}
+					refresh();
+
+					
+					break;
+				}
+				
 			case MOUSEWHEEL:
 				// Perform vertical scrolling 
 				//printf("DELTA: %f\n", le.delta);
@@ -288,6 +339,11 @@ namespace waavs {
 				fNavigator.panBy(0, le.delta*12);
 				break;
 
+				// Can't do mouse pressed yet, because it will allow unconstrained
+				// panning.  So, we need to introduce some constraints for the navigator
+				//case MOUSEPRESSED:
+				//break;
+				
 			case MOUSERELEASED:
 			{
 				// If a file is selected, then display it
@@ -296,9 +352,15 @@ namespace waavs {
 				size_t idx = 0;
 				if (getIconIndex(le.x, le.y, idx))
 				{
-					auto handle = getIconHandle(idx);
-					if (handle != nullptr)
-						handle->onMouseEvent(e);
+					// If there's a currently selected icon, then deselect it
+					if (fSelectedIcon != nullptr)
+						fSelectedIcon->setSelected(false);
+					
+					fSelectedIcon = getIconHandle(idx);
+					if (fSelectedIcon != nullptr) {
+						fSelectedIcon->setSelected(true);
+						fSelectedIcon->onMouseEvent(e);
+					}
 				}
 
 			}
@@ -320,6 +382,13 @@ namespace waavs {
 			ctx->strokeWidth(4);
 			ctx->strokeRect(BLRect(0, 0, frame().w, frame().h), BLRgba32(0xffA0A0A0));
 
+			// draw a semi-transparent rectangle around the hover icon frame
+			// get the frame of the hover icon
+			//if (fHoverIcon != nullptr)
+			//{
+			//	BLRect iconFrame = fHoverIcon->frame();
+			//	ctx->fillRect(iconFrame, BLRgba32(0x80A0A0A0));
+			//}
 		}
 
 		void drawSelf(IRenderSVG* ctx)

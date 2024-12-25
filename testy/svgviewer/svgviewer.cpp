@@ -114,6 +114,10 @@ static void handleChange(const bool&)
 	//printf("svgviewer::handleChange\n");
 	draw();
 	
+	// we do this screenRefresh here because mouse dragging
+	// runs the window in a modal way, starving us of regular
+	// redraw messages, based on timing, so we force a redraw
+	// message through the message queue
 	screenRefresh();
 
 }

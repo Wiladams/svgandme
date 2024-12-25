@@ -53,6 +53,7 @@ namespace waavs {
             fCodec.findByName("QOI");
 		}
 
+        int frameCount() const { return fCurrentFrame; }
 
         bool isRecording() const { return fIsRecording; }
         void toggleRecording() {

@@ -43,33 +43,39 @@ namespace waavs {
 		double fRotRad = 0.0;		// Number of radians rotated
 		BLPoint fRotCenter{};		// Point around which we rotate
 
-		BLRect fSurfaceFrame{};		// Coordinate system we are projecting onto
-		BLRect fSceneFrame{};		// Coordinate system of scene we are projecting
+		BLRect fSurfaceFrame{ 0, 0, 1, 1 };		// Coordinate system we are projecting onto
+		BLRect fSceneFrame{ 0, 0, 1, 1 };		// Coordinate system of scene we are projecting
 
 
 
 	public:
-		ViewPort() {
-			// Default to a 1:1 mapping
-			fSceneFrame = BLRect(0, 0, 1, 1); 
-			fSurfaceFrame = BLRect(0, 0, 1, 1);
-			//updateTransformMatrix();
-		}
+		ViewPort() = default; 
 		
 		
-
-		/*
 		ViewPort(const ViewPort& other)
 			: fTransform(other.fTransform)
 			, fInverseTransform(other.fInverseTransform)
+			, fAspectMode(other.fAspectMode)
 			, fRotRad(other.fRotRad)
 			, fRotCenter(other.fRotCenter)
 			, fSurfaceFrame(other.fSurfaceFrame)
 			, fSceneFrame(other.fSceneFrame)
 		{
 		}
-		*/
-
+		
+		ViewPort& operator=(const ViewPort& other)
+		{
+			fTransform = other.fTransform;
+			fInverseTransform = other.fInverseTransform;
+			fAspectMode = other.fAspectMode;
+			fRotRad = other.fRotRad;
+			fRotCenter = other.fRotCenter;
+			fSurfaceFrame = other.fSurfaceFrame;
+			fSceneFrame = other.fSceneFrame;
+				
+			return *this;
+		}
+		
 		//
 		void clampFrames()
 		{
@@ -100,10 +106,6 @@ namespace waavs {
 		
 		~ViewPort() = default;
 		
-		// Start with these deleted until we know how
-		// to use them.
-		ViewPort(const ViewPort& other) = delete;
-		ViewPort& operator=(const ViewPort& other) = delete;
 		
 
 
