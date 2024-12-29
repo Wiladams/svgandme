@@ -36,7 +36,11 @@ namespace waavs {
 			fZoomFactor = 0.1;
 		}
 
-
+		void setAspectMode(AspectMode mode)
+		{
+			fPortal.aspectMode(mode);
+		}
+		
 		void speedFactor(double newFac)
 		{
 			fSpeedFactor = newFac;

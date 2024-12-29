@@ -128,6 +128,7 @@ namespace waavs {
 
 		void aspectMode(AspectMode mode) {
 			fAspectMode = mode;
+			updateTransformMatrix();
 		}
 		
 		AspectMode aspectMode() const {
@@ -218,42 +219,50 @@ namespace waavs {
 		// Creates scale from scene to surface
 		// Calculate a scale, returning the minimal
 		// value that preserves aspect ratio.
-		double trueScale(BLPoint &ascale) const
+		BLPoint freeScale(BLPoint& ascale) const
 		{
-			double tScale = 1.0;
-
-			ascale.x = (fSurfaceFrame.w / fSceneFrame.w);
-			ascale.y = (fSurfaceFrame.h / fSceneFrame.h);
-			tScale = std::abs(std::min(ascale.x, ascale.y));
-			
-			return tScale;
-		}
-
-		BLPoint fullScale(BLPoint& ascale) const
-		{
-			double tScale = 1.0;
-
 			ascale.x = (fSurfaceFrame.w / fSceneFrame.w);
 			ascale.y = (fSurfaceFrame.h / fSceneFrame.h);
 
 			return ascale;
 		}
+		
+		double preserveScale(BLPoint &ascale) const
+		{
+			freeScale(ascale);
 
+			//ascale.x = (fSurfaceFrame.w / fSceneFrame.w);
+			//ascale.y = (fSurfaceFrame.h / fSceneFrame.h);
+			double pScale = std::abs(std::min(ascale.x, ascale.y));
+			
+			return pScale;
+		}
+
+
+		BLPoint getAspectScale()
+		{
+			BLPoint ascale(1, 1);
+
+			if (fAspectMode == AspectMode::Free)
+			{
+				freeScale(ascale);
+			}
+			else if (fAspectMode == AspectMode::Preserve)
+			{
+				auto pScale = preserveScale(ascale);
+				ascale.x = pScale;
+				ascale.y = pScale;
+			}
+
+			return ascale;
+		}
+		
 		void applyScale()
 		{
 			BLPoint ascale(1, 1);
 
-			// Scale
-			if (fAspectMode == AspectMode::Free)
-			{
-				auto fScale = fullScale(ascale);
-				fTransform.scale(fScale.x, fScale.y);
-			}
-			else if (fAspectMode == AspectMode::Preserve)
-			{
-				double tScale = trueScale(ascale);
-				fTransform.scale(tScale, tScale);
-			}
+			ascale = getAspectScale();
+			fTransform.scale(ascale.x, ascale.y);
 		}
 		
 
@@ -355,10 +364,10 @@ namespace waavs {
 			if (sdx <= 0 || sdy <= 0)
 				return false;
 			
-			BLPoint apoint{};
-			double tScale = trueScale(apoint);
-			double x = fSceneFrame.x + (cx - fSurfaceFrame.x) / tScale;
-			double y = fSceneFrame.y + (cy - fSurfaceFrame.y) / tScale;
+			BLPoint ascale = getAspectScale();
+
+			double x = fSceneFrame.x + (cx - fSurfaceFrame.x) / ascale.x;
+			double y = fSceneFrame.y + (cy - fSurfaceFrame.y) / ascale.y;
 			double w = fSceneFrame.w / sdx;
 			double h = fSceneFrame.h / sdy;
 

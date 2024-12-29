@@ -14,6 +14,14 @@ namespace waavs {
             registerNodeTypes();
         }
 
+        // We have a singleton factory object for the entire application
+        static SVGFactory* getFactory()
+        {
+			static std::unique_ptr<SVGFactory> sFactory = std::make_unique<SVGFactory>();
+
+			return sFactory.get();
+        }
+        
         void registerNodeTypes()
         {
             // Register attributes
@@ -118,5 +126,18 @@ namespace waavs {
 
         }
 
+
+        // A convenience to construct the document from a chunk, and return
+        // a shared pointer to the document
+        static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, FontHandler* fh, const double w, const double h, const double ppi)
+        {
+            auto sFactory = SVGFactory::getFactory();
+            
+            auto doc = std::make_shared<SVGDocument>(fh, w, h, ppi);
+            if (!doc->loadFromChunk(srcChunk, fh))
+                return {};
+
+            return doc;
+        }
     };
 }

@@ -33,7 +33,7 @@ bool gPerformTransform{ true };
 
 
 // Create one of these first, so factory constructor will run
-static SVGFactory gSVG;
+//static SVGFactory gSVG;
 
 
 
@@ -55,7 +55,7 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 
 	
 	ByteSpan aspan(mapped->data(), mapped->size());
-	std::shared_ptr<SVGDocument> aDoc = SVGDocument::createFromChunk(aspan, &getFontHandler(), canvasWidth, canvasHeight, physicalDpi);
+	std::shared_ptr<SVGDocument> aDoc = SVGFactory::createFromChunk(aspan, &getFontHandler(), canvasWidth, canvasHeight, physicalDpi);
 	
 	return aDoc;
 }
@@ -104,6 +104,7 @@ static void draw()
 static void resetView()
 {
 	gNavigator.resetNavigator();
+	//gNavigator.setAspectMode(AspectMode::Free);
 	gNavigator.setFrame(BLRect(0, 0, canvasWidth, canvasHeight));
 	gNavigator.setBounds(BLRect(0, 0, canvasWidth, canvasHeight));
 

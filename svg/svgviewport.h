@@ -1,9 +1,46 @@
 #pragma once
 
 #include "svgstructuretypes.h"
+#include "svgenums.h"
 
 
 namespace waavs {
+    
+    struct SVGPreserveAspectRatio
+    {
+		AspectRatioAlingKind fAlignment = AspectRatioAlingKind::SVG_ASPECT_RATIO_XMIDYMID;
+		AspectRatioMeetOrSliceKind fMeetOrSlice = AspectRatioMeetOrSliceKind::SVG_ASPECT_RATIO_MEET;
+
+        // Load the data type from a single ByteSpan
+        bool loadFromChunk(const ByteSpan& inChunk)
+        {
+            ByteSpan s = chunk_trim(inChunk, xmlwsp);
+            if (s.empty())
+                return false;
+
+            
+            // Get first token, which should be alignment
+            ByteSpan align = chunk_token(s, xmlwsp);
+            
+            if (!align)
+                return false;
+
+            // We have an alignment token, convert to numeric value
+			getEnumValue(SVGAspectRatioAlignEnum, align, (uint32_t &)fAlignment);
+
+            // Now, see if there is a slice value
+			chunk_ltrim(s, xmlwsp);
+
+            if (s.empty())
+                return false;
+
+			getEnumValue(SVGAspectRatioMeetOrSliceEnum, s, (uint32_t&)fMeetOrSlice);
+            
+            return true;
+        }
+        
+
+    };
     
 	// A SVGViewport represents the mapping between one 2D coordinate system and another.
     // This applies to the <svg>, and <symbol> elements.
@@ -19,7 +56,7 @@ namespace waavs {
         bool fHasViewbox{ false };
 		BLRect fViewBox{};
         
-        AspectRatioKind fPreserveAspectRatio{ AspectRatioKind::SVG_ASPECT_RATIO_XMIDYMID };
+        SVGPreserveAspectRatio fPreserveAspectRatio{};
         
 
         BLRect getBBox() const
@@ -52,8 +89,8 @@ namespace waavs {
 			fHasViewbox = parseViewBox(attrs.getAttribute("viewBox"), fViewBox);
 
 			// preserveAspectRatio
-            getEnumValue(SVGAspectRatioEnum, attrs.getAttribute("preserveAspectRatio"), (uint32_t&)fPreserveAspectRatio);
-
+			fPreserveAspectRatio.loadFromChunk(attrs.getAttribute("preserveAspectRatio"));
+            
             return true;
         }
 

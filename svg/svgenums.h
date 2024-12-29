@@ -30,19 +30,20 @@ namespace waavs {
 	enum SpaceUnitsKind : uint32_t {
 		SVG_SPACE_USER = 0,
 		SVG_SPACE_OBJECT = 1,
-		SVG_SPACE_STROKEWIDTH=2
+		SVG_SPACE_STROKEWIDTH = 2
 	};
 
 	static WSEnum SVGSpaceUnits = {
 		{ "userSpaceOnUse", SpaceUnitsKind::SVG_SPACE_USER },
 		{ "objectBoundingBox", SpaceUnitsKind::SVG_SPACE_OBJECT }
 	};
-	
-	enum AspectRatioKind : uint32_t {
+}
+
+namespace waavs {
+	enum AspectRatioAlingKind : uint32_t {
 		SVG_ASPECT_RATIO_NONE = 0,
 		SVG_ASPECT_RATIO_XMINYMIN = 1,
 		SVG_ASPECT_RATIO_XMIDYMIN = 2,
-		
 		SVG_ASPECT_RATIO_XMAXYMIN = 3,
 		SVG_ASPECT_RATIO_XMINYMID = 4,
 		SVG_ASPECT_RATIO_XMIDYMID = 5,		// default
@@ -50,23 +51,30 @@ namespace waavs {
 		SVG_ASPECT_RATIO_XMINYMAX = 7,
 		SVG_ASPECT_RATIO_XMIDYMAX = 8,
 		SVG_ASPECT_RATIO_XMAXYMAX = 9,
+	};
+	
+	enum AspectRatioMeetOrSliceKind : uint32_t {
 		SVG_ASPECT_RATIO_MEET = 10,
 		SVG_ASPECT_RATIO_SLICE = 11
 	};
 
-	static WSEnum SVGAspectRatioEnum = {
-		{"none", AspectRatioKind::SVG_ASPECT_RATIO_NONE},
-		{"xMinYMin", AspectRatioKind::SVG_ASPECT_RATIO_XMINYMIN},
-		{"xMidYMin", AspectRatioKind::SVG_ASPECT_RATIO_XMIDYMIN},
-		{"xMaxYMin", AspectRatioKind::SVG_ASPECT_RATIO_XMAXYMIN},
-		{"xMinYMid", AspectRatioKind::SVG_ASPECT_RATIO_XMINYMID},
-		{"xMidYMid", AspectRatioKind::SVG_ASPECT_RATIO_XMIDYMID},
-		{"xMaxYMid", AspectRatioKind::SVG_ASPECT_RATIO_XMAXYMID},
-		{"xMinYMax", AspectRatioKind::SVG_ASPECT_RATIO_XMINYMAX},
-		{"xMidYMax", AspectRatioKind::SVG_ASPECT_RATIO_XMIDYMAX},
-		{"xMaxYMax", AspectRatioKind::SVG_ASPECT_RATIO_XMAXYMAX},
-		{"meet", AspectRatioKind::SVG_ASPECT_RATIO_MEET},
-		{"slice", AspectRatioKind::SVG_ASPECT_RATIO_SLICE}
+	static WSEnum SVGAspectRatioAlignEnum = {
+		{"none", AspectRatioAlingKind::SVG_ASPECT_RATIO_NONE},
+		{"xMinYMin", AspectRatioAlingKind::SVG_ASPECT_RATIO_XMINYMIN},
+		{"xMidYMin", AspectRatioAlingKind::SVG_ASPECT_RATIO_XMIDYMIN},
+		{"xMaxYMin", AspectRatioAlingKind::SVG_ASPECT_RATIO_XMAXYMIN},
+		{"xMinYMid", AspectRatioAlingKind::SVG_ASPECT_RATIO_XMINYMID},
+		{"xMidYMid", AspectRatioAlingKind::SVG_ASPECT_RATIO_XMIDYMID},
+		{"xMaxYMid", AspectRatioAlingKind::SVG_ASPECT_RATIO_XMAXYMID},
+		{"xMinYMax", AspectRatioAlingKind::SVG_ASPECT_RATIO_XMINYMAX},
+		{"xMidYMax", AspectRatioAlingKind::SVG_ASPECT_RATIO_XMIDYMAX},
+		{"xMaxYMax", AspectRatioAlingKind::SVG_ASPECT_RATIO_XMAXYMAX},
+
+	};
+
+	static WSEnum SVGAspectRatioMeetOrSliceEnum = {
+		{"meet", AspectRatioMeetOrSliceKind::SVG_ASPECT_RATIO_MEET},
+		{"slice", AspectRatioMeetOrSliceKind::SVG_ASPECT_RATIO_SLICE}
 	};
 }
 

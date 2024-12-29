@@ -59,7 +59,8 @@ namespace waavs {
 		ByteSpan fTemplateReference{};
 		
 
-		AspectRatioKind fPreserveAspectRatio{ AspectRatioKind::SVG_ASPECT_RATIO_XMIDYMID };
+		SVGPreserveAspectRatio fPreserveAspectRatio{};
+		//AspectRatioKind fPreserveAspectRatio{ AspectRatioKind::SVG_ASPECT_RATIO_XMIDYMID };
 		BLRect viewboxRect{};
 		bool haveViewbox{ false };
 
@@ -178,7 +179,7 @@ namespace waavs {
 				fTemplateReference = getAttribute("xlink:href");
 
 			// Get the aspect ratio, and spacial units
-			getEnumValue(SVGAspectRatioEnum, getAttribute("preserveAspectRatio"), (uint32_t&)fPreserveAspectRatio);
+			//getEnumValue(SVGAspectRatioEnum, getAttribute("preserveAspectRatio"), (uint32_t&)fPreserveAspectRatio);
 			getEnumValue(SVGSpaceUnits, getAttribute("patternUnits"), (uint32_t&)fPatternUnits);
 			getEnumValue(SVGSpaceUnits, getAttribute("patternContentUnits"), (uint32_t&)fPatternContentUnits);
 

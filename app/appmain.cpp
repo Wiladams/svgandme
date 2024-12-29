@@ -87,7 +87,6 @@ size_t canvasStride = 0;
 
 int rawPixelHeight = 0;
 int rawPixelWidth = 0;
-//unsigned int systemDpi = 96;    // 96 == px measurement
 unsigned int physicalDpi = 192;   // starting pixel density
 
 // Stuff related to rate of displaying frames
@@ -207,16 +206,16 @@ void screenRefresh()
     if (!gIsLayered) {
         // if we're not layered, then do a regular
         // sort of WM_PAINT based drawing
-        //InvalidateRect(getAppWindow()->getHandle(), NULL, 1);
-		//::RedrawWindow(getAppWindow()->getHandle(), NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
-        ::RedrawWindow(getAppWindow()->getHandle(), NULL, NULL, RDW_INVALIDATE);
+        //InvalidateRect(getAppWindow()->windowHandle(), NULL, 1);
+		//::RedrawWindow(getAppWindow()->windowHandle(), NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+        ::RedrawWindow(getAppWindow()->windowHandle(), NULL, NULL, RDW_INVALIDATE);
     }
     else {
         // This is the workhorse of displaying directly
         // to the screen.  Everything to be displayed
         // must be in the FrameBuffer, even window chrome
         LayeredWindowInfo lw(canvasWidth, canvasHeight);
-        lw.display(getAppWindow()->getHandle(), appFrameBuffer()->bitmapDC());
+        lw.display(getAppWindow()->windowHandle(), appFrameBuffer()->bitmapDC());
     }
 }
 
@@ -644,7 +643,7 @@ static LRESULT HandlePointerMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
 {
     LRESULT res = 0;
 
-    PointerEvent e;
+    PointerEvent e{};
 
     gPointerEventTopic.notify(e);
 
@@ -921,10 +920,10 @@ void halt() {
 // Turn raw input on
 void rawInput()
 {
-    HWND localWindow = getAppWindow()->getHandle();
+    HWND localWindow = getAppWindow()->windowHandle();
 
-    HID_RegisterDevice(getAppWindow()->getHandle(), HID_MOUSE);
-    HID_RegisterDevice(getAppWindow()->getHandle(), HID_KEYBOARD);
+    HID_RegisterDevice(getAppWindow()->windowHandle(), HID_MOUSE);
+    HID_RegisterDevice(getAppWindow()->windowHandle(), HID_KEYBOARD);
 }
 
 // turn raw input off
@@ -938,8 +937,8 @@ void noRawInput()
 // Turn old school joystick support on
 void joystick()
 {
-    gJoystick1.attachToWindow(getAppWindow()->getHandle());
-    gJoystick2.attachToWindow(getAppWindow()->getHandle());
+    gJoystick1.attachToWindow(getAppWindow()->windowHandle());
+    gJoystick2.attachToWindow(getAppWindow()->windowHandle());
 }
 
 // Turn old school joystick support off
@@ -952,14 +951,14 @@ void noJoystick()
 // Turning Touch input on
 bool touch()
 {
-    BOOL bResult = ::RegisterTouchWindow(getAppWindow()->getHandle(), 0);
+    BOOL bResult = ::RegisterTouchWindow(getAppWindow()->windowHandle(), 0);
     return (bResult != 0);
 }
 
 // Turn touch input off
 bool noTouch()
 {
-    BOOL bResult = ::UnregisterTouchWindow(getAppWindow()->getHandle());
+    BOOL bResult = ::UnregisterTouchWindow(getAppWindow()->windowHandle());
     return (bResult != 0);
 }
 
@@ -967,21 +966,21 @@ bool noTouch()
 bool isTouch()
 {
     ULONG flags = 0;
-    BOOL bResult = ::IsTouchWindow(getAppWindow()->getHandle(), &flags);
+    BOOL bResult = ::IsTouchWindow(getAppWindow()->windowHandle(), &flags);
     return (bResult != 0);
 }
 
 // Turn on drop file support
 bool dropFiles()
 {
-    ::DragAcceptFiles(getAppWindow()->getHandle(),TRUE);
+    ::DragAcceptFiles(getAppWindow()->windowHandle(),TRUE);
     return true;
 }
 
 // Turn off drop file support
 bool noDropFiles()
 {
-    ::DragAcceptFiles(getAppWindow()->getHandle(), FALSE);
+    ::DragAcceptFiles(getAppWindow()->windowHandle(), FALSE);
     return true;
 }
 
@@ -1107,14 +1106,21 @@ static LRESULT CALLBACK MsgHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
     LRESULT res = 0;
     
     // Get pointer to window class from handle
-	User32Window* win = (User32Window*)::GetWindowLongPtr(hWnd, GWLP_USERDATA);
+	User32Window* win = reinterpret_cast<User32Window*> (::GetWindowLongPtr(hWnd, GWLP_USERDATA));
     
     switch (msg)
     {
+        case WM_CREATE: {
+			CREATESTRUCTA* pCreate = reinterpret_cast<CREATESTRUCTA*>(lParam);
+            return 0;
+        }
+        break;
+        
         case WM_ERASEBKGND: {
             //printf("WM_ERASEBKGND\n");
             // return non-zero indicating we dealt with erasing the background
             res = 1;
+
             //if (gPaintHandler != nullptr) {
             //    gPaintHandler(hWnd, msg, wParam, lParam);
             //}
@@ -1416,7 +1422,9 @@ waavs::User32Window * getAppWindow()
         int xstyle = 0;
         WNDPROC handler = nullptr;
         
-        gAppWindow = appWindowKind.createWindow("Application Window", 320, 240, style, xstyle, handler);
+        auto win = appWindowKind.createWindow("Application Window", 320, 240, style, xstyle, handler);
+		gAppWindow = std::unique_ptr<waavs::User32Window>(win);
+        
     }
     
     return gAppWindow.get();

@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <cstring>
 #include <cstdint>
+#include <memory>
 
 namespace waavs {
     // User32Window 
@@ -49,8 +50,10 @@ namespace waavs {
             DestroyWindow(fHandle);
         }
 
-        HWND getHandle() const { return fHandle; }
-
+        //HWND getHandle() const { return fHandle; }
+        HWND windowHandle() const { return fHandle; }
+		void setWindowHandle(HWND handle) { fHandle = handle; }
+        
         // All the methods that are useful
         bool isValid() const { return fHandle != NULL; }
 
@@ -113,7 +116,7 @@ namespace waavs {
             int cy = cRect.bottom - cRect.top;
             UINT uFlags = 0;
 
-            ::SetWindowPos(getHandle(), hWndInsertAfter, X, Y, cx, cy, uFlags);
+            ::SetWindowPos(windowHandle(), hWndInsertAfter, X, Y, cx, cy, uFlags);
 
         }
 
@@ -123,7 +126,7 @@ namespace waavs {
             if (title == nullptr)
                 return false;
 
-            BOOL res = ::SetWindowTextA(getHandle(), title);
+            BOOL res = ::SetWindowTextA(windowHandle(), title);
             
             return res != 0;
         }
@@ -218,6 +221,8 @@ namespace waavs {
             ::SetWindowPos(fHandle, 0, 0, 0, 0, 0,
                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
         }
+
+
     };
 
 
@@ -227,7 +232,9 @@ namespace waavs {
     // Window Classes, and do that registration.  As well,
     // it makes it relatively easy to create instances
     // of classes.
-    class User32WindowClass {
+    struct User32WindowClass 
+    {
+    protected:
         WNDCLASSEXA fWndClass{};      // data structure holding class information
         bool fIsRegistered{};
         int fLastError{};
@@ -244,7 +251,7 @@ namespace waavs {
             // In this case, we're essentially doing a lookup
             // The classOrAtom is either a pointer to a string
             // or it's an unsigned uint16
-            memset(&fWndClass, 0, sizeof(WNDCLASSEXA));
+            memset(&fWndClass, 0, sizeof(fWndClass));
 
             BOOL bResult = GetClassInfoExA(GetModuleHandleA(NULL), classOrAtom, &fWndClass);
             if (bResult == 0) {
@@ -272,7 +279,7 @@ namespace waavs {
             fClassName = _strdup(className);
 
             memset(&fWndClass, 0, sizeof(fWndClass));
-            fWndClass.cbSize = sizeof(WNDCLASSEXA);
+            fWndClass.cbSize = sizeof(fWndClass);
             fWndClass.hInstance = GetModuleHandleA(NULL);
             fWndClass.lpszClassName = fClassName;
             fWndClass.lpfnWndProc = wndProc;
@@ -302,7 +309,7 @@ namespace waavs {
         int getLastError() const { return fLastError; }
         const char* getName() const { return fWndClass.lpszClassName; }
 
-        std::unique_ptr<User32Window> createWindow(const char* title, int width, int height, int style = WS_OVERLAPPEDWINDOW, int xstyle = 0, WNDPROC handler = nullptr)
+        virtual User32Window* createWindow(const char* title, int width, int height, int style = WS_OVERLAPPEDWINDOW, int xstyle = 0, WNDPROC handler = nullptr)
         {
             if (!isValid())
                 return {};
@@ -334,9 +341,9 @@ namespace waavs {
             // store the pointer to the class inside the window handle
 			::SetWindowLongPtr(winHandle, GWLP_USERDATA, (LONG_PTR)win);
             
-			return std::unique_ptr<User32Window>(win);
-
-
+			return win;
         }
     };
 }
+
+

@@ -149,6 +149,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\app\apphost.h" />
+    <ClInclude Include="..\..\app\nativewindow.h" />
+    <ClInclude Include="..\..\app\threadedwindow.h" />
     <ClInclude Include="..\..\svg\svg.h" />
     <ClInclude Include="..\..\svg\svgfactory.h" />
     <ClInclude Include="..\..\svg\svgstructuretypes.h" />

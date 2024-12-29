@@ -11,7 +11,7 @@
 using namespace waavs;
 
 // Create one of these first, so factory constructor will run
-SVGFactory gSVG;
+//SVGFactory gSVG;
 
 // Reference to currently active document
 std::shared_ptr<SVGDocument> gDoc{ nullptr };
@@ -50,8 +50,8 @@ static void setupFonts()
 
 
 
-#define CAN_WIDTH 640
-#define CAN_HEIGHT 480
+#define CAN_WIDTH 800
+#define CAN_HEIGHT 600
 
 
 int main(int argc, char **argv)
@@ -80,7 +80,7 @@ int main(int argc, char **argv)
 	}
     
 	ByteSpan mappedSpan(mapped->data(), mapped->size());
-    gDoc = SVGDocument::createFromChunk(mappedSpan, &gFontHandler, CAN_WIDTH, CAN_HEIGHT, 96);
+    gDoc = SVGFactory::createFromChunk(mappedSpan, &gFontHandler, CAN_WIDTH, CAN_HEIGHT, 96);
 
     if (gDoc == nullptr)
         return 1;
@@ -109,12 +109,17 @@ int main(int argc, char **argv)
 	SvgDrawingContext ctx(&gFontHandler);
 	BLImage img(static_cast<int>(surfaceFrame.w), static_cast<int>(surfaceFrame.h), BL_FORMAT_PRGB32);
 	
-	// apply the viewport's sceneToSurface transform to the context
-	ctx.setTransform(vp.sceneToSurfaceTransform());
-
 	// Attach the drawing context to the image
+	// We MUST do this before we perform any other
+	// operations, including the transform
 	ctx.begin(img);
 	ctx.clearAll();
+
+	// apply the viewport's sceneToSurface transform to the context
+	auto res = ctx.setTransform(vp.sceneToSurfaceTransform());
+	//printf("setTransform RESULT: %d\n", res);
+	
+
 	
 	// Render the document into the context
 	gDoc->draw(&ctx, gDoc.get());

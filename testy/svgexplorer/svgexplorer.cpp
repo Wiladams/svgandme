@@ -92,7 +92,7 @@ static void loadDocFromFilename(const char* filename)
 	}
 
 	ByteSpan aspan(mapped->data(), mapped->size());
-	auto doc = SVGDocument::createFromChunk(aspan, &getFontHandler(), canvasWidth, canvasHeight, physicalDpi);
+	auto doc = SVGFactory::createFromChunk(aspan, &getFontHandler(), canvasWidth, canvasHeight, physicalDpi);
 	
 	gBrowsingView.resetFromDocument(doc);
 	refreshDoc();
