@@ -395,7 +395,7 @@ namespace waavs {
 			}
 			else if (fGradientUnits == SVG_SPACE_USER)
 			{
-				BLRect lFrame = ctx->localFrame();
+				BLRect lFrame = ctx->viewport();
 				double w = lFrame.w;
 				double h = lFrame.h;
 				
@@ -595,7 +595,7 @@ namespace waavs {
 			}
 			else if (fGradientUnits == SVG_SPACE_USER)
 			{
-				BLRect lFrame = ctx->localFrame();
+				BLRect lFrame = ctx->viewport();
 				double w = lFrame.w;
 				double h = lFrame.h;
 				

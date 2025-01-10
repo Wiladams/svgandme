@@ -29,12 +29,8 @@ static double gZoomFactor = 0.1;
 
 // Animation management
 bool gAnimate{ false };
-bool gPerformTransform{ true };
-
-
-// Create one of these first, so factory constructor will run
-//static SVGFactory gSVG;
-
+bool gPerformTransform{ false };
+bool gAutoGrow{ false };
 
 
 // docFromFilename
@@ -74,6 +70,7 @@ static void drawDocument()
 
 	double startTime = seconds();
 
+	
 	// setup any transform
 	if (gPerformTransform)
 		gDrawingContext.setTransform(gNavigator.sceneToSurfaceTransform());
@@ -112,6 +109,7 @@ static void resetView()
 
 static void handleChange(const bool&)
 {
+	
 	//printf("svgviewer::handleChange\n");
 	draw();
 	
@@ -195,6 +193,8 @@ static void onFrameEvent(const FrameCountEvent& fe)
 
 static void onResizeEvent(const ResizeEvent& re)
 {
+	gNavigator.setFrame(BLRect(0, 0, canvasWidth, canvasHeight));
+	
 	//printf("onResizeEvent: %d x %d\n", re.width, re.height);
 	gDrawingContext.begin(appFrameBuffer()->image());
 	handleChange(true);
@@ -218,6 +218,10 @@ static void onKeyboardEvent(const KeyboardEvent& ke)
 	{
 		switch (ke.keyCode)
 		{
+			case 'G':
+				gAutoGrow = !gAutoGrow;
+			break;
+			
 			case VK_PLAY:
 			case VK_PAUSE:
 			case 'R':

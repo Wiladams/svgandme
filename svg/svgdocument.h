@@ -48,7 +48,6 @@
 #include "svgfilter.h"
 #include "svghyperlink.h"
 
-#include "svgdrawingcontext.h"
 
 
 
@@ -136,11 +135,15 @@ namespace waavs {
 		double canvasHeight() const override { return fCanvasHeight; }
         void canvasSize(const double w, const double h) { fCanvasWidth = w; fCanvasHeight = h; }
         
-		BLRect frame() const override { return BLRect(0, 0, fCanvasWidth, fCanvasHeight); }
+		BLRect frame() const override { 
+            return BLRect(0, 0, fCanvasWidth, fCanvasHeight); 
+        }
         
         // This should be size of document elements
         BLRect getBBox() const override 
         {
+            return frame();
+            /*
             BLRect extent{};
             bool firstOne = true;
 
@@ -159,6 +162,7 @@ namespace waavs {
             }
 
             return extent;
+            */
         }
         
         std::shared_ptr<CSSStyleSheet> styleSheet() override { return fStyleSheet; }
@@ -168,10 +172,16 @@ namespace waavs {
         // retrieve root svg node
 		std::shared_ptr<SVGSVGElement> documentElement() const { return fSVGNode; }
 
+        void drawSelf(IRenderSVG* ctx, IAmGroot*) override
+        {
+            // draw horizontal blue line at 10,10 for 300
+            //ctx->strokeLine(10, 10, 300, 10, BLRgba32(0xff0000ff));
+            //ctx->strokeLine(10, 10, 10, 300, BLRgba32(0xffff0000));
+        }
         
         void draw(IRenderSVG * ctx, IAmGroot* groot) override
         {
-            ctx->setContainerFrame(frame());
+            ctx->setViewport(frame());
             
             SVGGraphicsElement::draw(ctx, groot);
         }
@@ -296,29 +306,19 @@ namespace waavs {
 			// Create the XML Iterator we're going to use to parse the document
             XmlElementIterator iter(fSourceMem.span(), true);
 
+            // The first pass builds the DOM
             loadFromXmlIterator(iter, this);
             
+            // BUGBUG - Maybe we should stop here, and use
+			// a visitor to convert the raw DOM into a graphics tree
             // render into a blank context to get sizing
-            IRenderSVG actx(fh);
-            actx.setContainerFrame(BLRect(0, 0, 640, 480));
-            draw(&actx, this);
+            //IRenderSVG actx(fh);
+            //actx.setViewport(BLRect(0, 0, 640, 480));
+            //draw(&actx, this);
             
             return true;
         }
 
-
-        /*
-        // A convenience to construct the document from a chunk, and return
-        // a shared pointer to the document
-        static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, FontHandler* fh, const double w, const double h, const double ppi)
-        {
-            auto doc = std::make_shared<SVGDocument>(fh, w, h, ppi);
-            if (!doc->loadFromChunk(srcChunk, fh))
-                return {};
-
-            return doc;
-        }
-        */
     };
 
     using SVGDocumentHandle = std::shared_ptr<SVGDocument>;

@@ -139,7 +139,7 @@ namespace waavs {
 			double rads = markerNode->orientation().calcRadians(pos, p1, p2, p3);
 			
 			BLRect objectFrame = markerNode->getBBox();
-			BLRect containerFrame = ctx->localFrame();
+			//BLRect viewport = ctx->viewport();
 			
 			ctx->push();
 			//ctx->objectFrame(objectFrame);
@@ -437,7 +437,7 @@ namespace waavs {
 			}
 
 
-				BLRect cFrame = ctx->localFrame();
+				BLRect cFrame = ctx->viewport();
 				w = cFrame.w;
 				h = cFrame.h;
 
@@ -519,7 +519,7 @@ namespace waavs {
 			}
 			
 
-				BLRect cFrame = ctx->localFrame();
+				BLRect cFrame = ctx->viewport();
 				w = cFrame.w;
 				h = cFrame.h;
 
@@ -636,7 +636,7 @@ namespace waavs {
 			}
 			
 
-			BLRect cFrame = ctx->localFrame();
+			BLRect cFrame = ctx->viewport();
 				w = cFrame.w;
 				h = cFrame.h;
 
@@ -698,7 +698,7 @@ namespace waavs {
 			}
 			
 
-			BLRect cFrame = ctx->localFrame();
+			BLRect cFrame = ctx->viewport();
 			w = cFrame.w;
 			h = cFrame.h;
 

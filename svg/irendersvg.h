@@ -8,211 +8,14 @@
 #include "fonthandler.h"
 #include "collections.h"
 #include "svgenums.h"
+#include "svgdrawingstate.h"
 
 namespace waavs
 {
     struct IRenderSVG;
     struct IAmGroot;
     
-    /*
-        IGraphics defines the essential interface for doing vector graphics
-        This is a pure virtual interface for the most part, so a sub-class must
-        implement a fair bit of stuff.
-    */
-    struct SVGDrawingState {
-        
-        // Coordinate system
-        BLRect fClipRect{};
-        BLRect fContainerFrame{};
-        BLRect fObjectFrame{};
-        
-        
 
-        
-        // Paint
-        BLVar fDefaultColor;
-        uint32_t fPaintOrder{ PaintOrderKind::SVG_PAINT_ORDER_NORMAL };
-
-        // Typography
-        BLPoint fTextCursor{};
-        TXTALIGNMENT fTextHAlignment = LEFT;
-        TXTALIGNMENT fTextVAlignment = BASELINE;
-        
-        // Fontography
-        FontHandler* fFontHandler{ nullptr };   
-        BLFont fFont{};
-        ByteSpan fFamilyNames{"Arial"};
-        float fFontSize{ 16 };
-        BLFontStyle fFontStyle = BL_FONT_STYLE_NORMAL;
-        BLFontWeight fFontWeight = BL_FONT_WEIGHT_NORMAL;
-        BLFontStretch fFontStretch = BL_FONT_STRETCH_NORMAL;
-
-        
-        SVGDrawingState() = default;
-        
-        // Copy Constructor
-		SVGDrawingState(const SVGDrawingState& other) noexcept
-			: fFont(other.fFont)
-
-		{
-            fClipRect = other.fClipRect;
-            fContainerFrame = other.fContainerFrame;
-            fObjectFrame = other.fObjectFrame;
-            
-            fTextCursor = other.fTextCursor;
-            
-            fDefaultColor.assign(other.fDefaultColor);
-            fPaintOrder = other.fPaintOrder;
-
-			fTextHAlignment = other.fTextHAlignment;
-			fTextVAlignment = other.fTextVAlignment;
-            
-            fFontHandler = other.fFontHandler;
-            fFont = other.fFont;
-
-            fFamilyNames = other.fFamilyNames;
-            fFontSize = other.fFontSize;
-            fFontStyle = other.fFontStyle;
-            fFontWeight = other.fFontWeight;
-            fFontStretch = other.fFontStretch;
-		}
-        
-        // Assignment operator
-        SVGDrawingState& operator=(const SVGDrawingState& other) noexcept
-        {
-            if (this == &other)
-                return *this;
-
-
-            fClipRect = other.fClipRect;
-            fContainerFrame = other.fContainerFrame;
-            fObjectFrame = other.fObjectFrame;
-
-            fTextCursor = other.fTextCursor;
-
-            fDefaultColor.assign(other.fDefaultColor);
-            fPaintOrder = other.fPaintOrder;
-
-            fTextHAlignment = other.fTextHAlignment;
-            fTextVAlignment = other.fTextVAlignment;
-
-            fFontHandler = other.fFontHandler;
-            fFont = other.fFont;
-
-            fFamilyNames = other.fFamilyNames;
-            fFontSize = other.fFontSize;
-            fFontStyle = other.fFontStyle;
-            fFontWeight = other.fFontWeight;
-            fFontStretch = other.fFontStretch;
-
-
-            return *this;
-        }
-        
-        void reset()
-        {
-            fClipRect = BLRect{};
-            fContainerFrame = BLRect();
-            fObjectFrame = BLRect();
-
-            fDefaultColor = BLVar::null();
-            fPaintOrder = PaintOrderKind::SVG_PAINT_ORDER_NORMAL;
-
-            fTextHAlignment = LEFT;
-            fTextVAlignment = BASELINE;
-
-            fFamilyNames = "Arial";
-            fFontSize = 16;
-            fFontStyle = BL_FONT_STYLE_NORMAL;
-            fFontWeight = BL_FONT_WEIGHT_NORMAL;
-            fFontStretch = BL_FONT_STRETCH_NORMAL;
-
-            resetFont();
-        }
-
-        void resetFont()
-        {
-            if (nullptr != fFontHandler)
-            {
-                BLFont aFont;
-                if (fFontHandler->selectFont(fFamilyNames, aFont, fFontSize, fFontStyle, fFontWeight, fFontStretch))
-                    fFont = aFont;
-            }
-
-        }
-        
-		const BLRect& clipRect() const { return fClipRect; }
-		void setClipRect(const BLRect& aRect) { fClipRect = aRect; }
-        
-        
-        const BLVar & defaultColor() const { return fDefaultColor; }
-        void defaultColor(const BLVar& color) { fDefaultColor.assign(color); }
-        
-        uint32_t paintOrder() const { return fPaintOrder; }
-        void paintOrder(const uint32_t order) { fPaintOrder = order; }
-
-        // Typography changes
-		void fontHandler(FontHandler* handler) noexcept
-		{
-			fFontHandler = handler;
-
-            // Select a default faunt to start
-            if (fFontHandler != nullptr) {
-                resetFont();
-            }
-		}
-        
-
-        
-		TXTALIGNMENT textAnchor() const { return fTextHAlignment; }
-        void textAnchor(TXTALIGNMENT anchor)
-        {
-			fTextHAlignment = anchor;
-        }
-        
-        TXTALIGNMENT textAlignment() const { return fTextVAlignment; }
-        void textAlignment(TXTALIGNMENT align)
-        {
-            fTextVAlignment = align;
-        }
-        
-		BLPoint textCursor() const { return fTextCursor; }
-		void textCursor(const BLPoint& cursor){fTextCursor = cursor;}
-        
-		void fontFamily(const ByteSpan& familyNames) noexcept
-		{
-			fFamilyNames = familyNames;
-            resetFont();
-        }
-        
-        double fontSize() const noexcept {return fFontSize;}
-		void fontSize(float size) noexcept
-		{
-			fFontSize = size;
-			resetFont();
-		}
-
-		void fontStyle(BLFontStyle style) noexcept
-		{
-			fFontStyle = style;
-			resetFont();
-		}
-        
-		void fontWeight(BLFontWeight weight) noexcept
-		{
-			fFontWeight = weight;
-			resetFont();
-		}
-        
-        void fontStretch(BLFontStretch stretch) noexcept
-        {
-			fFontStretch = stretch;
-			resetFont();
-        }
-    };
-    
-
-    
     struct IRenderSVG : public BLContext
     {
         BLVar fBackground{};
@@ -225,14 +28,7 @@ namespace waavs
     public:
         IRenderSVG(FontHandler* fh)
         {
-			fBackground = BLRgba32(0xFFFFFFFF);
-            strokeJoin(BL_STROKE_JOIN_MITER_CLIP);
-            strokeMiterLimit(4);
-            setFillRule(BL_FILL_RULE_NON_ZERO);
-            fill(BLRgba32(0, 0, 0));
-            noStroke();
-            strokeWidth(1.0);
-            
+            initState();
             fontHandler(fh);
         }
         
@@ -243,11 +39,34 @@ namespace waavs
             fCurrentState.fontHandler(fh);
         }
 
-
-        void setContainerFrame(const BLRect& r) { 
-            fCurrentState.fContainerFrame = r; 
+        void initState()
+        {
+            fBackground = BLRgba32(0xFFFFFFFF);
+            strokeJoin(BL_STROKE_JOIN_MITER_CLIP);
+            strokeMiterLimit(4);
+            setFillRule(BL_FILL_RULE_NON_ZERO);
+            fill(BLRgba32(0, 0, 0));
+            noStroke();
+            strokeWidth(1.0);
         }
-		BLRect localFrame() const { return fCurrentState.fContainerFrame; }
+        
+        BLResult attach(BLImageCore& image) noexcept 
+        {
+            BLResult res = BLContext::begin(image);
+            initState();
+            
+            return res;
+        }
+        
+        void detach()
+        {
+            BLContext::end();
+        }
+        
+        void setViewport(const BLRect& r) { 
+            fCurrentState.fViewport = r;
+        }
+		BLRect viewport() const { return fCurrentState.fViewport; }
         
 
 		void objectFrame(const BLRect& r) {
@@ -266,7 +85,7 @@ namespace waavs
             BLContext::restoreClipping();
             
 			const BLRect &cRect = fCurrentState.clipRect();
-            if (cRect.w >0 and cRect.h>0)
+            if ((cRect.w >0) && (cRect.h>0))
 				BLContext::clipToRect(cRect);
             
             // probably applying font characteristics

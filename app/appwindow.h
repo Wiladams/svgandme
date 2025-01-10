@@ -11,6 +11,7 @@
 
 #include <thread>
 #include <objbase.h>
+#include <vector>
 
 #include "nativewindow.h"
 #include "pubsub.h"
@@ -38,7 +39,178 @@ using ResizeEventTopic = waavs::Topic<waavs::ResizeEvent>;			// Application Wind
 
 
 namespace waavs {
+    
+    //
+    // AFrameBuffer - A structure that combines a GDI DIBSection with a blend2d BLImage
+    // You can get either a blend2d context out of it, 
+    // or a GDI32 Drawing Context
+    // The BLImage is used to represent the image data for ease of use
+    //
+    struct AFrameBuffer 
+    {
+        uint8_t* fFrameBufferData{ nullptr };
+        
+        BITMAPINFO fGDIBMInfo{ {0} };          // retain bitmap info for  future usage
+        HBITMAP fGDIDIBHandle = nullptr;       // Handle to the dibsection to be created
+        HDC     fGDIBitmapDC = nullptr;        // DeviceContext dib is selected into
+        size_t fBytesPerRow{ 0 };
+        
+        // Blend2d image and context
+        BLContext fB2dContext{};
+        BLImage fB2dImage{};
+        
 
+
+        AFrameBuffer(int w, int h)
+        {
+            reset(w, h);
+        }
+        
+        virtual ~AFrameBuffer()
+        {
+            fB2dContext.end();
+            
+            ::DeleteDC(fGDIBitmapDC);
+            ::DeleteObject(fGDIDIBHandle);
+        }
+        
+		BLImage& getBlend2dImage() { return fB2dImage; }
+		BLContext& getBlend2dContext() { return fB2dContext; }
+        
+		HDC getGDIContext() { return fGDIBitmapDC; }
+        
+
+        
+        void resetGDIDC()
+        {
+            if (fGDIBitmapDC)
+                ::DeleteDC(fGDIBitmapDC);
+
+            // Create a GDI Device Context
+            fGDIBitmapDC = ::CreateCompatibleDC(nullptr);
+
+            // Do some setup to the DC to make it suitable
+            // for drawing with GDI if we choose to do that
+            ::SetGraphicsMode(fGDIBitmapDC, GM_ADVANCED);
+            ::SetBkMode(fGDIBitmapDC, TRANSPARENT);        // for GDI text rendering
+
+        }
+        
+        void resetGDIDibSection(int w, int h)
+        {
+            // The framebuffer is based on a DIBSection
+            if (fGDIDIBHandle)
+            {
+                // destroy current DIB
+                DeleteObject(fGDIDIBHandle);
+                fGDIDIBHandle = nullptr;
+            }
+
+            fBytesPerRow = 4 * w;
+            fGDIBMInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+            fGDIBMInfo.bmiHeader.biWidth = (LONG)w;
+            fGDIBMInfo.bmiHeader.biHeight = -(LONG)h;	// top-down DIB Section
+            fGDIBMInfo.bmiHeader.biPlanes = 1;
+            fGDIBMInfo.bmiHeader.biClrImportant = 0;
+            fGDIBMInfo.bmiHeader.biClrUsed = 0;
+            fGDIBMInfo.bmiHeader.biCompression = BI_RGB;
+            fGDIBMInfo.bmiHeader.biBitCount = 32;
+            fGDIBMInfo.bmiHeader.biSizeImage = DWORD(fBytesPerRow * h);
+
+
+            fGDIDIBHandle = ::CreateDIBSection(nullptr, &fGDIBMInfo, DIB_RGB_COLORS, (void**)&fFrameBufferData, nullptr, 0);
+
+			if ((fGDIBitmapDC != nullptr) && (fGDIDIBHandle != nullptr))
+                ::SelectObject(fGDIBitmapDC, fGDIDIBHandle);
+        }
+        
+        void resetB2d(int w, int h)
+        {
+            // Then we tie a BLImage to the same so
+            // we can use both drawing APIs
+            if (!fB2dImage.empty())
+                fB2dImage.reset();
+
+            BLResult br = fB2dImage.createFromData(static_cast<int>(w), static_cast<int>(h), BL_FORMAT_PRGB32, fFrameBufferData, fBytesPerRow);
+
+            // Create a context for the image
+            fB2dContext.begin(fB2dImage);
+        }
+        
+        void reset(int w, int h)
+        {
+            fB2dContext.end();
+            
+            resetGDIDC();
+            resetGDIDibSection(w, h);
+            resetB2d(w,h);
+        }
+    };
+ 
+    // struct SwapChain
+    // A structure consisting of a specified number of AFrameBuffer
+    // rendering targets.  They can be swapped using the 'swap()' method.
+    //
+    struct ASwapChain {
+        std::vector<std::unique_ptr<AFrameBuffer>> fBuffers{};
+
+        size_t fNumBuffers{ 0 };
+		size_t fFrontBufferIndex{ 0 };
+        
+        ASwapChain(size_t sz)
+            : ASwapChain(10,10,sz)
+        {}
+        
+        ASwapChain(int w, int h, size_t sz)
+            : fNumBuffers(sz)
+        {   
+            reset(w, h);
+        }
+
+        void reset(int w, int h)
+        {
+            fBuffers.clear();
+			for (size_t i = 0; i < fNumBuffers; i++)
+			{
+                auto fb = std::make_unique<AFrameBuffer>(w, h);
+                
+                fBuffers.push_back(std::move(fb));
+			}
+            
+            fFrontBufferIndex = 0;
+        }
+
+        size_t swap()
+        {
+            fFrontBufferIndex = (fFrontBufferIndex + 1) % fNumBuffers;
+            return fFrontBufferIndex;
+        }
+        
+        AFrameBuffer* getNthBuffer(size_t n)
+        {
+			size_t realIndex = (fFrontBufferIndex + n) % fNumBuffers;
+            return fBuffers[realIndex].get();
+        }
+        
+		AFrameBuffer* getFrontBuffer()
+		{
+            return getNthBuffer(0);
+		}
+        
+        AFrameBuffer* getNextBuffer()
+        {
+            return getNthBuffer(1);
+        }
+        
+    };
+    
+    //
+    // Note:  The ApplicationWindow should be double buffered
+    // It should maintain a 'front buffer' and 'back buffer'
+	// A call to 'paint', should simply blt the back buffer to the front buffer
+    // and swap the two.
+    // It should simply lock the back buffer then perform the blt
+    //
     struct ApplicationWindow : public User32Window
     {
     private:
@@ -46,6 +218,10 @@ namespace waavs {
         std::thread fThread;        // hold on to the thread that created us
         bool fIsRunning;
         StopWatch fAppClock;        // application clock
+        
+        ASwapChain fSwapChain{ 2 };
+         
+ 
         
         int fWindowWidth{};
         int fWindowHeight{};
@@ -107,7 +283,7 @@ namespace waavs {
             WNDCLASSEXA wndClass{};      // data structure holding class information
 
             //unsigned int classStyle = CS_GLOBALCLASS | CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW;
-            unsigned int classStyle = CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW;
+            unsigned int classStyle = CS_OWNDC | CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW;
             const char* className = getClassName();
 
             memset(&wndClass, 0, sizeof(wndClass));
@@ -133,6 +309,10 @@ namespace waavs {
                 printf("Error registering window class: %d\n", err);
             }
         }
+        
+
+
+
         
         //
         //    https://docs.microsoft.com/en-us/windows/desktop/inputdev/using-raw-input
@@ -176,14 +356,16 @@ namespace waavs {
     public:
         ApplicationWindow(int w, int h)
             :User32Window(nullptr)
+            ,fSwapChain(w,h,2)
             ,fWindowWidth(w)
             ,fWindowHeight(h)
             ,fIsRunning(false)
+            
         {
             registerWindowClass();
         }
         
-        ~ApplicationWindow()
+        virtual ~ApplicationWindow()
         {
             if (fThread.joinable()) {
                 // Post a message telling the window to close
@@ -194,6 +376,14 @@ namespace waavs {
             
         }
         
+        AFrameBuffer* frontBuffer() {
+            return fSwapChain.getFrontBuffer();
+        }
+
+        AFrameBuffer* backBuffer() {
+            return fSwapChain.getNthBuffer(1);
+        }
+
         
         // Common application API
         // Timing
@@ -349,10 +539,10 @@ namespace waavs {
 
             KeyboardEvent e{};
             e.keyCode = (int)wParam;
-            e.repeatCount = LOWORD(lParam);  // 0 - 15
-            e.scanCode = ((lParam & 0xff0000) >> 16);        // 16 - 23
-            e.isExtended = (lParam & 0x1000000UL) != 0;    // 24
-            e.wasDown = (lParam & 0x40000000UL) != 0;    // 30
+            e.repeatCount = LOWORD(lParam);             // 0 - 15
+            e.scanCode = ((lParam & 0xff0000) >> 16);   // 16 - 23
+            e.isExtended = (lParam & 0x1000000UL) != 0; // 24
+            e.wasDown = (lParam & 0x40000000UL) != 0;   // 30
 
             // Get the state of all keys on the keyboard
             ::GetKeyboardState(keyStates);
@@ -755,6 +945,50 @@ namespace waavs {
             
             switch (message)
             {
+                case WM_PAINT: {
+                    PAINTSTRUCT ps;
+
+                    HDC hdc = BeginPaint(windowHandle(), &ps);
+
+                    AFrameBuffer* frontBuffer = fSwapChain.getFrontBuffer();
+
+                    if (frontBuffer) {
+                        RECT rc;
+                        GetClientRect(windowHandle(), &rc);
+
+                        int w = rc.right - rc.left;
+                        int h = rc.bottom - rc.top;
+
+                        HDC memDC = frontBuffer->getGDIContext();
+                        BitBlt(hdc, 0, 0, w, h,memDC, 0, 0, SRCCOPY);
+                    }
+                    EndPaint(windowHandle(),  &ps);
+                }
+                break;
+                
+                case WM_SIZE: {
+                    // Resize framebuffer to new size
+                    int w = LOWORD(lParam);
+                    int h = HIWORD(lParam);
+                    fSwapChain.reset(w, h);
+
+					InvalidateRect(windowHandle(), nullptr, FALSE);
+                    }
+                    return 0;
+                break;
+
+                case WM_CREATE: {
+                    // This is the earliest opportunity to do some window
+                    // setup stuff, like framebuffer creation
+                    RECT rc;
+                    ::GetClientRect(windowHandle(), &rc);
+
+                    int w = rc.right - rc.left;
+					int h = rc.bottom - rc.top;
+                    fSwapChain.reset(w, h);
+                }
+                break;
+                    
                 case WM_DESTROY:
                     // By doing a PostQuitMessage(), a 
                     // WM_QUIT message will eventually find its way into the
@@ -801,12 +1035,18 @@ namespace waavs {
             return res;
         }
 
-
-
+        //
+        // Sequence of messages upon startup
+        //  WM_GETMINMAXINFO    - 0x0024
+        //  WM_NCCREATE         - 0x0081
+        //  WM_NCCALSSIZE       - 0x0083
+        //  WM_CREATE           -- 0x0001
+        //
         static LRESULT CALLBACK ApplicationWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         {
             ApplicationWindow* pThis = nullptr;
 
+            
             // WM_NCCREATE is pretty early in the window's creation process, so it's
             // here that we associate the pointer to the window to the window handle
             // through the GWLP_USERDATA property.
@@ -829,9 +1069,13 @@ namespace waavs {
 
             if (pThis)
             {
+                // If we already have a pointer to the window object
+                // let that handle the message
                 return pThis->handleWin32Message(msg, wParam, lParam);
             }
 
+			// If we don't have a pointer to the window object, let the default
+			// window procedure handle the message
             return DefWindowProcA(hwnd, msg, wParam, lParam);
 
         }

@@ -36,3 +36,4 @@
 /testy/.vs
 *.log
 *.recipe
+/testy/domwalker/x64

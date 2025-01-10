@@ -167,6 +167,7 @@
     <ClInclude Include="..\..\app\apphost.h" />
     <ClInclude Include="..\..\app\d3dsnapshot.h" />
     <ClInclude Include="..\..\app\mappedfile.h" />
+    <ClInclude Include="..\..\app\nativewindow.h" />
     <ClInclude Include="..\..\app\pixelaccessor.h" />
     <ClInclude Include="..\..\app\recorder.h" />
     <ClInclude Include="..\..\app\screensnapshot.h" />
@@ -215,7 +216,7 @@
     <ClInclude Include="..\..\svg\svgstyle.h" />
     <ClInclude Include="..\..\svg\svgsymbol.h" />
     <ClInclude Include="..\..\svg\svgtext.h" />
-    <ClInclude Include="..\..\svg\svgviewport.h" />
+    <ClInclude Include="..\..\svg\svgportal.h" />
     <ClInclude Include="..\..\svg\utf8.h" />
     <ClInclude Include="..\..\svg\viewport.h" />
     <ClInclude Include="..\..\svg\wsenum.h" />

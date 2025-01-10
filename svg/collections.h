@@ -171,9 +171,9 @@ namespace waavs {
     
 
     // Implementation of a Stack
-// first in last out
-// enqueue(val)
-// val dequeue()
+    // first in last out
+    // enqueue(val)
+    // val dequeue()
     template<typename T>
     class WSStack
     {

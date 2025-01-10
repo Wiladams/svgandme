@@ -1,7 +1,7 @@
 #pragma once
 
 #include "svgstructuretypes.h"
-#include "svgviewport.h"
+#include "svgportal.h"
 
 namespace waavs {
     //
@@ -19,7 +19,7 @@ namespace waavs {
 
     struct SVGContainer : public SVGGraphicsElement
     {
-        SVGViewport fViewport;
+        SVGPortal fPortal;
 
 
         SVGContainer()
@@ -30,27 +30,33 @@ namespace waavs {
 
         BLRect frame() const override
         {
-            return fViewport.getBBox();
+            return fPortal.getBBox();
         }
 
         BLRect getBBox() const override
         {
-            return fViewport.getBBox();
+            return fPortal.getBBox();
         }
 
-
-        void fixupStyleAttributes(IRenderSVG* ctx, IAmGroot* groot) override
+        virtual void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*)
         {
-            SVGGraphicsElement::fixupStyleAttributes(ctx, groot);
+            // printf("fixupSelfStyleAttributes\n");
+            fPortal.loadFromAttributes(fAttributes);
+
+        }
+        
+        //void fixupStyleAttributes(IRenderSVG* ctx, IAmGroot* groot) override
+        //{
+        //    SVGGraphicsElement::fixupStyleAttributes(ctx, groot);
 
             // First, allow all the other attributes to be fixed up
             // Then, load the portal attributes
-            fViewport.loadFromAttributes(fAttributes);
-        }
+        //    fViewport.loadFromAttributes(fAttributes);
+        //}
 
         virtual void bindSelfToContext(IRenderSVG *ctx, IAmGroot *groot) 
         {
-            fViewport.bindToContext(ctx, groot);
+            fPortal.bindToContext(ctx, groot);
         }
 
         //
@@ -70,8 +76,8 @@ namespace waavs {
             // because there might already be a transform on the context
             // and we want to build upon that, rather than replace it.
             //ctx->setTransform(fViewport.sceneToSurfaceTransform());
-            ctx->applyTransform(fViewport.getViewport().sceneToSurfaceTransform());
-            ctx->setContainerFrame(getBBox());
+            ctx->applyTransform(fPortal.viewBoxToViewportTransform());
+            ctx->setViewport(getBBox());
         }
 
     };

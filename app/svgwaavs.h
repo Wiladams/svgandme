@@ -100,7 +100,7 @@ namespace waavs {
 			}
 
 
-			BLRect cFrame = ctx->localFrame();
+			BLRect cFrame = ctx->viewport();
 			w = cFrame.w;
 			h = cFrame.h;
 

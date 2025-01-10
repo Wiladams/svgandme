@@ -8,7 +8,7 @@
 
 #include "svgattributes.h"
 #include "svgstructuretypes.h"
-#include "svgviewport.h"
+#include "svgportal.h"
 
 namespace waavs {
 	//=================================================
@@ -32,7 +32,7 @@ namespace waavs {
 		}
 
 		// Fields
-		SVGViewport fViewport{};
+		SVGPortal fPortal{};
 		SVGVariableSize fDimRefX{};
 		SVGVariableSize fDimRefY{};
 
@@ -58,12 +58,12 @@ namespace waavs {
 
 		BLRect frame() const override
 		{
-			return fViewport.getBBox();
+			return fPortal.getBBox();
 		}
 		
 		BLRect getBBox() const override
 		{
-			return fViewport.getBBox();
+			return fPortal.getBBox();
 		}
 		
 
@@ -83,7 +83,7 @@ namespace waavs {
 			// rendered into
 			// We also want to know the size of the container the object is in
 			BLRect objectBoundingBox = ctx->objectFrame();
-			BLRect containerBoundingBox = ctx->localFrame();
+			BLRect containerBoundingBox = ctx->viewport();
 			
 			
 			double dpi = 96;
@@ -100,7 +100,7 @@ namespace waavs {
 			fDimWidth.loadFromChunk(getAttribute("markerWidth"));
 			fDimHeight.loadFromChunk(getAttribute("markerHeight"));
 			bool haveViewbox = parseViewBox(getAttribute("viewBox"), fViewbox);
-			fViewport.loadFromAttributes(fAttributes);
+			fPortal.loadFromAttributes(fAttributes);
 			
 			double sWidth = ctx->strokeWidth();
 
@@ -162,7 +162,7 @@ namespace waavs {
 			fDimRefY.parseValue(fMarkerTranslation.y, ctx->font(), fMarkerBoundingBox.h, 0, dpi);
 
 
-			fViewport.fViewport.surfaceFrame(fMarkerBoundingBox);
+			fPortal.viewportFrame(fMarkerBoundingBox);
 
 
 

@@ -572,7 +572,10 @@ namespace waavs {
                 this->addNode(node, groot);
             }
             else {
-                auto node = getSVGContainerCreationMap()["g"](groot, iter);
+                auto & mapper = getSVGContainerCreationMap();
+                auto & mapperfunc = mapper["g"];
+                if (mapperfunc)
+                    node = mapperfunc(groot, iter);
             }
 
         }

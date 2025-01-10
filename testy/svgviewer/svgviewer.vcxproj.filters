@@ -182,7 +182,7 @@
     <ClInclude Include="..\..\svg\wsenum.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\svgviewport.h">
+    <ClInclude Include="..\..\svg\svgportal.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\svgcontainer.h">
@@ -198,6 +198,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\app\viewnavigator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\app\nativewindow.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

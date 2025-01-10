@@ -176,7 +176,7 @@ namespace waavs {
 				dpi = groot->dpi();
 			}
 			
-			auto cFrame = ctx->localFrame();
+			auto cFrame = ctx->viewport();
 			w = cFrame.w;	// groot->canvasWidth();
 			h = cFrame.h;	// groot->canvasHeight();
 

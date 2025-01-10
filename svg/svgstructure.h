@@ -27,7 +27,7 @@ namespace waavs {
 	// SVGSVGElement
 	// This is the root node of an entire SVG tree
 	//====================================================
-	struct SVGSVGElement : public SVGContainer
+	struct SVGSVGElement : public SVGGraphicsElement // SVGContainer
 	{
 		static void registerFactory()
 		{
@@ -42,13 +42,53 @@ namespace waavs {
 
 		}
 
+		SVGPortal fPortal;
 
+		
 		SVGSVGElement(IAmGroot* )
-			: SVGContainer()
+			: SVGGraphicsElement()
 		{
 			needsBinding(true);
 		}
 
+		BLRect frame() const override
+		{
+			return fPortal.getBBox();
+		}
+
+		BLRect getBBox() const override
+		{
+			return fPortal.getBBox();
+		}
+
+		
+		void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*) override
+		{
+			// printf("fixupSelfStyleAttributes\n");
+			fPortal.loadFromAttributes(fAttributes);
+
+		}
+
+		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+		{
+			fPortal.bindToContext(ctx, groot);
+		}
+
+		
+		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+		{
+			// Clipping doesn't quite work out, because it's a non-transformed
+			// rectangle on the context, and it's only a rectangle, not a shape
+			// it will not transform along with the context
+			//ctx->clip(getBBox());
+
+			// We do an 'applyTransform' instead of 'setTransform'
+			// because there might already be a transform on the context
+			// and we want to build upon that, rather than replace it.
+			//ctx->setTransform(fViewport.sceneToSurfaceTransform());
+			ctx->applyTransform(fPortal.viewBoxToViewportTransform());
+			ctx->setViewport(getBBox());
+		}
 	};
 	
 	//================================================
@@ -162,11 +202,6 @@ namespace waavs {
 		BLRect getBBox() const override
 		{
 			return fBoundingBox;
-			
-			//if (fWrappedNode != nullptr)
-			//	return fWrappedNode->getBBox();
-			
-			//return fBoundingBox;
 		}
 		
 		void update(IAmGroot *groot) override 
@@ -207,7 +242,7 @@ namespace waavs {
 
 
 			BLRect objectBoundingBox = ctx->objectFrame();
-			BLRect containerFrame = ctx->localFrame();
+			BLRect viewport = ctx->viewport();
 			
 			fDimX.parseValue(fBoundingBox.x, ctx->font(), objectBoundingBox.w, 0, dpi);
 			fDimY.parseValue(fBoundingBox.y, ctx->font(), objectBoundingBox.h, 0, dpi);
@@ -245,6 +280,8 @@ namespace waavs {
 			
 			// Draw the wrapped graphic
 			ctx->objectFrame(fBoundingBox);
+			ctx->setViewport(BLRect{0,0,fBoundingBox.w, fBoundingBox.h});
+
 			fWrappedNode->draw(ctx, groot);
 
 			ctx->pop();

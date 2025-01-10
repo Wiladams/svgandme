@@ -124,7 +124,6 @@ static Joystick gJoystick2(JOYSTICKID2);
 
 User32PixelMap * appFrameBuffer() 
 {
-    //static User32PixelMap gAppFrameBuffer{};
 	static std::unique_ptr<User32PixelMap> gAppFrameBuffer = std::make_unique<User32PixelMap>();
    
     return gAppFrameBuffer.get();
@@ -837,14 +836,18 @@ static LRESULT HandleSizeMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
 {
 	LRESULT res = 0;
     
-    // Only resize bigger, never get smaller
-   	WORD aWidth = waavs::max(canvasWidth, LOWORD(lParam));
-	WORD aHeight = waavs::max(canvasHeight, HIWORD(lParam));
+    WORD newWidth = LOWORD(lParam);
+    WORD newHeight = HIWORD(lParam);
     
-	setCanvasSize(aWidth, aHeight);
-	
+    // Only resize bigger, never get smaller
+   	WORD canWidth = waavs::max(canvasWidth, newWidth);
+	WORD canHeight = waavs::max(canvasHeight, newHeight);
+    
+	//setCanvasSize(aWidth, aHeight);
+    setCanvasSize(newWidth, newHeight);
+
     // onCanvasResize();
-    ResizeEvent re{ aWidth, aHeight };
+    ResizeEvent re{ newWidth, newHeight };
 	gResizeEventTopic.notify(re);
     
     screenRefresh();
@@ -1033,6 +1036,10 @@ void setCanvasPosition(int x, int y)
 {
     getAppWindow()->moveTo(x, y);
 }
+
+//bool resizeCanvas(long aWidth, long aHeight)
+//{
+//}
 
 bool setCanvasSize(long aWidth, long aHeight)
 {

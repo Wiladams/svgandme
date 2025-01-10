@@ -99,31 +99,32 @@ int main(int argc, char **argv)
 	// At this point, we could just do the render, but we go further
 	// and create a viewport, which will handle the scaling and translation
 	// This will essentially do a 'scale to fit'
-	ViewPort vp{};
-	vp.sceneFrame(sceneFrame);
-	vp.surfaceFrame(surfaceFrame);
+	ViewportTransformer vp{};
+	vp.viewBoxFrame(sceneFrame);
+	vp.viewportFrame(surfaceFrame);
 
 
 	// Now create a drawing context so we can
 	// do the rendering
-	SvgDrawingContext ctx(&gFontHandler);
+	IRenderSVG ctx(&gFontHandler);
 	BLImage img(static_cast<int>(surfaceFrame.w), static_cast<int>(surfaceFrame.h), BL_FORMAT_PRGB32);
 	
 	// Attach the drawing context to the image
 	// We MUST do this before we perform any other
 	// operations, including the transform
-	ctx.begin(img);
+	ctx.attach(img);
 	ctx.clearAll();
 
 	// apply the viewport's sceneToSurface transform to the context
-	auto res = ctx.setTransform(vp.sceneToSurfaceTransform());
+	auto res = ctx.setTransform(vp.viewBoxToViewportTransform());
 	//printf("setTransform RESULT: %d\n", res);
 	
 
 	
 	// Render the document into the context
+	//ctx.noStroke();
 	gDoc->draw(&ctx, gDoc.get());
-	ctx.end();
+	ctx.detach();
 	
 	// Save the image from the drawing context out to a file
 	// or do whatever you're going to do with it

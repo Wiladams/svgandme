@@ -110,6 +110,8 @@ namespace waavs {
     
 }
 
+
+
 namespace waavs {
     static bool parseViewBox(const ByteSpan& inChunk, BLRect &r) noexcept
     {

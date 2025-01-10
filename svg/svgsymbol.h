@@ -12,7 +12,7 @@ namespace waavs {
 	// such as allowing the width and height to be specified in an style
 	// sheet or inline style attribute
 	//===========================================
-	struct SVGSymbolNode : public SVGContainer
+	struct SVGSymbolNode : public SVGGraphicsElement	// SVGContainer
 	{
 		static void registerFactory()
 		{
@@ -25,22 +25,34 @@ namespace waavs {
 				});
 		}
 
+		SVGPortal fPortal;
 		SVGDimension fDimRefX{};
 		SVGDimension fDimRefY{};
 
-		//BLRect fSymbolBoundingBox{};
-		//BLPoint fSymbolContentScale{1,1};
+
 		BLPoint fSymbolContentTranslation{};
 
 
 
 		SVGSymbolNode(IAmGroot* root)
-			: SVGContainer()
+			: SVGGraphicsElement()
 		{
 			isStructural(false);
 		}
 
+		BLRect frame() const override
+		{
+			return fPortal.getBBox();
+		}
 
+		BLRect getBBox() const override
+		{
+			return fPortal.getBBox();
+		}
+		
+
+
+		
 		void createPortal(IRenderSVG* ctx, IAmGroot* groot)
 		{
 			/*
@@ -90,21 +102,25 @@ namespace waavs {
 		}
 
 
-		virtual void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*)
+		virtual void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*) override
 		{
-			//SVGContainer::fixupSelfStyleAttributes(nullptr, nullptr);
-
+			fPortal.loadFromAttributes(fAttributes);
+			
 			fDimRefX.loadFromChunk(getAttribute("refX"));
 			fDimRefY.loadFromChunk(getAttribute("refY"));
 		}
 
+		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+		{
+			fPortal.bindToContext(ctx, groot);
+		}
 
 		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-			SVGContainer::drawSelf(ctx, groot);
+			ctx->applyTransform(fPortal.viewBoxToViewportTransform());
+			ctx->setViewport(getBBox());
 
 			//ctx->translate(-fSymbolContentTranslation.x, -fSymbolContentTranslation.y);
-
 		}
 
 	};

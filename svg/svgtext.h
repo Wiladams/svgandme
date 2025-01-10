@@ -288,7 +288,7 @@ namespace waavs {
 			}
 
 
-			BLRect cFrame = ctx->localFrame();
+			BLRect cFrame = ctx->viewport();
 			w = cFrame.w;
 			h = cFrame.h;
 
@@ -373,7 +373,7 @@ namespace waavs {
 		{	
 			// For a span, the default position is wherever the container left the cursor
 			// but if we have x, y, then we set the position explicitly
-			BLRect cFrame = ctx->localFrame();
+			BLRect cFrame = ctx->viewport();
 			auto w = cFrame.w;
 			auto h = cFrame.h;
 
@@ -435,7 +435,7 @@ namespace waavs {
 		{
 			ctx->textCursor(BLPoint(0, 0));
 			
-			BLRect cFrame = ctx->localFrame();
+			BLRect cFrame = ctx->viewport();
 			auto w = cFrame.w;
 			auto h = cFrame.h;
 			

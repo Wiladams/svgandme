@@ -40,7 +40,7 @@ namespace waavs {
 }
 
 namespace waavs {
-	enum AspectRatioAlingKind : uint32_t {
+	enum AspectRatioAlignKind : uint32_t {
 		SVG_ASPECT_RATIO_NONE = 0,
 		SVG_ASPECT_RATIO_XMINYMIN = 1,
 		SVG_ASPECT_RATIO_XMIDYMIN = 2,
@@ -59,16 +59,16 @@ namespace waavs {
 	};
 
 	static WSEnum SVGAspectRatioAlignEnum = {
-		{"none", AspectRatioAlingKind::SVG_ASPECT_RATIO_NONE},
-		{"xMinYMin", AspectRatioAlingKind::SVG_ASPECT_RATIO_XMINYMIN},
-		{"xMidYMin", AspectRatioAlingKind::SVG_ASPECT_RATIO_XMIDYMIN},
-		{"xMaxYMin", AspectRatioAlingKind::SVG_ASPECT_RATIO_XMAXYMIN},
-		{"xMinYMid", AspectRatioAlingKind::SVG_ASPECT_RATIO_XMINYMID},
-		{"xMidYMid", AspectRatioAlingKind::SVG_ASPECT_RATIO_XMIDYMID},
-		{"xMaxYMid", AspectRatioAlingKind::SVG_ASPECT_RATIO_XMAXYMID},
-		{"xMinYMax", AspectRatioAlingKind::SVG_ASPECT_RATIO_XMINYMAX},
-		{"xMidYMax", AspectRatioAlingKind::SVG_ASPECT_RATIO_XMIDYMAX},
-		{"xMaxYMax", AspectRatioAlingKind::SVG_ASPECT_RATIO_XMAXYMAX},
+		{"none", AspectRatioAlignKind::SVG_ASPECT_RATIO_NONE},
+		{"xMinYMin", AspectRatioAlignKind::SVG_ASPECT_RATIO_XMINYMIN},
+		{"xMidYMin", AspectRatioAlignKind::SVG_ASPECT_RATIO_XMIDYMIN},
+		{"xMaxYMin", AspectRatioAlignKind::SVG_ASPECT_RATIO_XMAXYMIN},
+		{"xMinYMid", AspectRatioAlignKind::SVG_ASPECT_RATIO_XMINYMID},
+		{"xMidYMid", AspectRatioAlignKind::SVG_ASPECT_RATIO_XMIDYMID},
+		{"xMaxYMid", AspectRatioAlignKind::SVG_ASPECT_RATIO_XMAXYMID},
+		{"xMinYMax", AspectRatioAlignKind::SVG_ASPECT_RATIO_XMINYMAX},
+		{"xMidYMax", AspectRatioAlignKind::SVG_ASPECT_RATIO_XMIDYMAX},
+		{"xMaxYMax", AspectRatioAlignKind::SVG_ASPECT_RATIO_XMAXYMAX},
 
 	};
 
@@ -227,9 +227,10 @@ namespace waavs {
     };
 
 	enum SVGAlignment : uint32_t {
-		SVG_ALIGNMENT_START = 0x02,
-		SVG_ALIGNMENT_MIDDLE = 0x01,
-		SVG_ALIGNMENT_END = 0x04,
+		SVG_ALIGNMENT_NONE		= 0x00,
+		SVG_ALIGNMENT_START		= 0x02,
+		SVG_ALIGNMENT_MIDDLE	= 0x01,
+		SVG_ALIGNMENT_END		= 0x04,
 	};
 	
 	static WSEnum SVGTextAnchor = {

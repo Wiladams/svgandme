@@ -59,7 +59,7 @@ namespace waavs {
 		ByteSpan fTemplateReference{};
 		
 
-		SVGPreserveAspectRatio fPreserveAspectRatio{};
+		PreserveAspectRatio fPreserveAspectRatio{};
 		//AspectRatioKind fPreserveAspectRatio{ AspectRatioKind::SVG_ASPECT_RATIO_XMIDYMID };
 		BLRect viewboxRect{};
 		bool haveViewbox{ false };
@@ -71,9 +71,8 @@ namespace waavs {
 		BLPoint fPatternOffset{ 0,0 };
 		BLPoint fPatternContentScale{ 1.0,1.0 };
 		
-		ViewPort fViewport{};
-		//BLRect fSceneFrame{};
-		//BLRect fSurfaceFrame{};
+		ViewportTransformer fViewport{};
+
 
 
 		BLImage fPatternCache{};
@@ -209,7 +208,7 @@ namespace waavs {
 			// rendered into
 			BLRect objectBoundingBox = ctx->objectFrame();
 			// We also want to know the size of the container the object is in
-			BLRect containerBoundingBox = ctx->localFrame();
+			BLRect containerBoundingBox = ctx->viewport();
 			
 			// Load parameters for the portal
 			SVGVariableSize fDimX{};

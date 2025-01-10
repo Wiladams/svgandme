@@ -19,7 +19,7 @@ namespace waavs {
 	struct ViewNavigator: public Topic<bool>
 	{
 	private:
-		ViewPort fPortal{};
+		ViewportTransformer fPortal{};
 
 		bool fIsDragging = false;
 		BLPoint fDragPos{ 0,0 };
@@ -36,9 +36,9 @@ namespace waavs {
 			fZoomFactor = 0.1;
 		}
 
-		void setAspectMode(AspectMode mode)
+		void setAspectAlign(const PreserveAspectRatio &preserve)
 		{
-			fPortal.aspectMode(mode);
+			fPortal.preserveAspectRatio(preserve);
 		}
 		
 		void speedFactor(double newFac)
@@ -58,27 +58,27 @@ namespace waavs {
 		
 		// Setting scene and surface frames
 		// setting and getting surface frame
-		void setFrame(const BLRect& fr) { fPortal.surfaceFrame(fr); }
-		const BLRect& frame() const { return fPortal.surfaceFrame(); }
+		void setFrame(const BLRect& fr) { fPortal.viewportFrame(fr); }
+		const BLRect& frame() const { return fPortal.viewportFrame(); }
 
-		// setting and getting scene frame
-		void setBounds(const BLRect& fr) { fPortal.sceneFrame(fr); }
-		const BLRect& bounds() const { return fPortal.sceneFrame(); }
+		// setting and getting viewbox frame
+		void setBounds(const BLRect& fr) { fPortal.viewBoxFrame(fr); }
+		const BLRect& bounds() const { return fPortal.viewBoxFrame(); }
 
 
 		BLPoint sceneToSurface(double x, double y) const
 		{
-			return fPortal.mapSceneToSurface(x, y);
+			return fPortal.mapViewBoxToViewport(x, y);
 		}
 
 		BLPoint surfaceToScene(double x, double y) const
 		{
-			return fPortal.mapSurfaceToScene(x, y);
+			return fPortal.mapViewportToViewBox(x, y);
 		}
 
 		// Retrieving the transformations
-		const BLMatrix2D & sceneToSurfaceTransform() const { return fPortal.sceneToSurfaceTransform(); }
-		const BLMatrix2D & surfaceToSceneTransform() const { return fPortal.surfaceToSceneTransform(); }
+		const BLMatrix2D & sceneToSurfaceTransform() const { return fPortal.viewBoxToViewportTransform(); }
+		const BLMatrix2D & surfaceToSceneTransform() const { return fPortal.viewportToViewBoxTransform(); }
 
 
 		void lookAt(double cx, double cy)
@@ -147,8 +147,8 @@ namespace waavs {
 		
 		void mouseUpdateDrag(float x, float y)
 		{
-			auto lastPos = fPortal.mapSurfaceToScene(fDragPos.x, fDragPos.y);
-			auto currPos = fPortal.mapSurfaceToScene(x, y);
+			auto lastPos = fPortal.mapViewportToViewBox(fDragPos.x, fDragPos.y);
+			auto currPos = fPortal.mapViewportToViewBox(x, y);
 
 			double dx = currPos.x - lastPos.x;
 			double dy = currPos.y - lastPos.y;
