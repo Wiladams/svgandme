@@ -150,7 +150,7 @@ static void onFrameEvent(const FrameCountEvent& fe)
 static void onResizeEvent(const ResizeEvent& re)
 {
 	//printf("onResizeEvent: %d x %d\n", re.width, re.height);
-	gDrawingContext.begin(appFrameBuffer()->image());
+	gDrawingContext.begin(appFrameBuffer()->getBlend2dImage());
 	refreshDoc();
 }
 
@@ -253,15 +253,16 @@ static void setup()
 	// Setup application specific items
 	setupFonts();
 
-	gRecorder.reset(&appFrameBuffer()->image(), "frame", 15, 0);
+	gRecorder.reset(&appFrameBuffer()->getBlend2dImage(), "frame", 15, 0);
 
 	// clear the buffer to white to start
-	appFrameBuffer()->setAllPixels(vec4b{ 0xFF,0xff,0xff,0xff });
+
 	BLContextCreateInfo ctxInfo{};
 	ctxInfo.threadCount = 4;
 	//ctxInfo.threadCount = 0;
-	gDrawingContext.begin(appFrameBuffer()->image(), &ctxInfo);
-
+	gDrawingContext.begin(appFrameBuffer()->getBlend2dImage(), &ctxInfo);
+	gDrawingContext.fillAll(BLRgba32(0xffffffff));
+	
 	//gFileListView.setFontHandler(&getFontHandler());
 
 	// Set the initial viewport

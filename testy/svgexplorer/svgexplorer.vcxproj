@@ -149,18 +149,19 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\app\apphost.h" />
+    <ClInclude Include="..\..\app\framebuffer.h" />
+    <ClInclude Include="..\..\app\graphicview.h" />
     <ClInclude Include="..\..\app\nativewindow.h" />
+    <ClInclude Include="..\..\app\svgcacheddocument.h" />
+    <ClInclude Include="..\..\app\svgdocumentbrowser.h" />
     <ClInclude Include="..\..\app\threadedwindow.h" />
     <ClInclude Include="..\..\svg\svg.h" />
     <ClInclude Include="..\..\svg\svgfactory.h" />
     <ClInclude Include="..\..\svg\svgstructuretypes.h" />
     <ClInclude Include="..\..\svg\viewport.h" />
     <ClInclude Include="bgselector.h" />
-    <ClInclude Include="graphicview.h" />
-    <ClInclude Include="svgdocumentbrowser.h" />
     <ClInclude Include="svgfilelistview.h" />
     <ClInclude Include="svgicons.h" />
-    <ClInclude Include="svgcacheddocument.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

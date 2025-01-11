@@ -29,16 +29,10 @@
     <ClInclude Include="svgicons.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="svgcacheddocument.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\svg\svgstructuretypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\viewport.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="svgdocumentbrowser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\svgfactory.h">
@@ -48,9 +42,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="svgfilelistview.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="graphicview.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\app\apphost.h">
@@ -63,6 +54,18 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\app\threadedwindow.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\app\graphicview.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\app\svgcacheddocument.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\app\svgdocumentbrowser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\app\framebuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

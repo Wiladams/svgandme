@@ -166,6 +166,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\app\apphost.h" />
     <ClInclude Include="..\..\app\d3dsnapshot.h" />
+    <ClInclude Include="..\..\app\framebuffer.h" />
     <ClInclude Include="..\..\app\mappedfile.h" />
     <ClInclude Include="..\..\app\nativewindow.h" />
     <ClInclude Include="..\..\app\pixelaccessor.h" />

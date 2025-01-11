@@ -31,7 +31,7 @@ namespace waavs {
     class User32Window {
     public:
 
-        HWND fHandle;
+        HWND fHandle{ nullptr };
         WNDCLASSEXA fClass{};
         bool fMouseInside = false;
         LONG fLastWindowStyle{};
@@ -39,10 +39,14 @@ namespace waavs {
         // Constructor taking an already allocated
         // window handle.  Use a WindowKind to allocate
         // an instance of a particular kind of window
-        User32Window(HWND handle)
+        User32Window()
         {
-            fHandle = handle;
+
         }
+        //User32Window(HWND handle)
+        //{
+        //    fHandle = handle;
+        //}
 
         // Virtual destructor so the window can be sub-classed
         virtual ~User32Window()
@@ -309,10 +313,14 @@ namespace waavs {
         int getLastError() const { return fLastError; }
         const char* getName() const { return fWndClass.lpszClassName; }
 
-        virtual User32Window* createWindow(const char* title, int width, int height, int style = WS_OVERLAPPEDWINDOW, int xstyle = 0, WNDPROC handler = nullptr)
+        virtual User32Window* createWindow(const char* title, int width, int height, int style = WS_OVERLAPPEDWINDOW, int xstyle = 0)
         {
             if (!isValid())
                 return {};
+
+            // Create an instance of the window object
+            // We want to pass that to the window creation routine
+            auto pWin = new User32Window();
 
             HMODULE hInst = fWndClass.hInstance;
 
@@ -331,17 +339,18 @@ namespace waavs {
                 NULL,
                 NULL,
                 fWndClass.hInstance,
-                NULL);
+                pWin);
 
-            if (winHandle == nullptr) 
+            if (winHandle == nullptr)
+            {
+                delete pWin;
                 return {};
-            
-			auto win = new User32Window(winHandle);
+            }
             
             // store the pointer to the class inside the window handle
-			::SetWindowLongPtr(winHandle, GWLP_USERDATA, (LONG_PTR)win);
+			//::SetWindowLongPtr(winHandle, GWLP_USERDATA, (LONG_PTR)win);
             
-			return win;
+			return pWin;
         }
     };
 }

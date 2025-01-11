@@ -29,7 +29,7 @@ static double gZoomFactor = 0.1;
 
 // Animation management
 bool gAnimate{ false };
-bool gPerformTransform{ false };
+bool gPerformTransform{ true };
 bool gAutoGrow{ false };
 
 
@@ -196,7 +196,7 @@ static void onResizeEvent(const ResizeEvent& re)
 	gNavigator.setFrame(BLRect(0, 0, canvasWidth, canvasHeight));
 	
 	//printf("onResizeEvent: %d x %d\n", re.width, re.height);
-	gDrawingContext.begin(appFrameBuffer()->image());
+	gDrawingContext.attach(appFrameBuffer()->getBlend2dImage());
 	handleChange(true);
 }
 
@@ -270,7 +270,7 @@ void setup()
 	// set app window size and title
 	createAppWindow(1920, 1080, "SVGViewer");
 	
-	gRecorder.reset(&appFrameBuffer()->image(), "frame", 15, 0);
+	gRecorder.reset(&appFrameBuffer()->getBlend2dImage(), "frame", 15, 0);
 	
 	// register to receive various events
 	subscribe(onFileDrop);
@@ -279,13 +279,15 @@ void setup()
 	subscribe(onResizeEvent);
 	subscribe(onKeyboardEvent);
 	
-	// clear the buffer to white to start
-	appFrameBuffer()->setAllPixels(vec4b{ 0xFF,0xff,0xff,0x00 });
+
+
 	BLContextCreateInfo ctxInfo{};
 	ctxInfo.threadCount = 4;
 	//ctxInfo.threadCount = 0;
-	gDrawingContext.begin(appFrameBuffer()->image(), &ctxInfo);
-		
+	gDrawingContext.begin(appFrameBuffer()->getBlend2dImage(), &ctxInfo);
+	// clear the buffer to white to start
+	gDrawingContext.background(BLRgba32(0xffffffff));
+	
 	// Set the initial viewport
 	//gViewPort.surfaceFrame({0, 0, (double)canvasWidth, (double)canvasHeight});
 	gNavigator.setFrame({ 0, 0, (double)canvasWidth, (double)canvasHeight });

@@ -37,6 +37,7 @@
 #include "definitions.h"
 
 
+
 #if BUILD_AS_DLL
 #define APP_API		__declspec(dllexport)
 #else
@@ -67,7 +68,7 @@
 #include "uievent.h"
 #include "joystick.h"
 #include "network.h"
-#include "user32pixelmap.h"
+#include "framebuffer.h"
 
 
 
@@ -126,7 +127,7 @@ APP_EXPORT extern size_t canvasStride;
 // 
 // The control the lifetime of the environment, creation of primary window
 // and whether various parts of the IO system are present
-APP_EXPORT waavs::User32PixelMap* appFrameBuffer();
+APP_EXPORT waavs::AFrameBuffer* appFrameBuffer();
 APP_EXPORT waavs::User32Window * getAppWindow();
 
 

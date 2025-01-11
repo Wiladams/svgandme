@@ -55,7 +55,10 @@ namespace waavs {
 		const BLRect & bounds() const { return fBounds; }
 		virtual void setBounds(const BLRect& arect) { fBounds = arect;  }
 
-		virtual bool contains(double x, double y) {return containsRect(frame(), x, y);}
+		virtual bool contains(double x, double y) {
+			const auto & fr = frame();
+			return (x >= fr.x && x < fr.x + fr.w && y >= fr.y && y < fr.y + fr.h);
+		}
 
 		virtual void onMouseEvent(const MouseEvent& e){}
 

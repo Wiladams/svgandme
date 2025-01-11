@@ -2,7 +2,7 @@
 
 #include "blend2d.h"
 #include "svgenums.h"
-
+#include "charset.h"
 
 
 namespace waavs {
@@ -10,13 +10,13 @@ namespace waavs {
 	// Parse the preserveAspectRatio attribute, returning the alignment and meetOrSlice values.
 	static bool parsePreserveAspectRatio(const ByteSpan& inChunk, AspectRatioAlignKind& alignment, AspectRatioMeetOrSliceKind& meetOrSlice)
 	{
-		ByteSpan s = chunk_trim(inChunk, xmlwsp);
+		ByteSpan s = chunk_trim(inChunk, chrWspChars);
 		if (s.empty())
 			return false;
 
 
 		// Get first token, which should be alignment
-		ByteSpan align = chunk_token(s, xmlwsp);
+		ByteSpan align = chunk_token(s, chrWspChars);
 
 		if (!align)
 			return false;
@@ -25,7 +25,7 @@ namespace waavs {
 		getEnumValue(SVGAspectRatioAlignEnum, align, (uint32_t&)alignment);
 
 		// Now, see if there is a slice value
-		chunk_ltrim(s, xmlwsp);
+		chunk_ltrim(s, chrWspChars);
 
 		if (s.empty())
 			return false;

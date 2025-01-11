@@ -121,13 +121,13 @@ float rawMouseY = 0;
 static Joystick gJoystick1(JOYSTICKID1);
 static Joystick gJoystick2(JOYSTICKID2);
 
-
-User32PixelMap * appFrameBuffer() 
+AFrameBuffer* appFrameBuffer()
 {
-	static std::unique_ptr<User32PixelMap> gAppFrameBuffer = std::make_unique<User32PixelMap>();
-   
+    static std::unique_ptr<AFrameBuffer> gAppFrameBuffer = std::make_unique<AFrameBuffer>();
     return gAppFrameBuffer.get();
 }
+
+
 
 
 //
@@ -214,7 +214,7 @@ void screenRefresh()
         // to the screen.  Everything to be displayed
         // must be in the FrameBuffer, even window chrome
         LayeredWindowInfo lw(canvasWidth, canvasHeight);
-        lw.display(getAppWindow()->windowHandle(), appFrameBuffer()->bitmapDC());
+        lw.display(getAppWindow()->windowHandle(), appFrameBuffer()->getGDIContext());
     }
 }
 
@@ -1037,18 +1037,16 @@ void setCanvasPosition(int x, int y)
     getAppWindow()->moveTo(x, y);
 }
 
-//bool resizeCanvas(long aWidth, long aHeight)
-//{
-//}
+
 
 bool setCanvasSize(long aWidth, long aHeight)
 {
-    appFrameBuffer()->init(aWidth, aHeight);
+    appFrameBuffer()->reset(aWidth, aHeight);
 
     canvasWidth = aWidth;
     canvasHeight = aHeight;
 
-    canvasPixelData = appFrameBuffer()->data();
+    canvasPixelData = (uint8_t *)appFrameBuffer()->data();
     canvasStride = appFrameBuffer()->stride();
 
     return true;
@@ -1113,106 +1111,121 @@ static LRESULT CALLBACK MsgHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
     LRESULT res = 0;
     
     // Get pointer to window class from handle
-	User32Window* win = reinterpret_cast<User32Window*> (::GetWindowLongPtr(hWnd, GWLP_USERDATA));
+    User32Window* pThis = nullptr;
+    //reinterpret_cast<User32Window*> (::GetWindowLongPtr(hWnd, GWLP_USERDATA));
+    
+    if (msg == WM_NCCREATE)
+    {
+        CREATESTRUCTA* pCreate = reinterpret_cast<CREATESTRUCTA*>(lParam);
+        pThis = reinterpret_cast<User32Window*>(pCreate->lpCreateParams);
+        if (pThis) {
+            pThis->setWindowHandle(hWnd);
+
+            SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pThis));
+        }
+	}
+	else {
+		pThis = reinterpret_cast<User32Window*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
+	}
+
+    
     
     switch (msg)
     {
-        case WM_CREATE: {
-			CREATESTRUCTA* pCreate = reinterpret_cast<CREATESTRUCTA*>(lParam);
-            return 0;
-        }
-        break;
-        
-        case WM_ERASEBKGND: {
-            //printf("WM_ERASEBKGND\n");
-            // return non-zero indicating we dealt with erasing the background
-            res = 1;
 
-            //if (gPaintHandler != nullptr) {
-            //    gPaintHandler(hWnd, msg, wParam, lParam);
-            //}
 
-            //RECT rect;
-            //if (::GetUpdateRect(hWnd, &rect, FALSE))
-            //{
-            //    ::ValidateRect(hWnd, NULL);
-            //}
-        }
-        break;
-            
-        case WM_PAINT: {
-            //printf("WM_PAINT\n");
-            if (gPaintHandler != nullptr) {
-                gPaintHandler(hWnd, msg, wParam, lParam);
-            }
 
-            //RECT rect;
-            //if (::GetUpdateRect(hWnd, &rect, FALSE))
-            //{
-            //    ::ValidateRect(hWnd, NULL);
-            //}
-            }
-            break;
-            
-        case WM_MOVING:
-        case WM_WINDOWPOSCHANGING:
-            //printf("screen moving\n");
-            //screenRefresh();
-            processFrameTiming();
-            //::InvalidateRect(hWnd, NULL, 1);
-            break;
-            
-        case WM_SIZE:
-            HandleSizeMessage(hWnd, msg, wParam, lParam);
-            res = ::DefWindowProcA(hWnd, msg, wParam, lParam);
-            break;
-            
-        case WM_DESTROY:
-            // By doing a PostQuitMessage(), a 
-            // WM_QUIT message will eventually find its way into the
-            // message queue.
-            ::PostQuitMessage(0);
-            return 0;
-        break;
-        
-        case WM_INPUT:
-            res = HandleRawInputMessage(hWnd, msg, wParam, lParam);
-        break;
+    case WM_ERASEBKGND: {
+        //printf("WM_ERASEBKGND\n");
+        // return non-zero indicating we dealt with erasing the background
+        res = 1;
 
-        case WM_TOUCH:
-            res = HandleTouchMessage(hWnd, msg, wParam, lParam);
-            break;
-            
-        case WM_GESTURE:
-            // we will only receive WM_GESTURE if not receiving WM_TOUCH
-            HandleGestureMessage(hWnd, msg, wParam, lParam);
-            break;
-            
-        case WM_DROPFILES:
-            HandleFileDropMessage(hWnd, msg, wParam, lParam);
-            break;
-            
-        default:
-        {
-            if ((msg >= WM_MOUSEFIRST) && (msg <= WM_MOUSELAST)) {
-                // Handle all mouse messages
-                HandleMouseMessage(hWnd, msg, wParam, lParam);
-            }
-            else if ((msg >= WM_KEYFIRST) && (msg <= WM_KEYLAST)) {
-                // Handle all keyboard messages
-                HandleKeyboardMessage(hWnd, msg, wParam, lParam);
-            }
-            else if ((msg >= MM_JOY1MOVE) && (msg <= MM_JOY2BUTTONUP)) {
-                //printf("MM_JOYxxx: %p\n", gJoystickHandler);
-                HandleJoystickMessage(hWnd, msg, wParam, lParam);
-            }
-            else {
-                res = ::DefWindowProcA(hWnd, msg, wParam, lParam);
-            }
-        }
-        break;
+        //if (gPaintHandler != nullptr) {
+        //    gPaintHandler(hWnd, msg, wParam, lParam);
+        //}
+
+        //RECT rect;
+        //if (::GetUpdateRect(hWnd, &rect, FALSE))
+        //{
+        //    ::ValidateRect(hWnd, NULL);
+        //}
     }
+                      break;
 
+    case WM_PAINT: {
+        //printf("WM_PAINT\n");
+        if (gPaintHandler != nullptr) {
+            gPaintHandler(hWnd, msg, wParam, lParam);
+        }
+
+        //RECT rect;
+        //if (::GetUpdateRect(hWnd, &rect, FALSE))
+        //{
+        //    ::ValidateRect(hWnd, NULL);
+        //}
+    }
+                 break;
+
+    case WM_MOVING:
+    case WM_WINDOWPOSCHANGING:
+        //printf("screen moving\n");
+        //screenRefresh();
+        processFrameTiming();
+        //::InvalidateRect(hWnd, NULL, 1);
+        break;
+
+    case WM_SIZE:
+        HandleSizeMessage(hWnd, msg, wParam, lParam);
+        res = ::DefWindowProcA(hWnd, msg, wParam, lParam);
+        break;
+
+    case WM_DESTROY:
+        // By doing a PostQuitMessage(), a 
+        // WM_QUIT message will eventually find its way into the
+        // message queue.
+        ::PostQuitMessage(0);
+        return 0;
+        break;
+
+    case WM_INPUT:
+        res = HandleRawInputMessage(hWnd, msg, wParam, lParam);
+        break;
+
+    case WM_TOUCH:
+        res = HandleTouchMessage(hWnd, msg, wParam, lParam);
+        break;
+
+    case WM_GESTURE:
+        // we will only receive WM_GESTURE if not receiving WM_TOUCH
+        HandleGestureMessage(hWnd, msg, wParam, lParam);
+        break;
+
+    case WM_DROPFILES:
+        HandleFileDropMessage(hWnd, msg, wParam, lParam);
+        break;
+
+    default:
+    {
+        if ((msg >= WM_MOUSEFIRST) && (msg <= WM_MOUSELAST)) {
+            // Handle all mouse messages
+            HandleMouseMessage(hWnd, msg, wParam, lParam);
+        }
+        else if ((msg >= WM_KEYFIRST) && (msg <= WM_KEYLAST)) {
+            // Handle all keyboard messages
+            HandleKeyboardMessage(hWnd, msg, wParam, lParam);
+        }
+        else if ((msg >= MM_JOY1MOVE) && (msg <= MM_JOY2BUTTONUP)) {
+            //printf("MM_JOYxxx: %p\n", gJoystickHandler);
+            HandleJoystickMessage(hWnd, msg, wParam, lParam);
+        }
+        else {
+            res = ::DefWindowProcA(hWnd, msg, wParam, lParam);
+        }
+    }
+    break;
+    }
+    
+    
     //else if ((msg >= WM_NCPOINTERUPDATE) && (msg <= WM_POINTERROUTEDRELEASED)) {
     //    HandlePointerMessage(hWnd, msg, wParam, lParam);
     //}
@@ -1420,16 +1433,15 @@ static void setupNetworking()
 waavs::User32Window * getAppWindow()
 {
     // Declare some standard Window Kinds we'll be using
-    static User32WindowClass appWindowKind("appwindow", CS_GLOBALCLASS | CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW, MsgHandler);
+    static User32WindowClass appWindowKind("appwindow",  CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW | CS_OWNDC, MsgHandler);
     static std::unique_ptr<waavs::User32Window> gAppWindow = nullptr;
     
     if (!gAppWindow)
     {
         int style = WS_OVERLAPPEDWINDOW;
         int xstyle = 0;
-        WNDPROC handler = nullptr;
-        
-        auto win = appWindowKind.createWindow("Application Window", 320, 240, style, xstyle, handler);
+
+        auto win = appWindowKind.createWindow("Application Window", 320, 240, style, xstyle);
 		gAppWindow = std::unique_ptr<waavs::User32Window>(win);
         
     }
