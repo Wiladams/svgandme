@@ -666,22 +666,39 @@ static LRESULT HandlePaintMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
     int ySrc = 0;
     int SrcWidth = canvasWidth;
     int SrcHeight = canvasHeight;
-
+    UINT StartScan = 0;
+    UINT cLines = canvasHeight;
+    
     BITMAPINFO info = appFrameBuffer()->bitmapInfo();
     
     // Make sure we sync all current drawing
     // BUGBUG - we don't have a way to guarantee this
     // so, we'll leave it up to the app
 
-    int pResult = StretchDIBits(hdc,
-        xDest,yDest,
-        DestWidth,DestHeight,
-        xSrc,ySrc,
-        SrcWidth, SrcHeight,
-        appFrameBuffer()->data(), &info,
-        DIB_RGB_COLORS,
-        SRCCOPY);
-        
+    //int pResult = StretchDIBits(hdc,
+    //    xDest,yDest,
+    //    DestWidth,DestHeight,
+    //    xSrc,ySrc,
+    //    SrcWidth, SrcHeight,
+    //    appFrameBuffer()->data(), &info,
+    //    DIB_RGB_COLORS,
+    //    SRCCOPY);
+    int pResult = SetDIBitsToDevice(
+        hdc,
+        xDest,
+        yDest,
+        DestWidth,
+        DestHeight,
+        xSrc,
+        ySrc,
+        StartScan,
+        cLines,
+        appFrameBuffer()->data(),
+        &info,
+        DIB_RGB_COLORS
+    );
+
+    
 	EndPaint(hWnd, &ps);
 
     return res;

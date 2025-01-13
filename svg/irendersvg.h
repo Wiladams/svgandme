@@ -89,6 +89,7 @@ namespace waavs
 				BLContext::clipToRect(cRect);
             
             // probably applying font characteristics
+            // probably apply paint
         }
         
         virtual bool push() {

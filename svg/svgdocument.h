@@ -172,19 +172,7 @@ namespace waavs {
         // retrieve root svg node
 		std::shared_ptr<SVGSVGElement> documentElement() const { return fSVGNode; }
 
-        void drawSelf(IRenderSVG* ctx, IAmGroot*) override
-        {
-            // draw horizontal blue line at 10,10 for 300
-            //ctx->strokeLine(10, 10, 300, 10, BLRgba32(0xff0000ff));
-            //ctx->strokeLine(10, 10, 10, 300, BLRgba32(0xffff0000));
-        }
-        
-        void draw(IRenderSVG * ctx, IAmGroot* groot) override
-        {
-            ctx->setViewport(frame());
-            
-            SVGGraphicsElement::draw(ctx, groot);
-        }
+
         
         
         
@@ -290,6 +278,8 @@ namespace waavs {
                     //printChunk(elem.data());
                 }
             }
+
+            needsBinding(true);
         }
 
         
@@ -309,16 +299,58 @@ namespace waavs {
             // The first pass builds the DOM
             loadFromXmlIterator(iter, this);
             
-            // BUGBUG - Maybe we should stop here, and use
-			// a visitor to convert the raw DOM into a graphics tree
-            // render into a blank context to get sizing
-            //IRenderSVG actx(fh);
-            //actx.setViewport(BLRect(0, 0, 640, 480));
-            //draw(&actx, this);
             
             return true;
         }
 
+        // For compound nodes (which have children) we want to 
+        // do the base stuff (binding properties) then bind the children
+        // If you sub-class this, you should call this first
+        // then do your own thing.  We don't want to call a 'bindSelfToGroot'
+        // here, because that complicates the interactions and sequences of things
+        // so just override bindToGroot
+        void bindToContext(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        {
+            this->fixupStyleAttributes(ctx, groot);
+            convertAttributesToProperties(ctx, groot);
+
+            this->bindSelfToContext(ctx, groot);
+
+            needsBinding(false);
+        }
+        
+        void drawSelf(IRenderSVG* ctx, IAmGroot*) override
+        {
+            // draw horizontal blue line at 10,10 for 300
+            //ctx->strokeLine(10, 10, 300, 10, BLRgba32(0xff0000ff));
+            //ctx->strokeLine(10, 10, 10, 300, BLRgba32(0xffff0000));
+        }
+        
+        void draw(IRenderSVG* ctx, IAmGroot* groot) override
+        {
+            ctx->setViewport(frame());
+            
+            ctx->push();
+
+            if (needsBinding())
+                this->bindToContext(ctx, groot);
+
+            // Should have valid bounding box by now
+            // so set objectFrame on the context
+            ctx->objectFrame(getBBox());
+
+            this->applyProperties(ctx, groot);
+            this->drawSelf(ctx, groot);
+
+            this->drawChildren(ctx, groot);
+
+            ctx->pop();
+        }
+        
+
+
+
+        
     };
 
     using SVGDocumentHandle = std::shared_ptr<SVGDocument>;

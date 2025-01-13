@@ -101,7 +101,7 @@ static void draw()
 static void resetView()
 {
 	gNavigator.resetNavigator();
-	//gNavigator.setAspectMode(AspectMode::Free);
+
 	gNavigator.setFrame(BLRect(0, 0, canvasWidth, canvasHeight));
 	gNavigator.setBounds(BLRect(0, 0, canvasWidth, canvasHeight));
 

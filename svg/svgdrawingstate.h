@@ -23,9 +23,9 @@ namespace waavs {
         BLRect fObjectFrame{};
 
         // Paint
-        BLVar fDefaultColor;
-        BLVar fFillPaint;
-        BLVar fStrokePaint;
+        BLVar fDefaultColor{};
+        BLVar fFillPaint{};
+        BLVar fStrokePaint{};
         uint32_t fPaintOrder{ PaintOrderKind::SVG_PAINT_ORDER_NORMAL };
 
         // Typography
@@ -43,7 +43,11 @@ namespace waavs {
         BLFontStretch fFontStretch = BL_FONT_STRETCH_NORMAL;
 
 
-        SVGDrawingState() = default;
+        SVGDrawingState()
+        {
+			fFillPaint = BLRgba32(0, 0, 0, 255);
+            fStrokePaint = BLVar::null();
+        }
 
         // Copy Constructor
         SVGDrawingState(const SVGDrawingState& other) noexcept
