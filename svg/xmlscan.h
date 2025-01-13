@@ -60,7 +60,7 @@ namespace waavs {
     };
     
  
-
+    /*
     //
     // readQuoted()
     // 
@@ -102,6 +102,7 @@ namespace waavs {
 
         return true;
     }
+    */
     
     //============================================================
     // readCData()
@@ -140,6 +141,9 @@ namespace waavs {
 
 		// Extend the data chunk until we find the closing -->
 		ByteSpan endComment = chunk_find_cstr(src, "-->");
+        if (!endComment)
+            return false;
+        
 		dataChunk.fEnd = endComment.fStart;
 
 		src = endComment;
@@ -224,8 +228,8 @@ namespace waavs {
             ByteSpan publicId{};
 			ByteSpan systemId{};
             
-            readQuoted(src, publicId);
-            readQuoted(src, systemId);
+            chunk_read_quoted(src, publicId);
+            chunk_read_quoted(src, systemId);
 
 			// Skip past the whitespace
 			src = chunk_ltrim(src, xmlwsp);
@@ -262,7 +266,7 @@ namespace waavs {
 			src += 6;
 
             ByteSpan systemId{};
-			readQuoted(src, systemId);
+            chunk_read_quoted(src, systemId);
 
 			// Skip past the whitespace
 			src = chunk_ltrim(src, xmlwsp);
@@ -564,7 +568,6 @@ namespace waavs {
     static bool XmlElementGenerator(const XmlIteratorParams& params, XmlIteratorState& st, XmlElement &elem)
     {
         elem.clear();
-        //XmlElement elem{};
 
         
         while (st.fSource)

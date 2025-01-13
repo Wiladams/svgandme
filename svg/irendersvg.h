@@ -50,9 +50,9 @@ namespace waavs
             strokeWidth(1.0);
         }
         
-        BLResult attach(BLImageCore& image) noexcept 
+        BLResult attach(BLImageCore& image, const BLContextCreateInfo* createInfo= nullptr) noexcept
         {
-            BLResult res = BLContext::begin(image);
+            BLResult res = BLContext::begin(image, createInfo);
             initState();
             
             return res;

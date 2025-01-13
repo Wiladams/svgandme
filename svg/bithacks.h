@@ -175,6 +175,10 @@ namespace waavs {
              | ((x & 0xF0000000LU) ? 128:0)
 
 
+//
+// Examples
+// B8(01010101)     == 85
+//
 // for upto 8-bit binary constants
 #define B8(d) ((unsigned char) B8_(HEX_(d)))
 
@@ -198,10 +202,7 @@ namespace waavs {
 																							 | (B8(db7) << 8) \
 																							 | B8(dlsb))
 
-//
-// Examples
-// B8(01010101)     == 85
-//
+
 
 namespace waavs {
 
@@ -216,10 +217,10 @@ INLINE constexpr uint64_t BIT64(size_t bitnum) noexcept {return (uint64_t)1 << b
 // One general purpose which will default to BIT64
 //static inline uint64_t BIT(unsigned int bitnum) {return BIT64(bitnum);}
 
-// return true if the specified bit is set in the value
+// return true if the specified bit is set in the 64-bit value
 INLINE constexpr bool isset(const uint64_t value, const size_t bitnum) noexcept {return (value & BIT64(bitnum)) > 0; }
 
-// set a specific bit within a value
+// set a specific bit within a 64-bit value
 INLINE constexpr uint64_t setbit(const uint64_t value, const size_t bitnum) noexcept {return (value | BIT64(bitnum));}
 
 // BITMASK64
@@ -243,11 +244,10 @@ INLINE constexpr uint64_t setbit(const uint64_t value, const size_t bitnum) noex
 
 INLINE constexpr uint64_t BITMASK64(const size_t low, const size_t high) noexcept {return ((((uint64_t)1ULL << (high-low)) << 1) - 1) << low;}
 
-INLINE uint8_t BITMASK8(const size_t low, const size_t high) noexcept {return (uint8_t)BITMASK64(low, high);}
-INLINE uint16_t BITMASK16(const size_t low, const size_t high) noexcept {return (uint16_t)BITMASK64(low,high);}
-INLINE uint32_t BITMASK32(const size_t low, const size_t high) noexcept {return (uint32_t)BITMASK64(low, high);}
+INLINE constexpr uint8_t BITMASK8(const size_t low, const size_t high) noexcept {return (uint8_t)BITMASK64(low, high);}
+INLINE constexpr uint16_t BITMASK16(const size_t low, const size_t high) noexcept {return (uint16_t)BITMASK64(low,high);}
+INLINE constexpr uint32_t BITMASK32(const size_t low, const size_t high) noexcept {return (uint32_t)BITMASK64(low, high);}
 
-//#define BITMASK BITMASK64
 
 
 // BITSVALUE
@@ -309,52 +309,52 @@ INLINE constexpr uint64_t bitsValueFromBytes(const uint8_t *bytes, const size_t 
 // it more obvious what is going on.
 // 
 // swap 2 bytes (16-bit) around
-#define SWAP16(x) \
-    (((0x00000000000000ffull & (x)) << 010) |  \
-     ((0x000000000000ff00ull & (x)) >> 010))
+//#define SWAP16(x) \
+//    (((0x00000000000000ffull & (x)) << 010) |  \
+//     ((0x000000000000ff00ull & (x)) >> 010))
 
-INLINE uint16_t swapUInt16(const uint16_t num) noexcept
-{
-    return (((num & 0x00ff) << 8) | ((num & 0xff00) >> 8));
-}
+//INLINE uint16_t swapUInt16(const uint16_t num) noexcept
+//{
+//    return (((num & 0x00ff) << 8) | ((num & 0xff00) >> 8));
+//}
 
 // swap 4 bytes (32-bit) around
-#define SWAP32(x)                           \
-  (((0x00000000000000ffull & (x)) << 030) | \
-   ((0x000000000000ff00ull & (x)) << 010) | \
-   ((0x0000000000ff0000ull & (x)) >> 010) | \
-   ((0x00000000ff000000ull & (x)) >> 030))
+//#define SWAP32(x)                           \
+//  (((0x00000000000000ffull & (x)) << 030) | \
+//   ((0x000000000000ff00ull & (x)) << 010) | \
+//   ((0x0000000000ff0000ull & (x)) >> 010) | \
+//   ((0x00000000ff000000ull & (x)) >> 030))
 
-INLINE uint32_t swapUInt32(const uint32_t num) noexcept
-{
-    uint32_t x = (num & 0x0000FFFF) << 16 | (num & 0xFFFF0000) >> 16;
-    x = (x & 0x00FF00FF) << 8 | (x & 0xFF00FF00) >> 8;
+//INLINE uint32_t swapUInt32(const uint32_t num) noexcept
+//{
+//    uint32_t x = (num & 0x0000FFFF) << 16 | (num & 0xFFFF0000) >> 16;
+//    x = (x & 0x00FF00FF) << 8 | (x & 0xFF00FF00) >> 8;
 
-    return x;
-}
+//    return x;
+//}
 
 // swap 8 bytes (64-bit) around
-#define SWAP64(x)                           \
-  (((0x00000000000000ffull & (x)) << 070) | \
-   ((0x000000000000ff00ull & (x)) << 050) | \
-   ((0x0000000000ff0000ull & (x)) << 030) | \
-   ((0x00000000ff000000ull & (x)) << 010) | \
-   ((0x000000ff00000000ull & (x)) >> 010) | \
-   ((0x0000ff0000000000ull & (x)) >> 030) | \
-   ((0x00ff000000000000ull & (x)) >> 050) | \
-   ((0xff00000000000000ull & (x)) >> 070))
+//#define SWAP64(x)                           \
+//  (((0x00000000000000ffull & (x)) << 070) | \
+//   ((0x000000000000ff00ull & (x)) << 050) | \
+//   ((0x0000000000ff0000ull & (x)) << 030) | \
+//   ((0x00000000ff000000ull & (x)) << 010) | \
+//   ((0x000000ff00000000ull & (x)) >> 010) | \
+//   ((0x0000ff0000000000ull & (x)) >> 030) | \
+//   ((0x00ff000000000000ull & (x)) >> 050) | \
+//   ((0xff00000000000000ull & (x)) >> 070))
 
-INLINE uint64_t swapUInt64(const uint64_t num) noexcept
-{
-    return  (num >> 56) |
-          ((num<<40) & 0x00FF000000000000) |
-          ((num<<24) & 0x0000FF0000000000) |
-          ((num<<8) & 0x000000FF00000000) |
-          ((num>>8) & 0x00000000FF000000) |
-          ((num>>24) & 0x0000000000FF0000) |
-          ((num>>40) & 0x000000000000FF00) |
-          (num << 56);
-}
+//INLINE uint64_t swapUInt64(const uint64_t num) noexcept
+//{
+//    return  (num >> 56) |
+//          ((num<<40) & 0x00FF000000000000) |
+//          ((num<<24) & 0x0000FF0000000000) |
+//          ((num<<8) & 0x000000FF00000000) |
+//          ((num>>8) & 0x00000000FF000000) |
+//          ((num>>24) & 0x0000000000FF0000) |
+//          ((num>>40) & 0x000000000000FF00) |
+//          (num << 56);
+//}
 
 INLINE int GetAlignedByteCount(const int width, const int bitsperpixel, const int alignment) noexcept
 {

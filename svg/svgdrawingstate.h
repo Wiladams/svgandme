@@ -24,6 +24,8 @@ namespace waavs {
 
         // Paint
         BLVar fDefaultColor;
+        BLVar fFillPaint;
+        BLVar fStrokePaint;
         uint32_t fPaintOrder{ PaintOrderKind::SVG_PAINT_ORDER_NORMAL };
 
         // Typography
@@ -54,8 +56,12 @@ namespace waavs {
 
             fTextCursor = other.fTextCursor;
 
-            fDefaultColor.assign(other.fDefaultColor);
             fPaintOrder = other.fPaintOrder;
+            fDefaultColor.assign(other.fDefaultColor);
+            fFillPaint.assign(other.fFillPaint);
+            fStrokePaint.assign(other.fStrokePaint);
+            
+
 
             fTextHAlignment = other.fTextHAlignment;
             fTextVAlignment = other.fTextVAlignment;
@@ -83,8 +89,11 @@ namespace waavs {
 
             fTextCursor = other.fTextCursor;
 
-            fDefaultColor.assign(other.fDefaultColor);
             fPaintOrder = other.fPaintOrder;
+            fDefaultColor.assign(other.fDefaultColor);
+            fFillPaint.assign(other.fFillPaint);
+            fStrokePaint.assign(other.fStrokePaint);
+
 
             fTextHAlignment = other.fTextHAlignment;
             fTextVAlignment = other.fTextVAlignment;
@@ -109,6 +118,8 @@ namespace waavs {
             fObjectFrame = BLRect();
 
             fDefaultColor = BLVar::null();
+            fFillPaint = BLRgba32(0xff000000);
+            fStrokePaint = BLVar::null();
             fPaintOrder = PaintOrderKind::SVG_PAINT_ORDER_NORMAL;
 
             fTextHAlignment = LEFT;
@@ -137,14 +148,21 @@ namespace waavs {
         const BLRect& clipRect() const { return fClipRect; }
         void setClipRect(const BLRect& aRect) { fClipRect = aRect; }
 
-
+        uint32_t paintOrder() const { return fPaintOrder; }
+        void paintOrder(const uint32_t order) { fPaintOrder = order; }
+        
         const BLVar& defaultColor() const { return fDefaultColor; }
         void defaultColor(const BLVar& color) { fDefaultColor.assign(color); }
 
-        uint32_t paintOrder() const { return fPaintOrder; }
-        void paintOrder(const uint32_t order) { fPaintOrder = order; }
+		const BLVar& fillPaint() const { return fFillPaint; }
+		void fillPaint(const BLVar& paint) { fFillPaint.assign(paint); }
 
-        // Typography changes
+		const BLVar& strokePaint() const { return fStrokePaint; }
+		void strokePaint(const BLVar& paint) { fStrokePaint.assign(paint); }
+        
+        
+
+        // Typography State
         void fontHandler(FontHandler* handler) noexcept
         {
             fFontHandler = handler;

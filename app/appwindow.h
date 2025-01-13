@@ -134,7 +134,10 @@ namespace waavs {
             BLResult br = fB2dImage.createFromData(static_cast<int>(w), static_cast<int>(h), BL_FORMAT_PRGB32, fFrameBufferData, fBytesPerRow);
 
             // Create a context for the image
-            fB2dContext.begin(fB2dImage);
+            BLContextCreateInfo ctxInfo{};
+            ctxInfo.threadCount = 4;
+
+            fB2dContext.begin(fB2dImage, &ctxInfo);
         }
         
         void reset(int w, int h)

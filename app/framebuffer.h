@@ -1,8 +1,5 @@
 #pragma once
 
-#pragma once
-
-
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -51,14 +48,17 @@ namespace waavs {
             ::DeleteObject(fGDIDIBHandle);
         }
 
+        void* data() const { return fFrameBufferData; }
         size_t stride() const { return fBytesPerRow; }
+		int width() const { return fGDIBMInfo.bmiHeader.biWidth; }
+		int height() const { return std::abs(fGDIBMInfo.bmiHeader.biHeight); }
         
         BLImage& getBlend2dImage() { return fB2dImage; }
         BLContext& getBlend2dContext() { return fB2dContext; }
 
         const BITMAPINFO& bitmapInfo() const { return fGDIBMInfo; }
         HDC getGDIContext() { return fGDIBitmapDC; }
-		const void * data() const { return fFrameBufferData; }
+
         
 
 
@@ -115,7 +115,10 @@ namespace waavs {
             BLResult br = fB2dImage.createFromData(static_cast<int>(w), static_cast<int>(h), BL_FORMAT_PRGB32, fFrameBufferData, fBytesPerRow);
 
             // Create a context for the image
-            fB2dContext.begin(fB2dImage);
+            BLContextCreateInfo ctxInfo{};
+            ctxInfo.threadCount = 4;
+
+            fB2dContext.begin(fB2dImage, &ctxInfo);
         }
 
         void reset(int w, int h)

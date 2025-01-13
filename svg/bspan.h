@@ -642,6 +642,48 @@ namespace waavs
 		// Store only well formed quotes
 		return { beginattrValue, endattrValue };
 	}
+
+	//
+	// chunk_read_quoted()
+	// 
+	// Read a quoted string from the input stream
+	// Read a first quote, then use that as the delimiter
+	// to read to the end of the string
+	//
+	static bool chunk_read_quoted(ByteSpan& src, ByteSpan& dataChunk) noexcept
+	{
+		uint8_t* beginattrValue = nullptr;
+		uint8_t* endattrValue = nullptr;
+		uint8_t quote{};
+
+		// Skip white space before the quoted bytes
+		src = chunk_ltrim(src, chrWspChars);
+
+		if (!src)
+			return false;
+
+		// capture the quote character
+		quote = *src;
+
+		// advance past the quote, then look for the matching close quote
+		src++;
+		beginattrValue = (uint8_t*)src.fStart;
+
+		// Skip until end of the value.
+		while (src && *src != quote)
+			src++;
+
+		if (src)
+		{
+			endattrValue = (uint8_t*)src.fStart;
+			src++;
+		}
+
+		// Store only well formed attributes
+		dataChunk = { beginattrValue, endattrValue };
+
+		return true;
+	}
 }
 
 namespace waavs {

@@ -196,7 +196,10 @@ static void onResizeEvent(const ResizeEvent& re)
 	gNavigator.setFrame(BLRect(0, 0, canvasWidth, canvasHeight));
 	
 	//printf("onResizeEvent: %d x %d\n", re.width, re.height);
-	gDrawingContext.attach(appFrameBuffer()->getBlend2dImage());
+	BLContextCreateInfo ctxInfo{};
+	ctxInfo.threadCount = 4;
+
+	gDrawingContext.attach(appFrameBuffer()->getBlend2dImage(), &ctxInfo);
 	handleChange(true);
 }
 
@@ -284,7 +287,7 @@ void setup()
 	BLContextCreateInfo ctxInfo{};
 	ctxInfo.threadCount = 4;
 	//ctxInfo.threadCount = 0;
-	gDrawingContext.begin(appFrameBuffer()->getBlend2dImage(), &ctxInfo);
+	gDrawingContext.attach(appFrameBuffer()->getBlend2dImage(), &ctxInfo);
 	// clear the buffer to white to start
 	gDrawingContext.background(BLRgba32(0xffffffff));
 	
