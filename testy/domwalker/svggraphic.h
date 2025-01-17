@@ -4,10 +4,24 @@
 #include <memory>
 
 #include "blend2d.h"
-
+#include "svgenums.h"
 
 namespace waavs {
-
+	
+	// AGraphState encapsulates the set of attributes that should be
+	// applied when drawing a shape.  These attributes are stored together
+	// so they can be applied to a BLContext in a single operation.
+	// Or can be referenced by multiple graphic objects
+	struct AGraphState final
+	{
+		BLVar fStrokeStyle{};
+		BLVar fFillStyle{};
+		BLFillRule fFillRule{ BLFillRule::BL_FILL_RULE_EVEN_ODD };
+		uint32_t fPaintOrder{ SVG_PAINT_ORDER_NORMAL };
+		BLStrokeCap fStrokeCap{ BLStrokeCap::BL_STROKE_CAP_ROUND };
+		//BLStrokeCapPosition fCapPosition{BLStrokeCapPosition::BL_STROKE_CAP_POSITION_END}
+	};
+	
 	// The base class for something that can be drawn into
 	// a BLContext
 	struct AGraphic
@@ -20,7 +34,7 @@ namespace waavs {
 		virtual void draw(BLContext* ctx) = 0;
 
 		// Some conveniences
-		virtual bool contains(BLPoint pt)
+		virtual bool contains(BLPoint &pt)
 		{
 			// determine if the pt is within the bounds
 			BLRect b = bounds();
@@ -31,6 +45,9 @@ namespace waavs {
 	
 	using AGraphicHandle = std::shared_ptr<AGraphic>;
 	
+
+
+	
 	// A graphic that is based on a BLPath
 	// This is a leaf node
 	struct AGraphicShape : public AGraphic
@@ -38,7 +55,8 @@ namespace waavs {
 		BLPath fPath{};
 		BLVar fStrokeStyle{};
 		BLVar fFillStyle{};
-		
+		BLFillRule fFillRule{BLFillRule::BL_FILL_RULE_EVEN_ODD};
+		uint32_t fPaintOrder{ SVG_PAINT_ORDER_NORMAL };
 
 		
 		const BLVar& strokeStyle() const { return fStrokeStyle; }
@@ -47,8 +65,33 @@ namespace waavs {
 		const BLVar& fillStyle() const { return fFillStyle; }
 		void setFillStyle(const BLVar& style){fFillStyle.assign(style);}
 		
+		void paintOrder(uint32_t po) { fPaintOrder = po; }
+		
 		// return path so it can be altered
 		BLPath& path() { return fPath; }
+		
+		// Determine whether the specified point is within the fill portion of the shape
+		bool contains(BLPoint &pt) override
+		{
+
+			// BUGBUG - do we need to check for a transform, and transform the point?
+			// check to see if we have a transform property
+			// if we do, transform the points through that transform
+			// then check to see if the point is inside the transformed path
+			//if (fHasTransform)
+			//{
+				// get the inverse transform
+			//	auto inverse = fTransform;
+			//	inverse.invert();
+			//	localPoint = inverse.mapPoint(localPoint);
+			//}
+
+
+			// BUGBUG - should use actual fill rule
+			BLHitTest ahit = fPath.hitTest(pt, BLFillRule::BL_FILL_RULE_EVEN_ODD);
+
+			return (ahit == BLHitTest::BL_HIT_TEST_IN);
+		}
 		
 		// fulfilling the AGraphic interface
 		// Get the bounds of the shape.  This does not take into 
@@ -65,9 +108,34 @@ namespace waavs {
 		
 		void draw(BLContext* ctx) override
 		{
-			// BUGBUG - should use paint order
-			ctx->strokePath(fPath, fStrokeStyle);
-			ctx->fillPath(fPath, fFillStyle);
+			uint32_t porder = fPaintOrder;
+			
+			for (int slot = 0; slot < 3; slot++)
+			{
+				uint32_t ins = porder & 0x03;	// get two lowest bits, which are a single instruction
+
+				switch (ins)
+				{
+				case PaintOrderKind::SVG_PAINT_ORDER_FILL:
+					ctx->fillPath(fPath, fFillStyle);
+					break;
+
+				case PaintOrderKind::SVG_PAINT_ORDER_STROKE:
+					ctx->strokePath(fPath, fStrokeStyle);
+					break;
+
+				case PaintOrderKind::SVG_PAINT_ORDER_MARKERS:
+				{
+					//drawMarkers(ctx, groot);
+				}
+				break;
+				}
+
+				// discard instruction, shift down to get the next one ready
+				porder = porder >> 2;
+			}
+
+
 		}
 	};
 

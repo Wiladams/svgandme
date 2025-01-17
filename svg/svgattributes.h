@@ -271,7 +271,7 @@ namespace waavs {
         }
 
 
-        TXTALIGNMENT fValue{ TXTALIGNMENT::LEFT };
+        SVGAlignment fValue{ SVGAlignment::SVG_ALIGNMENT_START };
 
         SVGTextAnchorAttribute() :SVGVisualProperty(nullptr)
         {
@@ -781,7 +781,7 @@ namespace waavs {
         SVGColorPaint(IAmGroot* root) : SVGPaint(root) { id("color"); }
 
 
-        bool loadFromAttributes(const XmlAttributeCollection& attrs)
+        bool loadFromAttributes(const XmlAttributeCollection& attrs) override
         {
             if (!SVGPaint::loadFromAttributes(attrs))
             {
@@ -826,19 +826,7 @@ namespace waavs {
     //=========================================================
     // SVGFillRule
     //=========================================================
-    /*
-    static bool parseFillRule(const ByteSpan& inChunk, BLFillRule& value)
-    {
-        if (inChunk == "nonzero")
-            value = BL_FILL_RULE_NON_ZERO;
-        else if (inChunk == "evenodd")
-            value = BL_FILL_RULE_EVEN_ODD;
-        else
-            return false;
 
-        return true;
-    }
-    */
     struct SVGFillRuleAttribute : public SVGVisualProperty
     {
         static void registerFactory() {

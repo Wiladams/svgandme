@@ -8,22 +8,25 @@
 #include "fonthandler.h"
 #include "collections.h"
 #include "svgenums.h"
-#include "svgdrawingstate.h"
+#include "imanagesvgstate.h"
 
 namespace waavs
 {
     struct IRenderSVG;
     struct IAmGroot;
     
+    
+    
 
-    struct IRenderSVG : public BLContext
+    // A specialization of state management, connected to a BLContext
+    // This is used when rendering a tree of SVG elements
+    struct IRenderSVG : public IManageSVGState, public BLContext
     {
         BLVar fBackground{};
         BLPoint fTextCursor{};
+        FontHandler* fFontHandler{ nullptr };
 
-        // Managing state
-        WSStack<SVGDrawingState> fStateStack{};
-        SVGDrawingState fCurrentState{};
+
         
     public:
         IRenderSVG(FontHandler* fh)
@@ -34,10 +37,7 @@ namespace waavs
         
         virtual ~IRenderSVG() {}
 
-        FontHandler* fontHandler() const { return fCurrentState.fFontHandler; }
-        void fontHandler(FontHandler* fh) { 
-            fCurrentState.fontHandler(fh);
-        }
+
 
         void initState()
         {
@@ -63,28 +63,40 @@ namespace waavs
             BLContext::end();
         }
         
-        void setViewport(const BLRect& r) { 
-            fCurrentState.fViewport = r;
-        }
-		BLRect viewport() const { return fCurrentState.fViewport; }
+
         
 
-		void objectFrame(const BLRect& r) {
-			fCurrentState.fObjectFrame = r;
-		}
-		BLRect objectFrame() const { return fCurrentState.fObjectFrame; }
+
+        void resetFont()
+        {
+            if (nullptr != fFontHandler)
+            {
+                BLFont aFont;
+                if (fFontHandler->selectFont(fFamilyNames, aFont, fFontSize, fFontStyle, fFontWeight, fFontStretch))
+                {
+                    fFont = aFont;
+                }
+            }
+
+        }
         
-        // Text Font selection
-        const BLFont& font() const { return fCurrentState.fFont; }
-        virtual void font(BLFont& afont){ fCurrentState.fFont = afont;    }
-        void resetFont() { fCurrentState.resetFont(); }
+        
+        FontHandler* fontHandler() const { 
+            return fFontHandler; 
+        }
+        void fontHandler(FontHandler* fh) {
+            fFontHandler = fh;
+            if (fFontHandler != nullptr) {
+                resetFont();
+            }
+        }
         
         void applyState()
         {
             // clear the clipping state
             BLContext::restoreClipping();
             
-			const BLRect &cRect = fCurrentState.clipRect();
+			const BLRect &cRect = getClipRect();
             if ((cRect.w >0) && (cRect.h>0))
 				BLContext::clipToRect(cRect);
             
@@ -92,38 +104,34 @@ namespace waavs
             // probably apply paint
         }
         
-        virtual bool push() {
-            // Save the current state to the state stack
-            fStateStack.push(fCurrentState);
+        bool push() override 
+        {
+            IManageSVGState::push();
 
             // Save the blend2d context as well
             auto res = save();
             return res == BL_SUCCESS;
         }
 
-        virtual bool pop() {
-            auto res = restore();
-
-
-            // Restore the current state from the state stack
-            if (!fStateStack.empty()) {
-                fCurrentState = fStateStack.top();
-                fStateStack.pop();
-
-                // Apply the current state to the context
+        virtual bool pop() 
+        {
+ 
+            if (IManageSVGState::pop())
+            {
+                auto res = restore();
                 applyState();
+            
+				return res == BL_SUCCESS;
             }
-
-            return res == BL_SUCCESS;
+            
+            return false;
         }
 
         void resetState()
         {
-            resetTransform();
+            IManageSVGState::reset();
             
-            // Select a default faunt to start
-            fStateStack.clear();
-            fCurrentState.reset();
+            resetTransform();
         }
         
         // Call this before each frame to be drawn
@@ -151,11 +159,7 @@ namespace waavs
         }
 
         
-        const BLVar& defaultColor() const { return fCurrentState.defaultColor(); }
-        void defaultColor(const BLVar& color) { fCurrentState.defaultColor(color); }
 
-        uint32_t paintOrder() const { return fCurrentState.paintOrder(); }
-        void paintOrder(const uint32_t order) { fCurrentState.paintOrder(order); }
 
         virtual void strokeBeforeTransform(bool b) 
         {
@@ -240,14 +244,15 @@ namespace waavs
         }
 
         // Clipping
-        void setClipRect(const BLRect& cRect) {
-			fCurrentState.setClipRect(cRect);
+        void clipRect(const BLRect& cRect) override 
+        {
+            IManageSVGState::clipRect(cRect);
 			BLContext::clipToRect(cRect);
         }
         
-        virtual void clip(const BLRect& bb) {
-            BLContext::clipToRect(bb);
-        }
+        //virtual void clip(const BLRect& bb) {
+        //    BLContext::clipToRect(bb);
+        //}
         
         virtual void noClip() { 
             BLContext::restoreClipping(); 
@@ -286,8 +291,6 @@ namespace waavs
 
 
         // Typography
-        TXTALIGNMENT textAnchor() const { return fCurrentState.textAnchor(); }
-        void textAnchor(TXTALIGNMENT anchor) { fCurrentState.textAnchor(anchor); }
         
         BLPoint textCursor() const { return fTextCursor; }
         void textCursor(const BLPoint& cursor) { fTextCursor = cursor; }
@@ -295,13 +298,7 @@ namespace waavs
         //BLPoint textCursor() const { return fCurrentState.textCursor(); }
         //void textCursor(const BLPoint& cursor) { fCurrentState.textCursor(cursor); }
         
-        virtual void fontFamily(const ByteSpan& familyNames) {fCurrentState.fontFamily(familyNames);}
-		virtual void fontSize(double sz) { fCurrentState.fontSize(static_cast<float>(sz)); }
-		double fontSize() const { return fCurrentState.fontSize(); }
         
-		virtual void fontStyle(const BLFontStyle style) { fCurrentState.fontStyle(style); }
-		virtual void fontWeight(const BLFontWeight weight) { fCurrentState.fontWeight(weight); }
-        virtual void fontStretch(const BLFontStretch stretch) { fCurrentState.fontStretch(stretch); }
         
         // Text Drawing
 		virtual void strokeText(const ByteSpan& txt, double x, double y) {

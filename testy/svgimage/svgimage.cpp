@@ -80,11 +80,27 @@ int main(int argc, char **argv)
 	}
     
 	ByteSpan mappedSpan(mapped->data(), mapped->size());
-    gDoc = SVGFactory::createFromChunk(mappedSpan, &gFontHandler, CAN_WIDTH, CAN_HEIGHT, 96);
+    gDoc = SVGFactory::createDOM(mappedSpan, &gFontHandler);
 
     if (gDoc == nullptr)
         return 1;
 
+	// Now create a drawing context so we can
+	// do the rendering
+	IRenderSVG ctx(&gFontHandler);
+	BLImage img(CAN_WIDTH, CAN_HEIGHT, BL_FORMAT_PRGB32);
+
+	// Attach the drawing context to the image
+	// We MUST do this before we perform any other
+	// operations, including the transform
+	ctx.attach(img);
+	ctx.clearAll();
+
+	
+	// Create a rectangle the size of the BLImage we want to render into
+	BLRect surfaceFrame{ 0, 0, CAN_WIDTH, CAN_HEIGHT };
+
+	
 	
 	// Now that we've processed the document, we have correct sizing
 	// Get the frame size from the document
@@ -92,28 +108,20 @@ int main(int argc, char **argv)
 	BLRect sceneFrame = gDoc->getBBox();
 	printf("viewport: %3.0f %3.0f %3.0f %3.0f\n", sceneFrame.x, sceneFrame.y, sceneFrame.w, sceneFrame.h);
 
-	// Create a rectangle the size of the BLImage we want to render into
-	BLRect surfaceFrame{ 0, 0, CAN_WIDTH, CAN_HEIGHT };
-	
-	
+
 	// At this point, we could just do the render, but we go further
 	// and create a viewport, which will handle the scaling and translation
 	// This will essentially do a 'scale to fit'
 	ViewportTransformer vp{};
 	vp.viewBoxFrame(sceneFrame);
 	vp.viewportFrame(surfaceFrame);
-
-
-	// Now create a drawing context so we can
-	// do the rendering
-	IRenderSVG ctx(&gFontHandler);
-	BLImage img(static_cast<int>(surfaceFrame.w), static_cast<int>(surfaceFrame.h), BL_FORMAT_PRGB32);
 	
-	// Attach the drawing context to the image
-	// We MUST do this before we perform any other
-	// operations, including the transform
-	ctx.attach(img);
-	ctx.clearAll();
+
+
+
+
+	
+
 
 	// apply the viewport's sceneToSurface transform to the context
 	auto res = ctx.setTransform(vp.viewBoxToViewportTransform());

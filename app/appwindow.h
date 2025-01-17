@@ -358,7 +358,7 @@ namespace waavs {
         
     public:
         ApplicationWindow(int w, int h)
-            :User32Window(nullptr)
+            :User32Window()
             ,fSwapChain(w,h,2)
             ,fWindowWidth(w)
             ,fWindowHeight(h)

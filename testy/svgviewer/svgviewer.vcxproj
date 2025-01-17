@@ -185,6 +185,7 @@
     <ClInclude Include="..\..\svg\converters.h" />
     <ClInclude Include="..\..\svg\definitions.h" />
     <ClInclude Include="..\..\svg\fonthandler.h" />
+    <ClInclude Include="..\..\svg\imanagesvgstate.h" />
     <ClInclude Include="..\..\svg\irendersvg.h" />
     <ClInclude Include="..\..\svg\maths.h" />
     <ClInclude Include="..\..\svg\membuff.h" />

@@ -5,7 +5,6 @@
 #include "apphost.h"
 #include "mappedfile.h"
 #include "svguiapp.h"
-//#include "svgwaavs.h"
 #include "svggraphic.h"
 
 #include "viewnavigator.h"
@@ -145,7 +144,7 @@ void setup()
 	// set app window size and title
 	createAppWindow(1920, 1080, "DOM Walker");
 
-	gRecorder.reset(&appFrameBuffer()->image(), "frame", 15, 0);
+	gRecorder.reset(&appFrameBuffer()->getBlend2dImage(), "frame", 15, 0);
 
 	// register to receive various events
 	subscribe(onFileDrop);
@@ -155,12 +154,13 @@ void setup()
 	//subscribe(onKeyboardEvent);
 
 	// clear the buffer to white to start
-	appFrameBuffer()->setAllPixels(vec4b{ 0xFF,0xff,0xff,0x00 });
+	//appFrameBuffer()->setAllPixels(vec4b{ 0xFF,0xff,0xff,0x00 });
 	BLContextCreateInfo ctxInfo{};
 	ctxInfo.threadCount = 4;
 	//ctxInfo.threadCount = 0;
-	gDrawingContext.begin(appFrameBuffer()->image(), &ctxInfo);
-
+	gDrawingContext.begin(appFrameBuffer()->getBlend2dImage(), &ctxInfo);
+	gDrawingContext.fillAll(BLRgba32(0xff00ffff));
+	
 	// Set the initial viewport
 	//gViewPort.surfaceFrame({0, 0, (double)canvasWidth, (double)canvasHeight});
 	//gNavigator.setFrame({ 0, 0, (double)canvasWidth, (double)canvasHeight });

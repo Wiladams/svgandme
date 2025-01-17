@@ -74,7 +74,8 @@ namespace waavs {
 
         virtual BLRect frame() const = 0;
         virtual BLRect getBBox() const = 0;
-
+        virtual bool contains(double x, double y) { return false; }
+        
         void name(const ByteSpan& aname) { fName = aname; }
         const ByteSpan& name() const { return fName; }
 

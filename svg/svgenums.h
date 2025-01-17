@@ -104,7 +104,7 @@ namespace waavs {
 		MARKER_POSITION_START = 0,
 		MARKER_POSITION_MIDDLE = 1,
 		MARKER_POSITION_END = 2,
-		MARKER_POSITION_ALL = 3
+		//MARKER_POSITION_ALL = 3
 	};
 
 	// determines the orientation of a marker

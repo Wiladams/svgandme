@@ -53,7 +53,7 @@ namespace waavs {
 		// calcTextPosition
 		// Given a piece of text, and a coordinate
 		// calculate its baseline given the a specified alignment
-		static BLRect calcTextPosition(BLFont font, const ByteSpan& txt, double x, double y, TXTALIGNMENT hAlignment = TXTALIGNMENT::LEFT, TXTALIGNMENT vAlignment = TXTALIGNMENT::BASELINE, DOMINANTBASELINE baseline = DOMINANTBASELINE::AUTO)
+		static BLRect calcTextPosition(BLFont font, const ByteSpan& txt, double x, double y, SVGAlignment hAlignment = SVGAlignment::SVG_ALIGNMENT_START, TXTALIGNMENT vAlignment = TXTALIGNMENT::BASELINE, DOMINANTBASELINE baseline = DOMINANTBASELINE::AUTO)
 		{
 			BLPoint txtSize = textMeasure(font, txt);
 			double cx = txtSize.x;
@@ -320,7 +320,7 @@ namespace waavs {
 				auto textNode = std::dynamic_pointer_cast<SVGTextRun>(node);
 				if (nullptr != textNode)
 				{
-					TXTALIGNMENT anchor = ctx->textAnchor();
+					SVGAlignment anchor = ctx->textAnchor();
 					ByteSpan txt = textNode->text();
 					BLPoint pos = ctx->textCursor();
 					BLRect pRect = Fontography::calcTextPosition(ctx->font(), txt, pos.x, pos.y, anchor, fTextVAlignment, fDominantBaseline);

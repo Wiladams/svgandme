@@ -319,6 +319,39 @@ namespace waavs {
             needsBinding(false);
         }
         
+        // Bind to a context of a given size
+        // we are meant to do this once, per canvas size
+        // that we're eventually going to draw into
+        // This mimics what is done in drawing, but it's meant to 
+        // allow those things that need to do binding to do what they need
+        // and not actually do the drawing
+        virtual void bindChildrenToContext(IRenderSVG* ctx, IAmGroot* groot)
+        {
+            for (auto& node : fNodes) 
+            {
+                node->bindToContext(ctx, groot);
+            }
+        }
+        
+        virtual void bindToContext(IRenderSVG* ctx, IAmGroot* groot, double cWidth, double cHeight) noexcept
+        {
+            // Start by setting the size of the canvas
+			// that we intend to be drawing into
+            ctx->setViewport(BLRect(0,0,cWidth,cHeight));
+
+            ctx->push();
+            
+            this->fixupStyleAttributes(ctx, groot);
+            convertAttributesToProperties(ctx, groot);
+
+            this->bindSelfToContext(ctx, groot);
+            this->bindChildrenToContext(ctx, groot);
+            
+            ctx->pop();
+
+            needsBinding(false);
+        }
+        
         void drawSelf(IRenderSVG* ctx, IAmGroot*) override
         {
             // draw horizontal blue line at 10,10 for 300
@@ -328,12 +361,9 @@ namespace waavs {
         
         void draw(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->setViewport(frame());
+            //ctx->setViewport(frame());
             
             ctx->push();
-
-            if (needsBinding())
-                this->bindToContext(ctx, groot);
 
             // Should have valid bounding box by now
             // so set objectFrame on the context
@@ -348,7 +378,15 @@ namespace waavs {
         }
         
 
-
+        virtual void draw(IRenderSVG* ctx, IAmGroot* groot, double cWidth, double cHeight)
+        {
+            canvasSize(cWidth, cHeight);
+            
+            if (needsBinding())
+                this->bindToContext(ctx, groot, cWidth, cHeight);
+            
+            draw(ctx, groot);
+        }
 
         
     };

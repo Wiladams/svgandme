@@ -56,6 +56,29 @@ namespace waavs {
 			return BLRect(bbox.x0, bbox.y0, (bbox.x1 - bbox.x0), (bbox.y1 - bbox.y0));
 		}
 
+		bool contains(double x, double y) override
+		{
+			BLPoint localPoint(x, y);
+
+			// BUGBUG - do we need to check for a transform, and transform the point?
+			// check to see if we have a transform property
+			// if we do, transform the points through that transform
+			// then check to see if the point is inside the transformed path
+			if (fHasTransform)
+			{
+				// get the inverse transform
+				auto inverse = fTransform;
+				inverse.invert();
+				localPoint = inverse.mapPoint(localPoint);
+			}
+
+			
+			// BUGBUG - should use actual fill rule
+			BLHitTest ahit = fPath.hitTest(localPoint, BLFillRule::BL_FILL_RULE_EVEN_ODD);
+			
+			return (ahit == BLHitTest::BL_HIT_TEST_IN);
+		}
+		
 		bool checkForMarkers()
 		{
 
