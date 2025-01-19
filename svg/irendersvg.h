@@ -173,8 +173,12 @@ namespace waavs
         virtual void strokeCaps(int caps) { BLContext::setStrokeCaps((BLStrokeCap)caps); }
         virtual void strokeJoin(int join) { BLContext::setStrokeJoin((BLStrokeJoin)join); }
         virtual void strokeMiterLimit(double limit) { BLContext::setStrokeMiterLimit(limit); }
-        virtual void strokeWidth(double w) { BLContext::setStrokeWidth(w); }
-		double strokeWidth() { return blContextGetStrokeWidth(this); }
+
+        void strokeWidth(double w) override { 
+            IManageSVGState::strokeWidth(w);
+            BLContext::setStrokeWidth(w); 
+        }
+
         
 
 

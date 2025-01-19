@@ -25,9 +25,13 @@ namespace waavs {
         // Paint
         BLVar fDefaultColor{};
         BLVar fFillPaint{};
-        BLVar fStrokePaint{};
+
         uint32_t fPaintOrder{ PaintOrderKind::SVG_PAINT_ORDER_NORMAL };
 
+        // Stroking
+        double fStrokeWidth{ 1.0 };
+        BLVar fStrokePaint{};
+        
         // Typography
         BLPoint fTextCursor{};
         SVGAlignment fTextHAlignment = SVGAlignment::SVG_ALIGNMENT_START;
@@ -62,6 +66,8 @@ namespace waavs {
             fPaintOrder = other.fPaintOrder;
             fDefaultColor.assign(other.fDefaultColor);
             fFillPaint.assign(other.fFillPaint);
+
+			fStrokeWidth = other.fStrokeWidth;
             fStrokePaint.assign(other.fStrokePaint);
             
 
@@ -95,6 +101,8 @@ namespace waavs {
             fPaintOrder = other.fPaintOrder;
             fDefaultColor.assign(other.fDefaultColor);
             fFillPaint.assign(other.fFillPaint);
+
+			fStrokeWidth = other.fStrokeWidth;
             fStrokePaint.assign(other.fStrokePaint);
 
 
@@ -174,16 +182,10 @@ namespace waavs {
         
         
 
-        // Typography State
-        //void fontHandler(FontHandler* handler) noexcept
-        //{
-        //    fFontHandler = handler;
-
-            // Select a default faunt to start
-        //    if (fFontHandler != nullptr) {
-        //        resetFont();
-        //    }
-        //}
+        virtual void strokeWidth(double sw) { 
+            fStrokeWidth = sw; 
+        }
+        virtual double getStrokeWidth() const { return fStrokeWidth; }
 
 
 

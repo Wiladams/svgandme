@@ -102,7 +102,7 @@ namespace waavs {
 			bool haveViewbox = parseViewBox(getAttribute("viewBox"), fViewbox);
 			fPortal.loadFromAttributes(fAttributes);
 			
-			double sWidth = ctx->strokeWidth();
+			double sWidth = ctx->getStrokeWidth();
 
 			// First, we setup the marker bounding box
 			// This is determined based on the markerWidth, and markerHeight

@@ -142,8 +142,8 @@ namespace waavs {
         // This should be size of document elements
         BLRect getBBox() const override 
         {
-            return frame();
-            /*
+            //return frame();
+            
             BLRect extent{};
             bool firstOne = true;
 
@@ -156,13 +156,13 @@ namespace waavs {
                     firstOne = false;
                 }
                 else {
-					expandRect(extent, g->getBBox());
+					//expandRect(extent, g->getBBox());
                     //expandRect(extent, g->frame());
                 }
             }
 
             return extent;
-            */
+            
         }
         
         std::shared_ptr<CSSStyleSheet> styleSheet() override { return fStyleSheet; }

@@ -247,7 +247,8 @@ static void onKeyboardEvent(const KeyboardEvent& ke)
 static void setupFonts()
 {
 	//loadDefaultFonts();
-	loadFontDirectory("c:\\windows\\fonts");
+	//loadFontDirectory("c:\\windows\\fonts");
+	loadDefaultFonts();
 	loadFontDirectory("d:\\commonfonts");
 	//loadFontDirectory("..\\resources");
 

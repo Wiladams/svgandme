@@ -129,6 +129,13 @@ namespace waavs {
             resetGDIDibSection(w, h);
             resetB2d(w, h);
         }
+
+        // Some drawing
+        // clear the contents of the framebuffer to all '0' values
+        void clear() 
+        {
+			memset(fFrameBufferData, 0, fBytesPerRow * height());
+        }
     };
 
     // struct SwapChain
