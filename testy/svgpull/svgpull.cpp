@@ -83,7 +83,34 @@ static void testPathParse()
 {
     BLPath aPath{};
     
-    svgsegmentconstruct::parsePathSegments("M 10 10 L 90 90", aPath);
+    //svgsegmentconstruct::parsePathSegments("M 10 10 L 90 90", aPath);
+
+    SVGPathSegmentIterator iter("M 10, 50Q 25, 25 40, 50t 30, 0 30, 0 30, 0 30, 0 30, 0");
+
+    SVGSegmentParseState seg;
+    while (iter.nextSegment(seg))
+    {
+		printf("%c ", seg.fSegmentKind);
+        int n = strlen(seg.fArgTypes);
+        switch (n) {
+        case 7:
+            printf("%3.2f ", seg.args[n - 7]);
+        case 6:
+            printf("%3.2f ", seg.args[n - 6]);
+        case 5:
+            printf("%3.2f ", seg.args[n - 5]);
+        case 4:
+            printf("%3.2f ", seg.args[n - 4]);
+        case 3:
+            printf("%3.2f ", seg.args[n - 3]);
+        case 2:
+            printf("%3.2f ", seg.args[n - 2]);
+        case 1:
+            printf("%3.2f ", seg.args[n - 1]);
+        default:
+            printf("\n");
+        }
+    }
 }
 
 

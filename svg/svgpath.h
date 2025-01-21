@@ -30,47 +30,46 @@
 
 
 namespace waavs {
+	using SVGSegmentConstructorFunc = std::function<bool(unsigned char segCommand, const double* args, int iteration, BLPath*)>;
+
+
+	struct SVGSegmentParams
+	{
+		const char* fArgTypes{};
+		SVGSegmentConstructorFunc fConstructor{};
+	};
+
+	// Used for the iterator
+	struct SVGSegmentParseParams {
+		bool fFlattenCommands{ true };
+		BLPath* fPath{ nullptr };
+	};
+
+	struct SVGSegmentParseState {
+		ByteSpan remains{};
+		unsigned char fSegmentKind{ 0 };
+		int iteration{ 0 };
+		int fError{ 0 };
+		SVGSegmentConstructorFunc fFunction{ nullptr };
+		const char* fArgTypes{};
+		double args[8];		// The arguments for the command
+
+		SVGSegmentParseState() = default;
+		
+		SVGSegmentParseState(const ByteSpan& aSpan)
+		{
+			remains = aSpan;
+		}
+
+		bool hasMore() const {
+			return remains.size() > 0;
+		}
+	};
+
+	
+		
 	namespace svgsegmentconstruct
 	{
-
-		using SVGSegmentConstructorFunc = std::function<bool (unsigned char segCommand, const double *args, int iteration, BLPath*)>;
-
-
-		struct SVGSegmentParams 
-		{
-			const char* fArgTypes{};
-			SVGSegmentConstructorFunc fConstructor{};
-		};
-		
-		// Used for the iterator
-		struct SVGSegmentParseParams {
-			bool fFlattenCommands{ true };
-			BLPath *fPath{nullptr};
-		};
-		
-		struct SVGSegmentParseState {
-			ByteSpan remains;
-			unsigned char fSegmentKind{ 0 };
-			int iteration{ 0 };
-			int fError{ 0 };
-			SVGSegmentConstructorFunc fFunction{ nullptr };
-			const char* fArgTypes{};
-			double args[8];		// The arguments for the command
-
-			
-			SVGSegmentParseState(const ByteSpan& aSpan)
-			{
-				remains = aSpan;
-			}
-
-			bool hasMore() const {
-				return remains.size() > 0;
-			}
-		};
-
-
-
-		
 		// Command - A
 		static bool constructArcTo(unsigned char segCommand, const double* args, int iteration, BLPath *apath) noexcept
 		{
@@ -344,6 +343,9 @@ namespace waavs {
 
 		}
 
+
+
+
 		
 		// parsePath()
 		// parse a path string, filling in a BLPath object
@@ -397,4 +399,37 @@ namespace waavs {
 			return true;
 		}
 	}
+}
+
+namespace waavs {
+	// Provide a simple iterator interface to the segments
+	// of a SVG Path
+	struct SVGPathSegmentIterator
+	{
+	private:
+		SVGSegmentParseParams fParams{};
+		SVGSegmentParseState fCmdState;
+
+
+	public:
+		SVGPathSegmentIterator(const ByteSpan& pathSpan)
+			: fCmdState(pathSpan)
+		{
+
+		}
+
+		bool nextSegment(SVGSegmentParseState& cmdState)
+		{
+			unsigned char fSegmentKind{ 0 };
+			int iteration{ 0 };
+			double args[8];		// The arguments for the command
+			auto success = svgsegmentconstruct::readNextSegmentCommand(fParams, fCmdState);
+			if (!success)
+				return false;
+
+			cmdState = fCmdState;
+
+			return true;
+		}
+	};
 }
