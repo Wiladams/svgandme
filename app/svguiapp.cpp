@@ -5,11 +5,25 @@
 #include <filesystem>
 
 #include "svguiapp.h"
-
+#include "stopwatch.h"
 
 
 
 using namespace waavs;
+
+static StopWatch gSVGAppClock;
+
+
+double seconds() noexcept
+{
+	return gSVGAppClock.seconds();
+}
+
+double millis() noexcept
+{
+	// get millis from p5 stopwatch
+	return gSVGAppClock.millis();
+}
 
 
 waavs::FontHandler& getFontHandler() {
@@ -114,5 +128,5 @@ void onLoad()
 		gSetupHandler();
 
 	// Refresh the screen at least once
-	screenRefresh();
+	refreshScreenNow();
 }

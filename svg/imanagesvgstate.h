@@ -22,13 +22,18 @@ namespace waavs
             return SVGDrawingState::operator=(st);
         }
 
+        virtual void onPush() {}
+        
         virtual bool push() {
             // Save the current state to the state stack
             fStateStack.push(*this);
+            onPush();
             
             return true;
         }
 
+        virtual void onPop() {}
+        
         virtual bool pop()
         {
             if (fStateStack.empty())
@@ -41,7 +46,7 @@ namespace waavs
 			this->operator=(st);
             
             fStateStack.pop();
-
+            onPop();
 
             return true;
         }

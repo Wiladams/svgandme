@@ -32,6 +32,7 @@ bool gAnimate{ false };
 bool gPerformTransform{ true };
 bool gAutoGrow{ false };
 
+double gRecordingStart{ 0 };
 
 // docFromFilename
 //
@@ -109,6 +110,10 @@ static void resetView()
 
 static void handleChange(const bool&)
 {
+	if (gDoc!=nullptr && gAnimate)
+	{
+		gDoc->update(gDoc.get());
+	}
 	
 	//printf("svgviewer::handleChange\n");
 	draw();
@@ -117,7 +122,7 @@ static void handleChange(const bool&)
 	// runs the window in a modal way, starving us of regular
 	// redraw messages, based on timing, so we force a redraw
 	// message through the message queue
-	screenRefresh();
+	refreshScreenNow();
 
 }
 
@@ -171,20 +176,13 @@ static void onFrameEvent(const FrameCountEvent& fe)
 	//printf("frameEvent: %d\n", (int)fe.frameCount);
 	//printf("Actual Frame Rate: %d\n", (int)(fe.frameCount / seconds()));
 	
-	//appFrameBuffer().setAllPixels(vec4b{ 0x00,0xff,0x00,0xff });
-	// update current document
 	if (gDoc != nullptr)
 	{
-		if (gAnimate)
-		{
-			gDoc->update(gDoc.get());
-			handleChange(true);
-		}
+		handleChange(true);
 	}
-	
-
-	screenRefresh();
-
+	else {
+		refreshScreenNow();
+	}
 
 	gRecorder.saveFrame();
 }
@@ -229,6 +227,15 @@ static void onKeyboardEvent(const KeyboardEvent& ke)
 			case VK_PAUSE:
 			case 'R':
 				gRecorder.toggleRecording();
+				if (gRecorder.isRecording())
+				{
+					gRecordingStart = seconds();
+				}
+				else
+				{
+					double duration = seconds() - gRecordingStart;
+					printf("Recording Frames: %d  Duration: %3.2f  FPS: %f\n", gRecorder.frameCount(), duration, gRecorder.frameCount() / duration);
+				}
 			break;			
 
 			case 'A':
@@ -272,7 +279,7 @@ void setup()
 	//layered();
 	
 	// set app window size and title
-	createAppWindow(1920, 1080, "SVGViewer");
+	createAppWindow(1024, 768, "SVGViewer");
 	
 	gRecorder.reset(&appFrameBuffer()->getBlend2dImage(), "frame", 15, 0);
 	

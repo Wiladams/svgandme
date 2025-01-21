@@ -29,7 +29,11 @@ namespace waavs {
         uint32_t fPaintOrder{ PaintOrderKind::SVG_PAINT_ORDER_NORMAL };
 
         // Stroking
+        BLStrokeCap fBeginStrokeCap{ BLStrokeCap::BL_STROKE_CAP_BUTT };
+        BLStrokeCap fEndStrokeCap{ BLStrokeCap::BL_STROKE_CAP_BUTT };
         double fStrokeWidth{ 1.0 };
+        BLStrokeJoin fStrokeJoin{ BLStrokeJoin::BL_STROKE_JOIN_MITER_ROUND };
+        
         BLVar fStrokePaint{};
         
         // Typography
@@ -57,6 +61,8 @@ namespace waavs {
             : fFont(other.fFont)
 
         {
+            this->operator=(other);
+            /*
             fClipRect = other.fClipRect;
             fViewport = other.fViewport;
             fObjectFrame = other.fObjectFrame;
@@ -69,7 +75,8 @@ namespace waavs {
 
 			fStrokeWidth = other.fStrokeWidth;
             fStrokePaint.assign(other.fStrokePaint);
-            
+			fBeginStrokeCap = other.fBeginStrokeCap;
+			fEndStrokeCap = other.fEndStrokeCap;
 
 
             fTextHAlignment = other.fTextHAlignment;
@@ -83,6 +90,7 @@ namespace waavs {
             fFontStyle = other.fFontStyle;
             fFontWeight = other.fFontWeight;
             fFontStretch = other.fFontStretch;
+            */
         }
 
         // Assignment operator
@@ -101,10 +109,12 @@ namespace waavs {
             fPaintOrder = other.fPaintOrder;
             fDefaultColor.assign(other.fDefaultColor);
             fFillPaint.assign(other.fFillPaint);
+            
 
-			fStrokeWidth = other.fStrokeWidth;
             fStrokePaint.assign(other.fStrokePaint);
-
+			fStrokeWidth = other.fStrokeWidth;
+            fBeginStrokeCap = other.fBeginStrokeCap;
+            fEndStrokeCap = other.fEndStrokeCap;
 
             fTextHAlignment = other.fTextHAlignment;
             fTextVAlignment = other.fTextVAlignment;
@@ -187,6 +197,9 @@ namespace waavs {
         }
         virtual double getStrokeWidth() const { return fStrokeWidth; }
 
+		void lineJoin(BLStrokeJoin join) { fStrokeJoin = join; }
+		BLStrokeJoin getLineJoin() const { return fStrokeJoin; }
+        
 
 
         // Typography

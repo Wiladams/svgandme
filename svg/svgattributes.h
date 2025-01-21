@@ -1060,7 +1060,7 @@ namespace waavs {
 
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->strokeJoin(fLineJoin);
+            ctx->lineJoin(fLineJoin);
         }
     };
 }

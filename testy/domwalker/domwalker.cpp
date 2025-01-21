@@ -119,7 +119,7 @@ static void onFrameEvent(const FrameCountEvent& fe)
 	//}
 
 
-	screenRefresh();
+	refreshScreenNow();
 
 
 	//gRecorder.saveFrame();

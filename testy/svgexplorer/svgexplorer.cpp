@@ -71,7 +71,7 @@ static void drawDocument()
 static void refreshDoc()
 {
 	drawDocument();
-	screenRefresh();
+	refreshScreenNow();
 }
 
 
@@ -141,7 +141,7 @@ static void onFrameEvent(const FrameCountEvent& fe)
 		refreshDoc();
 	}
 	else {
-		screenRefresh();
+		refreshScreenNow();
 	}
 
 	gRecorder.saveFrame();

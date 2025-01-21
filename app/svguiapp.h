@@ -5,7 +5,7 @@
 #include "recorder.h"
 
 
-//APP_EXTERN waavs::FontHandler gFontHandler;
+
 APP_EXTERN waavs::Recorder gRecorder;
 
 APP_EXPORT waavs::FontHandler & getFontHandler();
@@ -26,6 +26,13 @@ APP_EXPORT bool loadFontDirectory(const char* dir) noexcept;
 #ifdef __cplusplus
 extern "C" {
 #endif
+	// get fractions of seconds
+	APP_EXPORT double millis() noexcept;
+	APP_EXPORT double seconds() noexcept;
+
+
+	
+	
 	APP_EXPORT void setup();		// called once before main loop is running
 
 #ifdef __cplusplus

@@ -10,7 +10,7 @@
 
 #include "svgdatatypes.h"
 #include "svgpath.h"
-#include "svgviewport.h"
+#include "svgportal.h"
 #include "collections.h"
 
 using namespace waavs;
@@ -47,14 +47,14 @@ static void testFile(const char *filename)
     mapped->close();
 }
 
-static void testViewport(const char *xmlattrs)
+static void testAViewport(const char *xmlattrs)
 {
     // Setup an XMLAttribute collection from a static string
     XmlAttributeCollection attrs{};
 	attrs.scanAttributes(xmlattrs);
     
     // Create a viewport, and load the attributes
-	SVGViewport vp{};
+    SVGPortal vp{};
 	vp.loadFromAttributes(attrs);
 
     // Create a render context so the viewport can be bound to it
@@ -66,10 +66,26 @@ static void testViewport(const char *xmlattrs)
     
     // Print out the viewport's bounding box
     printf("================\n%s\n-----------------\n", xmlattrs);
-	printRect(vp.fViewport.surfaceFrame());
-	printRect(vp.fViewport.sceneFrame());
-	printTransform(vp.fViewport.sceneToSurfaceTransform());
+	printRect(vp.viewportFrame());
+	printRect(vp.viewBoxFrame());
+	printTransform(vp.viewBoxToViewportTransform());
 }
+
+static void testViewport()
+{
+    testAViewport("width='100' height='100' viewBox='0 0 200 200' preserveAspectRatio='xMidYMid meet'");
+    testAViewport("x='10' y='15' width='100' height='100' viewBox='0 0 200 200' preserveAspectRatio='xMidYMid meet'");
+    testAViewport("viewBox='0 0 80 20'");
+    testAViewport("id = 'myDot' width = '10' height = '10' viewBox = '0 0 2 2'");
+}
+
+static void testPathParse()
+{
+    BLPath aPath{};
+    
+    svgsegmentconstruct::parsePathSegments("M 10 10 L 90 90", aPath);
+}
+
 
 int main(int argc, char** argv)
 {
@@ -80,10 +96,9 @@ int main(int argc, char** argv)
         //testFile(filename);
     }
 
-    testViewport("width='100' height='100' viewBox='0 0 200 200' preserveAspectRatio='xMidYMid meet'");
-    testViewport("x='10' y='15' width='100' height='100' viewBox='0 0 200 200' preserveAspectRatio='xMidYMid meet'");
-    testViewport("viewBox='0 0 80 20'");
-    testViewport("id = 'myDot' width = '10' height = '10' viewBox = '0 0 2 2'");
+
+    //testViewport();
+    testPathParse();
     
     return 0;
 }

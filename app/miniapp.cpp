@@ -172,7 +172,7 @@ uint64_t frameCount() noexcept
 
 // This function is called at any time to display whatever is in the app 
 // window to the actual screen
-void screenRefresh()
+void refreshScreenNow()
 {
 
     if (!gIsLayered) {
@@ -180,7 +180,7 @@ void screenRefresh()
         // sort of WM_PAINT based drawing
         //InvalidateRect(getAppWindow()->windowHandle(), NULL, 1);
         //::RedrawWindow(getAppWindow()->windowHandle(), NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
-        ::RedrawWindow(getAppWindow()->windowHandle(), NULL, NULL, RDW_INVALIDATE);
+        ::RedrawWindow(getAppWindow()->windowHandle(), NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
     }
     else {
         // This is the workhorse of displaying directly
@@ -291,7 +291,7 @@ static LRESULT HandleSizeMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
     ResizeEvent re{ aWidth, aHeight };
     gResizeEventTopic.notify(re);
 
-    screenRefresh();
+    refreshScreenNow();
 
     return res;
 }

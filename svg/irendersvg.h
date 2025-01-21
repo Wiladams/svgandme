@@ -31,8 +31,8 @@ namespace waavs
     public:
         IRenderSVG(FontHandler* fh)
         {
-            initState();
             fontHandler(fh);
+            initState();
         }
         
         virtual ~IRenderSVG() {}
@@ -42,7 +42,7 @@ namespace waavs
         void initState()
         {
             fBackground = BLRgba32(0xFFFFFFFF);
-            strokeJoin(BL_STROKE_JOIN_MITER_CLIP);
+            IManageSVGState::lineJoin(BL_STROKE_JOIN_MITER_CLIP);
             strokeMiterLimit(4);
             setFillRule(BL_FILL_RULE_NON_ZERO);
             fill(BLRgba32(0, 0, 0));
@@ -50,10 +50,15 @@ namespace waavs
             strokeWidth(1.0);
         }
         
+
+
+        
         BLResult attach(BLImageCore& image, const BLContextCreateInfo* createInfo= nullptr) noexcept
         {
             BLResult res = BLContext::begin(image, createInfo);
-            initState();
+
+            applyState();
+            //initState();
             
             return res;
         }
@@ -91,40 +96,38 @@ namespace waavs
             }
         }
         
+
         void applyState()
         {
             // clear the clipping state
             BLContext::restoreClipping();
-            
-			const BLRect &cRect = getClipRect();
-            if ((cRect.w >0) && (cRect.h>0))
-				BLContext::clipToRect(cRect);
-            
+
+            // stroke caps
+            // stroke linejoin
+            BLContext::setStrokeJoin(getLineJoin());
+            BLContext::setStrokeWidth(getStrokeWidth());
+
+            // font
+
+            const BLRect& cRect = getClipRect();
+            if ((cRect.w > 0) && (cRect.h > 0))
+                BLContext::clipToRect(cRect);
+
             // probably applying font characteristics
             // probably apply paint
         }
         
-        bool push() override 
+        
+        void onPush() override 
         {
-            IManageSVGState::push();
-
             // Save the blend2d context as well
             auto res = save();
-            return res == BL_SUCCESS;
         }
 
-        virtual bool pop() 
+        void onPop() override 
         {
- 
-            if (IManageSVGState::pop())
-            {
-                auto res = restore();
-                applyState();
-            
-				return res == BL_SUCCESS;
-            }
-            
-            return false;
+            auto res = restore();
+            applyState();
         }
 
         void resetState()
@@ -149,7 +152,7 @@ namespace waavs
             setCompOp(BL_COMP_OP_SRC_OVER);
 
             //ctx->setStrokeMiterLimit(4.0);
-            strokeJoin(BL_STROKE_JOIN_MITER_CLIP);
+            SVGDrawingState::lineJoin(BL_STROKE_JOIN_MITER_CLIP);
 
             setFillRule(BL_FILL_RULE_NON_ZERO);
 
@@ -171,7 +174,8 @@ namespace waavs
 
         virtual void strokeCap(int cap, int position) { BLContext::setStrokeCap((BLStrokeCapPosition)position, (BLStrokeCap)cap); }
         virtual void strokeCaps(int caps) { BLContext::setStrokeCaps((BLStrokeCap)caps); }
-        virtual void strokeJoin(int join) { BLContext::setStrokeJoin((BLStrokeJoin)join); }
+        
+
         virtual void strokeMiterLimit(double limit) { BLContext::setStrokeMiterLimit(limit); }
 
         void strokeWidth(double w) override { 
@@ -317,7 +321,7 @@ namespace waavs
         
         // Execute generic operation on this context
         // This supports interface expansion without adding new function prototypes
-        virtual void exec(std::function<void(IRenderSVG*)> f) { f(this); }
+        //virtual void exec(std::function<void(IRenderSVG*)> f) { f(this); }
     };
 
 

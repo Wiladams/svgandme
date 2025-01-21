@@ -141,11 +141,9 @@ APP_EXPORT void frameRate(float newRate) noexcept;
 APP_EXPORT float getFrameRate() noexcept;
 APP_EXPORT size_t frameCount() noexcept;
 
-// get fractions of seconds
-APP_EXPORT double millis() noexcept;
-APP_EXPORT double seconds() noexcept;
 
-APP_EXPORT void screenRefresh();
+
+APP_EXPORT void refreshScreenNow();
 
 APP_EXPORT void layered();
 APP_EXPORT void noLayered();

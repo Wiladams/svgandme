@@ -123,7 +123,7 @@ extern "C" {
 	APP_EXPORT size_t frameCount() noexcept;
 
 
-	APP_EXPORT void screenRefresh();
+	APP_EXPORT void refreshScreenNow();
 
 	APP_EXPORT void layered();
 	APP_EXPORT void noLayered();
