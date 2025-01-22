@@ -79,11 +79,16 @@ static void testViewport()
     testAViewport("id = 'myDot' width = '10' height = '10' viewBox = '0 0 2 2'");
 }
 
-static void testPathParse()
+static void testPathParse1()
 {
     BLPath aPath{};
-    
-    //svgsegmentconstruct::parsePathSegments("M 10 10 L 90 90", aPath);
+
+    parsePath("M 10 10 L 90 90", aPath);
+}
+
+
+static void testPathParse()
+{
 
     SVGPathSegmentIterator iter("M 10, 50Q 25, 25 40, 50t 30, 0 30, 0 30, 0 30, 0 30, 0");
 

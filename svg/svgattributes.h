@@ -584,7 +584,7 @@ namespace waavs {
 
     struct SVGPaintAttribute : public SVGVisualProperty
     {
-        BLVar fPaintVar{};
+        BLVar fPaintVar{BLVar::null()};
 
         SVGPaintAttribute(IAmGroot* groot) :SVGVisualProperty(groot) {}
 

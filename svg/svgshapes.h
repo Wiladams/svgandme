@@ -879,8 +879,7 @@ namespace waavs {
 		{
 			auto d = getAttribute("d");
 			if (d) {
-				//auto success = blpathparser::parsePath(d, fPath);
-				auto success = svgsegmentconstruct::parsePathSegments(d, fPath);
+				auto success = parsePath(d, fPath);
 				fPath.shrink();
 			}
 		}

@@ -167,8 +167,8 @@ namespace waavs
     INLINE float tan(float a) noexcept { return std::tan(a); }
 
     INLINE bool isfinite(float a) { return std::isfinite(a); }
-    INLINE constexpr float radians(float a) { return float(a * 0.017453292519943295); }
-    INLINE constexpr float degrees(float a) { return float(a * 57.29577951308232); }
+    INLINE constexpr float radiansf(float a) { return float(a * 0.017453292519943295); }
+    INLINE constexpr float degreesf(float a) { return float(a * 57.29577951308232); }
     INLINE constexpr float lerp(float a, float b, float u) { return a * (1.0f - u) + b * u; }
     INLINE  void swap(float& a, float& b) { return std::swap(a, b); }
     INLINE float smoothStep(float a, float b, float u) {

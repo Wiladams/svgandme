@@ -218,7 +218,7 @@ namespace waavs {
 			if (!d)
 				return;
 
-			if (svgsegmentconstruct::parsePathSegments(d, fPath))
+			if (parsePath(d, fPath))
 				fPath.shrink();
 
 			needsBinding(false);
@@ -272,7 +272,7 @@ namespace waavs {
 			if (!d)
 				return;
 
-			if (svgsegmentconstruct::parsePathSegments(d, fPath))
+			if (parsePath(d, fPath))
 				fPath.shrink();
 		}
 

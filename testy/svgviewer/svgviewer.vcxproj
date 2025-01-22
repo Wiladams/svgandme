@@ -189,6 +189,7 @@
     <ClInclude Include="..\..\svg\irendersvg.h" />
     <ClInclude Include="..\..\svg\maths.h" />
     <ClInclude Include="..\..\svg\membuff.h" />
+    <ClInclude Include="..\..\svg\pathsegmenter.h" />
     <ClInclude Include="..\..\svg\svg.h" />
     <ClInclude Include="..\..\svg\svgattributes.h" />
     <ClInclude Include="..\..\svg\svgclip.h" />
