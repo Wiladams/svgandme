@@ -11,7 +11,9 @@
 
 #include "svgattributes.h"
 #include "svgstructuretypes.h"
-#include "viewport.h"
+//#include "viewport.h"
+#include "svgportal.h"
+
 
 namespace waavs {
 
@@ -47,6 +49,10 @@ namespace waavs {
 		}
 
 
+		
+		ByteSpan fTemplateReference{};		// A referred to pattern as template
+		
+		
 		SpaceUnitsKind fPatternUnits{ SpaceUnitsKind::SVG_SPACE_OBJECT };
 		SpaceUnitsKind fPatternContentUnits{ SpaceUnitsKind::SVG_SPACE_USER };
 		BLExtendMode fExtendMode{ BL_EXTEND_MODE_REPEAT };
@@ -56,22 +62,20 @@ namespace waavs {
 		BLMatrix2D fContentTransform{};
 		bool fHasPatternTransform{ false };
 		
-		ByteSpan fTemplateReference{};
-		
 
-		PreserveAspectRatio fPreserveAspectRatio{};
-		//AspectRatioKind fPreserveAspectRatio{ AspectRatioKind::SVG_ASPECT_RATIO_XMIDYMID };
+		SVGPortal fPortal;
 		BLRect viewboxRect{};
 		bool haveViewbox{ false };
-
-
+		PreserveAspectRatio fPreserveAspectRatio{};
+		
+		
 		// Things we'll need to calculate
 		BLRect fObjectBoundingBox{};
 		BLRect fPatternBoundingBox{};
 		BLPoint fPatternOffset{ 0,0 };
 		BLPoint fPatternContentScale{ 1.0,1.0 };
 		
-		ViewportTransformer fViewport{};
+
 
 
 
@@ -99,7 +103,7 @@ namespace waavs {
 
 
 			// Create image and draw into it right here
-			// Att this point, all attributes have been captured
+			// At this point, all attributes have been captured
 			// and all dimensions are known.
 			// So, we can size a bitmap and draw into it
 			drawIntoCache(ctx, groot);
@@ -114,51 +118,106 @@ namespace waavs {
 			return fPatternBoundingBox;
 		}
 
-
-		void resolveReference(IRenderSVG *ctx, IAmGroot* groot)
+		void inheritProperties(const SVGPatternElement *elem)
 		{
-			// Quick return if there is no template reference
-			if (!fTemplateReference)
+			if (!elem)
 				return;
 			
+			// inherit: 
+			// x, y, width, height, patternUnits, patternContentUnits, patternTransform
+			// viewBox, preserveAspectRatio
+			if (!getAttribute("x"))
+			{
+				if (elem->getAttribute("x"))
+					setAttribute("x", elem->getAttribute("x"));
+			}
+
+			if (!getAttribute("y"))
+			{
+				if (elem->getAttribute("y"))
+					setAttribute("y", elem->getAttribute("y"));
+			}
+			
+			if (!getAttribute("width"))
+			{
+				if (elem->getAttribute("width"))
+					setAttribute("width", elem->getAttribute("width"));
+
+			}
+
+			if (!getAttribute("height"))
+			{
+				if (elem->getAttribute("height"))
+					setAttribute("height", elem->getAttribute("height"));
+			}
+			
+			if (!getAttribute("patternUnits"))
+			{
+				if (elem->getAttribute("patternUnits"))
+					setAttribute("patternUnits", elem->getAttribute("patternUnits"));
+			}
+			
+			if (!getAttribute("patternContentUnits"))
+			{
+				if (elem->getAttribute("patternContentUnits"))
+					setAttribute("patternContentUnits", elem->getAttribute("patternContentUnits"));
+			}
+
+			if (!getAttribute("patternTransform"))
+			{
+				if (elem->getAttribute("patternTransform"))
+					setAttribute("patternTransform", elem->getAttribute("patternTransform"));
+			}
+
+			if (!getAttribute("viewBox"))
+			{
+				if (elem->getAttribute("viewBox"))
+					setAttribute("viewBox", elem->getAttribute("viewBox"));
+			}
+
+			if (!getAttribute("preserveAspectRatio"))
+			{
+				if (elem->getAttribute("preserveAspectRatio"))
+					setAttribute("preserveAspectRatio", elem->getAttribute("preserveAspectRatio"));
+			}
+		}
+
+		
+		void resolveReference(IRenderSVG *ctx, IAmGroot* groot)
+		{
 			// return early if we can't do a lookup
 			if (!groot)
 				return;
 
-			// Try to find the referenced node
+			// Quick return if there is no referred to pattern
+			if (!fTemplateReference)
+				return;
+			
+			// Try to find the referred to pattern
 			auto node = groot->findNodeByHref(fTemplateReference);
 
+			// Didn't find the node, so return empty handed
 			if (!node)
 				return;
 
-			// Make sure the template binds, so we can get values out of it
-			BLVar aVar = node->getVariant(ctx, groot);
-			
-			// Cast the node to a SVGPatternElement, so we get get some properties from it
+			// Try to cast the node to a SVGPatternElement, so we get get some properties from it
 			auto pattNode = std::dynamic_pointer_cast<SVGPatternElement>(node);
 
+			// If it didn't cast, then it's not an SVGPatternElement, so return
 			if (!pattNode)
 				return;
-
-
-			// save patternUnits
-			// save patternContentUnits
-			fPatternUnits = pattNode->fPatternUnits;
-			fPatternContentUnits = pattNode->fPatternContentUnits;
 			
 			
-			if (aVar.isPattern())
-			{
-				BLPattern& tmpPattern = aVar.as<BLPattern>();
-
-				// pull out whatever values we can inherit
-				fPattern = tmpPattern;
-
-				if (tmpPattern.hasTransform())
-				{
-					fPattern.setTransform(tmpPattern.transform());
-				}
-			}
+			// We need to do the inheritance thing here
+			// There are a fixed number of properties that we care to 
+			// inherit: x, y, width, height, patternUnits, patternContentUnits, patternTransform
+			// viewBox, preserveAspectRatio
+			// If we have set them ourselves, then don't bother getting them from the referenced
+			// pattern.  But, if we have not set them, then get them from the referenced pattern
+			// Use getVisualProperty() to figure out if the property has already been set or not
+			// 
+			pattNode->bindToContext(ctx, groot);
+			inheritProperties(pattNode.get());
 		}
 
 		// fixupSelfStyleAttributes
@@ -168,6 +227,10 @@ namespace waavs {
 		//
 		// We want to load things here that are invariant between 
 		// coordinate spaces, mostly enums, transform, and viewbox.
+		// 
+		// BUGBUG 
+		// can we also resolve inheritance here?
+		// has the document already been fully loaded.
 		//
 		void fixupSelfStyleAttributes(IRenderSVG *ctx, IAmGroot *groot) override
 		{
@@ -177,6 +240,8 @@ namespace waavs {
 			else if (getAttribute("xlink:href"))
 				fTemplateReference = getAttribute("xlink:href");
 
+			resolveReference(ctx, groot);
+			
 			// Get the aspect ratio, and spacial units
 			//getEnumValue(SVGAspectRatioEnum, getAttribute("preserveAspectRatio"), (uint32_t&)fPreserveAspectRatio);
 			getEnumValue(SVGSpaceUnits, getAttribute("patternUnits"), (uint32_t&)fPatternUnits);
@@ -287,17 +352,12 @@ namespace waavs {
 
 		}
 
-		// 
-		// Resolve template reference
-		// fix coordinate system
-		//
+
 
 		void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) override
 		{
-			resolveReference(ctx, groot);
 			createPortal(ctx, groot);
-			
-			//fBBox = fSurfaceFrame;
+			fPortal.bindToContext(ctx, groot);
 
 			// We need to resolve the size of the user space
 			// start out with some information from groot

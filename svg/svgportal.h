@@ -22,8 +22,6 @@ namespace waavs {
         bool fHasViewbox{ false };
 
 
-        
-
         BLRect getBBox() const
         {
             return viewportFrame();
@@ -45,10 +43,9 @@ namespace waavs {
             fPreserveAspectRatio.loadFromChunk(attrs.getAttribute("preserveAspectRatio"));
 
 			// viewBox
-             fHasViewbox = parseViewBox(attrs.getAttribute("viewBox"), fViewBoxFrame);
+            fHasViewbox = parseViewBox(attrs.getAttribute("viewBox"), fViewBoxFrame);
 
 
-            
             // We can parse these here, but we can't resolve them 
             // until we bind to a context
             // x, y, width, height

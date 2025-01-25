@@ -79,7 +79,7 @@ static void drawDocument()
 
 	// draw the document into the ctx
 	if (gDoc != nullptr)
-		gDoc->draw(&gDrawingContext, gDoc.get());
+		gDoc->draw(&gDrawingContext, gDoc.get(), canvasWidth, canvasHeight);
 
 	gDrawingContext.flush();
 	

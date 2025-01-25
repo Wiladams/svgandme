@@ -41,5 +41,17 @@
     <ClInclude Include="svggraphic.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\svgexplorer\svgicons.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\svgattributes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\svgdatatypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\svgcss.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -45,6 +45,18 @@ namespace waavs {
 		AspectRatioMeetOrSliceKind fMeetOrSlice = AspectRatioMeetOrSliceKind::SVG_ASPECT_RATIO_MEET;
 
 	public:
+		PreserveAspectRatio() = default;
+		
+		PreserveAspectRatio(const char* cstr)
+		{
+			loadFromChunk(cstr);
+		}
+		
+		PreserveAspectRatio(const ByteSpan& inChunk)
+		{
+			loadFromChunk(inChunk);
+		}
+		
 		AspectRatioAlignKind align() const { return fAlignment; }
 		void setAlign(AspectRatioAlignKind a) { fAlignment = a; }
 
@@ -148,7 +160,7 @@ namespace waavs {
 		BLMatrix2D fTransform = BLMatrix2D::makeIdentity();
 		BLMatrix2D fInverseTransform = BLMatrix2D::makeIdentity();
 		
-		PreserveAspectRatio fPreserveAspectRatio{};
+		PreserveAspectRatio fPreserveAspectRatio;
 
 		
 		// For rotation
@@ -431,7 +443,7 @@ namespace waavs {
 
 
 			// Apply the alignment offset
-			//fTransform.translate(atrans.x, atrans.y);
+			fTransform.translate(atrans.x, atrans.y);
 
 			// Translate scene frame amount
 			fTransform.translate(-fViewBoxFrame.x, -fViewBoxFrame.y);

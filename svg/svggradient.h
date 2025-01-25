@@ -165,6 +165,58 @@ namespace waavs {
 			*/
 		}
 
+		//
+		// Properties to inherit:
+		// Common properties to inherit
+		//   gradientUnits
+		//   gradientTransform
+		//   spreadMethod
+		//
+		virtual void inheritSelfProperties(const SVGGradient* elem)
+		{
+			;
+		}
+		
+		virtual void inheritProperties(const SVGGradient* elem)
+		{
+			if (!elem)
+				return;
+
+			if (!getAttribute("gradientUnits"))
+			{
+				if (elem->getAttribute("gradientUnits"))
+					setAttribute("gradientUnits", elem->getAttribute("gradientUnits"));
+			}
+
+			if (!getAttribute("gradientTransform"))
+			{
+				if (elem->getAttribute("gradientTransform"))
+					setAttribute("gradientTransform", elem->getAttribute("gradientTransform"));
+			}
+
+			if (!getAttribute("spreadMethod"))
+			{
+				if (elem->getAttribute("spreadMethod"))
+					setAttribute("spreadMethod", elem->getAttribute("spreadMethod"));
+			}
+
+			// If we already have some stops, don't take stops
+			// from the referred to gradient
+			// If we don't have stops, and the referred to gradient does
+			// copy the gradient stops from the referred to gradient
+			if (fGradient.size() == 0)
+			{
+				if (elem->fGradient.size() > 0)
+				{
+					fGradient.reset();
+					fGradient.assignStops(elem->fGradient.stops(), elem->fGradient.size());
+				}
+			}
+
+			
+			inheritSelfProperties(elem);
+		}
+		
 		// resolveReference()
 		// 
 		// We want to copy all relevant data from the reference.
@@ -173,13 +225,22 @@ namespace waavs {
 		//
 		void resolveReference(IRenderSVG* ctx, IAmGroot* groot)
 		{
-			// no template to reference?  Return immediately
+			// return early if we can't do a lookup
+			if (!groot)
+				return;
+
+			// Quick return if there is no referred to pattern
 			if (!fTemplateReference)
 				return;
 
-
-			// Get the referred to element
+			// Try to find the referred to pattern
 			auto node = groot->findNodeByHref(fTemplateReference);
+
+			// Didn't find the node, so return empty handed
+			if (!node)
+				return;
+
+
 
 			// try to cast to SVGGradient
 			auto gnode = std::dynamic_pointer_cast<SVGGradient>(node);
@@ -189,37 +250,9 @@ namespace waavs {
 			if (!gnode)
 				return;
 
-			// Make sure the template binds, so we can get values out of it
-			BLVar aVar = node->getVariant(ctx, groot);
 			
-			// Get the gradientUnits to start
-			fGradientUnits = gnode->fGradientUnits;
-			
-			
-			if (aVar.isGradient())
-			{
-				// BUGBUG - we need to take care here to assign
-				// the right stuff based on what kind of gradient
-				// we are.
-				// Start with just assigning the stops
-				BLGradient& tmpGradient = aVar.as<BLGradient>();
-
-
-				// assign stops from tmpGradient
-				const BLGradientStop* stops = tmpGradient.stops();
-				size_t gcount = tmpGradient.size();
-				fGradient.resetStops();
-				fGradient.assignStops(stops, gcount);
-
-				// transform matrix if it already exists and
-				// we had set a new one as well
-				// otherwise, just set the new one
-				if (tmpGradient.hasTransform())
-				{
-					fGradient.setTransform(tmpGradient.transform());
-				}
-			}
-
+			gnode->bindToContext(ctx, groot);
+			inheritProperties(gnode.get());
 
 		}
 
@@ -245,7 +278,7 @@ namespace waavs {
 
 		}
 
-		void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*) override
+		void fixupSelfStyleAttributes(IRenderSVG *ctx, IAmGroot *groot) override
 		{
 			// See if we have a template reference
 			if (getAttribute("href"))
@@ -253,6 +286,7 @@ namespace waavs {
 			else if (getAttribute("xlink:href"))
 				fTemplateReference = getAttribute("xlink:href");
 
+			resolveReference(ctx, groot);
 		}
 		
 
@@ -291,13 +325,43 @@ namespace waavs {
 			fGradient.setType(BL_GRADIENT_TYPE_LINEAR);
 		}
 
+		// Attributes to inherit
+		// x1, y1
+		// x2, y2
+		virtual void inheritSelfProperties(const SVGGradient* elem) override
+		{
+			if (!elem)
+				return;
+
+			
+			if (!getAttribute("x1"))
+			{
+				if (elem->getAttribute("x1"))
+					setAttribute("x1", elem->getAttribute("x1"));
+			}
+
+			if (!getAttribute("y1"))
+			{
+				if (elem->getAttribute("y1"))
+					setAttribute("y1", elem->getAttribute("y1"));
+			}
+			
+			if (!getAttribute("x2"))
+			{
+				if (elem->getAttribute("x2"))
+					setAttribute("x2", elem->getAttribute("x2"));
+			}
+
+			if (!getAttribute("y2"))
+			{
+				if (elem->getAttribute("y2"))
+					setAttribute("y2", elem->getAttribute("y2"));
+			}
+			
+		}
 		
 		void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) override
 		{
-			// Start by resolving any reference, if there is one
-			resolveReference(ctx, groot);
-			
-
 			double dpi = 96;
 
 			if (nullptr != groot)
@@ -469,10 +533,49 @@ namespace waavs {
 			fGradient.setType(BL_GRADIENT_TYPE_RADIAL);
 		}
 
+		// Attributes to inherit
+		// cx, cy
+		// r
+		// fx, fy
+		virtual void inheritSelfProperties(const SVGGradient* elem) override
+		{
+			if (!elem)
+				return;
+			
+			if (!getAttribute("cx"))
+			{
+				if (elem->getAttribute("cx"))
+					setAttribute("cx", elem->getAttribute("cx"));
+			}
+
+			if (!getAttribute("cy"))
+			{
+				if (elem->getAttribute("cy"))
+					setAttribute("cy", elem->getAttribute("cy"));
+			}
+
+			if (!getAttribute("r"))
+			{
+				if (elem->getAttribute("r"))
+					setAttribute("r", elem->getAttribute("r"));
+			}
+
+			if (!getAttribute("fx"))
+			{
+				if (elem->getAttribute("fx"))
+					setAttribute("fx", elem->getAttribute("fx"));
+			}
+
+			if (!getAttribute("fy"))
+			{
+				if (elem->getAttribute("fy"))
+					setAttribute("fy", elem->getAttribute("fy"));
+			}
+		}
+
+		
 		void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) override
 		{
-			// Start by resolving any reference, if there is one
-			resolveReference(ctx, groot);
 			
 			double dpi = 96;
 			if (nullptr != groot)
@@ -551,19 +654,23 @@ namespace waavs {
 				if (fR.isSet()) {
 					if (fR.fUnits == SVG_LENGTHTYPE_NUMBER) {
 						if (fR.value() <= 1.0) {
-							values.r0 = calculateDistance(fR.value() * 100, w, h);
+							values.r1 = calculateDistance(fR.value() * 100, w, h);
 						}
 						else
-							values.r0 = fR.value();
+							values.r1 = fR.value();
 					}
 					else
-						values.r0 = fR.calculatePixels(w, 0, dpi);
+						values.r1 = fR.calculatePixels(w, 0, dpi);
 
 				}
 				else
-					values.r0 = (w * 0.50);	// default to center of object
-				
+					values.r1 = (w * 0.50);	// default to center of object
 
+				values.x1 = values.x0;
+				values.y1 = values.y0;
+				values.r0 = 0;
+
+				
 				if (fFx.isSet()) {
 					if (fFx.fUnits == SVG_LENGTHTYPE_NUMBER) {
 						if (fFx.value() <= 1.0)
@@ -618,6 +725,11 @@ namespace waavs {
 
 			
 			fGradient.setValues(values);
+			
+			if (fHasGradientTransform) {
+				fGradient.setTransform(fGradientTransform);
+			}
+			
 			fGradientVar = fGradient;
 		}
 
@@ -667,10 +779,42 @@ namespace waavs {
 			fGradient.setType(BLGradientType::BL_GRADIENT_TYPE_CONIC);
 		}
 
+		// Attributes to inherit
+		// x1, y1
+		// angle, repeat
+		//
+		virtual void inheritSelfProperties(const SVGGradient* elem) override
+		{
+			if (!elem)
+				return;
 
+			if (!getAttribute("x1"))
+			{
+				if (elem->getAttribute("x1"))
+					setAttribute("x1", elem->getAttribute("x1"));
+			}
+
+			if (!getAttribute("y1"))
+			{
+				if (elem->getAttribute("y1"))
+					setAttribute("y1", elem->getAttribute("y1"));
+			}
+
+			if (!getAttribute("angle"))
+			{
+				if (elem->getAttribute("angle"))
+					setAttribute("angle", elem->getAttribute("angle"));
+			}
+		
+			if (!getAttribute("repeat"))
+			{
+				if (elem->getAttribute("repeat"))
+					setAttribute("repeat", elem->getAttribute("repeat"));
+			}
+		}
+		
 		void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) override
 		{
-			SVGGradient::bindSelfToContext(ctx, groot);
 
 			double dpi = 96;
 			double w = 1.0;
@@ -718,9 +862,13 @@ namespace waavs {
 			else if (values.repeat == 0)
 				values.repeat = 1.0;
 			
-			resolveReference(ctx, groot);
-			
+			fHasGradientTransform = parseTransform(getAttribute("gradientTransform"), fGradientTransform);
+
 			fGradient.setValues(values);
+			if (fHasGradientTransform) {
+				fGradient.setTransform(fGradientTransform);
+			}
+			
 			fGradientVar = fGradient;
 		}
 

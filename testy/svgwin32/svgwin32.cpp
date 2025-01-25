@@ -9,13 +9,18 @@
 #include "appwindow.h"
 
 
-
 using namespace waavs;
 
-// Create one of these first, so factory constructor will run
-SVGFactory gSVG;
 
 FontHandler gFontHandler{};
+
+// Create a routine to respond to frameevents
+static void onFrameEvent(const FrameCountEvent& fe)
+{
+	// Create some objects
+	
+	refreshScreenNow();
+}
 
 
 
@@ -28,5 +33,7 @@ void onLoad()
 
 	// resize app window
 	createAppWindow(1024, 768, "SVG Win32");
+
+	subscribe(onFrameEvent);
 }
 

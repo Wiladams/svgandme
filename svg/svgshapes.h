@@ -377,6 +377,8 @@ namespace waavs {
 
 		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{
+			ctx->drawShape(fPath);
+			/*
 			// Get the paint order from the context
 			uint32_t porder = ctx->paintOrder();
 
@@ -404,7 +406,7 @@ namespace waavs {
 				// discard instruction, shift down to get the next one ready
 				porder = porder >> 2;
 			}
-
+			*/
 
 		}
 

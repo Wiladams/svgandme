@@ -4,43 +4,152 @@
 #include <memory>
 
 #include "blend2d.h"
-#include "svgenums.h"
+
+//#include "svgdatatypes.h"
+#include "svgattributes.h"
 
 namespace waavs {
-	
-	// AGraphState encapsulates the set of attributes that should be
-	// applied when drawing a shape.  These attributes are stored together
-	// so they can be applied to a BLContext in a single operation.
-	// Or can be referenced by multiple graphic objects
-	struct AGraphState final
+	static BLRect pathBounds(const BLPath& path)
 	{
-		BLVar fStrokeStyle{};
-		BLVar fFillStyle{};
-		BLFillRule fFillRule{ BLFillRule::BL_FILL_RULE_EVEN_ODD };
-		uint32_t fPaintOrder{ SVG_PAINT_ORDER_NORMAL };
-		BLStrokeCap fStrokeCap{ BLStrokeCap::BL_STROKE_CAP_ROUND };
-		//BLStrokeCapPosition fCapPosition{BLStrokeCapPosition::BL_STROKE_CAP_POSITION_END}
-	};
+		BLBox bbox{};
+		path.getBoundingBox(&bbox);
+
+		return BLRect(bbox.x0, bbox.y0, bbox.x1 - bbox.x0, bbox.y1 - bbox.y0);
+	}
+	
+	
 	
 	// The base class for something that can be drawn into
 	// a BLContext
 	struct AGraphic
 	{
-		// The bounds reports the size and location of the graphic
-		// relative to the container within which it is drawn
-		virtual BLRect bounds() = 0;
+		SVGDrawingState fGraphState{};
+		ViewportTransformer fPortal;
 
-		// Draw the graphic into the BLContext
-		virtual void draw(BLContext* ctx) = 0;
-
+		
+		AGraphic() = default;
+		
 		// Some conveniences
-		virtual bool contains(BLPoint &pt)
+		virtual bool contains(BLPoint& pt)
 		{
 			// determine if the pt is within the bounds
 			BLRect b = bounds();
 			return pt.x >= b.x && pt.x <= b.x + b.w &&
 				pt.y >= b.y && pt.y <= b.y + b.h;
 		}
+		
+		
+		void setFrame(const BLRect& fr)
+		{
+			fPortal.viewportFrame(fr);
+		}
+		virtual BLRect frame() const noexcept { return fPortal.viewportFrame(); }
+		
+		// The bounds reports the size and location of the graphic
+		// relative to the container within which it is drawn
+		void setBounds(const BLRect& b)
+		{
+			fPortal.viewBoxFrame(b);
+		}
+		virtual BLRect bounds() { return fPortal.viewBoxFrame(); }
+		
+		// Setting Attributes
+		const BLVar strokeStyle() const { return fGraphState.strokePaint(); }
+		void setStrokeStyle(const BLVar& style) { fGraphState.strokePaint(style); }
+
+		const BLVar& fillStyle() const { return fGraphState.fillPaint(); }
+		void setFillStyle(const BLVar& style) { fGraphState.fillPaint(style); }
+
+		
+		void setPreserveAspectRatio(const PreserveAspectRatio& par)
+		{
+			fPortal.preserveAspectRatio(par);
+		}
+		
+
+		
+		// Altering the graph state
+		bool setAttribute(const ByteSpan& attName, const ByteSpan& attValue)
+		{
+			if (attName == "viewBox") {
+				BLRect fr{};
+				if (!parseViewBox(attValue, fr))
+					return false;
+				
+				setBounds(fr);
+			}
+			else if (attName == "portal") {
+				BLRect fr{};
+				if (!parseViewBox(attValue, fr))
+					return false;
+
+				setFrame(fr);
+			}
+			else if (attName == "preserveAspectRatio")
+			{
+				PreserveAspectRatio par(attValue);
+				setPreserveAspectRatio(par);
+			}
+			if (attName == "fill")
+			{
+				SVGPaint paint(nullptr);
+				paint.loadFromChunk(attValue);
+				fGraphState.fillPaint(paint.getVariant(nullptr, nullptr));
+			}
+			else if (attName == "stroke")
+			{
+				SVGPaint apaint(nullptr);
+				apaint.loadFromChunk(attValue);
+				fGraphState.strokePaint(apaint.getVariant(nullptr, nullptr));
+			}
+			else {
+				return fGraphState.setAttribute(attName, attValue);
+			}
+
+			return true;
+		}
+
+		bool set(const ByteSpan& attrs)
+		{
+			ByteSpan src = attrs;
+			ByteSpan key;
+			ByteSpan value;
+			
+			while (readNextCSSKeyValue(src, key, value))
+			{
+				setAttribute(key, value);
+			}
+
+			return true;
+		}
+		
+		// Draw the graphic into the BLContext
+		virtual void drawBackground(BLContext* ctx)
+		{
+			BLRect fr = frame();
+			ctx->strokeGeometry(BLGeometryType::BL_GEOMETRY_TYPE_RECTD, &fr, BLRgba32(0xff000000));
+		}
+		
+		virtual void drawSelf(BLContext* ctx) = 0;
+		
+		virtual void draw(BLContext* ctx)
+		{
+			ctx->save();
+			
+			// apply graphics state
+			fGraphState.applyState(ctx);
+			
+			this->drawBackground(ctx);
+			
+			// Apply transform
+			ctx->applyTransform(fPortal.viewBoxToViewportTransform());
+			
+			// Call drawSelf()
+			this->drawSelf(ctx);
+			ctx->restore();
+		}
+
+
 	};
 	
 	using AGraphicHandle = std::shared_ptr<AGraphic>;
@@ -52,18 +161,28 @@ namespace waavs {
 	// This is a leaf node
 	struct AGraphicShape : public AGraphic
 	{
+
 		BLPath fPath{};
-		BLVar fStrokeStyle{};
-		BLVar fFillStyle{};
+
 		BLFillRule fFillRule{BLFillRule::BL_FILL_RULE_EVEN_ODD};
 		uint32_t fPaintOrder{ SVG_PAINT_ORDER_NORMAL };
 
+		AGraphicShape() = default;
+		AGraphicShape(const ByteSpan& pathSpan)
+		{
+			initFromData(pathSpan);
+		}
 		
-		const BLVar& strokeStyle() const { return fStrokeStyle; }
-		void setStrokeStyle(const BLVar& style){fStrokeStyle.assign(style);}
 
-		const BLVar& fillStyle() const { return fFillStyle; }
-		void setFillStyle(const BLVar& style){fFillStyle.assign(style);}
+		
+		void initFromData(const ByteSpan& inPath)
+		{
+			parsePath(inPath, fPath);
+			setBounds(pathBounds(fPath));
+		}
+		
+
+
 		
 		void paintOrder(uint32_t po) { fPaintOrder = po; }
 		
@@ -93,20 +212,8 @@ namespace waavs {
 			return (ahit == BLHitTest::BL_HIT_TEST_IN);
 		}
 		
-		// fulfilling the AGraphic interface
-		// Get the bounds of the shape.  This does not take into 
-		// account the stroke paint, and can be quite liberal
-		BLRect bounds()
-		{
-			// get the bounds of the path
-			BLBox bbox{};
-			fPath.getBoundingBox(&bbox);
-
-			return BLRect(bbox.x0, bbox.y0, bbox.x1 - bbox.x0, bbox.y1 - bbox.y0);
-
-		}
 		
-		void draw(BLContext* ctx) override
+		void drawSelf(BLContext* ctx) override
 		{
 			uint32_t porder = fPaintOrder;
 			
@@ -117,11 +224,11 @@ namespace waavs {
 				switch (ins)
 				{
 				case PaintOrderKind::SVG_PAINT_ORDER_FILL:
-					ctx->fillPath(fPath, fFillStyle);
+					ctx->fillPath(fPath, fillStyle());
 					break;
 
 				case PaintOrderKind::SVG_PAINT_ORDER_STROKE:
-					ctx->strokePath(fPath, fStrokeStyle);
+					ctx->strokePath(fPath, strokeStyle());
 					break;
 
 				case PaintOrderKind::SVG_PAINT_ORDER_MARKERS:

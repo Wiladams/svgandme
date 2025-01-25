@@ -141,9 +141,7 @@ namespace waavs {
         
         // This should be size of document elements
         BLRect getBBox() const override 
-        {
-            //return frame();
-            
+        {   
             BLRect extent{};
             bool firstOne = true;
 
@@ -360,11 +358,12 @@ namespace waavs {
         }
         
         void draw(IRenderSVG* ctx, IAmGroot* groot) override
-        {
-            //ctx->setViewport(frame());
-            
+        {            
             ctx->push();
 
+            //if (needsBinding())
+            //    this->bindToContext(ctx, groot);
+            
             // Should have valid bounding box by now
             // so set objectFrame on the context
             ctx->objectFrame(getBBox());
@@ -382,10 +381,17 @@ namespace waavs {
         {
             canvasSize(cWidth, cHeight);
             
-            if (needsBinding())
-                this->bindToContext(ctx, groot, cWidth, cHeight);
-            
-            draw(ctx, groot);
+            this->bindToContext(ctx, groot, cWidth, cHeight);
+
+            ctx->push();
+            ctx->objectFrame(getBBox());
+
+            this->applyProperties(ctx, groot);
+            this->drawSelf(ctx, groot);
+
+            this->drawChildren(ctx, groot);
+
+            ctx->pop();
         }
 
         

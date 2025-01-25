@@ -53,7 +53,8 @@ namespace waavs {
 
 		BLRect frame() const override
 		{
-			return fPortal.getBBox();
+			return fPortal.viewportFrame();
+			//return fPortal.getBBox();
 		}
 
 		BLRect getBBox() const override

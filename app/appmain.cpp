@@ -197,7 +197,7 @@ void refreshScreenNow()
         // if we're not layered, then do a regular
         // sort of WM_PAINT based drawing
         //InvalidateRect(getAppWindow()->windowHandle(), NULL, 1);
-		//::RedrawWindow(getAppWindow()->windowHandle(), NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+		//::RedrawWindow(getAppWindow()->windowHandle(), NULL, NULL, RDW_INVALIDATE );
         ::RedrawWindow(getAppWindow()->windowHandle(), NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
     }
     else {

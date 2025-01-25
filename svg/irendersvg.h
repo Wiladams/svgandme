@@ -57,8 +57,8 @@ namespace waavs
         {
             BLResult res = BLContext::begin(image, createInfo);
 
-            applyState();
-            //initState();
+            applyState(this);
+
             
             return res;
         }
@@ -96,26 +96,19 @@ namespace waavs
             }
         }
         
-
-        void applyState()
+        bool applyStateSelf(BLContext* ctx) override
         {
             // clear the clipping state
             BLContext::restoreClipping();
-
-            // stroke caps
-            // stroke linejoin
-            BLContext::setStrokeJoin(getLineJoin());
-            BLContext::setStrokeWidth(getStrokeWidth());
-
-            // font
 
             const BLRect& cRect = getClipRect();
             if ((cRect.w > 0) && (cRect.h > 0))
                 BLContext::clipToRect(cRect);
 
-            // probably applying font characteristics
-            // probably apply paint
+            return true;
         }
+        
+
         
         
         void onPush() override 
@@ -127,7 +120,7 @@ namespace waavs
         void onPop() override 
         {
             auto res = restore();
-            applyState();
+            applyState(this);
         }
 
         void resetState()
@@ -198,20 +191,46 @@ namespace waavs
         }
 
         // paint for filling shapes
-        virtual void fill(const BLVar& value) { BLContext::setFillStyle(value); }
-        virtual void fill(const BLRgba32& value) { 
-            BLContext::setFillStyle(value); 
+        virtual void fill(const BLVar& paint) { 
+            IManageSVGState::fillPaint(paint);
+            //BLContext::setFillStyle(paint); 
         }
-        virtual void fillOpacity(double o) { BLContext::setFillAlpha(o); }
+        virtual void fill(const BLRgba32& value) { 
+			fill(BLVar(value));
+            //BLContext::setFillStyle(value); 
+        }
+        virtual void fillOpacity(double o) { 
+            BLContext::setFillAlpha(o); 
+        }
 
-        virtual void noFill() { BLContext::setFillStyle(BLVar::null()); }
+        virtual void noFill() { 
+			this->fill(BLVar());
+            //BLContext::setFillStyle(BLVar::null()); 
+        }
 
+        // Geometry
+        // hard set a specfic pixel value
+        virtual void fillRule(int rule) {
+            BLContext::setFillRule((BLFillRule)rule);
+        }
+        
+        
         // paint for stroking lines
-        virtual void stroke(const BLVar& value) { BLContext::setStrokeStyle(value); }
-        virtual void stroke(const BLRgba32& value) { BLContext::setStrokeStyle(value); }
+        virtual void stroke(const BLVar& paint) { 
+            IManageSVGState::strokePaint(paint);
+            //BLContext::setStrokeStyle(value); 
+        }
+        virtual void stroke(const BLRgba32& value) { 
+			this->stroke(BLVar(value));
+            //BLContext::setStrokeStyle(value); 
+        }
+        virtual void noStroke() { 
+			this->stroke(BLVar());
+            //setStrokeStyle(BLVar::null()); 
+        }
         virtual void strokeOpacity(double o) { BLContext::setStrokeAlpha(o); }
 
-        virtual void noStroke() { setStrokeStyle(BLVar::null()); }
+
 
 
         // Background management
@@ -266,13 +285,43 @@ namespace waavs
             BLContext::restoreClipping(); 
         }
 
-        // Geometry
-        // hard set a specfic pixel value
-        virtual void fillRule(int rule) { 
-            BLContext::setFillRule((BLFillRule)rule); 
+
+
+
+        // Drawing Shapes
+        virtual void drawShape(const BLPath &aPath)
+        {
+            // Get the paint order from the context
+            uint32_t porder = paintOrder();
+
+            for (int slot = 0; slot < 3; slot++)
+            {
+                uint32_t ins = porder & 0x03;	// get two lowest bits, which are a single instruction
+
+                switch (ins)
+                {
+                case PaintOrderKind::SVG_PAINT_ORDER_FILL:
+                    fillPath(aPath, fillPaint());
+                    break;
+
+                case PaintOrderKind::SVG_PAINT_ORDER_STROKE:
+                    strokePath(aPath, strokePaint());
+                    break;
+
+                case PaintOrderKind::SVG_PAINT_ORDER_MARKERS:
+                {
+                    //drawMarkers(ctx, groot);
+                }
+                break;
+                }
+
+                // discard instruction, shift down to get the next one ready
+                porder = porder >> 2;
+            }
+
+
         }
-
-
+        
         
         // Bitmaps
         void setFillMask(BLImageCore& mask, const BLRectI &maskArea)

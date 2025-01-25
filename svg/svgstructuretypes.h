@@ -328,7 +328,7 @@ namespace waavs {
         bool fIsStructural{ true };
         
         
-       virtual  std::shared_ptr<SVGVisualProperty> getVisualProperty(const ByteSpan& name) = 0;
+       virtual  std::shared_ptr<SVGVisualProperty> getVisualProperty(const ByteSpan& name) const = 0;
 
        bool isStructural() const { return fIsStructural; }
        void isStructural(bool aStructural) { fIsStructural = aStructural; }
@@ -497,7 +497,7 @@ namespace waavs {
 			fAttributes.addAttribute(key,value);
 		}
 
-        std::shared_ptr<SVGVisualProperty> getVisualProperty(const ByteSpan& name)
+        std::shared_ptr<SVGVisualProperty> getVisualProperty(const ByteSpan& name) const noexcept
         {
             auto it = fVisualProperties.find(name);
             if (it != fVisualProperties.end())

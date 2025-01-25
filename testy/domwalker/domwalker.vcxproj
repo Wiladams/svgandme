@@ -146,7 +146,11 @@
   <ItemGroup>
     <ClInclude Include="..\..\app\svguiapp.h" />
     <ClInclude Include="..\..\svg\irendersvg.h" />
+    <ClInclude Include="..\..\svg\svgattributes.h" />
+    <ClInclude Include="..\..\svg\svgcss.h" />
+    <ClInclude Include="..\..\svg\svgdatatypes.h" />
     <ClInclude Include="..\..\svg\svgdrawingstate.h" />
+    <ClInclude Include="..\svgexplorer\svgicons.h" />
     <ClInclude Include="svgdomwalker.h" />
     <ClInclude Include="svggraphic.h" />
   </ItemGroup>

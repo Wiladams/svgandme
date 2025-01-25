@@ -9,7 +9,6 @@
 #include "svgenums.h"
 
 
-
 namespace waavs {
 
 	// Represents the current state of the SVG rendering context
@@ -62,35 +61,6 @@ namespace waavs {
 
         {
             this->operator=(other);
-            /*
-            fClipRect = other.fClipRect;
-            fViewport = other.fViewport;
-            fObjectFrame = other.fObjectFrame;
-
-            fTextCursor = other.fTextCursor;
-
-            fPaintOrder = other.fPaintOrder;
-            fDefaultColor.assign(other.fDefaultColor);
-            fFillPaint.assign(other.fFillPaint);
-
-			fStrokeWidth = other.fStrokeWidth;
-            fStrokePaint.assign(other.fStrokePaint);
-			fBeginStrokeCap = other.fBeginStrokeCap;
-			fEndStrokeCap = other.fEndStrokeCap;
-
-
-            fTextHAlignment = other.fTextHAlignment;
-            fTextVAlignment = other.fTextVAlignment;
-
-            //fFontHandler = other.fFontHandler;
-            fFont = other.fFont;
-
-            fFamilyNames = other.fFamilyNames;
-            fFontSize = other.fFontSize;
-            fFontStyle = other.fFontStyle;
-            fFontWeight = other.fFontWeight;
-            fFontStretch = other.fFontStretch;
-            */
         }
 
         // Assignment operator
@@ -256,5 +226,45 @@ namespace waavs {
             fFontStretch = stretch;
             resetFont();
         }
+
+        // setAttribute()
+        // Set a specific attribute of the drawing state
+        // in some cases, we can use the loadChunk() call on the attribute
+        // if it has one.
+        bool setAttribute(const ByteSpan& attName, const ByteSpan& attValue)
+        {
+
+    
+            return true;
+        }
+
+
+        virtual bool applyStateSelf(BLContext* ctx)
+        {
+            return true;
+        }
+        
+        virtual bool applyState(BLContext* ctx)
+        {
+            // Fill attributes
+            ctx->setFillStyle(fFillPaint);
+            
+            // stroke caps
+            // stroke linejoin
+			ctx->setStrokeStyle(fStrokePaint);
+            ctx->setStrokeJoin(getLineJoin());
+            ctx->setStrokeWidth(getStrokeWidth());
+
+            // font
+
+
+
+            // probably applying font characteristics
+            // probably apply paint
+            this->applyStateSelf(ctx);
+            
+            return true;
+        }
+        
     };
 }
