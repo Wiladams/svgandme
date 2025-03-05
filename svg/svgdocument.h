@@ -31,6 +31,8 @@
 
 #include "maths.h"
 
+#include "xmliter.h"
+#include "xmlutil.h"
 #include "svgcss.h"
 
 #include "svgclip.h"
@@ -171,9 +173,6 @@ namespace waavs {
 		std::shared_ptr<SVGSVGElement> documentElement() const { return fSVGNode; }
 
 
-        
-        
-        
         bool addNode(std::shared_ptr < ISVGElement > node, IAmGroot* groot) override
         {            
 			if (!SVGGraphicsElement::addNode(node, groot))
@@ -194,92 +193,78 @@ namespace waavs {
             return true;
         }
         
-        
+        // We override this here, because we don't want to do anything with the information
+        // in any of the top level xml elements
+        // Maybe we should hold onto the XMLDECL if it's seen, 
+        // so we can know some version information
+        void loadFromXmlElement(const XmlElement& elem, IAmGroot* groot) override
+        {
+        }
 
-        // loadFromXmlIterator
-        // 
-        // Load the document from an XML Iterator
-        // Since this is the top level document, it will hold all the sub-elements.
-        // This document also acts as the "groot" (graphics root).  That means you 
-        // have to call bindToGroot() after successfully loading the document.
         void loadFromXmlIterator(XmlElementIterator& iter, IAmGroot* groot) override
         {
-
-            // skip past any elements that come before the 'svg' element
-            while (iter.next())
+            // By the time we get here, the iterator is already positioned on a ready
+            // to use element
+            // Do something with that information if we need to
+            // before continuing onto other nodes
+            do
             {
+                // BUGBUG - debug
+                //printXmlElement(*iter);
+
                 const XmlElement& elem = *iter;
 
-                if (!elem)
+                switch (elem.kind())
+                {
+                case XML_ELEMENT_TYPE_START_TAG:                    // <tag>
+                    this->loadStartTag(iter, groot);
                     break;
 
-                //printXmlElement(elem);
+                case XML_ELEMENT_TYPE_END_TAG:                      // </tag>
+                    this->loadEndTag(elem, groot);
+                    return;
 
+                case XML_ELEMENT_TYPE_SELF_CLOSING:                 // <tag/>
+                    this->loadSelfClosingNode(elem, groot);
+                    break;
 
-                if (elem.isStart() && (elem.tagName() == "svg"))
+                case XML_ELEMENT_TYPE_CONTENT:                      // <tag>content</tag>
+                    this->loadContentNode(elem, groot);
+                    break;
+
+                case XML_ELEMENT_TYPE_COMMENT:                      // <!-- comment -->
+                    this->loadComment(elem, groot);
+                    break;
+
+                case XML_ELEMENT_TYPE_CDATA:                        // <![CDATA[<greeting>Hello, world!</greeting>]]>
+                    this->loadCDataNode(elem, groot);
+                    break;
+
+                case XML_ELEMENT_TYPE_DOCTYPE:                      // <!DOCTYPE greeting SYSTEM "hello.dtd">
+                case XML_ELEMENT_TYPE_ENTITY:                       // <!ENTITY hello "Hello">
+                case XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION:       // <?target data?>
+                case XML_ELEMENT_TYPE_XMLDECL:                      // <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                case XML_ELEMENT_TYPE_EMPTY_TAG:                    // <br>
+                default:
                 {
-                    // There should be only one root node in a document, so we should 
-                    // break here, but, curiosity...
-                    auto node = std::make_shared<SVGSVGElement>(this);
-                    
-                    if (nullptr != node) {
-                        node->loadFromXmlIterator(iter, groot);
-                        addNode(node, groot);
-                    }
-                    else {
-                        printf("SVGDocument.loadFromXmlIterator : ERROR - could not create SVG node\n");
-                    }
-				}
-				else if (elem.isDoctype()) {
-
-                    //printf(" ====  DOCTYPE ====\n");
-                    // BUGBUG - We need more information on what kind
-                    // of DOCTYPE it was.
-                    // We only need to create an iterator if there is style information
-                    // or a set of entities.
-                    // 
-                    // create an xmlelementiterator on the elem.data() 
-                    // and iterate over the entities if they are there
-                    // adding them to our entity collection
-                    /*
-                    XmlElementIterator entityIter(elem.data());
-                    while (entityIter.next())
-                    {
-                        const XmlElement& entityElem = *entityIter;
-						if (entityElem.isEntityDeclaration())
-						{
-                            ByteSpan name;
-                            ByteSpan value;
-                            ByteSpan content = chunk_ltrim(entityElem.data(), xmlwsp);
-
-
-                            // Get the name of the entity
-                            name = chunk_token(content, xmlwsp);
-
-                            // Skip past the whitespace
-                            content = chunk_ltrim(content, xmlwsp);
-
-							// Get the value of the entity
-                            readQuoted(content, value);
-
-
-							if (name && value)
-							{
-								addEntity(name, value);
-							}
-						}
-                    }
-                    */
-				}
-                else {
-                    //printf("SVGDocument.loadFromXmlIterator : ERROR - unexpected element: %s\n", toString(elem.tagName()).c_str());
+                    // Ignore anything else
+                    printf("SVGGraphicsElement::loadFromXmlIterator ==> IGNORING kind(%d) name:", elem.kind());
+                    printChunk(elem.nameSpan());
                     //printChunk(elem.data());
+
+                    //printf("SVGGraphicsElement::loadFromXmlIterator ==> IGNORING: %s\n", elem.name().c_str());
+                    //printXmlElement(elem);
                 }
-            }
+                break;
+                }
+
+
+            } while (iter.next());
 
             needsBinding(true);
         }
 
+ 
         
         
 		// Assuming we've already got a file mapped into memory, load the document
@@ -293,10 +278,12 @@ namespace waavs {
             
 			// Create the XML Iterator we're going to use to parse the document
             XmlElementIterator iter(fSourceMem.span(), true);
+			//XmlElementInfoIterator infoIter(fSourceMem.span(), true);
 
             // The first pass builds the DOM
             loadFromXmlIterator(iter, this);
-            
+			//loadFromXmlInfoIterator(infoIter, this);
+
             
             return true;
         }

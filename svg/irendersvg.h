@@ -15,9 +15,6 @@ namespace waavs
     struct IRenderSVG;
     struct IAmGroot;
     
-    
-    
-
     // A specialization of state management, connected to a BLContext
     // This is used when rendering a tree of SVG elements
     struct IRenderSVG : public IManageSVGState, public BLContext

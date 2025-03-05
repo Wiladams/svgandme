@@ -143,6 +143,59 @@ namespace waavs {
         return true;
     }
 
+    // read and unsigned integer value from the ByteSpan
+    // use the dual constraints of the limits of the ByteSpan
+    // as well as the maximum number of digits to read
+    // There MUST be the required number of digits available
+    // or return false.
+    // read_uint("234", &value, 2);
+    //
+    static INLINE bool read_required_digits(ByteSpan &s, uint64_t &v, size_t requiredDigits) noexcept
+    {
+        if (s.size()<requiredDigits)
+            return false;
+        
+        v = 0;
+        int i = 0;
+        while (i < requiredDigits)
+        {
+			// return false, because we've exhausted
+            // the input, without reaching the required
+            // number of digits
+            if (!s)
+				return false;
+
+            // get the current byte, and try to convert
+            // to a digit.  
+            // If not digit, return false, because we still
+            // haven't satisfied the constraint of having a
+            // required number of digits
+            int abyte = s[0]-'0';
+
+			// if the byte is not a digit, return false
+            // leave the cursor where we failed in case
+            // the caller wants to check the value
+            if (abyte < 0 || abyte>9)
+                return false;
+
+            s++;
+
+            // We've got a valid digit, so 
+            // multiply the return value by 10
+            // and add the current byte value
+            v = (v * 10) + abyte;
+
+            i++;
+        }
+
+        // if we've gotten to here, we have satisfied
+        // the constraint of having enough required digits
+        // but there is still more input to be consumed.
+        // We'll return true, as the constraint has been 
+        // satisfied.
+		return true;
+    }
+
     static INLINE bool read_u64(ByteSpan& s, uint64_t& v) noexcept
     {
         if (!s)
@@ -173,11 +226,21 @@ namespace waavs {
     //	printChunk(s);
     //}
     //return outNumber;
+    
     // 
     // readNumber()
     //
-    // Parse a double number from the given ByteSpan, advancing the start
+    // Parse a number from the given ByteSpan, advancing the start
     // of the ByteSpan to beyond where we found the last character of the number.
+    // 
+	// Note: These numbers support a full mantissa, so the extended 'e' notation
+    // is supported.  When reading numbers from a style sheet, readCSSNumber should
+    // be used.
+    // 
+    // Construction:
+    // number ::= integer ([Ee] integer)?
+    //    | [+-] ? [0 - 9] * "."[0 - 9] + ([Ee] integer) ?
+
     // Assumption:  We're sitting at beginning of a number, all whitespace handling
     // has already occured.
     static bool INLINE readNumber(ByteSpan& s, double& value) noexcept
@@ -185,7 +248,8 @@ namespace waavs {
         const unsigned char* startAt = s.fStart;
         const unsigned char* endAt = s.fEnd;
 
-        double sign = 1.0;
+        bool isNegative = false;
+        //double sign = 1.0;
         double res = 0.0;
 
         // integer part
@@ -204,7 +268,8 @@ namespace waavs {
             startAt++;
         }
         else if (*startAt == '-') {
-            sign = -1;
+            //sign = -1;
+            isNegative = true;
             startAt++;
         }
 
@@ -271,7 +336,7 @@ namespace waavs {
         }
         s.fStart = startAt;
 
-        value = res * sign;
+        value = (!isNegative)? res : -res;
 
         return true;
     }
@@ -280,6 +345,86 @@ namespace waavs {
     {
         ByteSpan s = inChunk;
         return readNumber(s, value);
+    }
+
+        // readNextNumber()
+    // 
+    // Consume the next number off the front of the chunk
+    // modifying the input chunk to advance past the  removed number
+    // Return true if we found a number, false otherwise
+    //
+    static inline bool readNextNumber(ByteSpan& s, double& outNumber) noexcept
+    {
+        // typical whitespace found in lists of numbers, like on paths and polylines
+        static const charset nextNumWsp(",+\t\n\f\r ");          
+
+        // clear up leading whitespace, including ','
+        s = chunk_ltrim(s, nextNumWsp);
+        if (!s)
+            return false;
+
+		return readNumber(s, outNumber);
+    }
+
+    static inline bool readNextFlag(ByteSpan& s, double& outNumber) noexcept
+    {
+        // typical whitespace found in lists of numbers, like on paths and polylines
+        static charset whitespaceChars(",\t\n\f\r ");
+
+        // clear up leading whitespace, including ','
+        s = chunk_ltrim(s, whitespaceChars);
+
+        ByteSpan numChunk{};
+
+		if (*s == '0' || *s == '1') {
+			outNumber = (double)(*s - '0');
+			s++;
+			return true;
+		}
+        
+		return false;
+
+    }
+
+        // readNumericArguments()
+    //
+    // Read a list of numeric arguments as specified in the 'argTypes'
+    // c, r - read a number
+	// f - read a flag
+    // 
+	// The number of arguments read is determined by the length of the argTypes string
+    //
+    static bool readNumericArguments(ByteSpan& s, const char* argTypes, double* outArgs) noexcept
+    {
+        // typical whitespace found in lists of numbers, like on paths and polylines
+        static charset segWspChars(",\t\n\f\r ");
+
+
+        for (int i = 0; argTypes[i]; i++)
+        {
+            switch (argTypes[i])
+            {
+            case 'c':		// read a coordinate
+            case 'r':		// read a radius
+            {
+                if (!readNextNumber(s, outArgs[i]))
+                    return false;
+            } break;
+
+            case 'f':		// read a flag
+            {
+                if (!readNextFlag(s, outArgs[i]))
+                    return false;
+            } break;
+
+            default:
+            {
+                return false;
+            }
+            }
+        }
+
+        return true;
     }
 }
 

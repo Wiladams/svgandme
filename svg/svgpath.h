@@ -71,6 +71,7 @@ namespace waavs {
 	{
 		BLPoint lastPos{};
 		apath->getLastVertex(&lastPos);
+
 		return apath->lineTo(args[0], lastPos.y) == BL_SUCCESS;
 	}
 
@@ -79,6 +80,7 @@ namespace waavs {
 	{
 		BLPoint lastPos{};
 		apath->getLastVertex(&lastPos);
+
 		return apath->lineTo(lastPos.x + args[0], lastPos.y) == BL_SUCCESS;
 	}
 
@@ -182,7 +184,9 @@ namespace waavs {
 	{
 		BLPoint lastPos{};
 		apath->getLastVertex(&lastPos);
+
 		return apath->lineTo(lastPos.x, args[0]) == BL_SUCCESS;
+
 	}
 
 	// Command - v
@@ -190,6 +194,7 @@ namespace waavs {
 	{
 		BLPoint lastPos{};
 		apath->getLastVertex(&lastPos);
+
 		return apath->lineTo(lastPos.x, lastPos.y + args[0]) == BL_SUCCESS;
 	}
 
@@ -220,7 +225,6 @@ namespace waavs {
 	// of paths, so we want to make this as fast as possible.
 	static INLINE bool parsePath(const waavs::ByteSpan& inSpan, BLPath& apath) noexcept
 	{
-
 		SVGSegmentParseParams params{};
 		SVGSegmentParseState cmdState(inSpan);
 
@@ -322,7 +326,6 @@ namespace waavs {
 
 			default: {
 				success = constructClose(cmdState.fSegmentKind, cmdState.args, cmdState.iteration, &apath);
-				//cmdState.iteration++;
 
 			}
 				   break;
@@ -334,9 +337,9 @@ namespace waavs {
 
 		}
 
-
 		return true;
 	}
 
 }
+
 

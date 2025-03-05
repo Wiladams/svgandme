@@ -12,12 +12,14 @@
 
 #include "maths.h"
 
+#include "xmliter.h"
+#include "xmlutil.h"
+
 #include "svgdatatypes.h"
 #include "svgcss.h"
 #include "irendersvg.h"
 #include "uievent.h"
 #include "collections.h"
-#include "xmlscan.h"
 
 
 
@@ -326,7 +328,7 @@ namespace waavs {
     struct ISVGElement : public IViewable 
     {
         bool fIsStructural{ true };
-        
+		XmlElement fSourceElement{};
         
        virtual  std::shared_ptr<SVGVisualProperty> getVisualProperty(const ByteSpan& name) const = 0;
 
@@ -343,10 +345,6 @@ namespace waavs {
 
     // compound node creation dispatch - 'g', 'symbol', 'pattern', 'linearGradient', 'radialGradient', 'conicGradient', 'image', 'style', 'text', 'tspan', 'use'
     using SVGContainerCreationMap = std::unordered_map<ByteSpan, std::function<std::shared_ptr<ISVGElement>(IAmGroot* aroot, XmlElementIterator& iter)>, ByteSpanHash, ByteSpanEquivalent>;
-
-
-
-
 
 
     static ShapeCreationMap& getSVGSingularCreationMap()
@@ -429,6 +427,7 @@ namespace waavs {
 		bool fHasTransform{ false };
         
         std::unordered_map<ByteSpan, std::shared_ptr<SVGVisualProperty>, ByteSpanHash, ByteSpanEquivalent> fVisualProperties{};
+        
         std::vector<std::shared_ptr<IViewable>> fNodes{};
 
 
@@ -562,7 +561,8 @@ namespace waavs {
             // Do something with comments
         }
 
-        virtual  void loadCompoundNode(XmlElementIterator& iter, IAmGroot* groot)
+
+        virtual  void loadStartTag(XmlElementIterator& iter, IAmGroot* groot)
         {
             // Add a child, and call loadIterator
             // If the name of the element is found in the map,
@@ -573,6 +573,9 @@ namespace waavs {
                 this->addNode(node, groot);
             }
             else {
+                // BUGBUG
+                // This isn't strictly needed as we're not actually
+                // adding the node to anything.
                 auto & mapper = getSVGContainerCreationMap();
                 auto & mapperfunc = mapper["g"];
                 if (mapperfunc)
@@ -596,6 +599,8 @@ namespace waavs {
         
         virtual void loadFromXmlElement(const XmlElement& elem, IAmGroot* groot)
         {
+            fSourceElement = elem;
+
             // Save the name if we've got one
             name(elem.name());
 
@@ -638,64 +643,52 @@ namespace waavs {
 
         virtual void loadFromXmlIterator(XmlElementIterator& iter, IAmGroot* groot)
         {
-            // First, loadFromXmlElement because we're sitting on our opening element
-            // and we need to gather our own attributes
+            // By the time we get here, the iterator is already positioned on a ready
+            // to use element
+            // Do something with that information if we need to
+            // before continuing onto other nodes
+            // Load basic attributes from the elementInfo
             this->loadFromXmlElement(*iter, groot);
-            
-            buildState = BUILD_STATE_OPEN;
 
-            while (iter && (buildState != BUILD_STATE_CLOSE))
+            while (iter.next())
             {
-                // move iterator forward to get to next item
-                iter++;
-
+                // BUGBUG - debug
+                //printXmlElement(*iter);
+                
                 const XmlElement& elem = *iter;
 
-                // BUGBUG - debug
-                //printXmlElement(elem);
-
-                if (!elem)
-                    break;
-
-                // Skip over these node types we don't know how to process
-
-
-                switch (buildState)
+                switch (elem.kind())
                 {
-                    // We are in an open element.  There are a couple of actions
-                    // that are valid from here
-                    // 1) We get another open - add a child, call loadIterator
-                    // 2) We get a self closing - add a child, call loadXmlElement
-                    // 3) We get a close - close the current element
-                    // 4) anything else, just ignore it
-                case BUILD_STATE_OPEN:
-                {
-                    if (elem.isSelfClosing()) {
-                        this->loadSelfClosingNode(elem, groot);
-                    }
-                    else if (elem.isStart())
-                    {
-                        this->loadCompoundNode(iter, groot);
-                    }
-                    else if (elem.isEnd())
-                    {
-                        // Close the current element
-                        buildState = BUILD_STATE_CLOSE;
+                    case XML_ELEMENT_TYPE_START_TAG:                    // <tag>
+                        this->loadStartTag(iter, groot);
+                        break;
+
+                    case XML_ELEMENT_TYPE_END_TAG:                      // </tag>
                         this->loadEndTag(elem, groot);
-                    }
-                    else if (elem.isContent())
-                    {
+                        return;
+
+                    case XML_ELEMENT_TYPE_SELF_CLOSING:                 // <tag/>
+                        this->loadSelfClosingNode(elem, groot);
+                        break;
+
+                    case XML_ELEMENT_TYPE_CONTENT:                      // <tag>content</tag>
                         this->loadContentNode(elem, groot);
-                    }
-                    else if (elem.isCData())
-                    {
-                        this->loadCDataNode(elem, groot);
-                    }
-                    else if (elem.isComment())
-                    {
+                        break;
+
+                    case XML_ELEMENT_TYPE_COMMENT:                      // <!-- comment -->
                         this->loadComment(elem, groot);
-                    }
-                    else
+                        break;
+
+                    case XML_ELEMENT_TYPE_CDATA:                        // <![CDATA[<greeting>Hello, world!</greeting>]]>
+                        this->loadCDataNode(elem, groot);
+                        break;
+
+                    case XML_ELEMENT_TYPE_DOCTYPE:                      // <!DOCTYPE greeting SYSTEM "hello.dtd">
+                    case XML_ELEMENT_TYPE_ENTITY:                       // <!ENTITY hello "Hello">
+                    case XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION:       // <?target data?>
+                    case XML_ELEMENT_TYPE_XMLDECL:                      // <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                    case XML_ELEMENT_TYPE_EMPTY_TAG:                    // <br>
+                    default:
                     {
                         // Ignore anything else
                         //printf("SVGGraphicsElement::loadFromXmlIterator ==> IGNORING kind(%d) name:", elem.kind());
@@ -704,16 +697,15 @@ namespace waavs {
 
                         //printf("SVGGraphicsElement::loadFromXmlIterator ==> IGNORING: %s\n", elem.name().c_str());
                         //printXmlElement(elem);
-                    }
+                    }		
+                    break;
                 }
-                break;
 
-                }	// end of switch
-
-
-            }
+            } 
         }
-        
+
+
+
 
         virtual void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*) 
         {
@@ -728,7 +720,7 @@ namespace waavs {
             if (groot != nullptr) {
                 if (!name().empty())
                 {
-                    auto esel = groot->styleSheet()->getElementSelector(name());
+                    auto esel = groot->styleSheet()->getSelector(CSS_SELECTOR_ELEMENT, name());
                     if (esel != nullptr)
                     {
                         fAttributes.mergeAttributes(esel->attributes());
@@ -738,7 +730,7 @@ namespace waavs {
                 // Check for id selector if we have one
                 if (id())
                 {
-                    auto idsel = groot->styleSheet()->getIDSelector(id());
+                    auto idsel = groot->styleSheet()->getSelector(CSS_SELECTOR_ID, id());
                     if (idsel != nullptr)
                     {
                         fAttributes.mergeAttributes(idsel->attributes());
@@ -753,7 +745,7 @@ namespace waavs {
                     auto classId = chunk_token(classChunk, chrWspChars);
 
 
-                    auto csel = groot->styleSheet()->getClassSelector(classId);
+                    auto csel = groot->styleSheet()->getSelector(CSS_SELECTOR_CLASS, classId);
                     if (csel != nullptr)
                     {
                         fAttributes.mergeAttributes(csel->attributes());

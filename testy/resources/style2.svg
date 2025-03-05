@@ -1,0 +1,10 @@
+<svg width="200" height="150" viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">
+    <style>
+		.circle { fill: blue; stroke: black; stroke-width: 2px; }
+		.rectangle { fill: red; stroke: black; stroke-width: 2px; }
+	</style>
+
+    <rect class="rectangle" x="10" y="10" width="80" height="50"/>
+    <circle class="circle" cx="150" cy="35" r="25"/>
+    <text class="text" x="150" y="40">SVG</text>
+</svg>

@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <vector>
 #include <string>
+#include <functional>
+#include <iterator>
 
 #include "xmlscan.h"
 #include "collections.h"
@@ -35,8 +37,53 @@ namespace waavs
         CSS_SELECTOR_UNIVERSAL,          // Universal selector - e.g. "*"
 	};
     
+    struct CSSSelectorInfo
+    {
+        uint32_t fKind{ CSS_SELECTOR_INVALID };
+        ByteSpan fName{};
+        ByteSpan fData{};
 
+        CSSSelectorInfo() = default;
+        CSSSelectorInfo(uint32_t akind, const ByteSpan& aname, const ByteSpan& adata)
+            :fKind(akind), fName(aname), fData(adata)
+        {
+        }
+
+        CSSSelectorInfo& operator=(const CSSSelectorInfo& other)
+        {
+            if (this != &other)
+            {
+                fKind = other.fKind;
+                fName = other.fName;
+                fData = other.fData;
+            }
+            return *this;
+        }
+
+        void reset()
+        {
+            fKind = CSS_SELECTOR_INVALID;
+            fName = {};
+            fData = {};
+        }
+
+		void reset(uint32_t kind, const ByteSpan& name, const ByteSpan& data)
+		{
+			fKind = kind;
+			fName = name;
+			fData = data;
+		}
+
+        bool empty() const noexcept { return fKind == CSS_SELECTOR_INVALID; }
+        explicit operator bool() const noexcept { return !empty(); }
+
+        constexpr uint32_t kind() const noexcept { return fKind; }
+        constexpr const ByteSpan& name() const noexcept { return fName; }
+        constexpr const ByteSpan& data() const noexcept { return fData; }
+
+    };
     
+
     // Look at the beginning of the selector name and determine
     // what kind of simple selector it is.
     static CSSSelectorKind parseSimpleSelectorKind(const waavs::ByteSpan& inChunk)
@@ -91,121 +138,93 @@ namespace waavs
 	// it can be used on its own, but also act as a building
     // block for more complex selectors, and style sheets
     //======================================================
+
     struct CSSSelector
     {
-        bool fIsNull{ true };
-        CSSSelectorKind fKind{ CSSSelectorKind::CSS_SELECTOR_INVALID };
+        using MatchFunction = std::function<bool(const XmlElement&)>;
+
+    private:
+        uint32_t fKind{ CSS_SELECTOR_INVALID };
+        ByteSpan fName{};
         ByteSpan fData{};
         XmlAttributeCollection fAttributes{};
-        ByteSpan fName{};
-        
-        
+        MatchFunction fMatchFunction{};
+
+    public:
         CSSSelector() = default;
-        CSSSelector(const CSSSelector &other)
-            :fIsNull(other.fIsNull),
-            fKind(other.fKind)
-			, fName(other.fName)
-            , fData(other.fData)
-			, fAttributes(other.fAttributes)
-		{
-		}
-        
-        CSSSelector(CSSSelectorKind kind, ByteSpan& name, const waavs::ByteSpan& inChunk)
-            :fKind(kind),
-            fName(name),
-            fData(inChunk)
+
+        CSSSelector(uint32_t kind, const ByteSpan& name, const ByteSpan& data, MatchFunction matchFn)
+            : fKind(kind), fName(name), fData(data), fMatchFunction(std::move(matchFn))
         {
-            if (!name.empty())
-			    fIsNull = false;
-            
-            loadFromChunk(inChunk);
+            loadFromChunk(data);
         }
 
-        CSSSelectorKind kind() const { return fKind; }
-        const ByteSpan& name() const { return fName; }
-		ByteSpan data() const { return fData; }
-        
-        const XmlAttributeCollection& attributes() const { return fAttributes; }
-
-
-        //explicit operator bool() const { return fKind!= CSSSelectorKind::CSS_SELECTOR_INVALID && !fName.empty() && fAttributes.size() > 0; }
-        explicit operator bool() const { return !fIsNull; }
-
-        
-		CSSSelector& operator=(const CSSSelector& other)
-		{
-            fIsNull = other.fIsNull;
-			fKind = other.fKind;
-			fName = other.fName;
-			fAttributes = other.fAttributes;
-			fData = other.fData;
-            
-			return *this;
-		}
-        
-        
-        // When adding, we don't care whether the kinds match
-        // we just need to copy over the attributes from the other
-        // to ours, replacing any that are already there
-		CSSSelector& mergeProperties(const CSSSelector& other)
-		{
-			fAttributes.mergeAttributes(other.fAttributes);
-
-			return *this;
-		}
-        
-		//CSSSelector& operator+= (const CSSSelector& other)
-		//{
-        //    return mergeProperties(other);
-        //}
-         
-        //CSSSelector operator+(const CSSSelector &rhs)
-		//{
-		//	CSSSelector result(*this);
-        //    result.appendSelector(rhs);
-		//}
-        
-		// Load the attributes from the chunk
-		void loadFromChunk(const waavs::ByteSpan& inChunk)
-		{
-            fData = inChunk;
-			gatherCssAttributes(inChunk, fAttributes);
-		}
-        
-        waavs::ByteSpan getAttribute(const ByteSpan &name) const
+        bool matches(const XmlElement& element) const noexcept
         {
-            return fAttributes.getAttribute(name);
+            return fMatchFunction ? fMatchFunction(element) : false;
+        }
+
+        uint32_t kind() const noexcept { return fKind; }
+        const ByteSpan& name() const noexcept { return fName; }
+        ByteSpan data() const noexcept { return fData; }
+        const XmlAttributeCollection& attributes() const noexcept { return fAttributes; }
+
+        CSSSelector& mergeProperties(const CSSSelector& other)
+        {
+            fAttributes.mergeAttributes(other.fAttributes);
+
+            return *this;
+        }
+
+    private:
+        void loadFromChunk(const ByteSpan& inChunk) noexcept
+        {
+            fData = inChunk;
+            gatherCssAttributes(inChunk, fAttributes);
         }
     };
 
 
+ 
+
     // CSSSelectorIterator
     // 
-	// Given a whole style sheet, iterate over the selectors
-	// individual selectors are indicated by <selector>[, <selector>]* { <properties> }
-    // Since there can be multiple selectors, we need to come back again and again
+	// Given a whole style sheet, iterate over the selectors within that sheet
+	// Individual selectors are indicated by <selector>[, <selector>]* { <properties> }
+    // 
+    // That is, there can be multiple selector names before the property list
+    // each one of them must be iterated separately. We deliver each selector name
+    // with the set of properties, in the order in which they were originally listed.
+    //
+    // This iterator can deal with embedded style sheet comments, which are either
+	// C++ single line comments '//', or C style multi-line comments '/* ... */'
     //
     struct CSSSelectorIterator
     {
-        ByteSpan fSource{};
-        ByteSpan fMark{};
+        using difference_type = std::ptrdiff_t;
+        using value_type = CSSSelectorInfo;
+        using pointer = const CSSSelectorInfo*;
+        using reference = const CSSSelectorInfo&;
+        using iterator_category = std::forward_iterator_tag;
 
+
+        ByteSpan fSource{};
         
         ByteSpan fSelectorNames{};
         ByteSpan fSelectorContent{};
 
-        CSSSelector fCurrentItem{};
+        CSSSelectorInfo fCurrentItem{};
+        ByteSpan fSentinel{};    // Marks the beginning of the current item
+
 
         CSSSelectorIterator(const ByteSpan& inChunk)
-            :fSource(inChunk),
-			fMark(inChunk)
+            :fSource(inChunk)
         {
-            // don't call next() in here.  Allow the app to 
-            // decide when they want to move the iterator
-            //next();
+            // we need to be positioned on the first item to start
+            next();
         }
 
-        explicit operator bool() const { return (bool)fCurrentItem; }
+        //explicit operator bool() const { return (bool)fCurrentItem; }
 
         // Queue up the next selection, skipping past comments
         // and whatnot
@@ -213,7 +232,9 @@ namespace waavs
         {
             // Skip whitespace
             fSource = chunk_ltrim(fSource, chrWspChars);
-            if (fSource.size() == 0)
+            fSentinel = fSource;
+
+            if (!fSource)
                 return false;
             
             // skip 'C' style single line, and multi-line comments
@@ -221,26 +242,19 @@ namespace waavs
             // comment blocks before we get to actual content
             while (fSource)
             {
-
-                if (fSource.size() > 2 && fSource[0] == '/' && fSource[1] == '*')
+                if (fSource.startsWith("/*"))
                 {
-                    // skip past the /* asterisk */ style comment
+                    // Skip past /* comment */
                     fSource += 2;
-                    while (fSource.size() > 1 && !(fSource[0] == '*' && fSource[1] == '/'))
-                        fSource += 1;
-                    if (fSource.size() > 1)
+                    fSource = chunk_skip_until_cstr(fSource, "*/");
+                    if (fSource.startsWith("*/"))
                         fSource += 2;
-
-                    // start from the top again, if there are consecutive comments
                     continue;
                 }
-                else if (fSource.size() > 1 && fSource[0] == '/' && fSource[1] == '/')
+                else if (fSource.startsWith("//"))
                 {
-                    // skip past the // double slash style of comment
-                    fSource += 2;
-                    fSource = chunk_skip_until_char(fSource, '\n');
-
-                    // start from the top again, if there are consecutive comments
+                    // Skip past // comment
+                    fSource = chunk_find_char(fSource, '\n');
                     continue;
                 }
 
@@ -269,7 +283,7 @@ namespace waavs
 					return false;
 			}
             
-            fCurrentItem = CSSSelector();
+            fCurrentItem.reset();
 
             // pull off the next name delimeted by a comma
             ByteSpan selectorName = chunk_token(fSelectorNames, ",");
@@ -284,17 +298,61 @@ namespace waavs
                     selectorName++; // skip the first character of the name
                 }
                 
-                fCurrentItem = CSSSelector(selectorKind, selectorName, fSelectorContent);
+                fCurrentItem.reset(selectorKind, selectorName, fSelectorContent);
                 return true;
             }
 
             return false;
         }
 
+        bool operator==(const CSSSelectorIterator& other) const noexcept 
+        { 
+            return fSentinel.fStart == other.fSource.fStart;
+        }
+        bool operator!=(const CSSSelectorIterator& other) const noexcept 
+        { 
+            return !(*this == other);
+        }
+
         // For iteration convenience
-        const CSSSelector& operator*()  { return fCurrentItem; }
-        CSSSelectorIterator& operator++() {  next(); return *this; }
-        CSSSelectorIterator& operator++(int)  {  next();  return *this;  }
+        const CSSSelectorInfo& operator*()  { return fCurrentItem; }
+		const CSSSelectorInfo* operator->() { return &fCurrentItem; }
+
+        CSSSelectorIterator &operator++() 
+        {  
+            next(); 
+            return *this; 
+        }
+
+        CSSSelectorIterator operator++(int)
+        {
+            CSSSelectorIterator temp = *this;  // Copy current state
+            next();
+            return temp;  // Return previous state
+        }
+    };
+
+    struct CSSSelectorContainer
+    {
+    private:
+        ByteSpan fSource;  // Stores the source CSS text for iteration
+
+    public:
+        explicit CSSSelectorContainer(const ByteSpan& cssData)
+            : fSource(cssData) {
+        }
+
+        // Return an iterator to the beginning
+        CSSSelectorIterator begin() const
+        {
+            return CSSSelectorIterator(fSource);
+        }
+
+        // Return an iterator representing the end (empty iterator)
+        CSSSelectorIterator end() const
+        {
+            return CSSSelectorIterator(ByteSpan(fSource.fEnd, fSource.fEnd));
+        }
     };
 
 
@@ -305,140 +363,126 @@ namespace waavs
     //======================================================
     struct CSSStyleSheet
     {
-        waavs::ByteSpan fSource{};
+        using SelectorMap = std::unordered_map<ByteSpan, CSSSelector, ByteSpanHash, ByteSpanEquivalent>;
 
-        std::unordered_map<ByteSpan, std::shared_ptr<CSSSelector>, ByteSpanHash, ByteSpanEquivalent> fIDSelectors{};
-        std::unordered_map<ByteSpan, std::shared_ptr<CSSSelector>, ByteSpanHash, ByteSpanEquivalent> fClassSelectors{};
-        std::unordered_map<ByteSpan, std::shared_ptr<CSSSelector>, ByteSpanHash, ByteSpanEquivalent> fElementSelectors{};
-        std::unordered_map<ByteSpan, std::shared_ptr<CSSSelector>, ByteSpanHash, ByteSpanEquivalent> fAnimationSelectors{};
-        //std::vector<std::shared_ptr<CSSSelector>> fUniversalSelectors{};
+        std::unordered_map<uint32_t, SelectorMap> selectors;
 
-        CSSStyleSheet() = default;
+
+        CSSStyleSheet()
+        {
+            reset();
+        }
 
         CSSStyleSheet(const waavs::ByteSpan& inSpan)
         {
+            reset();
             loadFromSpan(inSpan);
         }
         
-        std::shared_ptr<CSSSelector> getSelector(const ByteSpan& name, CSSSelectorKind kind)
+
+        void reset()
         {
-     
-            
-            switch (kind)
+            selectors.clear();
+        }
+
+		SelectorMap & getSelectorMap(uint32_t kind)
+		{
+			auto it = selectors.find(kind);
+            if (it != selectors.end())
             {
-            case CSSSelectorKind::CSS_SELECTOR_ID:
-            {
-                auto it = fIDSelectors.find(name);
-                if (it != fIDSelectors.end())
-                    return it->second;
-                break;
-            }
-            case CSSSelectorKind::CSS_SELECTOR_CLASS:
-            {
-                auto it = fClassSelectors.find(name);
-                if (it != fClassSelectors.end())
-                    return it->second;
-                break;
-            }
-            case CSSSelectorKind::CSS_SELECTOR_ATRULE:
-            {
-                auto it = fAnimationSelectors.find(name);
-                if (it != fAnimationSelectors.end())
-                    return it->second;
-                break;
-            }
-            case CSSSelectorKind::CSS_SELECTOR_ELEMENT:
-            {
-                auto it = fElementSelectors.find(name);
-                if (it != fElementSelectors.end())
-                    return it->second;
-                break;
-            }
-            default:
-                break;
+                return it->second;
             }
 
-            
+            selectors[kind] = {};
+			return selectors[kind];
+		}
+
+        CSSSelector* getSelector(CSSSelectorKind kind, const ByteSpan& name)
+        {
+            auto& aMap = getSelectorMap(kind);
+
+            auto selIt = aMap.find(name);
+            if (selIt != aMap.end())
+                return &selIt->second;
+
             return nullptr;
         }
 
+ 
 
-		std::shared_ptr<CSSSelector> getIDSelector(const ByteSpan& name)
-        { 
-            return getSelector(name, CSSSelectorKind::CSS_SELECTOR_ID);
-        }
-        
-        std::shared_ptr<CSSSelector> getElementSelector(const ByteSpan& name)
-		{
-            return getSelector(name, CSSSelectorKind::CSS_SELECTOR_ELEMENT);
-		}
-        
-        std::shared_ptr<CSSSelector> getClassSelector(const ByteSpan& name)
-		{
-            return getSelector(name, CSSSelectorKind::CSS_SELECTOR_CLASS);
-		}
-        
-        std::shared_ptr<CSSSelector> getAnimationSelector(const ByteSpan& name)
+        // Add a selector to the style sheet
+        // based on the info.name(), put the selector into
+        // the proper selector category
+        void addSelector(const CSSSelectorInfo& info)
         {
-            return getSelector(name, CSSSelectorKind::CSS_SELECTOR_ATRULE);
-        }
-        
-        
-		void addSelectorToMap(std::unordered_map<ByteSpan, std::shared_ptr<CSSSelector>, ByteSpanHash, ByteSpanEquivalent> &amap, std::shared_ptr<CSSSelector> selector)
-		{
-            ByteSpan aname = selector->name();
-            
-			auto it = amap.find(aname);
-			if (it != amap.end())
-			{
-				// merge the two selectors
-                // newer stuff replaces older stuff
-				it->second->mergeProperties(*selector);
-			}
-			else
-			{
-				amap[aname] = selector;
-			}
-            
-		}
-        
-        void addSelector(std::shared_ptr<CSSSelector> sel)
-        {
-            // first add to universal selectors
-            //fUniversalSelectors.push_back(sel);
+            if (info.empty())
+                return;
 
-			// Now, add to the appropriate map
-            switch (sel->fKind)
+            // Determine predicate dynamically
+            std::function<bool(const XmlElement&)> predicate;
+            switch (info.kind())
             {
-            case CSSSelectorKind::CSS_SELECTOR_ID:
-				addSelectorToMap(fIDSelectors, sel);
+            case CSS_SELECTOR_ID:
+                predicate = [info](const XmlElement& elem) {
+                    ByteSpan idValue;
+                    return elem.getRawAttributeValue("id", idValue) && idValue == info.name();
+                    };
                 break;
-            case CSSSelectorKind::CSS_SELECTOR_CLASS:
-                addSelectorToMap(fClassSelectors, sel);
+
+            case CSS_SELECTOR_CLASS:
+                predicate = [info](const XmlElement& elem) {
+                    ByteSpan classValue{};
+                    ByteSpan nameValue{};
+                    return elem.getRawAttributeValue("class", classValue) && chunk_find(classValue,info.name(), nameValue);
+                    };
                 break;
-            case CSSSelectorKind::CSS_SELECTOR_ELEMENT:
-                addSelectorToMap(fElementSelectors, sel);
+
+            case CSS_SELECTOR_ELEMENT:
+                predicate = [info](const XmlElement& elem) {
+                    return elem.xmlName().name() == info.name();
+                    };
                 break;
-            case CSSSelectorKind::CSS_SELECTOR_ATRULE:
-                addSelectorToMap(fAnimationSelectors, sel);
+
+            case CSS_SELECTOR_ATTRIBUTE:
+                predicate = [info](const XmlElement& elem) {
+                    ByteSpan attrValue;
+                    return elem.getRawAttributeValue(info.name(), attrValue);
+                    };
                 break;
+
             default:
-                // do nothing, not supported selector
-                break;
+                return;
+            }
+
+            // Construct selector with the predicate
+            CSSSelector newSelector(info.kind(), info.name(), info.data(), predicate);
+
+            //selectors[info.kind()][info.name()] = newSelector;
+
+            // Get correct selector map and add/merge
+            auto& selectorMap = getSelectorMap(info.kind());
+            auto it = selectorMap.find(info.name());
+            if (it != selectorMap.end())
+            {
+                it->second.mergeProperties(newSelector);
+            }
+            else
+            {
+                selectorMap.emplace(info.name(), std::move(newSelector));
             }
         }
+
+
 
         bool loadFromSpan(const ByteSpan& inSpan)
         {
-            fSource = inSpan;
+			CSSSelectorContainer selContainer(inSpan);
 
             // Iterate over the selectors
-            CSSSelectorIterator iter(fSource);
-            while (iter.next())
-            {
-				auto sel = std::make_shared<CSSSelector>(*iter);
-				addSelector(sel);
-            }
+			for (const CSSSelectorInfo & selInfo : selContainer)
+			{
+				addSelector(selInfo);
+			}
 
             return true;
         }

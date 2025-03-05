@@ -65,30 +65,30 @@ namespace waavs {
 				else {
 					// Otherwise, process a standard character entity
 					if (ent == "lt") {
-						*outCursor = '<';
+						outCursor[0] = '<';
 						++outCursor;
 					}
 					else if (ent == "gt") {
-						*outCursor = '>';
+						outCursor[0] = '>';
 						++outCursor;
 					}
 					else if (ent == "amp") {
-						*outCursor = '&';
+						outCursor[0] = '&';
 						++outCursor;
 					}
 					else if (ent == "apos") {
-						*outCursor = '\'';
+						outCursor[0] = '\'';
 						++outCursor;
 					}
 					else if (ent == "quot") {
-						*outCursor = '"';
+						outCursor[0] = '"';
 						++outCursor;
 					}
 				}
 			}
 			else
 			{
-				*outCursor = *s;
+				outCursor[0] = *s;
 				outCursor++;
 				s++;
 			}

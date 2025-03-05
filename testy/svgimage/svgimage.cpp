@@ -10,8 +10,6 @@
 
 using namespace waavs;
 
-// Create one of these first, so factory constructor will run
-//SVGFactory gSVG;
 
 // Reference to currently active document
 std::shared_ptr<SVGDocument> gDoc{ nullptr };
@@ -65,7 +63,7 @@ int main(int argc, char **argv)
         return 1;
     }
 	
-	setupFonts();
+	//setupFonts();
 
     // create an mmap for the specified file
     const char* filename = argv[1];
@@ -80,7 +78,8 @@ int main(int argc, char **argv)
 	}
     
 	ByteSpan mappedSpan(mapped->data(), mapped->size());
-    gDoc = SVGFactory::createDOM(mappedSpan, &gFontHandler);
+    //gDoc = SVGFactory::createDOM(mappedSpan, &gFontHandler);
+	gDoc = SVGFactory::createFromChunk(mappedSpan, &gFontHandler, CAN_WIDTH, CAN_HEIGHT, 96.0);
 
     if (gDoc == nullptr)
         return 1;
@@ -93,15 +92,15 @@ int main(int argc, char **argv)
 	// Attach the drawing context to the image
 	// We MUST do this before we perform any other
 	// operations, including the transform
-	ctx.attach(img);
+	BLContextCreateInfo createInfo{};
+	createInfo.threadCount = 0;
+	ctx.attach(img, &createInfo);
 	ctx.clearAll();
 
 	
 	// Create a rectangle the size of the BLImage we want to render into
 	BLRect surfaceFrame{ 0, 0, CAN_WIDTH, CAN_HEIGHT };
 
-	
-	
 	// Now that we've processed the document, we have correct sizing
 	// Get the frame size from the document
 	// This is the extent of the document, in user units
@@ -113,13 +112,8 @@ int main(int argc, char **argv)
 	// and create a viewport, which will handle the scaling and translation
 	// This will essentially do a 'scale to fit'
 	ViewportTransformer vp{};
-	vp.viewBoxFrame(sceneFrame);
-	vp.viewportFrame(surfaceFrame);
-	
-
-
-
-
+	vp.viewBoxFrame(sceneFrame);		// The part of the scene we want to display
+	vp.viewportFrame(surfaceFrame);		// The surface we want to fit to 
 	
 
 
@@ -130,8 +124,10 @@ int main(int argc, char **argv)
 
 	
 	// Render the document into the context
-	//ctx.noStroke();
 	gDoc->draw(&ctx, gDoc.get());
+
+	// detach should do a final flush, so we're ready to save
+	// the image
 	ctx.detach();
 	
 	// Save the image from the drawing context out to a file

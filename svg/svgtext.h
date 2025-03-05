@@ -258,7 +258,7 @@ namespace waavs {
 			}
 		}
 
-		void loadCompoundNode(XmlElementIterator& iter, IAmGroot* groot) override
+		void loadStartTag(XmlElementIterator& iter, IAmGroot* groot) override
 		{
 			// Most likely a <tspan>
 			//auto& elem = *iter;
@@ -272,7 +272,7 @@ namespace waavs {
 			else
 			{
 				// Load the sub-node, and throw it away
-				SVGGraphicsElement::loadCompoundNode(iter, groot);
+				SVGGraphicsElement::loadStartTag(iter, groot);
 			}
 		}
 

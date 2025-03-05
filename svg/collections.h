@@ -252,10 +252,11 @@ namespace waavs {
     // XmlAttributeCollection
     // A collection of the attibutes found on an XmlElement
     //============================================================
+    using BSpanDictionary = std::unordered_map<ByteSpan, ByteSpan, ByteSpanHash, ByteSpanEquivalent>;
 
     struct XmlAttributeCollection
     {
-        std::unordered_map<ByteSpan, ByteSpan, ByteSpanHash, ByteSpanEquivalent> fAttributes{};
+        BSpanDictionary fAttributes{};
 
         XmlAttributeCollection() = default;
         XmlAttributeCollection(const XmlAttributeCollection& other) noexcept
@@ -268,7 +269,7 @@ namespace waavs {
         }
 
         // Return a const attribute collection
-        const std::unordered_map<ByteSpan, ByteSpan, ByteSpanHash, ByteSpanEquivalent>& attributes() const noexcept { return fAttributes; }
+        const BSpanDictionary& attributes() const noexcept { return fAttributes; }
 
         size_t size() const noexcept { return fAttributes.size(); }
 
@@ -292,7 +293,6 @@ namespace waavs {
             return true;
         }
 
-        //bool hasAttribute(const std::string& inName) const
         bool hasAttribute(const ByteSpan& inName) const noexcept
         {
             return fAttributes.find(inName) != fAttributes.end();
@@ -308,8 +308,20 @@ namespace waavs {
             fAttributes[name] = valueChunk;
         }
 
+        // get an attribute from the collection, if it exists
+        bool getAttribute(const ByteSpan& name, ByteSpan& value) const noexcept
+        {
+            auto it = fAttributes.find(name);
+            if (it != fAttributes.end()) {
+                value = it->second;
+                return true;
+            }
+            value.reset(); // Explicitly clear value if attribute doesn't exist
+            return false;
+        }
 
-        //ByteSpan getAttribute(const std::string& name) const
+
+
         ByteSpan getAttribute(const ByteSpan& name) const noexcept
         {
             auto it = fAttributes.find(name);
@@ -319,30 +331,24 @@ namespace waavs {
         }
 
 
+
+        // mergeAttributes()
+        // Combine collections of attributes
+		// If there are duplicates, the new value will replace the old
         XmlAttributeCollection& mergeAttributes(const XmlAttributeCollection& other) noexcept
         {
-            for (auto& attr : other.fAttributes)
+            for (const auto& attr : other.fAttributes)
             {
-                fAttributes[attr.first] = attr.second;
+                // Optimize update: Remove old value first, then emplace new one
+                fAttributes.erase(attr.first);
+                fAttributes.emplace(attr.first, attr.second);
             }
             return *this;
         }
 
-		// Given a name, find the attribute and return its value
-        // return false if the name is not found
-        static bool getValue(const ByteSpan &inChunk, const ByteSpan& key, ByteSpan& value) noexcept
-        {
-            ByteSpan src = inChunk;
-            ByteSpan name{};
 
-            while (readNextKeyAttribute(src, name, value))
-            {
-                if (name == key)
-                    return true;
-            }
 
-            return false;
-        }
+
     };
 }
 

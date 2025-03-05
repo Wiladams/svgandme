@@ -23,13 +23,14 @@
 // }
 //
 // Noted:
-// A convenient visualtion tool can be found here: https://svg-path-visualizer.netlify.app/
+// Tools: 
+// https://svg-path-visualizer.netlify.app/
 // References:
 // https://svgwg.org/svg2-draft/paths.html#PathDataBNF
 //
 
 #include "bspan.h"
-
+#include "converters.h"
 
 namespace waavs {
 	// Used for the iterator
@@ -47,7 +48,7 @@ namespace waavs {
 		int iteration{ 0 };
 		int fError{ 0 };
 		const char* fArgTypes{};
-		double args[8];		// The arguments for the command
+		double args[8]{ 0 };		// The arguments for the command
 
 		SVGSegmentParseState() = default;
 
@@ -74,36 +75,16 @@ namespace waavs {
 	static const char * getSegmentArgTypes(unsigned char cmdIndex)
 	{
 		switch (cmdIndex) {
-			case 'A':
-			case 'a':
-				return "ccrffcc";			// ArcTo
-			case 'C':
-			case 'c':
-				return "cccccc";			// CubicTo
-			case 'H':
-			case 'h':
-				return "c";				// HLineTo
-			case 'L':
-			case 'l':
-				return "cc";				// LineTo
-			case 'M':
-			case 'm':
-				return "cc";				// MoveTo
-			case 'Q':
-			case 'q':
-				return "cccc";				// QuadTo
-			case 'S':
-			case 's':
-				return "cccc";				// SmoothCubicTo
-			case 'T':
-			case 't':
-				return "cc";				// SmoothQuadTo
-			case 'V':
-			case 'v':
-				return "c";				// VLineTo
-			case 'Z':
-			case 'z':
-				return "";					// Close
+			case 'A': case 'a': return "ccrffcc";			// ArcTo
+			case 'C': case 'c': return "cccccc";			// CubicTo
+			case 'H': case 'h': return "c";					// HLineTo
+			case 'L': case 'l': return "cc";				// LineTo
+			case 'M': case 'm': return "cc";				// MoveTo
+			case 'Q': case 'q': return "cccc";				// QuadTo
+			case 'S': case 's': return "cccc";				// SmoothCubicTo
+			case 'T': case 't': return "cc";				// SmoothQuadTo
+			case 'V': case 'v': return "c";					// VLineTo
+			case 'Z': case 'z': return "";					// Close
 
 			default:
 				return nullptr;

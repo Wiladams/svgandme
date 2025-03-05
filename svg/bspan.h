@@ -2,8 +2,9 @@
 
 #include <cmath>
 #include <cstdint>
-#include <cstring>
+#include <cstring>  // for std::memchr
 #include <iterator>	// for std::data(), std::size()
+#include <string.h>
 
 #include "bithacks.h"
 #include "charset.h"
@@ -39,25 +40,44 @@ namespace waavs {
 		const unsigned char* fEnd{ nullptr };
 
 		// Constructors
-		ByteSpan() noexcept : fStart(nullptr), fEnd(nullptr) {}
-		ByteSpan(const unsigned char* start, const unsigned char* end) noexcept : fStart(start), fEnd(end) {}
-		ByteSpan(const char* cstr) noexcept : fStart((const unsigned char*)cstr), fEnd((const unsigned char*)cstr + strlen(cstr)) {}
-		explicit ByteSpan(const void* data, size_t sz) noexcept :fStart((const unsigned char*)data), fEnd((const unsigned char*)data + sz) {}
+		constexpr ByteSpan() = default;
+		constexpr ByteSpan(const unsigned char* start, const unsigned char* end) noexcept : fStart(start), fEnd(end) {}
+		ByteSpan(const char* cstr) noexcept
+			: fStart(reinterpret_cast<const uint8_t*>(cstr)),
+			fEnd(reinterpret_cast<const uint8_t*>(cstr) + std::strlen(cstr)) {
+		}
+		explicit constexpr ByteSpan(const void* data, size_t sz) noexcept
+			: fStart(static_cast<const uint8_t*>(data)), fEnd(fStart + sz) {
+		}
 
-		// reset()
-		void reset() { fStart = nullptr; fEnd = nullptr; }
+		~ByteSpan() = default;
+
+		constexpr void reset() { fStart = nullptr; fEnd = nullptr; }
+		
+		// setting up for a range-based for loop
+		constexpr const uint8_t* data() const noexcept { return (unsigned char*)fStart; }
+		constexpr const uint8_t* begin() const noexcept { return fStart; }
+		constexpr const uint8_t* end() const noexcept { return fEnd; }
+
+		constexpr size_t size() const noexcept { return (fEnd >= fStart) ? static_cast<size_t>(fEnd - fStart) : 0; }
+		constexpr bool empty() const noexcept { return fStart == fEnd; }
+
 
 		// Type conversions
-		explicit operator bool() const noexcept { return (fEnd - fStart) > 0; };
+		explicit constexpr operator bool() const noexcept { return (fEnd - fStart) > 0; };
 
 
 		// Array access
-		unsigned char& operator[](size_t i) noexcept { return ((unsigned char*)fStart)[i]; }
-		const unsigned char& operator[](size_t i) const noexcept { return ((unsigned char*)fStart)[i]; }
+		uint8_t& operator[](size_t i) noexcept { return const_cast<uint8_t&>(fStart[i]); }
+		const uint8_t& operator[](size_t i) const noexcept { return fStart[i]; }
+
 
 		// get current value from fStart, like a 'peek' operation
-		unsigned char& operator*() noexcept { static unsigned char zero = 0;  if (fStart < fEnd) return *(unsigned char*)fStart; return  zero; }
-		const uint8_t& operator*() const noexcept { static unsigned char zero = 0;  if (fStart < fEnd) return *(unsigned char*)fStart; return  zero; }
+		// If the ByteSpan is currently empty, these will return 0, rather than 
+		// throwing an exception
+		uint8_t operator*() const noexcept {
+			return (fStart < fEnd) ? *fStart : 0;
+		}
 
 
 		//
@@ -78,99 +98,76 @@ namespace waavs {
 		// Perform a full content comparison of the two spans
 		bool operator==(const ByteSpan& b) const noexcept
 		{
-			if (size() != b.size())
-				return false;
-			return memcmp(fStart, b.fStart, size()) == 0;
+			return (size() == b.size()) && (std::memcmp(fStart, b.fStart, size()) == 0);
 		}
 
 		bool operator==(const char* b) const noexcept
 		{
-			size_t len = strlen(b);
-			if (size() != len)
-				return false;
-			return memcmp(fStart, b, len) == 0;
+			return (b && std::strncmp(reinterpret_cast<const char*>(fStart), b, size()) == 0);
 		}
 
-		bool operator!=(const ByteSpan& b) const noexcept
+
+		bool operator!=(const ByteSpan& other) const noexcept
 		{
-			if (size() != b.size())
-				return true;
-			return memcmp(fStart, b.fStart, size()) != 0;
+			return !(*this == other);
 		}
 
 		bool operator<(const ByteSpan& b) const noexcept
 		{
-			size_t maxBytes = size() < b.size() ? size() : b.size();
-			return memcmp(fStart, b.fStart, maxBytes) < 0;
+			size_t minSize = size() < b.size() ? size() : b.size();
+			int cmp = memcmp(fStart, b.fStart, minSize);
+			return (cmp < 0) || (cmp == 0 && size() < b.size());
 		}
+
 
 		bool operator>(const ByteSpan& b) const noexcept
 		{
-			size_t maxBytes = size() < b.size() ? size() : b.size();
-			return memcmp(fStart, b.fStart, maxBytes) > 0;
+			size_t minSize = size() < b.size() ? size() : b.size();
+			int cmp = memcmp(fStart, b.fStart, minSize);
+			return (cmp > 0) || (cmp == 0 && size() > b.size());
 		}
+
 
 		bool operator<=(const ByteSpan& b) const noexcept
 		{
-			size_t maxBytes = size() < b.size() ? size() : b.size();
-			return memcmp(fStart, b.fStart, maxBytes) <= 0;
+			size_t minSize = size() < b.size() ? size() : b.size();
+			int cmp = memcmp(fStart, b.fStart, minSize);
+			return (cmp < 0) || (cmp == 0 && size() <= b.size());
 		}
+
 
 		bool operator>=(const ByteSpan& b) const noexcept
 		{
-			size_t maxBytes = size() < b.size() ? size() : b.size();
-			return memcmp(fStart, b.fStart, maxBytes) >= 0;
+			size_t minSize = size() < b.size() ? size() : b.size();
+			int cmp = memcmp(fStart, b.fStart, minSize);
+			return (cmp > 0) || (cmp == 0 && size() >= b.size());
 		}
 
 
-		ByteSpan& operator+= (size_t n) noexcept {
-			if (n > size())
-				n = size();
-			fStart += n;
+		constexpr ByteSpan& operator+=(size_t n) noexcept {fStart = (fStart + n <= fEnd) ? fStart + n : fEnd; return *this;}
 
-			return *this;
+		constexpr ByteSpan& operator++() noexcept { return (*this += 1); }
+		 ByteSpan operator++(int) noexcept { ByteSpan temp = *this; ++(*this); return temp; } 
+
+
+		void setAll(uint8_t c) noexcept { std::memset(const_cast<uint8_t*>(fStart), c, size()); }
+		void copyFrom(const void* src, size_t sz) noexcept {
+			if (sz > 0) std::memcpy(const_cast<uint8_t*>(fStart), src, sz);
 		}
 
-
-		ByteSpan& operator++() noexcept { return operator+=(1); }			// prefix notation ++y
-		ByteSpan& operator++(int ) noexcept { return operator+=(1); }       // postfix notation y++
-
-
-
-		// setting up for a range-based for loop
-		const unsigned char* data() const noexcept { return (unsigned char*)fStart; }
-		const unsigned char* begin() const noexcept { return fStart; }
-		const unsigned char* end() const noexcept { return fEnd; }
-		size_t size()  const noexcept { ptrdiff_t sz = fEnd - fStart; if (sz < 0) return 0; return sz; }
-		const bool empty() const noexcept { return fStart == fEnd; }
-
-		void setAll(unsigned char c) noexcept { memset((uint8_t*)fStart, c, size()); }
-
-		void copyFrom(const void* src, size_t sz) noexcept { memcpy((uint8_t*)fStart, src, sz); }
 		
 		// subSpan()
 		// Create a bytespan that is a subspan of the current span
 		// If the requested position plus size is greater than the amount
 		// of span remaining at that position, the size will be truncated 
 		// to the amount remaining from the requested position.
-		ByteSpan subSpan(const size_t startAt, const size_t sz) const noexcept
+		constexpr ByteSpan subSpan(size_t startAt, size_t sz) const noexcept
 		{
-			const uint8_t* start = fStart;
-			const uint8_t* end = fEnd;
-			if (startAt < size())
-			{
-				start += startAt;
-				if (start + sz < end)
-					end = start + sz;
-				else
-					end = fEnd;
-			}
-			else
-			{
-				start = end;
-			}
-			return { start, end };
+			const uint8_t* newStart = (startAt < size()) ? fStart + startAt : fEnd;
+			const uint8_t* newEnd = (newStart + sz <= fEnd) ? newStart + sz : fEnd;
+			return { newStart, newEnd };
 		}
+
 
 		ByteSpan take(size_t n) const noexcept
 		{
@@ -192,17 +189,16 @@ namespace waavs {
 
 }
 
+
+
 namespace waavs {
 	INLINE size_t copy(ByteSpan& a, const ByteSpan& b) noexcept;
 	INLINE size_t copy_to_cstr(char* str, size_t len, const ByteSpan& a) noexcept;
 	INLINE int compare(const ByteSpan& a, const ByteSpan& b) noexcept;
 	INLINE int comparen(const ByteSpan& a, const ByteSpan& b, int n) noexcept;
 	INLINE int comparen_cstr(const ByteSpan& a, const char* b, int n) noexcept;
-	//INLINE bool chunk_is_equal_cstr(const ByteSpan& a, const char* s) noexcept;
 
 	// Some utility functions for common operations
-
-	INLINE void chunk_truncate(ByteSpan& dc) noexcept;
 	INLINE ByteSpan& chunk_skip(ByteSpan& dc, size_t n) noexcept;
 	INLINE ByteSpan& chunk_skip_to_end(ByteSpan& dc) noexcept;
 
@@ -213,14 +209,8 @@ namespace waavs {
 
 
 	// ByteSpan routines
-	INLINE ByteSpan chunk_from_cstr(const char* data) noexcept 
-	{ 
-		return ByteSpan{ (uint8_t*)data, (uint8_t*)data + strlen(data) }; 
-	}
-
 
 	// inline size_t chunk_size(const ByteSpan& a) noexcept { return a.size(); }
-	INLINE bool chunk_empty(const ByteSpan& dc)  noexcept { return dc.fEnd == dc.fStart; }
 	INLINE size_t copy(ByteSpan& a, const ByteSpan& b) noexcept
 	{
 		size_t maxBytes = a.size() < b.size() ? a.size() : b.size();
@@ -249,13 +239,6 @@ namespace waavs {
 		return memcmp(a.fStart, b, maxBytes);
 	}
 
-
-
-
-	INLINE void chunk_truncate(ByteSpan& dc) noexcept
-	{
-		dc.fEnd = dc.fStart;
-	}
 
 	INLINE ByteSpan& chunk_skip(ByteSpan& dc, size_t n) noexcept
 	{
@@ -406,6 +389,7 @@ namespace waavs
 
 	INLINE ByteSpan chunk_skip_wsp(const ByteSpan& a) noexcept
 	{
+				
 		const uint8_t* start = a.fStart;
 		const uint8_t* end = a.fEnd;
 
@@ -415,14 +399,41 @@ namespace waavs
 		return { start, end };
 	}
 
-	INLINE ByteSpan chunk_skip_until_char(const ByteSpan& inChunk, const uint8_t achar) noexcept
+	INLINE ByteSpan chunk_skip_until_cstr(const ByteSpan& inChunk, const char* str) noexcept
 	{
 		const uint8_t* start = inChunk.fStart;
 		const uint8_t* end = inChunk.fEnd;
-		while (start < end && *start != achar)
-			++start;
+		size_t len = std::strlen(str);
 
-		return { start, end };
+		while (start < end - len + 1)  // Ensure we don't read past the buffer
+		{
+			if (std::memcmp(start, str, len) == 0)
+				return { start, end };  // Return position at match
+
+			++start;
+		}
+
+		return { end, end };  // No match found, return empty
+	}
+
+	INLINE ByteSpan chunk_skip_until_chunk(const ByteSpan& inChunk, const ByteSpan& match) noexcept
+	{
+		const uint8_t* start = inChunk.fStart;
+		const uint8_t* end = inChunk.fEnd;
+		size_t len = match.size();
+
+		if (len == 0 || start == end)
+			return { end, end };  // Empty input or match, return empty
+
+		while (start < end - len + 1)
+		{
+			if (std::memcmp(start, match.fStart, len) == 0)
+				return { start, end };  // Return position at match
+
+			++start;
+		}
+
+		return { end, end };  // No match found, return empty
 	}
 
 
@@ -463,39 +474,38 @@ namespace waavs
 
 	INLINE bool chunk_ends_with_cstr(const ByteSpan& a, const char* b) noexcept
 	{
-		return a.endsWith(chunk_from_cstr(b));
+		return a.endsWith(ByteSpan(b));
 	}
 
 	// Given an input chunk
-	// spit it into two chunks, 
-	// Returns - the first chunk before delimeters
-	// a - adjusted to reflect the rest of the input after delims
+	// split it into two chunks, 
+	// Returns - the first chunk before delimeter
+	//	a - adjusted to reflect the rest of the input after delims
 	// If delimeter NOT found
-	// returns the entire input chunk
-	// and 'a' is set to an empty chunk
+	//	returns the entire input chunk
+	//	and 'a' is set to an empty chunk
+
 	INLINE ByteSpan chunk_token_char(ByteSpan& a, const char delim) noexcept
 	{
-		if (!a) {
-			a = {};
-			return {};
-		}
+		if (!a) return {}; // Return empty ByteSpan if 'a' is empty
 
 		const uint8_t* start = a.fStart;
 		const uint8_t* end = a.fEnd;
-		const uint8_t* tokenEnd = start;
-		while (tokenEnd < end && *tokenEnd != delim)
-			++tokenEnd;
 
-		if (*tokenEnd == delim)
-		{
-			a.fStart = tokenEnd + 1;
+		// Use std::memchr() to find the delimiter efficiently
+		const uint8_t* tokenEnd = static_cast<const uint8_t*>(std::memchr(start, delim, end - start));
+
+		if (tokenEnd) {
+			a.fStart = tokenEnd + 1;  // Advance past the delimiter
 		}
 		else {
-			a.fStart = tokenEnd;
+			tokenEnd = end;  // No delimiter found, return entire input
+			a.fStart = end;  // Move 'a' to empty state
 		}
 
 		return { start, tokenEnd };
 	}
+
 
 	INLINE ByteSpan chunk_token(ByteSpan& a, const charset& delims) noexcept
 	{
@@ -531,17 +541,24 @@ namespace waavs
 
 	// Given an input chunk
 	// find the first instance of a specified character
-	// return the chunk preceding the found character
-	// or or the whole chunk of the character is not found
+	// Return 
+	//	If character found, return chunk beginning where the character was found
+	//  If character not found, return empty chunk
 	INLINE ByteSpan chunk_find_char(const ByteSpan& a, char c) noexcept
 	{
+		if (!a) return {}; // Return empty chunk if input is empty
+
 		const uint8_t* start = a.fStart;
 		const uint8_t* end = a.fEnd;
-		while (start < end && *start != c)
-			++start;
 
-		return { start, end };
+		// Use std::memchr() to locate the first occurrence of 'c'
+		const uint8_t* found = static_cast<const uint8_t*>(std::memchr(start, c, end - start));
+
+		if (!found) return {}; // Character not found, return empty chunk
+
+		return { found, end };
 	}
+
 
 	// 
 	// chunk_find()
@@ -551,97 +568,92 @@ namespace waavs
 	// to the location.
 	INLINE bool chunk_find(const ByteSpan& src, const ByteSpan& str, ByteSpan& value) noexcept
 	{
-		const uint8_t* start = src.fStart;
-		const uint8_t* end = src.fEnd;
-		const uint8_t* b = str.fStart;
-		const uint8_t* bEnd = str.fEnd;
+		if (src.size() < str.size() || str.empty())
+			return false;
 
-		while (start < end)
+		const uint8_t* srcStart = src.fStart;
+		const uint8_t* srcEnd = src.fEnd - (str.size() - 1); // Avoid over-scanning
+		const uint8_t* pattern = str.fStart;
+		const size_t patternSize = str.size();
+
+		while (srcStart < srcEnd)
 		{
-			// find the first character of the search string in the source string
-			while (start < end && *start != *b)
-				++start;
+			// Fast forward to the first occurrence of the first character of `str`
+			srcStart = static_cast<const uint8_t*>(std::memchr(srcStart, *pattern, srcEnd - srcStart));
+			if (!srcStart) return false; // Not found
 
-			// if we've run out of source string, we didn't find it
-			if (start == end)
-				return false;
-
-			// now that we've found a potential first character
-			// of the search string, we need to see if the rest
-			// of the search string is present
-			while (start < end && b < bEnd && *start == *b)
+			// Check if the rest of the `str` matches
+			if (std::memcmp(srcStart, pattern, patternSize) == 0)
 			{
-				++start;
-				++b;
-			}
-
-			// if we've run out of search string, we found it
-			if (b == bEnd)
-			{
-				value = { start - str.size(), start };
+				value = { srcStart, srcStart + patternSize };
 				return true;
 			}
+
+			++srcStart; // Move to the next position
 		}
 
 		return false;
 	}
 
+
 	INLINE ByteSpan chunk_find_cstr(const ByteSpan& a, const char* c) noexcept
 	{
+		if (!a || !c || *c == '\0')
+			return {};  // Return empty ByteSpan if input is invalid
+
 		const uint8_t* start = a.fStart;
 		const uint8_t* end = a.fEnd;
-		const uint8_t* cstart = (const uint8_t*)c;
-		const uint8_t* cend = cstart + strlen(c);
-		ByteSpan cChunk(cstart, cend);
+		const size_t clen = std::strlen(c);
+
+		if (clen > static_cast<size_t>(end - start))
+			return {};  // If search string is larger than input, it can't be found
+
+		const uint8_t firstChar = static_cast<uint8_t>(c[0]);
 
 		while (start < end)
 		{
-			if (*start == *cstart)
-			{
+			// Use memchr() to quickly find the first character
+			start = static_cast<const uint8_t*>(std::memchr(start, firstChar, end - start));
+			if (!start || start + clen > end)
+				return {};  // If first char is not found or rest of string doesn't fit, return empty
 
-				if (chunk_starts_with({ start, end }, cChunk))
-				{
-					break;
-					//return { start, end };
-				}
-			}
+			// Check the rest of the string using memcmp()
+			if (std::memcmp(start, c, clen) == 0)
+				return { start, end };
 
-			++start;
+			++start;  // Move to next potential match
 		}
 
-		return { start, end };
+		return {};
 	}
+
+
+
 
 	INLINE ByteSpan chunk_read_bracketed(ByteSpan& src, const uint8_t lbracket, const uint8_t rbracket) noexcept
 	{
-		uint8_t* beginattrValue = nullptr;
-		uint8_t* endattrValue = nullptr;
-		//uint8_t quote{};
-
-		// Skip white space before the quoted bytes
+		// Skip leading whitespace
 		src = chunk_ltrim(src, chrWspChars);
 
 		if (!src || *src != lbracket)
-			return {};
+			return {};  // No valid opening bracket found
 
-
-		// advance past the lbracket, then look for the matching close quote
+		// Advance past the opening bracket
 		src++;
-		beginattrValue = (uint8_t*)src.fStart;
+		const uint8_t* beginAttrValue = src.fStart;
 
-		// Skip until end of the value.
-		while (src && *src != rbracket)
-			src++;
+		// Use std::memchr() to find the closing rbracket
+		const uint8_t* endAttrValue = static_cast<const uint8_t*>(std::memchr(beginAttrValue, rbracket, src.fEnd - beginAttrValue));
 
-		if (src)
-		{
-			endattrValue = (uint8_t*)src.fStart;
-			src++;
-		}
+		if (!endAttrValue)
+			return {};  // No closing bracket found
 
-		// Store only well formed quotes
-		return { beginattrValue, endattrValue };
+		// Advance `src` past the closing bracket
+		src.fStart = endAttrValue + 1;
+
+		return { beginAttrValue, endAttrValue };
 	}
+
 
 	//
 	// chunk_read_quoted()
@@ -652,126 +664,170 @@ namespace waavs
 	//
 	static bool chunk_read_quoted(ByteSpan& src, ByteSpan& dataChunk) noexcept
 	{
-		uint8_t* beginattrValue = nullptr;
-		uint8_t* endattrValue = nullptr;
-		uint8_t quote{};
-
-		// Skip white space before the quoted bytes
+		// Skip leading whitespace
 		src = chunk_ltrim(src, chrWspChars);
 
 		if (!src)
 			return false;
 
-		// capture the quote character
-		quote = *src;
+		// Capture the opening quote character
+		const uint8_t quote = *src;
 
-		// advance past the quote, then look for the matching close quote
+		// Move past the opening quote
 		src++;
-		beginattrValue = (uint8_t*)src.fStart;
+		const uint8_t* beginAttrValue = src.fStart;
 
-		// Skip until end of the value.
-		while (src && *src != quote)
-			src++;
+		// Use std::memchr() to find the matching closing quote
+		const uint8_t* endAttrValue = static_cast<const uint8_t*>(std::memchr(beginAttrValue, quote, src.fEnd - beginAttrValue));
 
-		if (src)
-		{
-			endattrValue = (uint8_t*)src.fStart;
-			src++;
-		}
+		if (!endAttrValue)
+			return false;  // No closing quote found
 
-		// Store only well formed attributes
-		dataChunk = { beginattrValue, endattrValue };
+		// Assign the extracted span
+		dataChunk = { beginAttrValue, endAttrValue };
+
+		// Advance `src` past the closing quote
+		src.fStart = endAttrValue + 1;
 
 		return true;
 	}
+
 }
 
 namespace waavs {
 
-	// readNextKeyValue()
-	// 
-	// Attributes are separated by '=' and values are quoted with 
-	// either "'" or '"'
-	// Ex: <tagname attr1='first value'  attr2="second value" />
-	// The src so it points past the end of the retrieved value
+	// Efficiently reads the next key-value attribute pair from `src`
+	// Attributes are separated by '=' and values are enclosed in '"' or '\''
 	static bool readNextKeyAttribute(ByteSpan& src, ByteSpan& key, ByteSpan& value) noexcept
 	{
-		// Zero these out in case there is failure
-		//key = {};
-		//value = {};
+		key.reset();
+		value.reset();
 
-		static charset equalChars("=");
 		static charset quoteChars("\"'");
 
-		bool start = false;
-		bool end = false;
-		uint8_t quote{};
-
-		uint8_t* beginattrValue = nullptr;
-		uint8_t* endattrValue = nullptr;
-
-
-		// Skip leading white space before the key name
+		// Trim leading whitespace
 		src = chunk_ltrim(src, chrWspChars);
 
 		if (!src)
 			return false;
 
-		// Special case of running into an end tag
-		if (*src == '/') {
-			end = true;
+		// Handle end tag scenario (e.g., `/>`)
+		if (*src == '/')
 			return false;
-		}
 
-		// Find end of the attrib name.
-		//auto attrNameChunk = chunk_token(src, equalChars);
-		auto attrNameChunk = chunk_token_char(src, '=');
+		// Extract attribute name (before '=')
+		ByteSpan attrNameChunk = chunk_token_char(src, '=');
 		key = chunk_trim(attrNameChunk, chrWspChars);
 
-		// Skip stuff past '=' until we see one of our quoteChars
-		while (src && !quoteChars[*src])
-			src++;
-
-		// If we've run out of input, return false
+		// If no '=' found, return false
 		if (!src)
 			return false;
 
-		// capture the quote character
-		quote = *src;
+		// Skip past '=' and any whitespace
+		src = chunk_ltrim(src, chrWspChars);
 
-		// move past the beginning of the quote
-		// and mark the beginning of the value portion
-		src++;
-		beginattrValue = (uint8_t*)src.fStart;
-
-		// Skip anything that is not the quote character
-		// to mark the end of the value
-		// don't use quoteChars here, because it's valid to 
-		// embed the other quote within the value
-		src = chunk_skip_until_char(src, quote);
-
-		// If we still have input, it means we found
-		// the quote character, so mark the end of the
-		// value
-		if (src)
-		{
-			endattrValue = (uint8_t*)src.fStart;
-			src++;
-		}
-		else {
-			// We did not find the closing quote
-			// so we don't have a valid value
+		if (!src)
 			return false;
-		}
 
+		// Ensure we have a quoted value
+		uint8_t quote = *src;
+		if (!quoteChars(quote))
+			return false;
 
-		// Store only well formed attributes
-		value = { beginattrValue, endattrValue };
+		// Move past the opening quote
+		src++;
+
+		// Locate the closing quote using `memchr`
+		const uint8_t* endQuote = static_cast<const uint8_t*>(std::memchr(src.fStart, quote, src.size()));
+
+		if (!endQuote)
+			return false; // No closing quote found
+
+		// Assign the attribute value (excluding quotes)
+		value = { src.fStart, endQuote };
+
+		// Move past the closing quote
+		src.fStart = endQuote + 1;
 
 		return true;
 	}
 
-	
+	// Searches `inChunk` for an attribute `key` and returns its value if found
+	static bool getKeyValue(const ByteSpan& inChunk, const ByteSpan& key, ByteSpan& value) noexcept
+	{
+		ByteSpan src = inChunk;
+		ByteSpan name{};
+		bool insideQuotes = false;
+		uint8_t quoteChar = 0;
+
+		while (src)
+		{
+			// Skip leading whitespace
+			src = chunk_ltrim(src, chrWspChars);
+
+			if (!src)
+				return false;
+
+			// If we hit a quote, skip the entire quoted section
+			if (*src == '"' || *src == '\'')
+			{
+				quoteChar = *src;
+				src++; // Move past opening quote
+
+				// Use `chunk_find_char` to efficiently skip to closing quote
+				src = chunk_find_char(src, quoteChar);
+				if (!src)
+					return false;
+
+				src++; // Move past closing quote
+				continue;
+			}
+
+			// Extract the next token as a potential key
+			ByteSpan keyCandidate = chunk_token_char(src, '=');
+			keyCandidate = chunk_trim(keyCandidate, chrWspChars);
+
+			// If this matches the requested key, extract the value
+			if (keyCandidate == key)
+			{
+				// Skip whitespace before value
+				src = chunk_ltrim(src, chrWspChars);
+
+				if (!src)
+					return false;
+
+				// **Only accept quoted values**
+				if (*src == '"' || *src == '\'')
+				{
+					quoteChar = *src;
+					src++;
+					value.fStart = src.fStart;
+
+					// Find the closing quote **quickly**
+					src = chunk_find_char(src, quoteChar);
+					if (!src)
+						return false;
+
+					value.fEnd = src.fStart;  // Exclude the closing quote
+					src++;
+					return true; // Successfully found key and value
+				}
+
+				// **Reject unquoted values in XML**
+				return false;
+			}
+
+			// If there was no `=`, continue scanning
+			src = chunk_ltrim(src, chrWspChars);
+			if (src && *src == '=')
+				src++; // Skip past '=' and continue parsing
+		}
+
+		return false; // Key not found
+	}
+
+
+
 	// readNextCSSKeyValue()
 	// 
 	// Properties are separated by ';'
@@ -804,24 +860,11 @@ namespace waavs {
 
 		return true;
 	}
-	
 
 }
 
 
 namespace waavs {
-	/*
-	static void writeChunkToFile(const ByteSpan& chunk, const char* filename) noexcept
-	{
-		FILE* f{};
-		errno_t err = fopen_s(&f, filename, "wb");
-		if ((err != 0) || (f == nullptr))
-			return;
-
-		fwrite(chunk.data(), 1, chunk.size(), f);
-		fclose(f);
-	}
-	*/
 
 	INLINE void writeChunk(const ByteSpan& chunk) noexcept
 	{

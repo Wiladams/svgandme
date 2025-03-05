@@ -224,7 +224,7 @@ static void setupFonts()
 	//loadDefaultFonts();
 	loadFontDirectory("c:\\windows\\fonts");
 	//loadFontDirectory("..\\resources");
-	loadFontDirectory("d:\\commonfonts");
+	//loadFontDirectory("d:\\commonfonts");
 
 	gDrawingContext.fontHandler(&getFontHandler());
 }

@@ -79,12 +79,15 @@ namespace waavs {
 }
 
 namespace waavs {
+	// DO NOT CHANGE THESE VALUES!!
+	// They are required to be these bit patterns
+	// to make the rendering work in the right order
 	enum PaintOrderKind : uint32_t {
 		SVG_PAINT_ORDER_NONE = 0,		// 00
 		SVG_PAINT_ORDER_FILL = 1,		// 01
 		SVG_PAINT_ORDER_STROKE = 2,		// 10
 		SVG_PAINT_ORDER_MARKERS = 3,	// 11
-		SVG_PAINT_ORDER_NORMAL = 57,	// 111001
+		SVG_PAINT_ORDER_NORMAL = 57,	// 111001 (fill, stroke, markers)
 	};
 
 	static WSEnum SVGPaintOrderEnum = {

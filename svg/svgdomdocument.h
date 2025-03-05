@@ -124,7 +124,7 @@ namespace waavs {
 		// IMPLEMENTATION
 		virtual void clear() override
 		{
-			XmlElement::clear();
+			XmlElement::reset();
 			SvgAttributeCollection::clear();
 		}
 	};

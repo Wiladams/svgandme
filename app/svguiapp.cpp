@@ -109,11 +109,9 @@ static void registerAppHandlers()
 
 	HMODULE hInst = ::GetModuleHandleA(NULL);
 
-
 	// Get the general app routines
 	// setup()
 	gSetupHandler = (VOIDROUTINE)::GetProcAddress(hInst, "setup");
-
 }
 
 void onLoad()

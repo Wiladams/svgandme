@@ -24,40 +24,28 @@ namespace waavs {
 //  and it will no doubt be tied to particular version of the compiler.  Use that
 //  if it suits your needs.  Meanwhile, at least you can see how such a thing can
 //  be implemented.
+	struct charset;
+
+	static bool charset_contains(const charset& aset, unsigned char c) noexcept;
+	static charset& charset_add_char(charset& aset, unsigned char c) noexcept;
+	static charset& charset_add_chars(charset& aset, const char* chars) noexcept;
+	static charset& charset_add_charset(charset& aset, const charset& bset) noexcept;
+	static charset charset_inverse(const charset& aset) noexcept;
+
+
+	// charset
+	// Data structure to hold character set and provide
+	// convenient C++ implementation for working with them
 	struct charset {
-		std::bitset<256> bits;
+		std::bitset<256> bits{};
 
 		// Common Constructors
 		constexpr charset() noexcept = default;
-		explicit charset(const char achar) noexcept { addChar(achar); }
-		charset(const char* chars) noexcept { addChars(chars); }
-		charset(const charset& aset) noexcept { addCharset(aset); }
+		explicit charset(const char achar) noexcept { charset_add_char(*this, achar); }
+		charset(const char* chars) noexcept { charset_add_chars(*this, chars); }
+		charset(const charset& aset) noexcept { charset_add_charset(*this,aset); }
 
-		
-		// Convenience methods for adding and removing characters
-		// in the set
-		
-		// Add a single character to the set
-		charset& addChar(const char achar) noexcept
-		{
-			bits.set(achar);
-			return *this;
-		}
 
-		// Add a range of characters to the set
-		charset& addChars(const char* chars) noexcept
-		{
-			const char* s = chars;
-			while (0 != *s)
-				bits.set(*s++);
-			return *this;
-		}
-
-		charset& addCharset(const charset& aset) noexcept
-		{
-			bits |= aset.bits;
-			return *this;
-		}
 
 		// Methods for removing characters from the set
 		charset& removeChar(const char achar) noexcept
@@ -81,9 +69,9 @@ namespace waavs {
 		}
 		
 		// Convenience for adding characters and strings
-		charset& operator+=(const char achar) noexcept { return addChar(achar); }
-		charset& operator+=(const char* chars) noexcept { return addChars(chars); }
-		charset& operator+=(const charset& aset) noexcept { return addCharset(aset); }
+		charset& operator+=(const char achar) noexcept { return charset_add_char(*this, achar); }
+		charset& operator+=(const char* chars) noexcept { return charset_add_chars(*this, chars); }
+		charset& operator+=(const charset& aset) noexcept { return charset_add_charset(*this, aset); }
 		
 		// Convenience for removing characters and ranges from a set
 		charset& operator-=(const char achar) noexcept { return removeChar(achar); }
@@ -91,9 +79,9 @@ namespace waavs {
 		charset& operator-=(const charset& aset) noexcept { return removeCharset(aset); }
 
 		// Creating a new set
-		charset operator+(const char achar) const noexcept { charset result(*this); return result.addChar(achar); }
-		charset operator+(const char* chars) const noexcept { charset result(*this); return result.addChars(chars); }
-		charset operator+(const charset& aset) const noexcept { charset result(*this); return result.addCharset(aset); }
+		charset operator+(const char achar) const noexcept { charset result(*this); return charset_add_char(result, achar); }
+		charset operator+(const char* chars) const noexcept { charset result(*this); return charset_add_chars(result, chars); }
+		charset operator+(const charset& aset) const noexcept { charset result(*this); return charset_add_charset(result, aset); }
 		
 		charset operator-(const char achar) const noexcept { charset result(*this); result.removeChar(achar); return result; }
 		charset operator-(const char* chars) const noexcept { charset result(*this); result.removeChars(chars); return result; }
@@ -129,23 +117,57 @@ namespace waavs {
 		
 	};
 	
+	// Some utility routines for working with character sets
+	static bool charset_contains(const charset& aset, unsigned char c) noexcept { return aset.bits[c]; }
+	static charset& charset_add_char(charset& aset, unsigned char c) noexcept { aset.bits.set(c);return aset; }
+	static charset& charset_add_chars(charset& aset, const char* chars) noexcept
+	{
+		const char* s = chars;
+		while (0 != *s)
+			aset.bits.set(*s++);
+
+		return aset;
+	}
+	static charset& charset_add_charset(charset& aset, const charset& bset) noexcept
+	{
+		aset.bits |= bset.bits;
+		return aset;
+	}
+
+	static charset charset_inverse(charset& aset) noexcept
+	{
+		charset result;
+		result.bits = ~aset.bits;
+		return result;
+	}
+
 	// Some common character sets
 	static charset chrWspChars("\t\r\n\f\v ");          // whitespace characters
 	static charset chrAlphaChars("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
 	static charset chrDecDigits("0123456789");
 	static charset chrHexDigits("0123456789ABCDEFabcdef");
 
-	static constexpr INLINE bool is_digit(const unsigned char c) noexcept { int diff = c - '0';  return ((diff>=0) && (diff<= 9)); }
+	// The classic character ccategorizers (isdigit(), isalpha(), etc.) from ctype.h
+	// are replicated here.  They are implemented as constexpr functions, so they can
+	// be used in other constexpr functions.
+	static constexpr bool is_digit(const unsigned char c) noexcept { return (c >= '0' && c <= '9'); }
+	static constexpr bool is_xdigit(const unsigned char c) noexcept { return (is_digit(c) || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')); }
+	static constexpr bool is_alpha(const unsigned char c) noexcept { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'); }
+	static constexpr bool is_alnum(const unsigned char c) noexcept { return is_alpha(c) || is_digit(c); }
+	static constexpr bool is_space(const unsigned char c) noexcept { return c == 0x20 || c == 0x09 || c == 0x0A || c == 0x0D || c == 0x0C;}
+	static constexpr bool is_upper(const unsigned char c) noexcept { return (c >= 'A' && c <= 'Z'); }
+	static constexpr bool is_lower(const unsigned char c) noexcept { return (c >= 'a' && c <= 'z'); }
+	static constexpr bool is_print(const unsigned char c) noexcept { return (c >= 0x20 && c <= 0x7E); }
+	static constexpr bool is_punct(const unsigned char c) noexcept { return (c >= 0x21 && c <= 0x2F) || (c >= 0x3A && c <= 0x40) || (c >= 0x5B && c <= 0x60) || (c >= 0x7B && c <= 0x7E); }
+	static constexpr bool is_cntrl(const unsigned char c) noexcept { return (c < 0x20) || (c == 0x7F); }
+	static constexpr bool is_graph(const unsigned char c) noexcept { return (c >= 0x21 && c <= 0x7E); }
 
-	static constexpr INLINE bool is_hex_digit(const unsigned char vIn) noexcept
-	{
-		if (vIn >= '0' && vIn <= '9')
-			return true;
-		else if (vIn >= 'a' && vIn <= 'f')
-			return true;
-		else if (vIn >= 'A' && vIn <= 'F')
-			return true;
-		else
-			return false;
+	static constexpr unsigned char to_lower(const unsigned char c) noexcept {
+		return (c >= 'A' && c <= 'Z') ? (c | 32) : c;
 	}
+
+	static constexpr unsigned char to_upper(const unsigned char c) noexcept {
+		return (c >= 'a' && c <= 'z') ? (c & ~32) : c;
+	}
+
 }

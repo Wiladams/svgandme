@@ -407,7 +407,7 @@ namespace waavs {
         
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->fontSize(fValue);
+            ctx->fontSize(static_cast<float>(fValue));
         }
     };
 
