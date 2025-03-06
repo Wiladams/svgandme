@@ -37,3 +37,5 @@
 *.log
 *.recipe
 /testy/domwalker/x64
+/testy/ARM64
+/lib
