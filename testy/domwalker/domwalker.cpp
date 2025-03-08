@@ -473,6 +473,23 @@ static void quickDraw6(IRenderSVG* ctx)
 	printPathCommands(pcc);
 }
 
+// Check to see what lastVertext reports when you close
+// a path
+static void quickDraw7(IRenderSVG* ctx)
+{
+	BLPath apath{};
+
+	apath.moveTo(10, 10);
+	apath.lineTo(20, 10);
+	apath.lineTo(20, 20);
+	apath.close();
+
+	BLPoint vtxOut{};
+	apath.getLastVertex(&vtxOut);
+
+	printf("Last Vertex (10,10): %f, %f\n", vtxOut.x, vtxOut.y);
+}
+
 // docFromFilename
 //
 // Given a filename, parse the svg in the file, and return 
@@ -601,10 +618,10 @@ void setup()
 
 	printf("IS DIGIT (COMMA): %d\n", is_digit(','));
 
-	quickDraw3(&gDrawingContext);
+	//quickDraw3(&gDrawingContext);
 	//quickDraw4(&gDrawingContext);
 	//quickDraw5(&gDrawingContext);
 	//quickDraw6(&gDrawingContext);
-
+	quickDraw7(&gDrawingContext);
 
 }

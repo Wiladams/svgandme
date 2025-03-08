@@ -17,6 +17,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "svgexplorer", "svgexplorer\
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "domwalker", "domwalker\domwalker.vcxproj", "{FE4FAB92-B745-47A0-BFE8-6C5069BE1737}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "transpath", "transpath\transpath.vcxproj", "{22A1AF1D-2E90-4B26-B275-A967C832A4CB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -111,6 +113,18 @@ Global
 		{FE4FAB92-B745-47A0-BFE8-6C5069BE1737}.Release|x64.Build.0 = Release|x64
 		{FE4FAB92-B745-47A0-BFE8-6C5069BE1737}.Release|x86.ActiveCfg = Release|Win32
 		{FE4FAB92-B745-47A0-BFE8-6C5069BE1737}.Release|x86.Build.0 = Release|Win32
+		{22A1AF1D-2E90-4B26-B275-A967C832A4CB}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{22A1AF1D-2E90-4B26-B275-A967C832A4CB}.Debug|ARM64.Build.0 = Debug|ARM64
+		{22A1AF1D-2E90-4B26-B275-A967C832A4CB}.Debug|x64.ActiveCfg = Debug|x64
+		{22A1AF1D-2E90-4B26-B275-A967C832A4CB}.Debug|x64.Build.0 = Debug|x64
+		{22A1AF1D-2E90-4B26-B275-A967C832A4CB}.Debug|x86.ActiveCfg = Debug|Win32
+		{22A1AF1D-2E90-4B26-B275-A967C832A4CB}.Debug|x86.Build.0 = Debug|Win32
+		{22A1AF1D-2E90-4B26-B275-A967C832A4CB}.Release|ARM64.ActiveCfg = Release|ARM64
+		{22A1AF1D-2E90-4B26-B275-A967C832A4CB}.Release|ARM64.Build.0 = Release|ARM64
+		{22A1AF1D-2E90-4B26-B275-A967C832A4CB}.Release|x64.ActiveCfg = Release|x64
+		{22A1AF1D-2E90-4B26-B275-A967C832A4CB}.Release|x64.Build.0 = Release|x64
+		{22A1AF1D-2E90-4B26-B275-A967C832A4CB}.Release|x86.ActiveCfg = Release|Win32
+		{22A1AF1D-2E90-4B26-B275-A967C832A4CB}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

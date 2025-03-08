@@ -29,8 +29,12 @@
 // https://svgwg.org/svg2-draft/paths.html#PathDataBNF
 //
 
+
+#include <array>
+
 #include "bspan.h"
 #include "converters.h"
+
 
 namespace waavs {
 	// Used for the iterator
@@ -48,6 +52,7 @@ namespace waavs {
 		int iteration{ 0 };
 		int fError{ 0 };
 		const char* fArgTypes{};
+		size_t fArgCount{ 0 };
 		double args[8]{ 0 };		// The arguments for the command
 
 		SVGSegmentParseState() = default;
@@ -72,6 +77,7 @@ namespace waavs {
 	/// <param name="cmdIndex"></param>
 	/// <returns>a null terminated string of the argument types, or nullptr on invalid command</returns>
 	///
+	/*
 	static const char * getSegmentArgTypes(unsigned char cmdIndex)
 	{
 		switch (cmdIndex) {
@@ -92,6 +98,28 @@ namespace waavs {
 
 		return nullptr;
 	}
+	*/
+	static const char* getSegmentArgTypes(unsigned char cmdIndex) noexcept {
+		static std::array<const char*, 128> lookupTable = [] {
+			std::array<const char*, 128> table{}; // Default initializes all to nullptr
+			table['A'] = table['a'] = "ccrffcc";  // ArcTo
+			table['C'] = table['c'] = "cccccc";   // CubicTo
+			table['H'] = table['h'] = "c";        // HLineTo
+			table['L'] = table['l'] = "cc";       // LineTo
+			table['M'] = table['m'] = "cc";       // MoveTo
+			table['Q'] = table['q'] = "cccc";     // QuadTo
+			table['S'] = table['s'] = "cccc";     // SmoothCubicTo
+			table['T'] = table['t'] = "cc";       // SmoothQuadTo
+			table['V'] = table['v'] = "c";        // VLineTo
+			table['Z'] = table['z'] = "";         // Close
+			return table;
+			}();
+
+		return cmdIndex < 128 ? lookupTable[cmdIndex] : nullptr;
+	}
+
+
+
 
 
 	static bool readNextSegmentCommand(SVGSegmentParseParams& params, SVGSegmentParseState& cmdState)
@@ -117,14 +145,16 @@ namespace waavs {
 				cmdState.iteration = 0;
 				cmdState.remains++;
 				cmdState.fArgTypes = argTypes;
+				cmdState.fArgCount = strlen(argTypes);
+
 			}
 			else
 				return false;
 		}
 
-		if (cmdState.fArgTypes != nullptr)
+		if ((cmdState.fArgTypes != nullptr) and (cmdState.fArgCount > 0))
 		{
-			if (!readNumericArguments(cmdState.remains, cmdState.fArgTypes, cmdState.args))
+			if (cmdState.fArgCount != readNumericArguments(cmdState.remains, cmdState.fArgTypes, cmdState.args))
 			{
 				cmdState.fError = -1;	// Indicate parsing error
 				return false;

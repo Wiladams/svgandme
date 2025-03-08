@@ -317,10 +317,6 @@ namespace waavs {
 				else
 				{
 					success = constructClose(cmdState.fSegmentKind, cmdState.args, cmdState.iteration, &apath);
-					//cmdState.iteration++;
-
-					//if (!success)
-					//	return false;
 				}
 				break;
 

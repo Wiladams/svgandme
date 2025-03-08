@@ -394,13 +394,13 @@ namespace waavs {
     // 
 	// The number of arguments read is determined by the length of the argTypes string
     //
-    static bool readNumericArguments(ByteSpan& s, const char* argTypes, double* outArgs) noexcept
+    static int readNumericArguments(ByteSpan& s, const char* argTypes, double* outArgs) noexcept
     {
         // typical whitespace found in lists of numbers, like on paths and polylines
         static charset segWspChars(",\t\n\f\r ");
 
-
-        for (int i = 0; argTypes[i]; i++)
+        int i = 0;
+        for (i = 0; argTypes[i]; i++)
         {
             switch (argTypes[i])
             {
@@ -408,23 +408,23 @@ namespace waavs {
             case 'r':		// read a radius
             {
                 if (!readNextNumber(s, outArgs[i]))
-                    return false;
+                    return 0;
             } break;
 
             case 'f':		// read a flag
             {
                 if (!readNextFlag(s, outArgs[i]))
-                    return false;
+                    return 0;
             } break;
 
             default:
             {
-                return false;
+                return 0;
             }
             }
         }
 
-        return true;
+        return i;
     }
 }
 

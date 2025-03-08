@@ -39,3 +39,6 @@
 /testy/domwalker/x64
 /testy/ARM64
 /lib
+/testy/transpath/ARM64
+/testy/xmlpull/ARM64
+/testy/svgviewer/ARM64

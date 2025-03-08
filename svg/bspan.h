@@ -39,6 +39,12 @@ namespace waavs {
 		const unsigned char* fStart{ nullptr };
 		const unsigned char* fEnd{ nullptr };
 
+		static const ByteSpan& null() noexcept 
+		{
+			static ByteSpan nullSpan{};
+			return nullSpan;
+		}
+
 		// Constructors
 		constexpr ByteSpan() = default;
 		constexpr ByteSpan(const unsigned char* start, const unsigned char* end) noexcept : fStart(start), fEnd(end) {}

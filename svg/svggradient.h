@@ -206,10 +206,14 @@ namespace waavs {
 			// copy the gradient stops from the referred to gradient
 			if (fGradient.size() == 0)
 			{
-				if (elem->fGradient.size() > 0)
+				//auto numStops = elem->fGradient.size();
+				//const BLGradientStop* stops = elem->fGradient.stops();
+				auto stopsView = elem->fGradient.stopsView();
+
+				if (stopsView.size > 0)
 				{
-					fGradient.reset();
-					fGradient.assignStops(elem->fGradient.stops(), elem->fGradient.size());
+					//fGradient.reset();
+					fGradient.assignStops(stopsView.data, stopsView.size);
 				}
 			}
 
