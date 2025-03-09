@@ -22,9 +22,9 @@ ViewNavigator gNavigator{};
 
 
 // For mouse management
-static bool gIsDragging{ false };
-static vec2f gDragPos{ 0,0 };
-static double gZoomFactor = 0.1;
+//static bool gIsDragging{ false };
+//static vec2f gDragPos{ 0,0 };
+//static double gZoomFactor = 0.1;
 
 
 // Animation management

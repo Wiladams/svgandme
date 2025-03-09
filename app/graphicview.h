@@ -37,7 +37,7 @@ namespace waavs {
 
 		GraphicView(const BLRect& aframe)
 			: fFrame(aframe)
-			, fBounds({ 0,0,aframe.w, aframe.h })
+			, fBounds{ 0,0,aframe.w, aframe.h }
 		{
 			fSceneToSurfaceTransform.reset();
 			fSurfaceToSceneTransform.reset();

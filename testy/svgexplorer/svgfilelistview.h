@@ -313,30 +313,30 @@ namespace waavs {
 
 					}
 					refresh();
+				}
+				break;
 
-					
-					break;
-				}
-				
-			case MOUSEWHEEL:
-				// Perform vertical scrolling 
-				//printf("DELTA: %f\n", le.delta);
-				BLRect b = fNavigator.bounds();
-				if (le.delta < 0)
+				case MOUSEWHEEL:
 				{
-					// roll wheel towards user
-					// scroll 'down' the list
-					double maxY = (fFileList.size()*cellHeight()) - frame().h;
-					if (b.y >= maxY)
-						return;
-				}
-				else
-				{
-					if (b.y <= 0)
-						return;
-				}
+					// Perform vertical scrolling 
+					//printf("DELTA: %f\n", le.delta);
+					BLRect b = fNavigator.bounds();
+					if (le.delta < 0)
+					{
+						// roll wheel towards user
+						// scroll 'down' the list
+						double maxY = (fFileList.size() * cellHeight()) - frame().h;
+						if (b.y >= maxY)
+							return;
+					}
+					else
+					{
+						if (b.y <= 0)
+							return;
+					}
 
-				fNavigator.panBy(0, le.delta*12);
+					fNavigator.panBy(0, le.delta * 12);
+				}
 				break;
 
 				// Can't do mouse pressed yet, because it will allow unconstrained
@@ -344,27 +344,27 @@ namespace waavs {
 				//case MOUSEPRESSED:
 				//break;
 				
-			case MOUSERELEASED:
-			{
-				// If a file is selected, then display it
-				// Find out which of the icons has been clicked on
-				// and notify the observers of this
-				size_t idx = 0;
-				if (getIconIndex(le.x, le.y, idx))
+				case MOUSERELEASED:
 				{
-					// If there's a currently selected icon, then deselect it
-					if (fSelectedIcon != nullptr)
-						fSelectedIcon->setSelected(false);
-					
-					fSelectedIcon = getIconHandle(idx);
-					if (fSelectedIcon != nullptr) {
-						fSelectedIcon->setSelected(true);
-						fSelectedIcon->onMouseEvent(e);
-					}
-				}
+					// If a file is selected, then display it
+					// Find out which of the icons has been clicked on
+					// and notify the observers of this
+					size_t idx = 0;
+					if (getIconIndex(le.x, le.y, idx))
+					{
+						// If there's a currently selected icon, then deselect it
+						if (fSelectedIcon != nullptr)
+							fSelectedIcon->setSelected(false);
 
-			}
-			break;
+						fSelectedIcon = getIconHandle(idx);
+						if (fSelectedIcon != nullptr) {
+							fSelectedIcon->setSelected(true);
+							fSelectedIcon->onMouseEvent(e);
+						}
+					}
+
+				}
+				break;
 			}
 		}
 
