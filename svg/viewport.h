@@ -18,7 +18,7 @@ namespace waavs {
 		// Get first token, which should be alignment
 		ByteSpan align = chunk_token(s, chrWspChars);
 
-		if (!align)
+		if (align.empty())
 			return false;
 
 		// We have an alignment token, convert to numeric value
@@ -41,87 +41,98 @@ namespace waavs {
 	struct PreserveAspectRatio final
 	{
 	private:
-		AspectRatioAlignKind fAlignment = AspectRatioAlignKind::SVG_ASPECT_RATIO_XMIDYMID;
-		AspectRatioMeetOrSliceKind fMeetOrSlice = AspectRatioMeetOrSliceKind::SVG_ASPECT_RATIO_MEET;
+		static constexpr AspectRatioAlignKind DEFAULT_ALIGNMENT = AspectRatioAlignKind::SVG_ASPECT_RATIO_XMIDYMID;
+		static constexpr AspectRatioMeetOrSliceKind DEFAULT_MEET_OR_SLICE = AspectRatioMeetOrSliceKind::SVG_ASPECT_RATIO_MEET;
+
+		AspectRatioAlignKind fAlignment = DEFAULT_ALIGNMENT;
+		AspectRatioMeetOrSliceKind fMeetOrSlice = DEFAULT_MEET_OR_SLICE;
 
 	public:
 		PreserveAspectRatio() = default;
 		
-		PreserveAspectRatio(const char* cstr)
+		explicit PreserveAspectRatio(const char* cstr) noexcept
 		{
 			loadFromChunk(cstr);
 		}
 		
-		PreserveAspectRatio(const ByteSpan& inChunk)
+		explicit PreserveAspectRatio(const ByteSpan& inChunk) noexcept
 		{
 			loadFromChunk(inChunk);
 		}
 		
-		AspectRatioAlignKind align() const { return fAlignment; }
-		void setAlign(AspectRatioAlignKind a) { fAlignment = a; }
+		constexpr AspectRatioMeetOrSliceKind meetOrSlice() const noexcept { return fMeetOrSlice; }
+		void setMeetOrSlice(AspectRatioMeetOrSliceKind m) noexcept { fMeetOrSlice = m; }
 
-		AspectRatioMeetOrSliceKind meetOrSlice() const { return fMeetOrSlice; }
-		void setMeetOrSlice(AspectRatioMeetOrSliceKind m) { fMeetOrSlice = m; }
+		constexpr AspectRatioAlignKind align() const noexcept { return fAlignment; }
+		void setAlign(AspectRatioAlignKind a) noexcept { fAlignment = a; }
 
-		// Return the alignment in the x axis
-		SVGAlignment xAlignment() const {
+		void getAlignment(SVGAlignment& xAlign, SVGAlignment& yAlign) const noexcept
+		{
 			switch (fAlignment)
 			{
 			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMINYMIN:
-			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMINYMID:
-			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMINYMAX:
-				return SVGAlignment::SVG_ALIGNMENT_START;
-				break;
-				
-			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMIDYMIN:
-			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMIDYMID:
-			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMIDYMAX:
-				return SVGAlignment::SVG_ALIGNMENT_MIDDLE;
-				break;
-
-			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMAXYMIN:
-			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMAXYMID:
-			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMAXYMAX:
-				return SVGAlignment::SVG_ALIGNMENT_END;
-				break;
-			
-			case AspectRatioAlignKind::SVG_ASPECT_RATIO_NONE:
-			default:
-				return SVGAlignment::SVG_ALIGNMENT_NONE;
-				break;
-			}
-		}
-		
-		SVGAlignment yAlignment() const {
-			switch (fAlignment) {
-			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMINYMIN:
-			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMIDYMIN:
-			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMAXYMIN:
-				return SVGAlignment::SVG_ALIGNMENT_START;
-				break;
+				xAlign = SVGAlignment::SVG_ALIGNMENT_START;
+				yAlign = SVGAlignment::SVG_ALIGNMENT_START;
+				return;
 
 			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMINYMID:
-			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMIDYMID:
-			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMAXYMID:
-				return SVGAlignment::SVG_ALIGNMENT_MIDDLE;
-				break;
+				xAlign = SVGAlignment::SVG_ALIGNMENT_START;
+				yAlign = SVGAlignment::SVG_ALIGNMENT_MIDDLE;
+				return;
+
 
 			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMINYMAX:
-			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMAXYMAX:
-			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMIDYMAX:
-				return SVGAlignment::SVG_ALIGNMENT_END;
-				break;
+				xAlign = SVGAlignment::SVG_ALIGNMENT_START;
+				yAlign = SVGAlignment::SVG_ALIGNMENT_END;
+				return;
 
+
+			// X Middle
+			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMIDYMIN:
+				xAlign = SVGAlignment::SVG_ALIGNMENT_MIDDLE;
+				yAlign = SVGAlignment::SVG_ALIGNMENT_START;
+				return;
+
+			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMIDYMID:
+				xAlign = SVGAlignment::SVG_ALIGNMENT_MIDDLE;
+				yAlign = SVGAlignment::SVG_ALIGNMENT_MIDDLE;
+				return;
+
+			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMIDYMAX:
+				xAlign = SVGAlignment::SVG_ALIGNMENT_MIDDLE;
+				yAlign = SVGAlignment::SVG_ALIGNMENT_END;
+				return;
+
+
+			// X End
+			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMAXYMIN:
+				xAlign = SVGAlignment::SVG_ALIGNMENT_END;
+				yAlign = SVGAlignment::SVG_ALIGNMENT_START;
+				return;
+
+			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMAXYMID:
+				xAlign = SVGAlignment::SVG_ALIGNMENT_END;
+				yAlign = SVGAlignment::SVG_ALIGNMENT_MIDDLE;
+				return;
+
+			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMAXYMAX:
+				xAlign = SVGAlignment::SVG_ALIGNMENT_END;
+				yAlign = SVGAlignment::SVG_ALIGNMENT_END;
+				return;
+
+			// NONE
 			case AspectRatioAlignKind::SVG_ASPECT_RATIO_NONE:
 			default:
-				return SVGAlignment::SVG_ALIGNMENT_NONE;
-				break;
+				xAlign = SVGAlignment::SVG_ALIGNMENT_NONE;
+				yAlign = SVGAlignment::SVG_ALIGNMENT_NONE;
+				return;
 
 			}
 		}
-		
+
+
 		// Load the data type from a single ByteSpan
-		bool loadFromChunk(const ByteSpan& inChunk)
+		bool loadFromChunk(const ByteSpan& inChunk) noexcept
 		{
 			return parsePreserveAspectRatio(inChunk, fAlignment, fMeetOrSlice);
 		}
@@ -391,7 +402,9 @@ namespace waavs {
 				double scaleH = fViewBoxFrame.h * uniformScale;
 					
 				// Decide alignment in X direction
-				SVGAlignment xAlign = fPreserveAspectRatio.xAlignment();
+				SVGAlignment xAlign{};
+				SVGAlignment yAlign{};
+				fPreserveAspectRatio.getAlignment(xAlign, yAlign);
 
 				switch (xAlign)
 				{
@@ -409,8 +422,6 @@ namespace waavs {
 				}
 					
 				// Decide alignment in Y direction
-				SVGAlignment yAlign = fPreserveAspectRatio.yAlignment();
-
 				switch (yAlign) {
 					case SVGAlignment::SVG_ALIGNMENT_START:
 						atrans.y = 0;
