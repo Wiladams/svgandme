@@ -590,6 +590,14 @@ namespace waavs {
 
         const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
         {
+			// If our raw value is 'currentColor', then we need to get the current color
+			// from the context
+			if (rawValue() == "currentColor")
+			{
+				return ctx->defaultColor();
+			}
+
+            // otherwise, use the variant we have calculated
             return fPaintVar;
         }
     };
@@ -656,10 +664,25 @@ namespace waavs {
                 BLRgba32 newColor(outValue);
                 newColor.setA((uint32_t)(opacity * 255));
                 fPaintVar = newColor;
-                //blVarAssignRgba32(&fPaintVar, newColor.value);
             }
         }
 
+        // load a color from a ByteSpan
+		// There are many different ways to represent a color in SVG
+		// This function will try to figure out what the color is
+        // Function forms:
+		//   rgb(255, 0, 0)
+		//   rgba(255, 0, 0, 0.5)
+
+		//   hsl(120, 100%, 50%)
+		//   hsla(120, 100%, 50%, 0.5)
+        
+        // Literals:
+        //   #ff0000
+        //   #FFF
+		//   color name
+        //   url()
+        //
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
             static const char* rgbStr = "rgb(";
@@ -876,6 +899,49 @@ namespace waavs {
         
 
         SVGStrokePaint(IAmGroot* root) : SVGPaint(root) { id("stroke"); }
+
+        virtual bool loadFromAttributes(const XmlAttributeCollection& attrs)
+        {
+            // get the value of the 'stroke' attribute.
+			// if it == 'color', then we need to get the color from 
+            // other attributes
+			auto strokeAttr = attrs.getAttribute("stroke");
+
+            if (strokeAttr.empty())
+                return false;
+
+            // There are a couple of cases when using 'currentColor' as the
+            // stroke value.
+            // 1) It is being used on an element, where there is also a 'color' attribute
+            //   In this case, whatever is in the 'color' attribute needs to become our
+            //   BLVar value, and set on the context at drawing time.
+			// 2) It is being used on an element, where there is no 'color' attribute
+            //   In this case, it is inheritance.  The color value is determined by what is
+            //   currently on the 'currentColor()' property of the context, so we should use
+            //   that when it comes time to draw.
+            if (strokeAttr == "currentColor")
+			{
+                // get the value of the 'color' attribute, if it exists
+                // and use that as the color
+				auto colorAttr = attrs.getAttribute("color");
+                if (!colorAttr.empty())
+                {
+					return loadFromChunk(colorAttr);
+                }
+                else {
+                    // if the 'color' attribute does not exist
+                    // set our rawValue to 'currentColor', and pick up 
+                    // the default color from the drawing context at drawing time
+                    setRawValue(strokeAttr);
+                    set(true);
+                    return true;
+                }
+
+			}
+
+            // It's not 'currentColor', so process an immediate color value
+            return loadFromChunk(strokeAttr);
+        }
 
 		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{

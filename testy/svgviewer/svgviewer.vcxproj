@@ -262,6 +262,7 @@
     <ClInclude Include="..\..\svg\maths.h" />
     <ClInclude Include="..\..\svg\membuff.h" />
     <ClInclude Include="..\..\svg\pathsegmenter.h" />
+    <ClInclude Include="..\..\svg\pubsub.h" />
     <ClInclude Include="..\..\svg\svg.h" />
     <ClInclude Include="..\..\svg\svgattributes.h" />
     <ClInclude Include="..\..\svg\svgclip.h" />
@@ -272,6 +273,7 @@
     <ClInclude Include="..\..\svg\svgdatatypes.h" />
     <ClInclude Include="..\..\svg\svgdocument.h" />
     <ClInclude Include="..\..\svg\svgdrawingcontext.h" />
+    <ClInclude Include="..\..\svg\svgdrawingstate.h" />
     <ClInclude Include="..\..\svg\svgenums.h" />
     <ClInclude Include="..\..\svg\svgextensibility.h" />
     <ClInclude Include="..\..\svg\svgfactory.h" />

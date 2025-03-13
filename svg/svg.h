@@ -23,17 +23,3 @@
 #include "svgfactory.h"
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-

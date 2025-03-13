@@ -21,12 +21,6 @@ std::shared_ptr<SVGDocument> gDoc{ nullptr };
 ViewNavigator gNavigator{};
 
 
-// For mouse management
-//static bool gIsDragging{ false };
-//static vec2f gDragPos{ 0,0 };
-//static double gZoomFactor = 0.1;
-
-
 // Animation management
 bool gAnimate{ false };
 bool gPerformTransform{ true };
@@ -52,7 +46,7 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 
 	
 	ByteSpan aspan(mapped->data(), mapped->size());
-	std::shared_ptr<SVGDocument> aDoc = SVGFactory::createFromChunk(aspan, &getFontHandler(), canvasWidth, canvasHeight, physicalDpi);
+	std::shared_ptr<SVGDocument> aDoc = SVGFactory::createFromChunk(aspan, FontHandler::getFontHandler(), canvasWidth, canvasHeight, physicalDpi);
 	
 	return aDoc;
 }
@@ -102,7 +96,6 @@ static void draw()
 static void resetView()
 {
 	gNavigator.resetNavigator();
-
 	gNavigator.setFrame(BLRect(0, 0, canvasWidth, canvasHeight));
 	gNavigator.setBounds(BLRect(0, 0, canvasWidth, canvasHeight));
 
@@ -147,7 +140,7 @@ static void onFileDrop(const FileDropEvent& fde)
 			// We have loaded the un-processed document
 			// Draw into an empty context at least once to resolve references
 			// and fix sizes.
-			//IRenderSVG ctx(&getFontHandler());
+			//IRenderSVG ctx(FontHandler::getFontHandler());
 			//ctx.setContainerFrame(BLRect(0, 0, canvasWidth, canvasHeight));
 			//gDoc->draw(&ctx, gDoc.get());
 			
@@ -201,12 +194,9 @@ static void onResizeEvent(const ResizeEvent& re)
 	handleChange(true);
 }
 
-
-
 static void onMouseEvent(const MouseEvent& e)
 {
 	gNavigator.onMouseEvent(e);
-
 }
 
 
@@ -253,14 +243,13 @@ static void onKeyboardEvent(const KeyboardEvent& ke)
 
 static void setupFonts()
 {
-	//loadDefaultFonts();
 	//loadFontDirectory("c:\\windows\\fonts");
 	loadDefaultFonts();
 	//loadFontDirectory("d:\\commonfonts");
 	//loadFontDirectory("..\\resources");
 
 	
-	gDrawingContext.fontHandler(&getFontHandler());
+	gDrawingContext.fontHandler(FontHandler::getFontHandler());
 }
 
 

@@ -554,23 +554,23 @@ namespace waavs
 namespace waavs {
     
     static bool parseStyleAttribute(const ByteSpan & inChunk, XmlAttributeCollection &styleAttributes) noexcept
-    {
-        if (!inChunk)
-            return false;
-        
+    {   
         // Turn the style element into attributes of an XmlElement, 
         // then, the caller can use that to more easily parse whatever they're
         // looking for.
-        ByteSpan styleChunk = inChunk;
+        ByteSpan styleChunk = chunk_ltrim(inChunk, chrWspChars);
 
-        if (styleChunk) {
-            ByteSpan key{};
-            ByteSpan value{};
-            while (readNextCSSKeyValue(styleChunk, key, value))
-            {
-                styleAttributes.addAttribute(key, value);
-            }
+		if (styleChunk.empty())
+			return false;
+
+
+        ByteSpan key{};
+        ByteSpan value{};
+        while (readNextCSSKeyValue(styleChunk, key, value))
+        {
+            styleAttributes.addAttribute(key, value);
         }
+
 
         return true;
     }

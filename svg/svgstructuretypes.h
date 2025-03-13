@@ -125,6 +125,7 @@ namespace waavs {
         bool autoDraw() const { return fAutoDraw; }
 
         const ByteSpan& rawValue() const { return fRawValue; }
+		void setRawValue(const ByteSpan& value) { fRawValue = value; }
 
         virtual bool loadSelfFromChunk(const ByteSpan&)
         {
@@ -625,7 +626,7 @@ namespace waavs {
                 {
                     id(attrValue);
                 }
-                else if (attrName == "style")
+                else if (attrName == "style" && !attrValue.empty())
                 {
                     fStyleAttribute = attrValue;
                 }

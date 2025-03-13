@@ -22,7 +22,7 @@ static void loadFontDirectory(const char* dir)
 {
 
 	const std::filesystem::path fontPath(dir);
-
+	
 	for (const auto& dir_entry : std::filesystem::directory_iterator(fontPath))
 	{
 		if (dir_entry.is_regular_file())

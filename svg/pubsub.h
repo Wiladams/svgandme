@@ -53,18 +53,28 @@ namespace waavs {
 		virtual ~Topic() = default;
 
 		// Notify subscribers that an event has occured
-		virtual void notify(const T& m) noexcept
+		virtual void publish(const T& m) noexcept
 		{
 			for (Subscriber& it : fSubscribers) {
 				//it(m, this);
 				it(m);
 			}
 		}
+		
+		virtual void notify(const T& m) noexcept
+		{
+			publish(m);
+		}
 
 		// Add a subscriber to the list of subscribers
-		virtual void subscribe(Subscriber s) noexcept
+		virtual void addSubscriber(Subscriber s) noexcept
 		{
 			fSubscribers.push_back(s);
+		}
+
+		virtual void subscribe(Subscriber s) noexcept
+		{
+			addSubscriber(s);
 		}
 
 		// Remove a subscriber from the list of subscribers

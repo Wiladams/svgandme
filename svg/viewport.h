@@ -50,12 +50,13 @@ namespace waavs {
 	public:
 		PreserveAspectRatio() = default;
 		
-		explicit PreserveAspectRatio(const char* cstr) noexcept
+		PreserveAspectRatio(const char* cstr) noexcept
 		{
-			loadFromChunk(cstr);
+			ByteSpan aspan(cstr);
+			loadFromChunk(aspan);
 		}
 		
-		explicit PreserveAspectRatio(const ByteSpan& inChunk) noexcept
+		PreserveAspectRatio(const ByteSpan& inChunk) noexcept
 		{
 			loadFromChunk(inChunk);
 		}

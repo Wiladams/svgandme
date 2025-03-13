@@ -262,6 +262,27 @@ namespace waavs {
 
             return BLPoint( cx, cy );
         }
+
+        // Get a singleton font handler
+		static FontHandler* getFontHandler()
+		{
+            static std::unique_ptr<FontHandler> sFontHandler = std::make_unique<FontHandler>();
+            return sFontHandler.get();
+		}
+
+        // setDefaultFont
+        // Set the font that will be used in cases where no font is specified
+        // or to be the fallback font, when a font is not found
+		static void setDefaultFont(const char* fontname)
+		{
+			//BLFontManager::setDefaultFont(fontname);
+		}
+
+        // Add a directory to be searched for fonts
+		static void addFontDirectory(const char* dir)
+		{
+			//BLFontManager::addFontDirectory(dir);
+		}
     };
 
 }

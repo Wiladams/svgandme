@@ -19,323 +19,266 @@
 
 #include "pathsegmenter.h"
 #include "blend2d.h"
-	
-		
+
+
 namespace waavs {
-	// Command - A
-	static bool constructArcTo(unsigned char segCommand, const double* args, int iteration, BLPath* apath) noexcept
-	{
-		BLResult res = BL_SUCCESS;
 
-		bool larc = args[3] > 0.5f;
-		bool swp = args[4] > 0.5f;
-		double xrot = radians(args[2]);
-
-		return apath->ellipticArcTo(BLPoint(args[0], args[1]), xrot, larc, swp, BLPoint(args[5], args[6])) == BL_SUCCESS;
-	}
-
-	// Command - a
-	static bool constructArcBy(unsigned char segCommand, const double* args, int iteration, BLPath* apath) noexcept
-	{
-
-		BLPoint lastPos{};
-		apath->getLastVertex(&lastPos);
-
-		bool larc = args[3] > 0.5;
-		bool swp = args[4] > 0.5;
-		double xrot = radians(args[2]);
-
-
-		return  apath->ellipticArcTo(BLPoint(args[0], args[1]), xrot, larc, swp, BLPoint(lastPos.x + args[5], lastPos.y + args[6])) == BL_SUCCESS;
-	}
-
-
-	// Command - C
-	static bool constructCubicTo(unsigned char segCommand, const double* args, int iteration, BLPath* apath) noexcept
-	{
-		return  apath->cubicTo(args[0], args[1], args[2], args[3], args[4], args[5]) == BL_SUCCESS;
-	}
-
-	// Command - c
-	static bool constructCubicBy(unsigned char segCommand, const double* args, int iteration, BLPath* apath) noexcept
-	{
-		BLPoint lastPos{};
-		apath->getLastVertex(&lastPos);
-
-		return apath->cubicTo(lastPos.x + args[0], lastPos.y + args[1], lastPos.x + args[2], lastPos.y + args[3], lastPos.x + args[4], lastPos.y + args[5]) == BL_SUCCESS;
-	}
-
-
-	// Command - H
-	static bool constructHLineTo(unsigned char segCommand, const double* args, int iteration, BLPath* apath) noexcept
-	{
-		BLPoint lastPos{};
-		apath->getLastVertex(&lastPos);
-
-		return apath->lineTo(args[0], lastPos.y) == BL_SUCCESS;
-	}
-
-	// Command - h
-	static bool constructHLineBy(unsigned char segCommand, const double* args, int iteration, BLPath* apath) noexcept
-	{
-		BLPoint lastPos{};
-		apath->getLastVertex(&lastPos);
-
-		return apath->lineTo(lastPos.x + args[0], lastPos.y) == BL_SUCCESS;
-	}
-
-	// Command 'L' - LineTo
-	static bool constructLineTo(unsigned char segCommand, const double* args, int iteration, BLPath* apath) noexcept
-	{
-		return apath->lineTo(args[0], args[1]) == BL_SUCCESS;
-	}
-
-	// Command 'l' - LineBy
-	static bool constructLineBy(unsigned char segCommand, const double* args, int iteration, BLPath* apath) noexcept
-	{
-		BLPoint lastPos{};
-		apath->getLastVertex(&lastPos);
-
-		return apath->lineTo(lastPos.x + args[0], lastPos.y + args[1]) == BL_SUCCESS;
-	}
-
-	// Command - M
-	static bool constructMoveTo(unsigned char segCommand, const double* args, int iteration, BLPath* apath) noexcept
-	{
-		BLResult res = BL_SUCCESS;
-
-		if (iteration == 0) {
-			res = apath->moveTo(args[0], args[1]);
-		}
-		else {
-			res = apath->lineTo(args[0], args[1]);
-		}
-
-		return res == BL_SUCCESS;
-	}
-
-	// Command - m
-	static bool constructMoveBy(unsigned char segCommand, const double* args, int iteration, BLPath* apath) noexcept
-	{
-		BLResult res = BL_SUCCESS;
-
-		BLPoint lastPos{};
-		apath->getLastVertex(&lastPos);
-
-		if (iteration == 0) {
-			res = apath->moveTo(lastPos.x + args[0], lastPos.y + args[1]);
-		}
-		else {
-			res = apath->lineTo(lastPos.x + args[0], lastPos.y + args[1]);
-		}
-
-		return res == BL_SUCCESS;
-	}
-
-	// Command - Q
-	static bool constructQuadTo(unsigned char segCommand, const double* args, int iteration, BLPath* apath) noexcept
-	{
-		return apath->quadTo(args[0], args[1], args[2], args[3]) == BL_SUCCESS;
-	}
-
-	// Command - q
-	static bool constructQuadBy(unsigned char segCommand, const double* args, int iteration, BLPath* apath) noexcept
-	{
-		BLPoint lastPos{};
-		apath->getLastVertex(&lastPos);
-
-		return apath->quadTo(lastPos.x + args[0], lastPos.y + args[1], lastPos.x + args[2], lastPos.y + args[3]) == BL_SUCCESS;
-	}
-
-	// Command - S
-	static bool constructSmoothCubicTo(unsigned char segCommand, const double* args, int iteration, BLPath* apath) noexcept
-	{
-		return apath->smoothCubicTo(args[0], args[1], args[2], args[3]) == BL_SUCCESS;
-	}
-
-	// Command - s
-	static bool constructSmoothCubicBy(unsigned char segCommand, const double* args, int iteration, BLPath* apath) noexcept
-	{
-		BLPoint lastPos{};
-		apath->getLastVertex(&lastPos);
-
-		return apath->smoothCubicTo(lastPos.x + args[0], lastPos.y + args[1], lastPos.x + args[2], lastPos.y + args[3]) == BL_SUCCESS;
-
-	}
-
-	// Command - T
-	static bool constructSmoothQuadTo(unsigned char segCommand, const double* args, int iteration, BLPath* apath) noexcept
-	{
-		return apath->smoothQuadTo(args[0], args[1]) == BL_SUCCESS;
-	}
-
-	// Command - t
-	static bool constructSmoothQuadBy(unsigned char segCommand, const double* args, int iteration, BLPath* apath) noexcept
-	{
-		BLPoint lastPos{};
-		apath->getLastVertex(&lastPos);
-
-		return apath->smoothQuadTo(lastPos.x + args[0], lastPos.y + args[1]) == BL_SUCCESS;
-	}
-
-
-	// Command - V
-	static bool constructVLineTo(unsigned char segCommand, const double* args, int iteration, BLPath* apath) noexcept
-	{
-		BLPoint lastPos{};
-		apath->getLastVertex(&lastPos);
-
-		return apath->lineTo(lastPos.x, args[0]) == BL_SUCCESS;
-
-	}
-
-	// Command - v
-	static bool constructVLineBy(unsigned char segCommand, const double* args, int iteration, BLPath* apath) noexcept
-	{
-		BLPoint lastPos{};
-		apath->getLastVertex(&lastPos);
-
-		return apath->lineTo(lastPos.x, lastPos.y + args[0]) == BL_SUCCESS;
-	}
-
-
-	// 
-	// BUGBUG - there is a case where the Z is followed by 
-	// a number, which is not a valid SVG path command
-	// This number needs to be consumed somewhere
-	// Command - Z
 	//
-	static bool constructClose(unsigned char segCommand, const double* args, int iteration, BLPath* apath) noexcept
+	// Note:  Most SVG objects of significance will have a lot
+	// of paths, so we want to make this as fast as possible.
+	struct B2DPathBuilder
 	{
-		return apath->close() == BL_SUCCESS;
-	}
+		uint8_t lastCmd{ 0 };	// The last command we processed
+		BLPath& fPath;			// Reference to the path we are building
 
-}
+		// Initialize a path builder with a reference to a path
+		B2DPathBuilder(BLPath& apath) :fPath(apath) {}
+
+		using CommandFunc = int (B2DPathBuilder::*)(const double*, int);
+		static inline const std::array<CommandFunc, 128>& getCommandTable()
+		{
+			static std::array<CommandFunc, 128> cmdTbl = [] {
+				std::array<CommandFunc, 128> table{};  // Zero-initializes all elements to nullptr
+				table['A'] = &B2DPathBuilder::arcTo;   table['a'] = &B2DPathBuilder::arcBy;
+				table['C'] = &B2DPathBuilder::cubicTo; table['c'] = &B2DPathBuilder::cubicBy;
+				table['L'] = &B2DPathBuilder::lineTo;  table['l'] = &B2DPathBuilder::lineBy;
+				table['M'] = &B2DPathBuilder::moveTo;  table['m'] = &B2DPathBuilder::moveBy;
+				table['Q'] = &B2DPathBuilder::quadTo;  table['q'] = &B2DPathBuilder::quadBy;
+				table['S'] = &B2DPathBuilder::smoothCubicTo; table['s'] = &B2DPathBuilder::smoothCubicBy;
+				table['T'] = &B2DPathBuilder::smoothQuadTo;  table['t'] = &B2DPathBuilder::smoothQuadBy;
+				table['H'] = &B2DPathBuilder::hLineTo; table['h'] = &B2DPathBuilder::hLineBy;
+				table['V'] = &B2DPathBuilder::vLineTo; table['v'] = &B2DPathBuilder::vLineBy;
+				table['Z'] = &B2DPathBuilder::close;   table['z'] = &B2DPathBuilder::close;
+				return table;
+				}();
+
+			return cmdTbl;
+		}
+
+		// Overload operator() to handle the events we are subscribed to
+		// This allows the class to be a subscriber, and all the events
+		// will be handled by this function
+		int operator()(const SVGSegmentParseState& cmdState)
+		{
+			// if the last command was a 'Z' or 'z', then, if the next
+			// command is not a 'M' or 'm', we need to first insert a moveTo
+			// for the last location, then perform the next command
+			if (((lastCmd == 'Z') || (lastCmd == 'z')) && (cmdState.fSegmentKind != 'M' || cmdState.fSegmentKind != 'm'))
+			{
+				BLPoint lastPos{};
+				fPath.getLastVertex(&lastPos);
+
+				fPath.moveTo(lastPos.x, lastPos.y);
+			}
+
+			const auto& commandTable = getCommandTable();
+			if (cmdState.fSegmentKind < 128 && commandTable[cmdState.fSegmentKind])
+			{
+				int err = (this->*(commandTable[cmdState.fSegmentKind]))(cmdState.args, cmdState.iteration);
+				if (err != BL_SUCCESS)
+					return err;	// indicating an error
+			}
+
+			lastCmd = cmdState.fSegmentKind;
+
+		}
+
+		// All the routines that do the actual work of building the path
+		// Command - A
+		int arcTo(const double* args, int iteration) noexcept
+		{
+			bool larc = args[3] > 0.5f;
+			bool swp = args[4] > 0.5f;
+			double xrot = radians(args[2]);
+
+			return fPath.ellipticArcTo(BLPoint(args[0], args[1]), xrot, larc, swp, BLPoint(args[5], args[6]));
+		}
+
+		// Command - a
+		int arcBy(const double* args, int iteration) noexcept
+		{
+
+			BLPoint lastPos{};
+			fPath.getLastVertex(&lastPos);
+
+			bool larc = args[3] > 0.5;
+			bool swp = args[4] > 0.5;
+			double xrot = radians(args[2]);
 
 
+			return  fPath.ellipticArcTo(BLPoint(args[0], args[1]), xrot, larc, swp, BLPoint(lastPos.x + args[5], lastPos.y + args[6]));
+		}
 
 
-namespace waavs {
+		// Command - C
+		int cubicTo(const double* args, int iteration) noexcept
+		{
+			return  fPath.cubicTo(args[0], args[1], args[2], args[3], args[4], args[5]);
+		}
+
+		// Command - c
+		int cubicBy(const double* args, int iteration) noexcept
+		{
+			BLPoint lastPos{};
+			fPath.getLastVertex(&lastPos);
+
+			return fPath.cubicTo(lastPos.x + args[0], lastPos.y + args[1], lastPos.x + args[2], lastPos.y + args[3], lastPos.x + args[4], lastPos.y + args[5]);
+		}
+
+		// Command - H
+		int hLineTo(const double* args, int iteration) noexcept
+		{
+			BLPoint lastPos{};
+			fPath.getLastVertex(&lastPos);
+
+			return fPath.lineTo(args[0], lastPos.y);
+		}
+
+		// Command - h
+		int hLineBy(const double* args, int iteration) noexcept
+		{
+			BLPoint lastPos{};
+			fPath.getLastVertex(&lastPos);
+
+			auto res = fPath.lineTo(lastPos.x + args[0], lastPos.y);
+			return res;
+		}
+
+		// Command 'L' - LineTo
+		int lineTo(const double* args, int iteration) noexcept
+		{
+			return fPath.lineTo(args[0], args[1]);
+		}
+
+		// Command 'l' - LineBy
+		int lineBy(const double* args, int iteration) noexcept
+		{
+			BLPoint lastPos{};
+			fPath.getLastVertex(&lastPos);
+
+			return fPath.lineTo(lastPos.x + args[0], lastPos.y + args[1]);
+		}
+
+		// Command - M
+		int moveTo(const double* args, int iteration) noexcept
+		{
+			BLResult res = BL_SUCCESS;
+
+			if (iteration == 0) {
+				res = fPath.moveTo(args[0], args[1]);
+			}
+			else {
+				res = fPath.lineTo(args[0], args[1]);
+			}
+
+			return res;
+		}
+
+		// Command - m
+		int moveBy(const double* args, int iteration) noexcept
+		{
+			BLResult res = BL_SUCCESS;
+
+			BLPoint lastPos{};
+			fPath.getLastVertex(&lastPos);
+
+			if (iteration == 0) {
+				res = fPath.moveTo(lastPos.x + args[0], lastPos.y + args[1]);
+			}
+			else {
+				res = fPath.lineTo(lastPos.x + args[0], lastPos.y + args[1]);
+			}
+
+			return res;
+		}
+
+		// Command - Q
+		int quadTo(const double* args, int iteration) noexcept
+		{
+			return fPath.quadTo(args[0], args[1], args[2], args[3]);
+		}
+
+		// Command - q
+		int quadBy(const double* args, int iteration) noexcept
+		{
+			BLPoint lastPos{};
+			fPath.getLastVertex(&lastPos);
+
+			return fPath.quadTo(lastPos.x + args[0], lastPos.y + args[1], lastPos.x + args[2], lastPos.y + args[3]);
+		}
+
+		// Command - S
+		int smoothCubicTo(const double* args, int iteration) noexcept
+		{
+			return fPath.smoothCubicTo(args[0], args[1], args[2], args[3]);
+		}
+
+		// Command - s
+		int smoothCubicBy(const double* args, int iteration) noexcept
+		{
+			BLPoint lastPos{};
+			fPath.getLastVertex(&lastPos);
+
+			return fPath.smoothCubicTo(lastPos.x + args[0], lastPos.y + args[1], lastPos.x + args[2], lastPos.y + args[3]);
+		}
+
+		// Command - T
+		int smoothQuadTo(const double* args, int iteration) noexcept
+		{
+			return fPath.smoothQuadTo(args[0], args[1]);
+		}
+
+		// Command - t
+		int smoothQuadBy(const double* args, int iteration) noexcept
+		{
+			BLPoint lastPos{};
+			fPath.getLastVertex(&lastPos);
+
+			return fPath.smoothQuadTo(lastPos.x + args[0], lastPos.y + args[1]);
+		}
+
+		// Command - V
+		int vLineTo(const double* args, int iteration) noexcept
+		{
+			BLPoint lastPos{};
+			fPath.getLastVertex(&lastPos);
+
+			return fPath.lineTo(lastPos.x, args[0]);
+		}
+
+		// Command - v
+		int vLineBy(const double* args, int iteration) noexcept
+		{
+			BLPoint lastPos{};
+			fPath.getLastVertex(&lastPos);
+
+			return fPath.lineTo(lastPos.x, lastPos.y + args[0]);
+		}
+
+		// Command - Z, z
+		//
+		int close(const double* args, int iteration) noexcept
+		{
+			return fPath.close();
+		}
+
+	};
+
+
 	// parsePath()
 	// parse a path string, filling in a BLPath object
 	// along the way.
 	// Return 'false' if there are any errors
-	//
-	// Note:  Most SVG objects of significance will have a lot
-	// of paths, so we want to make this as fast as possible.
 	static INLINE bool parsePath(const waavs::ByteSpan& inSpan, BLPath& apath) noexcept
 	{
-		SVGSegmentParseParams params{};
-		SVGSegmentParseState cmdState(inSpan);
+		PathCommandDispatch dispatch;
+		B2DPathBuilder builder(apath);
 
-
-		while (readNextSegmentCommand(params, cmdState))
-		{
-			bool success{ true };
-
-			switch (cmdState.fSegmentKind)
-			{
-			case 'A':
-				success = constructArcTo('A', cmdState.args, cmdState.iteration, &apath);
-				break;
-
-			case 'a':
-				success = constructArcBy('a', cmdState.args, cmdState.iteration, &apath);
-				break;
-
-			case 'C':
-				success = constructCubicTo('C', cmdState.args, cmdState.iteration, &apath);
-				break;
-
-			case 'c':
-				success = constructCubicBy('c', cmdState.args, cmdState.iteration, &apath);
-				break;
-
-			case 'H':
-				success = constructHLineTo('H', cmdState.args, cmdState.iteration, &apath);
-				break;
-
-			case 'h':
-				success = constructHLineBy('h', cmdState.args, cmdState.iteration, &apath);
-				break;
-
-			case 'L':
-				success = constructLineTo('L', cmdState.args, cmdState.iteration, &apath);
-				break;
-
-			case 'l':
-				success = constructLineBy('l', cmdState.args, cmdState.iteration, &apath);
-				break;
-
-			case 'M':
-				success = constructMoveTo('M', cmdState.args, cmdState.iteration, &apath);
-				break;
-
-			case 'm':
-				success = constructMoveBy('m', cmdState.args, cmdState.iteration, &apath);
-				break;
-
-			case 'Q':
-				success = constructQuadTo('Q', cmdState.args, cmdState.iteration, &apath);
-				break;
-
-			case 'q':
-				success = constructQuadBy('q', cmdState.args, cmdState.iteration, &apath);
-				break;
-
-			case 'S':
-				success = constructSmoothCubicTo('S', cmdState.args, cmdState.iteration, &apath);
-				break;
-
-			case 's':
-				success = constructSmoothCubicBy('s', cmdState.args, cmdState.iteration, &apath);
-				break;
-
-			case 'T':
-				success = constructSmoothQuadTo('T', cmdState.args, cmdState.iteration, &apath);
-				break;
-
-			case 't':
-				success = constructSmoothQuadBy('t', cmdState.args, cmdState.iteration, &apath);
-				break;
-
-			case 'V':
-				success = constructVLineTo('V', cmdState.args, cmdState.iteration, &apath);
-				break;
-
-			case 'v':
-				success = constructVLineBy('v', cmdState.args, cmdState.iteration, &apath);
-				break;
-
-			case 'Z':
-			case 'z':
-				// For the close commands, there can be a case where there is a number
-				// after the 'z', which is not according to spec, but sometimes it's there
-				// if that's the case, we want to skip past it, so we can continue
-				if (cmdState.iteration > 0)
-					cmdState.remains++;
-				else
-				{
-					success = constructClose(cmdState.fSegmentKind, cmdState.args, cmdState.iteration, &apath);
-				}
-				break;
-
-			default: {
-				success = constructClose(cmdState.fSegmentKind, cmdState.args, cmdState.iteration, &apath);
-
-			}
-				   break;
-			}
-
-			cmdState.iteration++;
-			if (!success)
-				return false;
-
-		}
-
+		dispatch.addSubscriber(builder);
+		dispatch.parse(inSpan);
+	
 		return true;
 	}
-
 }
 
 

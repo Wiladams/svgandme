@@ -28,6 +28,8 @@ namespace waavs {
             SVGPaintOrderAttribute::registerFactory();
 
             SVGOpacity::registerFactory();
+            
+            SVGColorPaint::registerFactory();
 
             SVGFillPaint::registerFactory();
             SVGFillOpacity::registerFactory();

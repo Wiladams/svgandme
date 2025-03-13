@@ -34,6 +34,7 @@
 
 #include "bspan.h"
 #include "converters.h"
+#include "pubsub.h"
 
 
 namespace waavs {
@@ -76,29 +77,11 @@ namespace waavs {
 	/// </summary>
 	/// <param name="cmdIndex"></param>
 	/// <returns>a null terminated string of the argument types, or nullptr on invalid command</returns>
+	/// c - number
+	/// f - flag
+	/// r - radius
 	///
-	/*
-	static const char * getSegmentArgTypes(unsigned char cmdIndex)
-	{
-		switch (cmdIndex) {
-			case 'A': case 'a': return "ccrffcc";			// ArcTo
-			case 'C': case 'c': return "cccccc";			// CubicTo
-			case 'H': case 'h': return "c";					// HLineTo
-			case 'L': case 'l': return "cc";				// LineTo
-			case 'M': case 'm': return "cc";				// MoveTo
-			case 'Q': case 'q': return "cccc";				// QuadTo
-			case 'S': case 's': return "cccc";				// SmoothCubicTo
-			case 'T': case 't': return "cc";				// SmoothQuadTo
-			case 'V': case 'v': return "c";					// VLineTo
-			case 'Z': case 'z': return "";					// Close
 
-			default:
-				return nullptr;
-		}
-
-		return nullptr;
-	}
-	*/
 	static const char* getSegmentArgTypes(unsigned char cmdIndex) noexcept {
 		static std::array<const char*, 128> lookupTable = [] {
 			std::array<const char*, 128> table{}; // Default initializes all to nullptr
@@ -118,10 +101,12 @@ namespace waavs {
 		return cmdIndex < 128 ? lookupTable[cmdIndex] : nullptr;
 	}
 
-
-
-
-
+	//
+	// readNextSegmentCommand
+	// Given a current state of parsing, read the next segment command within
+	// an SVG path.  The state is updated with the new command, and the numeric
+	// arguments to go with it.
+	//
 	static bool readNextSegmentCommand(SVGSegmentParseParams& params, SVGSegmentParseState& cmdState)
 	{
 		static charset leadingChars("0123456789.+-");          // digits, symbols, and letters found at start of numbers
@@ -165,6 +150,31 @@ namespace waavs {
 
 		return true;
 	}
+}
+
+namespace waavs {
+	// PathCommandDispatch
+	// 
+	// A topic which will generate SVGSegmentParseState events
+	// An interested party can subscribe to this topic
+	// and handle the incoming events in whatever way they want
+	// By having this as a topic, we get a loose coupling, which does
+	// not require complex inheritance chains to deal with the events
+	struct PathCommandDispatch : public Topic<SVGSegmentParseState>
+	{
+		bool parse(const waavs::ByteSpan& inSpan) noexcept
+		{
+			SVGSegmentParseParams params{};
+			SVGSegmentParseState cmdState(inSpan);
+
+			while (readNextSegmentCommand(params, cmdState))
+			{
+				notify(cmdState);
+			}
+
+			return true;
+		}
+	};
 }
 
 

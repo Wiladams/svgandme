@@ -54,7 +54,7 @@ bool gCheckerBackground = true;
 
 
 SVGBrowsingView gBrowsingView(BLRect(BROWSER_LEFT, BROWSER_TOP, BROWSER_WIDTH, BROWSER_HEIGHT));
-SVGFileListView gFileListView(BLRect(EXPLORER_LEFT, EXPLORER_TOP, EXPLORER_WIDTH, EXPLORER_HEIGHT), &getFontHandler());
+SVGFileListView gFileListView(BLRect(EXPLORER_LEFT, EXPLORER_TOP, EXPLORER_WIDTH, EXPLORER_HEIGHT), FontHandler::getFontHandler());
 BackgroundSelector gBrowserTool(BLRect(BROWSER_LEFT, BROWSER_TOOL_TOP, BROWSER_TOOL_WIDTH, BROWSER_TOOL_HEIGHT));
 
 
@@ -92,7 +92,7 @@ static void loadDocFromFilename(const char* filename)
 	}
 
 	ByteSpan aspan(mapped->data(), mapped->size());
-	auto doc = SVGFactory::createFromChunk(aspan, &getFontHandler(), canvasWidth, canvasHeight, physicalDpi);
+	auto doc = SVGFactory::createFromChunk(aspan, FontHandler::getFontHandler(), canvasWidth, canvasHeight, physicalDpi);
 	
 	gBrowsingView.resetFromDocument(doc);
 	refreshDoc();
@@ -226,7 +226,7 @@ static void setupFonts()
 	//loadFontDirectory("..\\resources");
 	//loadFontDirectory("d:\\commonfonts");
 
-	gDrawingContext.fontHandler(&getFontHandler());
+	gDrawingContext.fontHandler(FontHandler::getFontHandler());
 }
 
 
@@ -263,7 +263,7 @@ static void setup()
 	gDrawingContext.begin(appFrameBuffer()->getBlend2dImage(), &ctxInfo);
 	gDrawingContext.fillAll(BLRgba32(0xffffffff));
 	
-	//gFileListView.setFontHandler(&getFontHandler());
+	//gFileListView.setFontHandler(FontHandler::getFontHandler());
 
 	// Set the initial viewport
 	gBrowsingView.subscribe(portalChanged);

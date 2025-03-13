@@ -507,7 +507,7 @@ static SVGDocumentHandle DOMFromFilename(const char* filename)
 	}
 
 	ByteSpan aspan(mapped->data(), mapped->size());
-	auto aDoc = SVGFactory::createDOM(aspan, &getFontHandler());
+	auto aDoc = SVGFactory::createDOM(aspan, FontHandler::getFontHandler());
 
 	return aDoc;
 }
@@ -533,7 +533,7 @@ static void onFileDrop(const FileDropEvent& fde)
 			// We have loaded the un-processed document
 			// Draw into an empty context at least once to resolve references
 			// and fix sizes.
-			//IRenderSVG ctx(&getFontHandler());
+			//IRenderSVG ctx(FontHandler::getFontHandler());
 			//ctx.setContainerFrame(BLRect(0, 0, canvasWidth, canvasHeight));
 			//gDoc->draw(&ctx, gDoc.get());
 

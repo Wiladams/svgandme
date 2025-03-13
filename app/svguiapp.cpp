@@ -26,10 +26,10 @@ double millis() noexcept
 }
 
 
-waavs::FontHandler& getFontHandler() {
-	static waavs::FontHandler fh;
-	return fh;
-}
+//waavs::FontHandler & getFontHandler() {
+//	static waavs::FontHandler fh;
+//	return fh;
+//}
 
 
 APP_EXTERN waavs::Recorder gRecorder{ nullptr };
@@ -41,7 +41,13 @@ static VOIDROUTINE gSetupHandler = nullptr;
 // Typography
 bool loadFont(const char* filename, BLFontFace& ff) noexcept
 {
-	bool success = getFontHandler().loadFontFace(filename, ff);
+	auto fh = FontHandler::getFontHandler();
+	if (nullptr == fh)
+	{
+		return false;
+	}
+
+	bool success = fh->loadFontFace(filename, ff);
 	return success;
 }
 
@@ -63,6 +69,12 @@ bool loadFontDirectory(const char* dir) noexcept
 
 	for (const auto& dir_entry : std::filesystem::directory_iterator(fontPath))
 	{
+		auto fh = FontHandler::getFontHandler();
+		if (nullptr == fh)
+		{
+			return false;
+		}
+
 		if (dir_entry.is_regular_file())
 		{
 			if ((dir_entry.path().extension() == ".ttf") ||
@@ -70,7 +82,12 @@ bool loadFontDirectory(const char* dir) noexcept
 				(dir_entry.path().extension() == ".TTF"))
 			{
 				BLFontFace ff{};
-				bool success = getFontHandler().loadFontFace(dir_entry.path().generic_string().c_str(), ff);
+				const char* filename = dir_entry.path().generic_string().c_str();
+				if (!fh->loadFontFace(filename, ff))
+				{
+					printf("loadFontFace failed: %s\n", filename);
+					return false;
+				}
 			}
 		}
 	}
@@ -95,7 +112,12 @@ bool loadDefaultFonts() noexcept
 		"c:\\Windows\\Fonts\\verdana.ttf",
 		"c:\\Windows\\Fonts\\wingding.ttf"
 	};
-	return getFontHandler().loadFonts(fontNames);
+
+	auto fh = FontHandler::getFontHandler();
+	if (nullptr == fh)
+		return false;
+
+	return fh->loadFonts(fontNames);
 }
 
 

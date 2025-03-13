@@ -343,7 +343,6 @@ namespace waavs {
 
 	};
     
-
 }
 
 namespace waavs {
@@ -363,7 +362,6 @@ namespace waavs {
 		{ "fixed-position", VECTOR_EFFECT_FIXED_POSITION },
 	};
     
-
 }
 
 namespace waavs {
@@ -372,9 +370,6 @@ namespace waavs {
 		{ "nonzero", BL_FILL_RULE_NON_ZERO },
 		{ "evenodd", BL_FILL_RULE_EVEN_ODD },
 	};
-
-
-
 
 }
 

@@ -400,7 +400,7 @@ namespace waavs {
 	constexpr uint64_t FNV1A_64_PRIME = 0x100000001b3ULL;
     
 	// 32-bit FNV-1a hash
-	INLINE uint32_t fnv1a_32(const void* data, const size_t size) noexcept
+	INLINE constexpr uint32_t fnv1a_32(const void* data, const size_t size) noexcept
 	{
 		const uint8_t* bytes = (const uint8_t*)data;
 		uint32_t hash = FNV1A_32_INIT;
@@ -412,7 +412,7 @@ namespace waavs {
 	}
 
 	// 64-bit FNV-1a hash
-	INLINE uint64_t fnv1a_64(const void* data, const size_t size) noexcept
+	INLINE constexpr uint64_t fnv1a_64(const void* data, const size_t size) noexcept
 	{
 		const uint8_t* bytes = (const uint8_t*)data;
 		uint64_t hash = FNV1A_64_INIT;

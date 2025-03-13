@@ -274,7 +274,8 @@ namespace waavs {
         }
 
         // Parse integer part
-        if (is_digit(*startAt))
+		unsigned char c = *startAt;
+        if (is_digit(c))
         {
             hasIntPart = true;
             s.fStart = startAt;
@@ -408,13 +409,13 @@ namespace waavs {
             case 'r':		// read a radius
             {
                 if (!readNextNumber(s, outArgs[i]))
-                    return 0;
+                    return i;
             } break;
 
             case 'f':		// read a flag
             {
                 if (!readNextFlag(s, outArgs[i]))
-                    return 0;
+                    return i;
             } break;
 
             default:

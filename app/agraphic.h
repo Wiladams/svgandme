@@ -54,7 +54,12 @@ namespace waavs {
 		const BLVar& fillStyle() const { return fGraphState.fillPaint(); }
 		void setFillStyle(const BLVar& style) { fGraphState.fillPaint(style); }
 
-		
+		void setPreserveAspectRatio(const char* par)
+		{
+			PreserveAspectRatio preserveAspectRatio(par);
+			fPortal.preserveAspectRatio(preserveAspectRatio);
+		}
+
 		void setPreserveAspectRatio(const PreserveAspectRatio& par)
 		{
 			fPortal.preserveAspectRatio(par);
