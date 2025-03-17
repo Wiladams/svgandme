@@ -53,7 +53,7 @@ namespace waavs {
 		int iteration{ 0 };
 		int fError{ 0 };
 		const char* fArgTypes{};
-		size_t fArgCount{ 0 };
+		int fArgCount{ 0 };
 		double args[8]{ 0 };		// The arguments for the command
 
 		SVGSegmentParseState() = default;
@@ -112,7 +112,7 @@ namespace waavs {
 		static charset leadingChars("0123456789.+-");          // digits, symbols, and letters found at start of numbers
 		static  charset pathWsp = chrWspChars + ',';
 		
-		bool success = false;
+		//bool success = false;
 
 		// always ignore leading whitespace
 		cmdState.remains = chunk_ltrim(cmdState.remains, pathWsp);
@@ -137,7 +137,7 @@ namespace waavs {
 				return false;
 		}
 
-		if ((cmdState.fArgTypes != nullptr) and (cmdState.fArgCount > 0))
+		if ((cmdState.fArgTypes != nullptr) && (cmdState.fArgCount > 0))
 		{
 			if (cmdState.fArgCount != readNumericArguments(cmdState.remains, cmdState.fArgTypes, cmdState.args))
 			{

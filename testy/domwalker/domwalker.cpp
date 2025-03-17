@@ -249,12 +249,12 @@ static void drawShadowPath(BLPath &apath, IRenderSVG *ctx)
 	{
 		BLPoint pt = iterState.point();
 		uint8_t cmd = iterState.command();
-		BLPoint pv = pt - pCenter;
+		BLPoint pv(pt.x - pCenter.x, pt.y - pCenter.y);
 		double scaleFactor = 1.0;
 
 		// Won't work if coordinates are NAN
 		// Calculate the vector from the center to the point
-		vec2f v = { pv.x, pv.y };
+		vec2f v = { static_cast<float>(pv.x), static_cast<float>(pv.y) };
 
 		// Normalize the vector
 		v = normalize(v);
@@ -490,6 +490,28 @@ static void quickDraw7(IRenderSVG* ctx)
 	printf("Last Vertex (10,10): %f, %f\n", vtxOut.x, vtxOut.y);
 }
 
+static void quickDraw8(IRenderSVG* ctx)
+{
+	BLPath apath{};
+	B2DPathBuilder builder(apath);
+
+	builder.addSegment('M', (const double[]){ 10.0,50.0 });
+	builder.addSegment('Q', (const double[]) { 25.00, 25.00, 40.00, 50.00 });
+	builder.addSegment('t', (const double[]) { 30.00, 0.00 });
+	builder.addSegment('t', (const double[]) { 30.00, 0.00 });
+	builder.addSegment('t', (const double[]) { 30.00, 0.00 });
+	builder.addSegment('t', (const double[]) { 30.00, 0.00 });
+	builder.addSegment('t', (const double[]) { 30.00, 0.00 });
+
+	ctx->renew();
+	ctx->push();
+
+	ctx->strokePath(apath, BLRgba32(0xffff0000));
+
+	ctx->pop();
+	ctx->flush();
+}
+
 // docFromFilename
 //
 // Given a filename, parse the svg in the file, and return 
@@ -622,6 +644,7 @@ void setup()
 	//quickDraw4(&gDrawingContext);
 	//quickDraw5(&gDrawingContext);
 	//quickDraw6(&gDrawingContext);
-	quickDraw7(&gDrawingContext);
+	//quickDraw7(&gDrawingContext);
+	quickDraw8(&gDrawingContext);
 
 }

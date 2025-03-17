@@ -55,15 +55,19 @@ namespace waavs {
 			return cmdTbl;
 		}
 
-		// Overload operator() to handle the events we are subscribed to
-		// This allows the class to be a subscriber, and all the events
-		// will be handled by this function
-		int operator()(const SVGSegmentParseState& cmdState)
+		//
+		// addSegment()
+		// Similar to addGeometry on the BLPath object
+		// whereas addGeometry is very low level, and not an exact match to the SVG
+		// segments, addSegment is higher level, dealing with segment commands, which 
+		// in the end might result in multiple 'geometries' being added to the BLPath
+		// as certain curves are broken down into multiple simpler curves
+		int addSegment(unsigned char cmd, const double *args, size_t iteration=0)
 		{
 			// if the last command was a 'Z' or 'z', then, if the next
 			// command is not a 'M' or 'm', we need to first insert a moveTo
 			// for the last location, then perform the next command
-			if (((lastCmd == 'Z') || (lastCmd == 'z')) && (cmdState.fSegmentKind != 'M' || cmdState.fSegmentKind != 'm'))
+			if (((lastCmd == 'Z') || (lastCmd == 'z')) && (cmd != 'M' && cmd != 'm'))
 			{
 				BLPoint lastPos{};
 				fPath.getLastVertex(&lastPos);
@@ -72,15 +76,29 @@ namespace waavs {
 			}
 
 			const auto& commandTable = getCommandTable();
-			if (cmdState.fSegmentKind < 128 && commandTable[cmdState.fSegmentKind])
+			if (cmd < 128 && commandTable[cmd])
 			{
-				int err = (this->*(commandTable[cmdState.fSegmentKind]))(cmdState.args, cmdState.iteration);
+				int err = (this->*(commandTable[cmd]))(args, iteration);
 				if (err != BL_SUCCESS)
+				{
+					printf("B2DPathBuilder, ERROR in command: \n");
 					return err;	// indicating an error
+				}
+			}
+			else {
+				printf("B2DPathBuilder, INVALID Command: %c\n", cmd);
+				return -1;	// error in cmd
 			}
 
-			lastCmd = cmdState.fSegmentKind;
+			lastCmd = cmd;
+		}
 
+		// Overload operator() to handle the events we are subscribed to
+		// This allows the class to be a subscriber, and all the events
+		// will be handled by this function
+		int operator()(const SVGSegmentParseState& cmdState)
+		{
+			return addSegment(cmdState.fSegmentKind, cmdState.args, cmdState.iteration);
 		}
 
 		// All the routines that do the actual work of building the path

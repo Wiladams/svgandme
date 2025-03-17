@@ -10,9 +10,6 @@
 
 namespace waavs {
 
-	
-	
-	
 	// The base class for something that can be drawn into
 	// a BLContext
 	struct AGraphic
