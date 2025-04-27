@@ -67,7 +67,7 @@ namespace waavs {
         // Although there can be multiple <svg> elements in a document
 		// we track only the first one
         // We only have a single root 'SVGSVGElement' for the whole document
-        std::shared_ptr<SVGSVGElement> fSVGNode = nullptr;
+        std::shared_ptr<SVGSVGElement> fTopLevelNode = nullptr;
 
         
         // We need a style sheet for the entire document
@@ -170,7 +170,7 @@ namespace waavs {
         
 
         // retrieve root svg node
-		std::shared_ptr<SVGSVGElement> documentElement() const { return fSVGNode; }
+		std::shared_ptr<SVGSVGElement> documentElement() const { return fTopLevelNode; }
 
 
         bool addNode(std::shared_ptr < ISVGElement > node, IAmGroot* groot) override
@@ -181,12 +181,12 @@ namespace waavs {
             
             if (node->name() == "svg")
             {
+                fTopLevelNode = std::dynamic_pointer_cast<SVGSVGElement>(node);
 
-                if (nullptr == fSVGNode)
+                if (fTopLevelNode != nullptr)
                 {
-                    fSVGNode = std::dynamic_pointer_cast<SVGSVGElement>(node);
-                    
-				}
+					fTopLevelNode->setTopLevel(true);
+                }
 
             }
             
@@ -248,8 +248,8 @@ namespace waavs {
                 default:
                 {
                     // Ignore anything else
-                    printf("SVGGraphicsElement::loadFromXmlIterator ==> IGNORING kind(%d) name:", elem.kind());
-                    printChunk(elem.nameSpan());
+                    //printf("SVGGraphicsElement::loadFromXmlIterator ==> IGNORING kind(%d) name:", elem.kind());
+                    //printChunk(elem.nameSpan());
                     //printChunk(elem.data());
 
                     //printf("SVGGraphicsElement::loadFromXmlIterator ==> IGNORING: %s\n", elem.name().c_str());
@@ -353,7 +353,7 @@ namespace waavs {
             
             // Should have valid bounding box by now
             // so set objectFrame on the context
-            ctx->objectFrame(getBBox());
+            ctx->setObjectFrame(getBBox());
 
             this->applyProperties(ctx, groot);
             this->drawSelf(ctx, groot);
@@ -371,7 +371,7 @@ namespace waavs {
             this->bindToContext(ctx, groot, cWidth, cHeight);
 
             ctx->push();
-            ctx->objectFrame(getBBox());
+            ctx->setObjectFrame(getBBox());
 
             this->applyProperties(ctx, groot);
             this->drawSelf(ctx, groot);

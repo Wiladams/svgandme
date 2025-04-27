@@ -8,6 +8,7 @@
 #include <functional>
 #include <unordered_map>
 
+#include "irendersvg.h"
 #include "svgattributes.h"
 #include "svgstructuretypes.h"
 
@@ -65,15 +66,16 @@ namespace waavs {
 
 				// Draw our content into the image
 				{
-					IRenderSVG ctx(nullptr);
-					ctx.begin(fImage);
+					IRenderSVG rctx;
+					rctx.attach(fImage);
 
-					ctx.setCompOp(BL_COMP_OP_SRC_COPY);
-					ctx.clearAll();
-					ctx.setFillStyle(BLRgba32(0xffffffff));
-					ctx.translate(-extent.x, -extent.y);
-					draw(&ctx, nullptr);
-					ctx.flush();
+					rctx.blendMode(BL_COMP_OP_SRC_COPY);
+					rctx.clear();
+					rctx.fill(BLRgba32(0xffffffff));
+					rctx.translate(-extent.x, -extent.y);
+					draw(&rctx, nullptr);
+					rctx.flush();
+					rctx.detach();
 				}
 
 				// bind our image to fVar for later retrieval

@@ -82,7 +82,7 @@ namespace waavs {
 			// First, we want to know the size of the object we're going to be
 			// rendered into
 			// We also want to know the size of the container the object is in
-			BLRect objectBoundingBox = ctx->objectFrame();
+			BLRect objectBoundingBox = ctx->getObjectFrame();
 			BLRect containerBoundingBox = ctx->viewport();
 			
 			
@@ -158,14 +158,10 @@ namespace waavs {
 				fMarkerContentScale.y = fMarkerBoundingBox.h / fViewbox.h;
 			}
 			
-			fDimRefX.parseValue(fMarkerTranslation.x, ctx->font(), fMarkerBoundingBox.w, 0, dpi);
-			fDimRefY.parseValue(fMarkerTranslation.y, ctx->font(), fMarkerBoundingBox.h, 0, dpi);
-
+			fDimRefX.parseValue(fMarkerTranslation.x, ctx->getFont(), fMarkerBoundingBox.w, 0, dpi);
+			fDimRefY.parseValue(fMarkerTranslation.y, ctx->getFont(), fMarkerBoundingBox.h, 0, dpi);
 
 			fPortal.viewportFrame(fMarkerBoundingBox);
-
-
-
 		}
 		
 		virtual void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*)
@@ -206,7 +202,7 @@ namespace waavs {
 			ctx->fill(BLRgba32(0, 0, 0));
 			ctx->noStroke();
 			ctx->strokeWidth(1.0);
-			ctx->setStrokeJoin(BLStrokeJoin::BL_STROKE_JOIN_MITER_BEVEL);
+			ctx->lineJoin(BLStrokeJoin::BL_STROKE_JOIN_MITER_BEVEL);
 
 			SVGGraphicsElement::drawChildren(ctx, groot);
 

@@ -424,8 +424,8 @@ namespace waavs {
         ByteSpan fStyleAttribute{};
         ByteSpan fClassAttribute{};
 
-		BLMatrix2D fTransform{};
-		bool fHasTransform{ false };
+		//BLMatrix2D fTransform{};
+		//bool fHasTransform{ false };
         
         std::unordered_map<ByteSpan, std::shared_ptr<SVGVisualProperty>, ByteSpanHash, ByteSpanEquivalent> fVisualProperties{};
         
@@ -766,21 +766,6 @@ namespace waavs {
             // presentation attributes of the current element, if any
             fAttributes.mergeAttributes(fPresentationAttributes);
 
-            // BUGBUG - this is a hack to get the fill and stroke
-            // It needs to go deeper and get the color attribute that's from the tree
-            // where the current node is just the latest.
-            // if there is a stroke attribute with a value of 'currentColor', then look
-            // for a 'color' attribute, and set the stroke color to that value
-            //auto strokeColor = fAttributes.getAttribute("stroke");
-
-            //if (strokeColor && (strokeColor == "currentColor"))
-            //{
-            //    auto colorValue = fAttributes.getAttribute("color");
-            //    if (colorValue)
-            //    {
-            //        fAttributes.addAttribute("stroke", colorValue);
-            //    }
-            //}
             this->fixupSelfStyleAttributes(ctx, groot);
 
             // Use up some of the attributes
@@ -795,7 +780,7 @@ namespace waavs {
 
             // Get transformation matrix if it exists as early as possible
             // but after attributes have been set.
-            fHasTransform = parseTransform(getAttribute("transform"), fTransform);
+            //fHasTransform = parseTransform(getAttribute("transform"), fTransform);
 
         }
         
@@ -869,21 +854,40 @@ namespace waavs {
         // so just override bindToGroot
         void bindToContext(IRenderSVG* ctx, IAmGroot* groot) noexcept override
         {
+            // First, find any style attributes that might apply
+            // to this element
             this->fixupStyleAttributes(ctx, groot);
+
+
+            // Convert the attributes that have a property registration 
+            // into VisualProperty objects
             convertAttributesToProperties(ctx, groot);
 
+            // Tell the structure to bind the rest of its stuff
             this->bindSelfToContext(ctx, groot);
+
+            // Set the object frame, because some attributes
+            // will need that when binding
+            // ctx->setObjectFrame(getBBox());
 
             needsBinding(false);
         }
 
         virtual void applyProperties(IRenderSVG* ctx, IAmGroot* groot)
         {
-            // Apply transform if it's not the identity transform
-            if (fHasTransform)  //fTransform.type() != BL_MATRIX2D_TYPE_IDENTITY)
-                ctx->applyTransform(fTransform);
+            // BUGBUG - need to apply transform appropriately here
+            //if (fHasTransform)  //fTransform.type() != BL_MATRIX2D_TYPE_IDENTITY)
+            //    ctx->applyTransform(fTransform);
+			auto tform = getVisualProperty("transform");
+			if (tform)
+				tform->draw(ctx, groot);
 
             for (auto& prop : fVisualProperties) {
+                // We've already applied the transform, so skip
+                // applying it again.
+                if (prop.first == "transform")
+                    continue;
+
                 if (prop.second->autoDraw() && prop.second->isSet())
                     prop.second->draw(ctx, groot);
             }
@@ -893,7 +897,7 @@ namespace waavs {
         {
             for (auto& node : fNodes) {
                 // Restore our context before drawing each child
-                ctx->objectFrame(getBBox());
+                //ctx->setObjectFrame(getBBox());
 
                 node->draw(ctx, groot);
             }
@@ -913,12 +917,12 @@ namespace waavs {
 
             ctx->push();
 
-            if (needsBinding())
-                this->bindToContext(ctx, groot);
-            
             // Should have valid bounding box by now
             // so set objectFrame on the context
-			ctx->objectFrame(getBBox());
+            ctx->setObjectFrame(getBBox());
+
+            if (needsBinding())
+                this->bindToContext(ctx, groot);
             
             this->applyProperties(ctx, groot);
             this->drawSelf(ctx, groot);

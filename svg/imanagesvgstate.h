@@ -1,6 +1,8 @@
 #pragma once
 
 #include <functional>
+#include <memory>
+#include <vector>
 
 #include "blend2d.h"
 #include "fonthandler.h"
@@ -10,55 +12,92 @@
 
 namespace waavs
 {
-
-    struct IManageSVGState : public SVGDrawingState
+    struct StateMemoryPool 
     {
-        // Managing state
-        WSStack<SVGDrawingState> fStateStack{};
+    public:
+        std::vector<std::unique_ptr<SVGDrawingState>> pool;
+        size_t currentIndex = 0;
 
-
-        SVGDrawingState & operator=(const SVGDrawingState& st) noexcept override
+        StateMemoryPool(size_t poolSize = 10) 
+            : pool(poolSize) 
         {
-            return SVGDrawingState::operator=(st);
+            for (size_t i = 0; i < poolSize; ++i) {
+                pool[i] = std::make_unique<SVGDrawingState>();
+            }
         }
 
-        virtual void onPush() {}
-        
-        virtual bool push() {
-            // Save the current state to the state stack
-            fStateStack.push(*this);
-            onPush();
-            
-            return true;
+        SVGDrawingState* allocate() {
+            if (currentIndex >= pool.size()) {
+                // Double the pool size if exhausted
+                size_t newSize = pool.size() * 2;
+                pool.reserve(newSize);
+                for (size_t i = pool.size(); i < newSize; ++i) {
+                    pool.push_back(std::make_unique<SVGDrawingState>());
+                }
+            }
+            return pool[currentIndex++].get();
         }
 
-        virtual void onPop() {}
-        
-        virtual bool pop()
-        {
-            if (fStateStack.empty())
-                return false;
-
-            // Restore the current state from the state stack
-			SVGDrawingState st = fStateStack.top();
-            
-			// Assign the state to the current state
-			this->operator=(st);
-            
-            fStateStack.pop();
-            onPop();
-
-            return true;
-        }
-
-        virtual void resetState()
-        {
-            //resetTransform();
-
-            fStateStack.clear();
-
-            reset();
-        }
-
+        void reset() { currentIndex = 0; }
     };
+
+    // SVGStateStack
+    // A managed stack of drawing state structures
+    // This is backed by a memory pool, which will reduce runtime
+	// dynamic memory allocation, assuming the default stack size
+	// is sufficient for the depth of the SVG tree.
+    // If more space is needed, it is automatically allocated
+    struct SVGStateStack 
+    {
+    public:
+        std::deque<SVGDrawingState*> stateStack{};
+        std::unique_ptr<StateMemoryPool> memoryPool{};
+        std::unique_ptr<SVGDrawingState> fCurrentState{};
+
+        SVGStateStack()
+            : memoryPool(std::make_unique<StateMemoryPool>(10)),
+            fCurrentState(std::make_unique<SVGDrawingState>())
+        {}
+
+        // Retrieve a pointer to the current state
+        SVGDrawingState* currentState() const 
+        {
+            return fCurrentState.get();
+        }
+
+        // Optimized Push Operation
+        void push() {
+            if (fCurrentState->isModified() || stateStack.empty())
+            {
+                SVGDrawingState* newState = memoryPool->allocate();
+                *newState = *fCurrentState;  // Shallow copy of the entire state
+                stateStack.push_back(newState);
+                fCurrentState->modifiedSinceLastPush = false;
+            }
+        }
+
+        // Optimized Pop Operation
+        void pop() {
+            if (!stateStack.empty()) {
+                fCurrentState.reset();
+                fCurrentState = std::make_unique<SVGDrawingState>(*stateStack.back());  // Copy previous state
+                stateStack.pop_back();
+			}
+            else {
+				printf("SVGStateStack::pop() ERROR: Stack is empty\n");
+                // Reset the current state
+                //fCurrentState.reset();
+                //fCurrentState = std::make_unique<SVGDrawingState>();
+            }
+        }
+
+        // Reset the entire state stack
+        void reset() {
+            stateStack.clear();
+            memoryPool->reset();
+            fCurrentState = std::make_unique<SVGDrawingState>();
+        }
+    };
+
+
 }

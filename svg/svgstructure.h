@@ -43,13 +43,29 @@ namespace waavs {
 		}
 
 		SVGPortal fPortal;
-
+		bool fIsTopLevel{ false };	// Is this a top level svg element
 		
 		SVGSVGElement(IAmGroot* )
 			: SVGGraphicsElement()
 		{
 			needsBinding(true);
 		}
+
+		// setTopLevel
+		//
+		// A top level node is different than an SVG node which might
+		// be located deeper in the DOM tree.  The top level node ignores
+		// any x,y attributes, only paying attention to the dimensions
+		// width, and height.
+		//
+		// Deeper into the tree, the x,y attributes are used to position the node
+		// relative to the parent node.  The width and height attributes are used
+		// to set the size of the node, but not the position.
+		// And svg node is NOT top level by default, and is explicitly set
+		// to be top level by the DOM constructor
+		void setTopLevel(bool isTopLevel) { fIsTopLevel = isTopLevel; }
+		bool isTopLevel() const { return fIsTopLevel; }
+
 
 		BLRect frame() const override
 		{
@@ -222,7 +238,7 @@ namespace waavs {
 
 			// look for the href, or xlink:href attribute
 			auto href = getAttribute("xlink:href");
-			if (!href)
+			if (href.empty())
 			{
 				href = getAttribute("href");
 			}
@@ -241,14 +257,13 @@ namespace waavs {
 				dpi = groot->dpi();
 			}
 
-
-			BLRect objectBoundingBox = ctx->objectFrame();
+			BLRect objectBoundingBox = ctx->getObjectFrame();
 			BLRect viewport = ctx->viewport();
 			
-			fDimX.parseValue(fBoundingBox.x, ctx->font(), objectBoundingBox.w, 0, dpi);
-			fDimY.parseValue(fBoundingBox.y, ctx->font(), objectBoundingBox.h, 0, dpi);
-			fDimWidth.parseValue(fBoundingBox.w, ctx->font(), objectBoundingBox.w, 0, dpi);
-			fDimHeight.parseValue(fBoundingBox.h, ctx->font(), objectBoundingBox.h, 0, dpi);
+			fDimX.parseValue(fBoundingBox.x, ctx->getFont(), objectBoundingBox.w, 0, dpi);
+			fDimY.parseValue(fBoundingBox.y, ctx->getFont(), objectBoundingBox.h, 0, dpi);
+			fDimWidth.parseValue(fBoundingBox.w, ctx->getFont(), objectBoundingBox.w, 0, dpi);
+			fDimHeight.parseValue(fBoundingBox.h, ctx->getFont(), objectBoundingBox.h, 0, dpi);
 			
 
 
@@ -280,7 +295,7 @@ namespace waavs {
 			ctx->translate(fBoundingBox.x, fBoundingBox.y);
 			
 			// Draw the wrapped graphic
-			ctx->objectFrame(fBoundingBox);
+			ctx->setObjectFrame(fBoundingBox);
 			ctx->setViewport(BLRect{0,0,fBoundingBox.w, fBoundingBox.h});
 
 			fWrappedNode->draw(ctx, groot);

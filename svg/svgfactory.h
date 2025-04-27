@@ -58,7 +58,7 @@ namespace waavs {
             SVGFontStretchAttribute::registerFactory();
 
             //SVGClipPathAttribute::registerFactory();
-            //SVGTransform::registerFactory();
+            SVGTransform::registerFactory();
 
 
 
@@ -128,7 +128,6 @@ namespace waavs {
 
         }
 
-
         // createDOM
 		// Create a new SVGDocument object
         // This document is not bound to a drawing context, so a lot of things are not going
@@ -159,9 +158,10 @@ namespace waavs {
             // BUGBUG - Maybe we should stop here, and use
             // a visitor to convert the raw DOM into a graphics tree
             // render into a blank context to get sizing
-            IRenderSVG actx(fh);
+            IRenderSVG actx; // (fh);
             actx.setViewport(BLRect(0, 0, w, h));
             doc->draw(&actx, doc.get());
+            printf("SVGFactory::CreateFromChunk(), END\n");
 
             return doc;
         }

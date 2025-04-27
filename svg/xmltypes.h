@@ -23,13 +23,16 @@ namespace waavs {
 
     // XmlElementInfo
     // This data structure contains the raw scanned information for an XML node
-    // The contents are not 'parsed', only the node type is separated
+    // The data is separated into the name component, the kind of node,
+    // and the attributes are separated from the rest, but not 'parsed'.
+    // 
     // In the case of a start, or self-closing tag, the name is separated
     // and the attributes are in the fData field
+    // 
     // For other node types, the fData represents the content of the node
     struct XmlElementInfo
     {
-        int fElementKind{ XML_ELEMENT_TYPE_INVALID };
+        uint32_t fElementKind{ XML_ELEMENT_TYPE_INVALID };
         ByteSpan fNameSpan{};
         ByteSpan fData{};
 
@@ -64,11 +67,18 @@ namespace waavs {
         }
 
         constexpr bool empty() const noexcept { return fElementKind == XML_ELEMENT_TYPE_INVALID; }
+        explicit operator bool() const noexcept { return !empty(); }
 
-        int kind() const noexcept { return fElementKind; }
+        uint32_t kind() const noexcept { return fElementKind; }
+        void setKind(const uint32_t kind) { fElementKind = kind; }
+
         ByteSpan nameSpan() const noexcept { return fNameSpan; }
         ByteSpan data() const noexcept { return fData; }
 
+        // You can get the bytespan that represents a specific attribute value. 
+        // If the attribute is not found, the function returns false
+        // If it is found, true is returned, and the value is in the 'value' parameter
+        // The attribute value is not parsed in any way.
         bool getRawAttributeValue(const ByteSpan& key, ByteSpan& value) const
         {
             value.reset();
@@ -81,8 +91,10 @@ namespace waavs {
             return false;
         }
 
+
+
         // Convenience for what kind of tag it is
-		constexpr bool isElementKind(int kind) const { return fElementKind == kind; }
+		constexpr bool isElementKind(uint32_t kind) const { return fElementKind == kind; }
 
         constexpr bool isXmlDecl() const { return fElementKind == XML_ELEMENT_TYPE_XMLDECL; }
         constexpr bool isStart() const { return (fElementKind == XML_ELEMENT_TYPE_START_TAG); }
@@ -202,9 +214,6 @@ namespace waavs {
     struct XmlElement : public XmlElementInfo
     {
     private:
-        //int fElementKind{ XML_ELEMENT_TYPE_INVALID };
-        //ByteSpan fData{};
-        //ByteSpan fNameSpan{};
         XmlName fXmlName{};
 
 
@@ -267,11 +276,18 @@ namespace waavs {
 			//reset(info);
 		}
 
-        XmlElement(int kind, const ByteSpan& data)
-			:XmlElementInfo()
-        {
-            reset(kind, data);
-        }
+        //XmlElement(int kind, const ByteSpan& data)
+		//	:XmlElementInfo()
+        //{
+        //    reset(kind, data);
+        //}
+
+        // Returning information about the element
+        XmlName xmlName() const { return fXmlName; }
+        ByteSpan tagName() const { return fXmlName.name(); }
+        ByteSpan tagNamespace() const { return fXmlName.ns(); }
+        ByteSpan name() const { return fXmlName.name(); }
+
 
 		XmlElement& reset(const XmlElementInfo& info)
 		{
@@ -284,11 +300,13 @@ namespace waavs {
 			return *this;
 		}
 
-        XmlElement & reset(int kind, const ByteSpan& data)
+        XmlElement & reset(int kind, const ByteSpan &tagName, const ByteSpan& data)
         {
             clear();
             fElementKind = kind;
             fData = data;
+            fNameSpan = tagName;
+            fXmlName.reset(fNameSpan);
 
 
             switch (kind)
@@ -296,7 +314,7 @@ namespace waavs {
 			    case XML_ELEMENT_TYPE_START_TAG:
 			    case XML_ELEMENT_TYPE_SELF_CLOSING:
 			    case XML_ELEMENT_TYPE_END_TAG:
-				    fData = scanNameSpan(fData);
+				    scanNameSpan(fNameSpan);
 				break;
 
                 case XML_ELEMENT_TYPE_XMLDECL:
@@ -316,7 +334,6 @@ namespace waavs {
             return *this;
         }
 
-
         // Move assignment
         XmlElement& operator=(XmlElement&& other) noexcept
         {
@@ -331,7 +348,6 @@ namespace waavs {
             return *this;
         }
 
-
         XmlElement& operator=(const XmlElement& other)
         {
             if (this != &other)
@@ -344,46 +360,5 @@ namespace waavs {
             return *this;
         }
 
-
-        // determines whether the element is currently empty
-        constexpr bool isEmpty() const noexcept { return fElementKind == XML_ELEMENT_TYPE_INVALID; }
-
-        explicit operator bool() const noexcept { return !isEmpty(); }
-
-        // Returning information about the element
-        ByteSpan nameSpan() const { return fNameSpan; }
-        XmlName xmlName() const { return fXmlName; }
-        ByteSpan tagName() const { return fXmlName.name(); }
-        ByteSpan tagNamespace() const { return fXmlName.ns(); }
-        ByteSpan name() const { return fXmlName.name(); }
-
-        constexpr int kind() const { return fElementKind; }
-        void setKind(const int kind) { fElementKind = kind; }
-
-        ByteSpan data() const { return fData; }
-
-		bool getRawAttributeValue(const ByteSpan& key, ByteSpan &value) const
-		{
-            value.reset();
-			if (!isStart() && !isSelfClosing())
-				return false;
-
-            if (getKeyValue(fData, key, value))
-                return true;
-
-            return false;
-		}
-
-        // Convenience for what kind of tag it is
-        constexpr bool isXmlDecl() const { return fElementKind == XML_ELEMENT_TYPE_XMLDECL; }
-        constexpr bool isStart() const { return (fElementKind == XML_ELEMENT_TYPE_START_TAG); }
-        constexpr bool isSelfClosing() const { return fElementKind == XML_ELEMENT_TYPE_SELF_CLOSING; }
-        constexpr bool isEnd() const { return fElementKind == XML_ELEMENT_TYPE_END_TAG; }
-        constexpr bool isComment() const { return fElementKind == XML_ELEMENT_TYPE_COMMENT; }
-        constexpr bool isProcessingInstruction() const { return fElementKind == XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION; }
-        constexpr bool isContent() const { return fElementKind == XML_ELEMENT_TYPE_CONTENT; }
-        constexpr bool isCData() const { return fElementKind == XML_ELEMENT_TYPE_CDATA; }
-        constexpr bool isDoctype() const { return fElementKind == XML_ELEMENT_TYPE_DOCTYPE; }
-        constexpr bool isEntityDeclaration() const { return fElementKind == XML_ELEMENT_TYPE_ENTITY; }
     };
 }

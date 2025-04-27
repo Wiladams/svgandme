@@ -120,7 +120,7 @@ namespace waavs {
 
         // return 'true' if the node we're currently sitting on is valid
         // return 'false' if otherwise
-        explicit operator bool() { return !fCurrentElement.isEmpty(); }
+        explicit operator bool() { return !fCurrentElement.empty(); }
 
         // STL-compliant equality comparison
         bool operator==(const XmlElementIterator& other) const noexcept

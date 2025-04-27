@@ -1449,7 +1449,7 @@ waavs::User32Window * getAppWindow()
         int style = WS_OVERLAPPEDWINDOW;
         int xstyle = 0;
 
-        auto win = appWindowKind.createWindow("Application Window", 320, 240, style, xstyle);
+        auto win = appWindowKind.createWindow("Application Window", 640, 480, style, xstyle);
 		gAppWindow = std::unique_ptr<waavs::User32Window>(win);
         
     }

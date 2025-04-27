@@ -177,13 +177,11 @@ namespace waavs {
 	// The classic character ccategorizers (isdigit(), isalpha(), etc.) from ctype.h
 	// are replicated here.  They are implemented as constexpr functions, so they can
 	// be used in other constexpr functions.
-	static constexpr bool is_digit(const unsigned char c) noexcept { 
-		return ((c >= '0') && (c <= '9')); 
-	}
+	static constexpr bool is_digit(const unsigned char c) noexcept { return ((c >= '0') && (c <= '9')); }
 	static constexpr bool is_xdigit(const unsigned char c) noexcept { return (is_digit(c) || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')); }
 	static constexpr bool is_alpha(const unsigned char c) noexcept { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'); }
 	static constexpr bool is_alnum(const unsigned char c) noexcept { return is_alpha(c) || is_digit(c); }
-	static constexpr bool is_space(const unsigned char c) noexcept { return c == 0x20 || c == 0x09 || c == 0x0A || c == 0x0D || c == 0x0C;}
+	static constexpr bool is_space(const unsigned char c) noexcept { return c == 0x20 || c == 0x09 || c == 0x0A || c == 0x0D; }
 	static constexpr bool is_upper(const unsigned char c) noexcept { return (c >= 'A' && c <= 'Z'); }
 	static constexpr bool is_lower(const unsigned char c) noexcept { return (c >= 'a' && c <= 'z'); }
 	static constexpr bool is_print(const unsigned char c) noexcept { return (c >= 0x20 && c <= 0x7E); }

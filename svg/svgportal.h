@@ -76,10 +76,10 @@ namespace waavs {
             BLRect srfFrame = viewport;
 
 
-            fDimX.parseValue(srfFrame.x, ctx->font(), viewport.w, origin, dpi, SpaceUnitsKind::SVG_SPACE_USER);
-            fDimY.parseValue(srfFrame.y, ctx->font(), viewport.h, origin, dpi, SpaceUnitsKind::SVG_SPACE_USER);
-            fDimWidth.parseValue(srfFrame.w, ctx->font(), viewport.w, origin, dpi, SpaceUnitsKind::SVG_SPACE_USER);
-            fDimHeight.parseValue(srfFrame.h, ctx->font(), viewport.h, origin, dpi, SpaceUnitsKind::SVG_SPACE_USER);
+            fDimX.parseValue(srfFrame.x, ctx->getFont(), viewport.w, origin, dpi, SpaceUnitsKind::SVG_SPACE_USER);
+            fDimY.parseValue(srfFrame.y, ctx->getFont(), viewport.h, origin, dpi, SpaceUnitsKind::SVG_SPACE_USER);
+            fDimWidth.parseValue(srfFrame.w, ctx->getFont(), viewport.w, origin, dpi, SpaceUnitsKind::SVG_SPACE_USER);
+            fDimHeight.parseValue(srfFrame.h, ctx->getFont(), viewport.h, origin, dpi, SpaceUnitsKind::SVG_SPACE_USER);
 
             
 			// If a viewbox was set, then we use that to create the transformation

@@ -12,364 +12,476 @@
 
 namespace waavs
 {
-    struct IRenderSVG;
-    struct IAmGroot;
     
     // A specialization of state management, connected to a BLContext
     // This is used when rendering a tree of SVG elements
-    struct IRenderSVG : public IManageSVGState, public BLContext
+    struct IRenderSVG : public IAccessSVGState // , public BLContext
     {
-        BLVar fBackground{};
-        BLPoint fTextCursor{};
-        FontHandler* fFontHandler{ nullptr };
+        //std::unique_ptr<BLContext> fDrawingContext;
+        SVGDrawingState *fCurrentDrawingState;
+        SVGStateStack fStateStack;
 
-
-        
     public:
-        IRenderSVG(FontHandler* fh)
+        IRenderSVG()
         {
-            fontHandler(fh);
+            // Create a context by default, so we have 
+            // something initially, so we don't have to use
+            // null checks everywhere
+            //fDrawingContext = std::make_unique<BLContext>();
+
             initState();
         }
+
         
-        virtual ~IRenderSVG() {}
-
-
+        virtual ~IRenderSVG() = default;
 
         void initState()
         {
-            fBackground = BLRgba32(0xFFFFFFFF);
-            IManageSVGState::lineJoin(BL_STROKE_JOIN_MITER_CLIP);
+			fCurrentDrawingState = fStateStack.currentState();
+            setDrawingState(fCurrentDrawingState);
+
+            background(BLRgba32(0xFFFFFFFF));
+            lineJoin(BL_STROKE_JOIN_MITER_CLIP);
             strokeMiterLimit(4);
-            setFillRule(BL_FILL_RULE_NON_ZERO);
+            fillRule(BL_FILL_RULE_NON_ZERO);
             fill(BLRgba32(0, 0, 0));
             noStroke();
             strokeWidth(1.0);
         }
         
+        virtual void onAttach(BLImageCore& image, const BLContextCreateInfo* createInfo)
+        {}
 
-
-        
-        BLResult attach(BLImageCore& image, const BLContextCreateInfo* createInfo= nullptr) noexcept
+        void attach(BLImageCore& image, const BLContextCreateInfo* createInfo = nullptr) noexcept
         {
-            BLResult res = BLContext::begin(image, createInfo);
-
-            applyState(this);
-
-            
-            return res;
+            onAttach(image, createInfo);
         }
         
+        virtual void onDetach() {}
+
         void detach()
         {
-            BLContext::end();
+            flush();
+            onDetach();
         }
         
-
-        
-
+        virtual void onResetFont() {}
 
         void resetFont()
         {
-            if (nullptr != fFontHandler)
+            auto fh = FontHandler::getFontHandler();
+
+            if (nullptr != fh)
             {
                 BLFont aFont;
-                if (fFontHandler->selectFont(fFamilyNames, aFont, fFontSize, fFontStyle, fFontWeight, fFontStretch))
+                auto success = fh->selectFont(fCurrentDrawingState->fFamilyNames,
+                    aFont, getFontSize(), getFontStyle(), getFontWeight(), getFontStretch());
+
+                if (success)
                 {
-                    fFont = aFont;
+                    setFont(aFont);
                 }
             }
+        }
 
-        }
-        
-        
-        FontHandler* fontHandler() const { 
-            return fFontHandler; 
-        }
-        void fontHandler(FontHandler* fh) {
-            fFontHandler = fh;
-            if (fFontHandler != nullptr) {
-                resetFont();
-            }
-        }
-        
-        bool applyStateSelf(BLContext* ctx) override
+        virtual void onPush() {}
+        void push()  
         {
-            // clear the clipping state
-            BLContext::restoreClipping();
-
-            const BLRect& cRect = getClipRect();
-            if ((cRect.w > 0) && (cRect.h > 0))
-                BLContext::clipToRect(cRect);
-
-            return true;
+            //printf("IRenderSVG.push()\n");
+            fStateStack.push();
+            onPush();
         }
-        
 
-        
-        
-        void onPush() override 
+        virtual void onPop() {}
+
+        void pop()
         {
-            // Save the blend2d context as well
-            auto res = save();
-        }
+            //printf("IRenderSVG.pop()\n");
 
-        void onPop() override 
+            fStateStack.pop();
+			setDrawingState(fStateStack.currentState());
+
+            //applyToContext(fDrawingContext.get());
+            onPop();
+        }
+        
+        virtual void onFlush() {}
+        void flush()
         {
-            auto res = restore();
-            applyState(this);
+
+            onFlush();
+
         }
 
+        /*
         void resetState()
         {
             IManageSVGState::reset();
             
             resetTransform();
         }
-        
+        */
+
+        // Canvas management
+        virtual void onClear() {}
+        void clear()
+        {
+            onClear();
+        }
+
         // Call this before each frame to be drawn
+        virtual void onRenew() {}
         void renew()
         {
-            if (fBackground.isNull())
-                clear();
-            else
-                fillAll(fBackground);
+            // Clear the canvas first
+            //fDrawingContext->clearAll();
 
-            resetState();
+            // If a background paint is set, use it
+
+            //if (!getBackgroundPaint().isNull())
+            //{
+            //    fDrawingContext->fillAll(getBackgroundPaint());
+            //}
+
+            //resetState();
 
             // Setup the default drawing state
             // to conform to what SVG expects
-            setCompOp(BL_COMP_OP_SRC_OVER);
-
-            //ctx->setStrokeMiterLimit(4.0);
-            SVGDrawingState::lineJoin(BL_STROKE_JOIN_MITER_CLIP);
-
-            setFillRule(BL_FILL_RULE_NON_ZERO);
+            blendMode(BL_COMP_OP_SRC_OVER);
+            strokeMiterLimit(4.0);
+            lineJoin(BL_STROKE_JOIN_MITER_CLIP);
+            fillRule(BL_FILL_RULE_NON_ZERO);
 
             fill(BLRgba32(0, 0, 0));
             noStroke();
             strokeWidth(1.0);
+            onRenew();
         }
 
-        
-
-
-        virtual void strokeBeforeTransform(bool b) 
+        // Coordinate system transformation management
+        // The difference between transform(), and applyTransform() is
+        // transform() - will set the transformation absolutely
+        // applyTransform() - will add whatever transform is supplied to 
+        //   the existing transform
+        virtual void onTransform(const BLMatrix2D& value) {}
+        void transform(const BLMatrix2D& value)
         {
-            setStrokeTransformOrder(b ? BL_STROKE_TRANSFORM_ORDER_BEFORE : BL_STROKE_TRANSFORM_ORDER_AFTER);
-        }
-        
-        virtual void blendMode(int mode) { BLContext::setCompOp((BLCompOp)mode); }
-        virtual void globalOpacity(double opacity) { BLContext::setGlobalAlpha(opacity); }
-
-        virtual void strokeCap(int cap, int position) { BLContext::setStrokeCap((BLStrokeCapPosition)position, (BLStrokeCap)cap); }
-        virtual void strokeCaps(int caps) { BLContext::setStrokeCaps((BLStrokeCap)caps); }
-        
-
-        virtual void strokeMiterLimit(double limit) { BLContext::setStrokeMiterLimit(limit); }
-
-        void strokeWidth(double w) override { 
-            IManageSVGState::strokeWidth(w);
-            BLContext::setStrokeWidth(w); 
+            setTransform(value);
+            onTransform(value);
         }
 
-        
+        virtual void onApplyTransform(const BLMatrix2D& value) {}
+        void applyTransform(const BLMatrix2D& value)
+        {
+            onApplyTransform(value);
+        }
+
+        virtual void onScale(double sx, double sy) {}
+		void scale(double x, double y)
+		{
+            auto t = getTransform();
+            t.scale(x, y);
+			setTransform(t);
+
+            onScale(x,y);
+		}
+
+		void scale(double s)
+		{
+			scale(s, s);
+		}
 
 
+
+        // Rotate around a specified point
+        // default to 0,0
+        virtual void onRotate(double angle, double cx, double xy) {}
+        void rotate(double angle, double cx, double cy)
+		{
+            auto t = getTransform();
+            t.rotate(angle, cx, cy);
+
+            setTransform(t);
+
+            onRotate(angle, cx, cy);
+		}
+
+        void rotate(double angle)
+        {
+			rotate(angle, 0, 0);
+        }
+
+        virtual void onTranslate(double x, double y) {}
+        void translate(double x, double y)
+        {
+            // get current transform
+            auto t = getTransform();
+            t.translate(x, y);
+
+            // apply the translation to it
+            setTransform(t);
+
+            // call onTranslate
+            onTranslate(x, y);
+        }
+
+        void translate(const BLPoint& pt)
+        {
+            translate(pt.x, pt.y);
+        }
+
+
+        // Manipulation of drawing state parameters
+        virtual void onStrokeBeforeTransform() {}
+        void strokeBeforeTransform(bool b) 
+        {
+            setStrokeBeforeTransform(b);
+            onStrokeBeforeTransform();
+        }
         
-        virtual bool flush() {
-            BLResult bResult = BLContext::flush(BL_CONTEXT_FLUSH_SYNC);
-            if (bResult != BL_SUCCESS)
+        virtual void onBlendMode() {}
+        void blendMode(int mode) 
+        { 
+			setCompositeMode(mode);
+            onBlendMode();
+        }
+        
+        virtual void onGlobalOpacity() {}
+        void globalOpacity(double opacity) 
+        { 
+            setGlobalOpacity(opacity);
+            onGlobalOpacity();
+        }
+
+        virtual void onStrokeCap() {}
+        void strokeCap(BLStrokeCap kind, int position) 
+        { 
+            if (position == BLStrokeCapPosition::BL_STROKE_CAP_POSITION_START)
             {
-                printf("IRenderSVG.flush(), ERROR: %d\n", bResult);
+                setStrokeStartCap(kind);
             }
-
-            return bResult == BL_SUCCESS;
+            else {
+                setStrokeEndCap(kind);
+            }
+            onStrokeCap();
         }
+
+        virtual void onStrokeCaps(BLStrokeCap caps) {}
+
+        void strokeCaps(BLStrokeCap caps) 
+        { 
+            setStrokeCaps(caps);
+            onStrokeCaps(caps);
+        }
+        
+        virtual void onStrokeWidth() {}
+        void strokeWidth(double width)
+        {
+            setStrokeWidth(width);
+            onStrokeWidth();
+        }
+
+        virtual void onLineJoin() {}
+        void lineJoin(BLStrokeJoin kind)
+        {
+            setLineJoin(kind);
+            onLineJoin();
+        }
+
+        virtual void onStrokeMiterLimit(){}
+        void strokeMiterLimit(double value) 
+        { 
+            setStrokeMiterLimit(value);
+            onStrokeMiterLimit();
+        }
+
 
         // paint for filling shapes
-        virtual void fill(const BLVar& paint) { 
-            IManageSVGState::fillPaint(paint);
-            //BLContext::setFillStyle(paint); 
-        }
-        virtual void fill(const BLRgba32& value) { 
-			fill(BLVar(value));
-            //BLContext::setFillStyle(value); 
-        }
-        virtual void fillOpacity(double o) { 
-            BLContext::setFillAlpha(o); 
+        virtual void onFill() {}
+        template <typename StyleT>
+        void fill(const StyleT& paint)
+        {
+            setFillPaint(paint);
+            onFill();
         }
 
-        virtual void noFill() { 
-			this->fill(BLVar());
-            //BLContext::setFillStyle(BLVar::null()); 
+        virtual void onNoFill() {}
+        void noFill() {
+            onNoFill();
         }
+
+
+        virtual void onFillOpacity() {}
+        void fillOpacity(double o)
+        {
+            setFillOpacity(o);
+            onFillOpacity();
+        }
+
+
 
         // Geometry
-        // hard set a specfic pixel value
-        virtual void fillRule(int rule) {
-            BLContext::setFillRule((BLFillRule)rule);
+        virtual void onFillRule() {}
+        void fillRule(BLFillRule rule)
+        {
+            setFillRule(rule);
+            onFillRule();
         }
-        
-        
+
         // paint for stroking lines
-        virtual void stroke(const BLVar& paint) { 
-            IManageSVGState::strokePaint(paint);
-            //BLContext::setStrokeStyle(value); 
-        }
-        virtual void stroke(const BLRgba32& value) { 
-			this->stroke(BLVar(value));
-            //BLContext::setStrokeStyle(value); 
-        }
-        virtual void noStroke() { 
-			this->stroke(BLVar());
-            //setStrokeStyle(BLVar::null()); 
-        }
-        virtual void strokeOpacity(double o) { BLContext::setStrokeAlpha(o); }
-
-
-
-
-        // Background management
-        virtual void clear() {
-            BLContext::clearAll();
-        }
-        
-        void background(const BLVar& bg) noexcept
+        virtual void onStroke() {}
+        template <typename StyleT>
+        void stroke(const StyleT& paint)
         {
-            // Save the value of the background and...
-            blVarAssignWeak(&fBackground, &bg);
-            
-            // apply the background value immediately
-            if (bg.isNull())
-				clear();
-            else {
-                BLContext::save();
-                BLContext::setFillStyle(fBackground);
-                BLContext::fillAll();
-                BLContext::restore();
-            }
-        }
-        
-        virtual void background(const BLRgba32& c) {
-
-            if (c.value == 0) {
-                clear();
-            }
-            else {
-                // We want to preserved the current state
-                // so wrap in a save/restore
-                BLContext::save();
-                BLContext::setFillStyle(c);
-                BLContext::fillAll();
-                BLContext::restore();
-                flush();
-            }
+            setStrokePaint(paint);
+            onStroke();
         }
 
-        // Clipping
-        void clipRect(const BLRect& cRect) override 
+        virtual void onNoStroke() {}
+        void noStroke() {
+            setStrokePaint(BLVar::null());
+            onNoStroke();
+        }
+
+        virtual void onStrokeOpacity() {}
+        void strokeOpacity(double o)
         {
-            IManageSVGState::clipRect(cRect);
-			BLContext::clipToRect(cRect);
-        }
-        
-        //virtual void clip(const BLRect& bb) {
-        //    BLContext::clipToRect(bb);
-        //}
-        
-        virtual void noClip() { 
-            BLContext::restoreClipping(); 
+            setStrokeOpacity(o);
+            onStrokeOpacity();
         }
 
 
 
-
-        // Drawing Shapes
-        virtual void drawShape(const BLPath &aPath)
+        // Set a background that will be used
+        // to fill the canvas before any drawing
+        virtual void onBackground() {}
+        template <typename StyleT>
+        void background(const StyleT& bg) noexcept
         {
-            // Get the paint order from the context
-            uint32_t porder = paintOrder();
-
-            for (int slot = 0; slot < 3; slot++)
-            {
-                uint32_t ins = porder & 0x03;	// get two lowest bits, which are a single instruction
-
-                switch (ins)
-                {
-                case PaintOrderKind::SVG_PAINT_ORDER_FILL:
-                    fillPath(aPath, fillPaint());
-                    break;
-
-                case PaintOrderKind::SVG_PAINT_ORDER_STROKE:
-                    strokePath(aPath, strokePaint());
-                    break;
-
-                case PaintOrderKind::SVG_PAINT_ORDER_MARKERS:
-                {
-                    //drawMarkers(ctx, groot);
-                }
-                break;
-                }
-
-                // discard instruction, shift down to get the next one ready
-                porder = porder >> 2;
-            }
-
-
+            setBackgroundPaint(bg);
+            onBackground();
         }
-        
-        
-        // Bitmaps
-        void setFillMask(BLImageCore& mask, const BLRectI &maskArea)
-        {
-            BLPointI origin(maskArea.x , maskArea.y);
-            BLResult res = blContextFillMaskI(this, &origin, &mask, &maskArea);
-        }
-        
-        virtual void image(const BLImageCore& img, int x, int y)
-        {
-            BLContext::blitImage(BLPointI(x, y), img);
-        }
-        
-        virtual void scaleImage(const BLImageCore& src,
-            int srcX, int srcY, int srcWidth, int srcHeight,
-            double dstX, double dstY, double dstWidth, double dstHeight) {
-            
-            BLRect dst{ dstX,dstY,dstWidth,dstHeight };
-            BLRectI srcArea{ srcX,srcY,srcWidth,srcHeight };
-
-            BLContext::blitImage(dst, src, srcArea);
-        }
-
 
 
         // Typography
-        
-        BLPoint textCursor() const { return fTextCursor; }
-        void textCursor(const BLPoint& cursor) { fTextCursor = cursor; }
+        virtual void onTextCursor() {}
+        BLPoint textCursor() const { return getTextCursor(); }
+        void textCursor(const BLPoint& cursor)
+        {
+            setTextCursor(cursor);
+            onTextCursor();
+        }
 
-        //BLPoint textCursor() const { return fCurrentState.textCursor(); }
-        //void textCursor(const BLPoint& cursor) { fCurrentState.textCursor(cursor); }
-        
-        
-        
-        // Text Drawing
-		virtual void strokeText(const ByteSpan& txt, double x, double y) {
-            BLContext::strokeUtf8Text(BLPoint(x, y), font(), (char*)txt.data(), txt.size());
+        // BUGBUG - this should become a part of the state management
+        virtual void onFillMask() {}
+        void setFillMask(BLImage& mask, const BLRectI& maskArea)
+        {
+            BLPointI origin(maskArea.x, maskArea.y);
+            onFillMask();
+        }
+
+        // Clipping
+        virtual void onClipRect() {}
+        void clipRect(const BLRect& cRect)
+        {
+            setClipRect(cRect);
+            onClipRect();
+        }
+
+        virtual void onNoClip() {}
+        virtual void noClip()
+        {
+            setClipRect(BLRect());
+            onNoClip();
+        }
+
+        // Path handling
+		virtual void onBeginDrawShape(const BLPath& apath) {}
+        void beginDrawShape(const BLPath& apath)
+        {
+            onBeginDrawShape(apath);
+        }
+
+        virtual void onEndDrawShape() {}
+		void endDrawShape()
+		{
+			onEndDrawShape();
 		}
-        
-        virtual void fillText(const ByteSpan& txt, double x, double y) {
-            BLContext::fillUtf8Text(BLPoint(x, y), font(), (char*)txt.data(), txt.size());
+
+		// Stroke shapes
+        // based on the current drawing state
+		virtual void onStrokeShape(const BLPath& aPath) {}
+		void strokeShape(const BLPath& aPath)
+		{
+			onStrokeShape(aPath);
+		}
+		
+		// Fill shapes
+        // based on the current drawing state
+        virtual void onFillShape(const BLPath& aPath) {}
+		void fillShape(const BLPath& aPath)
+		{
+			onFillShape(aPath);
+		}
+
+        // Drawing Shapes
+        // This is a general shape drawing.
+        // It can handle the order of drawing, as well
+        // as do isolated drawing (stroke, or fill only)
+        virtual void onDrawShape(const BLPath& aPath) {}
+        void drawShape(const BLPath &aPath)
+        {
+            onDrawShape(aPath);
         }
         
-
         
-        // Execute generic operation on this context
-        // This supports interface expansion without adding new function prototypes
-        //virtual void exec(std::function<void(IRenderSVG*)> f) { f(this); }
-    };
+        // Bitmap drawing
+        virtual void onImage(const BLImage& img, double x, double y)
+        {
+        }
 
+        void image(const BLImage& img, double x, double y)
+        {
+            onImage(img, x, y);
+        }
+        
+        virtual void onScaleImage(const BLImage& src,
+            int srcX, int srcY, int srcWidth, int srcHeight,
+            double dstX, double dstY, double dstWidth, double dstHeight)
+        {
+        }
+
+        void scaleImage(const BLImage& src,
+            int srcX, int srcY, int srcWidth, int srcHeight,
+            double dstX, double dstY, double dstWidth, double dstHeight) 
+        {
+            onScaleImage(src, srcX, srcY, srcWidth, srcHeight,
+                dstX, dstY, dstWidth, dstHeight);
+        }
+
+
+
+
+
+        // Text Drawing
+        virtual void onStrokeText(const ByteSpan& txt, double x, double y) {}
+		void strokeText(const ByteSpan& txt, double x, double y) 
+        {
+            onStrokeText(txt, x, y);
+        }
+        
+        virtual void onFillText(const ByteSpan& txt, double x, double y) {}
+        void fillText(const ByteSpan& txt, double x, double y) 
+        {
+            onFillText(txt, x, y);
+        }
+        
+        virtual void onDrawText(const ByteSpan& txt, double x, double y) {}
+        void drawText(const ByteSpan& txt, double x, double y)
+        {
+            onDrawText(txt, x, y);
+        }
+    };
 
 }
 

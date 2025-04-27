@@ -25,12 +25,12 @@ struct IContainPixels
     ptrdiff_t fStride = 0;
     PixelOrientation fOrientation = PixelOrientation::TopToBottom;
 
-    void orientation(PixelOrientation orient) { fOrientation = orient; }
-    constexpr const PixelOrientation orientation() const noexcept { return fOrientation; }
+    constexpr void orientation(PixelOrientation orient) { fOrientation = orient; }
+    constexpr PixelOrientation orientation() const noexcept { return fOrientation; }
     
-    constexpr const size_t width() const noexcept { return fWidth; }
-    constexpr const size_t height() const noexcept { return fHeight; }
-    constexpr const ptrdiff_t stride() const noexcept { return fStride; }   // number of bytes to advance between rows
+    constexpr size_t width() const noexcept { return fWidth; }
+    constexpr size_t height() const noexcept { return fHeight; }
+    constexpr ptrdiff_t stride() const noexcept { return fStride; }   // number of bytes to advance between rows
 
     virtual uint8_t* rowPointer(const size_t y) = 0;
     virtual const uint8_t* rowPointer(const size_t y) const = 0;
@@ -178,8 +178,8 @@ struct PixelAccessor : public PixelArray
     {
         // Could use memset_l if we check size
         // of TP == 4
-        for (int row = 0; row < static_cast<int>(height()); row++)
-            for (size_t col = 0; col < static_cast<int>(width()); col++)
+        for (size_t row = 0; row < static_cast<size_t>(height()); row++)
+            for (size_t col = 0; col < static_cast<size_t>(width()); col++)
                 setPixel(col, row, c);
     }
 };

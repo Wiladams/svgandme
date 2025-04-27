@@ -16,6 +16,8 @@ namespace waavs {
 	{
 		SVGDrawingState fGraphState{};
 		ViewportTransformer fPortal;
+		BLRect fFrame{};
+		BLSize fExtent{};
 
 		
 		AGraphic() = default;
@@ -24,32 +26,59 @@ namespace waavs {
 		virtual bool contains(BLPoint& pt)
 		{
 			// determine if the pt is within the bounds
-			BLRect b = bounds();
+			BLRect b = frame();
 			return pt.x >= b.x && pt.x <= b.x + b.w &&
 				pt.y >= b.y && pt.y <= b.y + b.h;
 		}
 		
-		
-		void setFrame(const BLRect& fr)
+		// The frame is expressed in the coordinate frame of the parent
+		// graphic that contains this graphic.
+		virtual BLRect frame() const noexcept
+		{
+			return fFrame;
+		}
+
+		void setFrame(const BLRect& fr) noexcept
+		{
+			fFrame = fr;
+		}
+
+		// The viewport represents the coordinate space within
+		// which the graphic will be displayed.  The viewport
+		// and viewbox combine to create the scaling matrix that
+		// is applied before drawing occurs.
+		// By default, the viewport would match the viewBox, creating
+		// an identity matrix.
+		// 
+		virtual BLRect viewport() const noexcept { return fPortal.viewportFrame(); }
+		void setViewport(const BLRect& fr)
 		{
 			fPortal.viewportFrame(fr);
 		}
-		virtual BLRect frame() const noexcept { return fPortal.viewportFrame(); }
 		
-		// The bounds reports the size and location of the graphic
-		// relative to the container within which it is drawn
-		void setBounds(const BLRect& b)
+		// The bounds reports the portion of the graphic that
+		// will be shown within the frame
+		void setViewbox(const BLRect& b)
 		{
 			fPortal.viewBoxFrame(b);
 		}
-		virtual BLRect bounds() { return fPortal.viewBoxFrame(); }
+		virtual BLRect viewBox() { return fPortal.viewBoxFrame(); }
 		
-		// Setting Attributes
-		const BLVar strokeStyle() const { return fGraphState.strokePaint(); }
-		void setStrokeStyle(const BLVar& style) { fGraphState.strokePaint(style); }
 
-		const BLVar& fillStyle() const { return fGraphState.fillPaint(); }
-		void setFillStyle(const BLVar& style) { fGraphState.fillPaint(style); }
+		// The extent represents the greatest boundary the drawing
+		// will do.  This is different than the bounds, which 
+		const BLSize& extent() const { return fExtent; }
+		void setExtent(const BLSize& sz)
+		{
+			fExtent = sz;
+		}
+
+		// Setting Attributes
+		const BLVar strokeStyle() const { return fGraphState.getStrokePaint(); }
+		void setStrokeStyle(const BLVar& style) { fGraphState.setStrokePaint(style); }
+
+		const BLVar& fillStyle() const { return fGraphState.getFillPaint(); }
+		void setFillStyle(const BLVar& style) { fGraphState.setFillPaint(style); }
 
 		void setPreserveAspectRatio(const char* par)
 		{
@@ -72,14 +101,14 @@ namespace waavs {
 				if (!parseViewBox(attValue, fr))
 					return false;
 				
-				setBounds(fr);
+				setViewbox(fr);
 			}
 			else if (attName == "portal") {
 				BLRect fr{};
 				if (!parseViewBox(attValue, fr))
 					return false;
 
-				setFrame(fr);
+				setViewport(fr);
 			}
 			else if (attName == "preserveAspectRatio")
 			{
@@ -105,6 +134,8 @@ namespace waavs {
 			return true;
 		}
 
+		// Set style attributes based on the collection
+		// of attributes specified in the span.
 		bool setStyle(const ByteSpan& attrs)
 		{
 			ByteSpan src = attrs;

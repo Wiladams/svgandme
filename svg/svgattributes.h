@@ -10,7 +10,7 @@
 #include "xmlscan.h"
 
 #include "svgstructuretypes.h"
-
+#include "svgcolors.h"
 
 namespace waavs {
     //
@@ -189,7 +189,7 @@ namespace waavs {
         
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->paintOrder(fInstruct);
+            ctx->setPaintOrder(fInstruct);
         }
 
         static uint32_t createPaintOrderInstruction(const ByteSpan& bs)
@@ -291,7 +291,7 @@ namespace waavs {
 
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->textAnchor(fValue);
+            ctx->setTextAnchor(fValue);
         }
 
 
@@ -398,8 +398,8 @@ namespace waavs {
 
             if (dimValue.isSet() && ctx != nullptr)
             {
-                auto fsize = ctx->fontSize();
-                fValue = dimValue.calculatePixels(ctx->font(), ctx->font().size(), 0, groot->dpi());
+                auto fsize = ctx->getFontSize();
+                fValue = dimValue.calculatePixels(ctx->getFont(), ctx->getFont().size(), 0, groot->dpi());
             }
 
             needsBinding(false);
@@ -407,7 +407,7 @@ namespace waavs {
         
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->fontSize(static_cast<float>(fValue));
+            ctx->setFontSize(static_cast<float>(fValue));
         }
     };
 
@@ -446,7 +446,6 @@ namespace waavs {
 				return false;
             
             fValue = inChunk;
-            //fValue = toString(chunk_trim(inChunk, xmlwsp));
             set(true);
 			needsBinding(false);
             
@@ -455,7 +454,7 @@ namespace waavs {
         
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->fontFamily(fValue);
+            ctx->setFontFamily(fValue);
         }
     };
 
@@ -481,14 +480,12 @@ namespace waavs {
             id("font-style");  
             
             set(false); 
-
         }
         
         int value() const {return fValue;}
         
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
-            
             bool success = getEnumValue(SVGFontStyle, inChunk, (uint32_t &)fValue);
 			set(success);
             needsBinding(false);
@@ -498,7 +495,7 @@ namespace waavs {
 
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->fontStyle(fValue);
+            ctx->setFontStyle(fValue);
         }
     };
     
@@ -529,7 +526,7 @@ namespace waavs {
 
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->fontWeight(value());
+            ctx->setFontWeight(value());
         }
 	};
 
@@ -561,7 +558,7 @@ namespace waavs {
 
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->fontStretch(value());
+            ctx->setFontStretch(value());
         }
         
     };
@@ -594,7 +591,7 @@ namespace waavs {
 			// from the context
 			if (rawValue() == "currentColor")
 			{
-				return ctx->defaultColor();
+				return ctx->getDefaultColor();
 			}
 
             // otherwise, use the variant we have calculated
@@ -816,7 +813,7 @@ namespace waavs {
 
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->defaultColor(getVariant(ctx, groot));
+            ctx->setDefaultColor(getVariant(ctx, groot));
         }
 
     };
@@ -1134,7 +1131,7 @@ namespace waavs {
 
 
 namespace waavs {
-    /*
+    
     //================================================
     // SVGTransform
     // Transformation matrix
@@ -1142,12 +1139,17 @@ namespace waavs {
     struct SVGTransform : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute("transform", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGTransform>(nullptr); node->loadFromAttributes(attrs);  return node; });
+            registerSVGAttribute("transform", [](const XmlAttributeCollection& attrs) 
+                {auto node = std::make_shared<SVGTransform>(); node->loadFromAttributes(attrs);  return node; });
         }
 
 		BLMatrix2D fMatrix{ BLMatrix2D::makeIdentity() };
 
-		SVGTransform(IAmGroot* iMap) : SVGVisualProperty(iMap) { id("transform"); }
+		SVGTransform() : SVGVisualProperty(nullptr) 
+        { 
+            id("transform"); 
+			autoDraw(false);
+        }
 		SVGTransform(const SVGTransform& other) = delete;
 		SVGTransform& operator=(const SVGTransform& rhs) = delete;
 
@@ -1170,7 +1172,7 @@ namespace waavs {
             ctx->applyTransform(fMatrix);
         }
     };
-    */
+    
     //======================================================
     // SVGViewbox
     // A document may or may not have this property

@@ -270,7 +270,7 @@ namespace waavs {
 
 			// First, we want to know the size of the object we're going to be
 			// rendered into
-			BLRect objectBoundingBox = ctx->objectFrame();
+			BLRect objectBoundingBox = ctx->getObjectFrame();
 			// We also want to know the size of the container the object is in
 			BLRect containerBoundingBox = ctx->viewport();
 			
@@ -293,15 +293,15 @@ namespace waavs {
 			{
 				// Start with the offset
 				if (fDimX.isSet())
-					fPatternBoundingBox.x = fDimX.calculatePixels(ctx->font(), objectBoundingBox.w, 0, dpi, fPatternUnits);
+					fPatternBoundingBox.x = fDimX.calculatePixels(ctx->getFont(), objectBoundingBox.w, 0, dpi, fPatternUnits);
 				if (fDimY.isSet())
-					fPatternBoundingBox.y = fDimY.calculatePixels(ctx->font(), objectBoundingBox.h, 0, dpi, fPatternUnits);
+					fPatternBoundingBox.y = fDimY.calculatePixels(ctx->getFont(), objectBoundingBox.h, 0, dpi, fPatternUnits);
 
 				
 				if (fDimWidth.isSet())
-					fPatternBoundingBox.w = fDimWidth.calculatePixels(ctx->font(), objectBoundingBox.w, 0, dpi, fPatternUnits);
+					fPatternBoundingBox.w = fDimWidth.calculatePixels(ctx->getFont(), objectBoundingBox.w, 0, dpi, fPatternUnits);
 				if (fDimHeight.isSet())
-					fPatternBoundingBox.h = fDimHeight.calculatePixels(ctx->font(), objectBoundingBox.h, 0, dpi, fPatternUnits);
+					fPatternBoundingBox.h = fDimHeight.calculatePixels(ctx->getFont(), objectBoundingBox.h, 0, dpi, fPatternUnits);
 
 				fPatternOffset.x = fPatternBoundingBox.x;
 				fPatternOffset.y = fPatternBoundingBox.y;
@@ -313,15 +313,15 @@ namespace waavs {
 			{
 				// Start with the offset					// Start with the offset
 				if (fDimX.isSet())
-					fPatternBoundingBox.x = fDimX.calculatePixels(ctx->font(), containerBoundingBox.w, 0, dpi, fPatternUnits);
+					fPatternBoundingBox.x = fDimX.calculatePixels(ctx->getFont(), containerBoundingBox.w, 0, dpi, fPatternUnits);
 				if (fDimY.isSet())
-					fPatternBoundingBox.y = fDimY.calculatePixels(ctx->font(), containerBoundingBox.h, 0, dpi, fPatternUnits);
+					fPatternBoundingBox.y = fDimY.calculatePixels(ctx->getFont(), containerBoundingBox.h, 0, dpi, fPatternUnits);
 
 
 				if (fDimWidth.isSet())
-					fPatternBoundingBox.w = fDimWidth.calculatePixels(ctx->font(), containerBoundingBox.w, 0, dpi, fPatternUnits);
+					fPatternBoundingBox.w = fDimWidth.calculatePixels(ctx->getFont(), containerBoundingBox.w, 0, dpi, fPatternUnits);
 				if (fDimHeight.isSet())
-					fPatternBoundingBox.h = fDimHeight.calculatePixels(ctx->font(), containerBoundingBox.h, 0, dpi, fPatternUnits);
+					fPatternBoundingBox.h = fDimHeight.calculatePixels(ctx->getFont(), containerBoundingBox.h, 0, dpi, fPatternUnits);
 
 				
 				fPatternOffset.x = fPatternBoundingBox.x;
@@ -395,8 +395,8 @@ namespace waavs {
 			auto box = getBBox();
 
 			fPatternCache.create(static_cast<int>(fPatternBoundingBox.w), static_cast<int>(fPatternBoundingBox.h), BL_FORMAT_PRGB32);
-			IRenderSVG ictx(ctx->fontHandler());
-			ictx.begin(fPatternCache);
+			IRenderSVG ictx; // (FontHandler::getFontHandler());
+			ictx.attach(fPatternCache);
 
 
 			ictx.renew();
@@ -406,7 +406,7 @@ namespace waavs {
 			draw(&ictx, groot);
 
 			ictx.flush();
-			ictx.end();
+			ictx.detach();
 
 			fPattern.setImage(fPatternCache);
 		}
@@ -424,7 +424,7 @@ namespace waavs {
 			
 			ctx->push();
 			
-			ctx->objectFrame(getBBox());
+			ctx->setObjectFrame(getBBox());
 			
 			applyProperties(ctx, groot);
 			drawSelf(ctx, groot);

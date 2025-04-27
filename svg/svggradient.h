@@ -23,13 +23,12 @@ namespace waavs {
 	struct SVGStopNode : public SVGObject
 	{
 		double fOffset = 0;
-		double fOpacity = 1;
 		BLRgba32 fColor{ 0xff000000 };
 
 		SVGStopNode() :SVGObject() {}
 
 		double offset() const { return fOffset; }
-		double opacity() const { return fOpacity; }
+		//double opacity() const { return fOpacity; }
 		BLRgba32 color() const { return fColor; }
 
 		void loadFromXmlElement(const XmlElement& elem, IAmGroot* groot)
@@ -80,12 +79,14 @@ namespace waavs {
 				dimOpacity.loadFromChunk("1.0");
 			}
 			
+			double opacity = 1;
+
 			if (dimOpacity.isSet())
 			{
-				fOpacity = dimOpacity.calculatePixels(1);
+				opacity = dimOpacity.calculatePixels(1);
 			}
 
-			paint.setOpacity(fOpacity);
+			paint.setOpacity(opacity);
 
 			
 
@@ -93,7 +94,6 @@ namespace waavs {
 			uint32_t colorValue = 0;
 			auto res = blVarToRgba32(&aVar, &colorValue);
 			fColor.value = colorValue;
-
 		}
 		
 		void bindToContext(IRenderSVG*, IAmGroot*) noexcept override
@@ -113,9 +113,11 @@ namespace waavs {
 
 		BLGradient fGradient{};
 		BLVar fGradientVar{};
+		ByteSpan fTemplateReference{};
+
+		// Some common attributes
 		BLExtendMode fSpreadMethod{ BL_EXTEND_MODE_PAD };
 		SpaceUnitsKind fGradientUnits{ SVG_SPACE_OBJECT };
-		ByteSpan fTemplateReference{};
 
 
 		// Constructor
@@ -129,6 +131,8 @@ namespace waavs {
 		SVGGradient(const SVGGradient& other) = delete;
 
 		SVGGradient operator=(const SVGGradient& other) = delete;
+
+		BLGradientType gradientType() const { return fGradient.type(); }
 
 		// getVariant()
 		//
@@ -172,16 +176,22 @@ namespace waavs {
 		//   gradientTransform
 		//   spreadMethod
 		//
-		virtual void inheritSelfProperties(const SVGGradient* elem)
+		virtual void inheritSameKindProperties(const SVGGradient* elem)
 		{
 			;
 		}
 		
+		// Inherit the general properties that are always
+		// inherited
+		//   stops
+		//   
+
+
 		virtual void inheritProperties(const SVGGradient* elem)
 		{
 			if (!elem)
 				return;
-
+			/*
 			if (!getAttribute("gradientUnits"))
 			{
 				if (elem->getAttribute("gradientUnits"))
@@ -199,6 +209,7 @@ namespace waavs {
 				if (elem->getAttribute("spreadMethod"))
 					setAttribute("spreadMethod", elem->getAttribute("spreadMethod"));
 			}
+			*/
 
 			// If we already have some stops, don't take stops
 			// from the referred to gradient
@@ -206,19 +217,19 @@ namespace waavs {
 			// copy the gradient stops from the referred to gradient
 			if (fGradient.size() == 0)
 			{
-				//auto numStops = elem->fGradient.size();
-				//const BLGradientStop* stops = elem->fGradient.stops();
 				auto stopsView = elem->fGradient.stopsView();
 
 				if (stopsView.size > 0)
 				{
-					//fGradient.reset();
 					fGradient.assignStops(stopsView.data, stopsView.size);
 				}
 			}
 
-			
-			inheritSelfProperties(elem);
+			// inherity type specific properties
+			if (elem->gradientType() == gradientType())
+			{
+				inheritSameKindProperties(elem);
+			}
 		}
 		
 		// resolveReference()
@@ -329,10 +340,13 @@ namespace waavs {
 			fGradient.setType(BL_GRADIENT_TYPE_LINEAR);
 		}
 
-		// Attributes to inherit
+		// Attributes to inherit from the template if
+		// it's also linearGradient
+		// Values that are set in this instance override any values
+		// that might have been inherited.
 		// x1, y1
 		// x2, y2
-		virtual void inheritSelfProperties(const SVGGradient* elem) override
+		virtual void inheritSameKindProperties(const SVGGradient* elem) override
 		{
 			if (!elem)
 				return;
@@ -408,7 +422,7 @@ namespace waavs {
 			
 			if (fGradientUnits == SVG_SPACE_OBJECT )
 			{
-				BLRect oFrame = ctx->objectFrame();
+				BLRect oFrame = ctx->getObjectFrame();
 				double w = oFrame.w;
 				double h = oFrame.h;
 				auto x = oFrame.x;
@@ -541,7 +555,7 @@ namespace waavs {
 		// cx, cy
 		// r
 		// fx, fy
-		virtual void inheritSelfProperties(const SVGGradient* elem) override
+		virtual void inheritSameKindProperties(const SVGGradient* elem) override
 		{
 			if (!elem)
 				return;
@@ -620,7 +634,7 @@ namespace waavs {
 			
 			if (fGradientUnits == SVG_SPACE_OBJECT)
 			{
-				BLRect oFrame = ctx->objectFrame();
+				BLRect oFrame = ctx->getObjectFrame();
 				auto w = oFrame.w;
 				auto h = oFrame.h;
 				auto x = oFrame.x;
@@ -787,7 +801,7 @@ namespace waavs {
 		// x1, y1
 		// angle, repeat
 		//
-		virtual void inheritSelfProperties(const SVGGradient* elem) override
+		virtual void inheritSameKindProperties(const SVGGradient* elem) override
 		{
 			if (!elem)
 				return;

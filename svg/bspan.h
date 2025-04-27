@@ -93,6 +93,16 @@ namespace waavs {
 		// operator<=;
 		// operator>=;
 		
+		// isEqual()
+		// A pointer comparison
+		bool isEqual(const ByteSpan& b) const noexcept
+		{
+			if (fStart == b.fStart && fEnd == b.fEnd)
+				return true;
+
+			return false;
+		}
+
 		bool equivalent(const ByteSpan& b) const noexcept
 		{
 			if (size() != b.size())
@@ -149,6 +159,13 @@ namespace waavs {
 			return (cmp > 0) || (cmp == 0 && size() >= b.size());
 		}
 
+		// advance the start pointer the specified number of entries
+		// constrain to end 
+		constexpr ByteSpan& remove_prefix(size_t n) noexcept
+		{
+			fStart = (fStart + n <= fEnd) ? fStart + n : fEnd; 
+			return *this;
+		}
 
 		constexpr ByteSpan& operator+=(size_t n) noexcept {fStart = (fStart + n <= fEnd) ? fStart + n : fEnd; return *this;}
 
@@ -181,6 +198,13 @@ namespace waavs {
 		}
 
 		// Some convenient routines
+		ByteSpan &prefix_trim(const charset& skippable) noexcept
+		{
+			while (fStart < fEnd && skippable(*fStart))
+				++fStart;
+
+			return *this;
+		}
 
 		bool startsWith(const ByteSpan& b) const noexcept
 		{
@@ -483,6 +507,48 @@ namespace waavs
 		return a.endsWith(ByteSpan(b));
 	}
 
+	// chuk_token_char()
+	// 
+	// Given a source chunk chunk, and a single character delimeter
+	// split the source into two chunks, the token, and the rest
+	// The 'token', represents the portion of the source before the delim
+	// The 'rest', represents the portion of the source after the delim
+	// 
+	// Returns - false if the delimeter is not found
+
+	INLINE bool chunk_token_char(const ByteSpan &src, const uint8_t delim, ByteSpan &tok, ByteSpan &rest)
+	{
+		const uint8_t* startAt = src.begin();
+		const uint8_t* endAt = src.end();
+
+		// Start with token being entire source input
+		tok = src;
+
+		// Try to find the delimeter
+		const uint8_t* tokenEnd = static_cast<const uint8_t*>(std::memchr(startAt, delim, endAt - startAt));
+
+		if (!tokenEnd) {
+			// No delimiter found, return entire input
+			//tok.fStart = src.begin();
+			//tok.fEnd = src.end();
+
+			// mark the 'rest' as being blank
+			rest.fStart = endAt;
+			rest.fEnd = endAt;
+			return false;
+		}
+		else {
+			// truncate the token to match where the 
+			// delimeter was found
+			tok.fEnd = tokenEnd;
+
+			rest.fStart = tokenEnd + 1;  // Advance past the delimiter
+			rest.fEnd = endAt;
+		}
+
+		return true;
+	}
+
 	// Given an input chunk
 	// split it into two chunks, 
 	// Returns - the first chunk before delimeter
@@ -490,7 +556,6 @@ namespace waavs
 	// If delimeter NOT found
 	//	returns the entire input chunk
 	//	and 'a' is set to an empty chunk
-
 	INLINE ByteSpan chunk_token_char(ByteSpan& a, const char delim) noexcept
 	{
 		if (!a) return {}; // Return empty ByteSpan if 'a' is empty

@@ -94,6 +94,8 @@ static void testXmlElementScan(const ByteSpan& s)
 	XmlIteratorParams fParams{};
 	XmlIteratorState fState{ XML_ITERATOR_STATE_CONTENT, s, s };
 	fParams.fAutoScanAttributes = false;
+    fParams.fSkipWhitespace = true;
+
 	XmlElement elem;
 	while (XmlElementGenerator(fParams, fState, elem))
 	{
@@ -101,7 +103,7 @@ static void testXmlElementScan(const ByteSpan& s)
 	}
 }
 
-void testXmlIter(const ByteSpan& s)
+static void testXmlIter(const ByteSpan& s)
 {
     XmlElementIterator iter(s);
 
@@ -148,25 +150,7 @@ static void testElementFilter(const ByteSpan& s)
     }
 }
 
-/*
-//static void testXPathFilter(const ByteSpan& s)
-static void testXPathFilter()
-{
-    // create a container
-    ByteSpan s1("<svg> <node id='1'/><node id='2'/><node id='3'/></svg>");
-    XmlElementContainer container(s1);
 
-    // Apply XPath filtering: Find <item> elements where id="123"
-    //XPathFilteredContainer filtered(container, XPathPredicate("/root/item[@id=\"SVGID_7_\"]"));
-    XPathFilteredContainer filtered(container, XPathPredicate("//*[@id=\"SVGID_7_\"]"));
-
-    for (const XmlElement& elem : filtered)
-    {
-        printXmlElement(elem);
-    }
-
-}
-*/
 /*
         case XPathTokenKind::ROOT:           printf("ROOT\n"); break;
         case XPathTokenKind::CHILD:          printf("CHILD\n"); break;
@@ -188,7 +172,7 @@ static void testXPathFilter()
     };
 
 
-void printXPathExpressions(const ByteSpan& xpath)
+static void printXPathExpressions(const ByteSpan& xpath)
 {
     XPathExpression expr(xpath);
 
@@ -289,8 +273,8 @@ int main(int argc, char** argv)
     
 
     //testElementInfo(s);
-    //testXmlElementScan(s);
-    testXmlIter(s);
+    testXmlElementScan(s);
+    //testXmlIter(s);
 	//testElementContainer(s);
     //testElementFilter(s);
     //testXPathFilter();

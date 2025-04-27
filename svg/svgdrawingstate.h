@@ -1,46 +1,45 @@
 #pragma once
 
 #include <functional>
-
+#include <stack>
+#include <vector>
+#include <memory>
+#include <deque>
 
 #include "blend2d.h"
 #include "fonthandler.h"
-#include "collections.h"
 #include "svgenums.h"
 
 
 namespace waavs {
-
 	// Represents the current state of the SVG rendering context
     // this can be used by DOM walkers, as well as rendering context
     //
-    struct SVGDrawingState {
 
-        // Coordinate system
-        BLRect fClipRect{};
-        BLRect fViewport{};
-        BLRect fObjectFrame{};
 
-        // Paint
-        BLVar fDefaultColor{};
-        BLVar fFillPaint{};
+    // SVGDrawingState 
+    // Brings all the state management together
+    struct SVGDrawingState 
+    {
+		uint8_t fCompositeMode{ BL_COMP_OP_SRC_OVER };
+		uint8_t fFillRule{ BL_FILL_RULE_NON_ZERO };
+        bool fStrokeBeforeTransform{ false };
 
+        // PaintState
         uint32_t fPaintOrder{ PaintOrderKind::SVG_PAINT_ORDER_NORMAL };
-
-        // Stroking
-        BLStrokeCap fBeginStrokeCap{ BLStrokeCap::BL_STROKE_CAP_BUTT };
-        BLStrokeCap fEndStrokeCap{ BLStrokeCap::BL_STROKE_CAP_BUTT };
-        double fStrokeWidth{ 1.0 };
-        BLStrokeJoin fStrokeJoin{ BLStrokeJoin::BL_STROKE_JOIN_MITER_ROUND };
-        
         BLVar fStrokePaint{};
-        
-        // Typography
-        BLPoint fTextCursor{};
-        SVGAlignment fTextHAlignment = SVGAlignment::SVG_ALIGNMENT_START;
-        TXTALIGNMENT fTextVAlignment = BASELINE;
+        BLVar fFillPaint{};
+        BLVar fDefaultColor{};
+        BLVar fBackgroundPaint{};
+        double fGlobalOpacity{ 1.0 };
+        double fStrokeOpacity{ 1.0 };
+        double fFillOpacity{ 1.0 };
 
-        // Fontography
+        // StrokeState
+		BLStrokeOptions fStrokeOptions{};
+
+
+        // FontState
         BLFont fFont{};
         ByteSpan fFamilyNames{ "Arial" };
         float fFontSize{ 16 };
@@ -48,223 +47,366 @@ namespace waavs {
         BLFontWeight fFontWeight = BL_FONT_WEIGHT_NORMAL;
         BLFontStretch fFontStretch = BL_FONT_STRETCH_NORMAL;
 
+        // TextState
+        BLPoint fTextCursor{};
+        SVGAlignment fTextHAlignment = SVGAlignment::SVG_ALIGNMENT_START;
+        TXTALIGNMENT fTextVAlignment = BASELINE;
 
-        SVGDrawingState()
+        // ViewportState
+		BLMatrix2D fTransform{};
+        BLRect fClipRect{};
+        BLRect fViewport{};
+        BLRect fObjectFrame{};
+        
+        bool modifiedSinceLastPush = false;
+        int fErrorState{ 0 };
+
+        // Begin Constructors
+        SVGDrawingState() 
         {
-			fFillPaint = BLRgba32(0, 0, 0, 255);
+            fFillPaint = BLRgba32(0, 0, 0, 255);
             fStrokePaint = BLVar::null();
+			fDefaultColor = BLRgba32(0, 0, 0, 255);
+            fBackgroundPaint = BLVar::null();
+			fTransform = BLMatrix2D::makeIdentity();
         }
 
-        // Copy Constructor
-        SVGDrawingState(const SVGDrawingState& other) noexcept
-            : fFont(other.fFont)
-
+        SVGDrawingState(const SVGDrawingState& other)
         {
-            this->operator=(other);
+            *this = other;
         }
 
-        // Assignment operator
-        virtual SVGDrawingState& operator=(const SVGDrawingState& other) noexcept
+        SVGDrawingState& operator=(const SVGDrawingState& other)
         {
-            if (this == &other)
-                return *this;
+            if (this == &other) return *this;
 
+			// Composite Mode
+			fCompositeMode = other.fCompositeMode;
 
-            fClipRect = other.fClipRect;
-            fViewport = other.fViewport;
-            fObjectFrame = other.fObjectFrame;
-
-            fTextCursor = other.fTextCursor;
-
-            fPaintOrder = other.fPaintOrder;
-            fDefaultColor.assign(other.fDefaultColor);
-            fFillPaint.assign(other.fFillPaint);
+            // Fill Options
+            fFillRule = other.fFillRule;
             
-
+            // Stroke Options
+			fStrokeOptions = other.fStrokeOptions;
+            
+            // Paints
             fStrokePaint.assign(other.fStrokePaint);
-			fStrokeWidth = other.fStrokeWidth;
-            fBeginStrokeCap = other.fBeginStrokeCap;
-            fEndStrokeCap = other.fEndStrokeCap;
+            fFillPaint.assign(other.fFillPaint);
+            fDefaultColor.assign(other.fDefaultColor);
+            fBackgroundPaint.assign(other.fBackgroundPaint);
+            fGlobalOpacity = other.fGlobalOpacity;
+            fFillOpacity = other.fFillOpacity;
+            fStrokeOpacity = other.fStrokeOpacity;
+            fPaintOrder = other.fPaintOrder;
 
-            fTextHAlignment = other.fTextHAlignment;
-            fTextVAlignment = other.fTextVAlignment;
-
-            //fFontHandler = other.fFontHandler;
+            // Fontography
             fFont = other.fFont;
-
             fFamilyNames = other.fFamilyNames;
             fFontSize = other.fFontSize;
             fFontStyle = other.fFontStyle;
             fFontWeight = other.fFontWeight;
             fFontStretch = other.fFontStretch;
 
+			// Textography
+            fTextCursor = other.fTextCursor;
+            fTextHAlignment = other.fTextHAlignment;
+            fTextVAlignment = other.fTextVAlignment;
+
+			// Viewport
+			fTransform = other.fTransform;
+            fClipRect = other.fClipRect;
+            fViewport = other.fViewport;
+            fObjectFrame = other.fObjectFrame;
+
+            modifiedSinceLastPush = other.modifiedSinceLastPush;
 
             return *this;
         }
 
-        // Resetting the state
-        virtual void resetFont() {}
-        
-        void reset()
-        {
-            fClipRect = BLRect{};
-            fViewport = BLRect();
-            fObjectFrame = BLRect();
-
-            fDefaultColor = BLVar::null();
-            fFillPaint = BLRgba32(0xff000000);
-            fStrokePaint = BLVar::null();
-            fPaintOrder = PaintOrderKind::SVG_PAINT_ORDER_NORMAL;
-
-            fTextHAlignment = SVGAlignment::SVG_ALIGNMENT_START;
-            fTextVAlignment = BASELINE;
-
-            fFont.reset();
-            fFamilyNames = "Arial";
-            fFontSize = 16;
-            fFontStyle = BL_FONT_STYLE_NORMAL;
-            fFontWeight = BL_FONT_WEIGHT_NORMAL;
-            fFontStretch = BL_FONT_STRETCH_NORMAL;
-
-            resetFont();
+        void markModified() {
+            modifiedSinceLastPush = true;
         }
 
+		bool isModified() const {
+			return modifiedSinceLastPush;
+		}
+    };
+
+    // Contains all the accessor methods used
+    // to change the fields of the state
+    struct IAccessSVGState
+    {
+        SVGDrawingState* fDrawingState{};
+
+        // Begin Constructors
+        IAccessSVGState() = default;
+        IAccessSVGState(SVGDrawingState* st) :fDrawingState(st) {}
+
+
+		void setDrawingState(SVGDrawingState* state)
+		{
+			fDrawingState = state;
+		}
+
+
+
+        void markModified() 
+        {
+            fDrawingState->modifiedSinceLastPush = true;
+        }
+
+
+        uint8_t getCompositeMode() const { return fDrawingState->fCompositeMode; }
+        void setCompositeMode(uint8_t mode) {
+            fDrawingState->fCompositeMode = mode;
+            markModified();
+        }
 
         /// <summary>
         ///  Set various attributes of the state
         /// </summary>
         /// <param name="r"></param>
+        /// 
+        BLMatrix2D getTransform() const { return fDrawingState->fTransform; }
+        void setTransform(const BLMatrix2D& r) {
+            fDrawingState->fTransform = r;
+            markModified();
+        }
+
         void setViewport(const BLRect& r) {
-            fViewport = r;
+            fDrawingState->fViewport = r;
+            markModified();
         }
-        BLRect viewport() const { return fViewport; }
-        
-        void objectFrame(const BLRect& r) {
-            fObjectFrame = r;
+        BLRect viewport() const { return fDrawingState->fViewport; }
+
+        BLRect getObjectFrame() const { return fDrawingState->fObjectFrame; }
+        void setObjectFrame(const BLRect& r) {
+            fDrawingState->fObjectFrame = r;
+            markModified();
         }
-        BLRect objectFrame() const { return fObjectFrame; }
 
-        
-        const BLRect& getClipRect() const { return fClipRect; }
-        virtual void clipRect(const BLRect& aRect) { fClipRect = aRect; }
 
-        uint32_t paintOrder() const { return fPaintOrder; }
-        virtual void paintOrder(const uint32_t order) { fPaintOrder = order; }
-        
-        const BLVar& defaultColor() const { return fDefaultColor; }
-        void defaultColor(const BLVar& color) { fDefaultColor.assign(color); }
-
-		const BLVar& fillPaint() const { return fFillPaint; }
-		void fillPaint(const BLVar& paint) { fFillPaint.assign(paint); }
-
-		const BLVar& strokePaint() const { return fStrokePaint; }
-		void strokePaint(const BLVar& paint) { fStrokePaint.assign(paint); }
-        
-        
-
-        virtual void strokeWidth(double sw) { 
-            fStrokeWidth = sw; 
+        const BLRect& getClipRect() const { return fDrawingState->fClipRect; }
+        virtual void setClipRect(const BLRect& aRect)
+        {
+            fDrawingState->fClipRect = aRect;
+            markModified();
         }
-        virtual double getStrokeWidth() const { return fStrokeWidth; }
 
-		void lineJoin(BLStrokeJoin join) { fStrokeJoin = join; }
-		BLStrokeJoin getLineJoin() const { return fStrokeJoin; }
-        
+        uint32_t getPaintOrder() const { return fDrawingState->fPaintOrder; }
+        virtual void setPaintOrder(const uint32_t order)
+        {
+            fDrawingState->fPaintOrder = order;
+            markModified();
+        }
 
+		const BLVar& getBackgroundPaint() const { return fDrawingState->fBackgroundPaint; }
+		template<typename StyleT>
+		void setBackgroundPaint(const StyleT& paint)
+		{
+			fDrawingState->fBackgroundPaint.assign(paint);
+			markModified();
+		}
+
+        const BLVar& getDefaultColor() const { return fDrawingState->fDefaultColor; }
+        void setDefaultColor(const BLVar& color)
+        {
+            fDrawingState->fDefaultColor.assign(color);
+            markModified();
+        }
+
+        double getGlobalOpacity() const { return fDrawingState->fGlobalOpacity; }
+        void setGlobalOpacity(double opacity)
+        {
+            fDrawingState->fGlobalOpacity = opacity;
+            markModified();
+        }
+
+        // Stroke attributes
+        bool getStrokeBeforeTransform()
+        {
+            return fDrawingState->fStrokeBeforeTransform;
+        }
+
+        void setStrokeBeforeTransform(bool b)
+        {
+            fDrawingState->fStrokeBeforeTransform = b;
+            markModified();
+        }
+
+        const BLVar& getStrokePaint() const { return fDrawingState->fStrokePaint; }
+        template<typename StyleT>
+        void setStrokePaint(const StyleT& paint)
+        {
+            fDrawingState->fStrokePaint.assign(paint);
+            markModified();
+        }
+
+        double getStrokeOpacity() const { return fDrawingState->fStrokeOpacity; }
+        void setStrokeOpacity(double opacity)
+        {
+            fDrawingState->fStrokeOpacity = opacity;
+            markModified();
+        }
+
+        uint8_t startStrokeCap() const { return fDrawingState->fStrokeOptions.startCap; }
+        void setStrokeStartCap(uint8_t kind) {
+            fDrawingState->fStrokeOptions.startCap = kind;
+            markModified();
+        }
+
+        uint8_t getEndStrokeCap() const { return fDrawingState->fStrokeOptions.endCap; }
+        void setStrokeEndCap(uint8_t kind)
+        {
+            fDrawingState->fStrokeOptions.endCap = kind;
+            markModified();
+        }
+
+        void setStrokeCaps(BLStrokeCap caps)
+        {
+            fDrawingState->fStrokeOptions.setCaps(caps);
+            markModified();
+        }
+
+        double getStrokeMiterLimit() const { return fDrawingState->fStrokeOptions.miterLimit; }
+        void setStrokeMiterLimit(double limit) {
+            fDrawingState->fStrokeOptions.miterLimit = limit;
+            markModified();
+        }
+
+        double getStrokeWidth() const { return fDrawingState->fStrokeOptions.width; }
+        virtual void setStrokeWidth(double sw)
+        {
+            fDrawingState->fStrokeOptions.width = sw;
+            markModified();
+        }
+
+        uint8_t getLineJoin() const { return fDrawingState->fStrokeOptions.join; }
+        void setLineJoin(BLStrokeJoin join)
+        {
+            fDrawingState->fStrokeOptions.join = join;
+            markModified();
+        }
+
+        // Fill Attributes
+        const BLVar& getFillPaint() const { return fDrawingState->fFillPaint; }
+        template<typename StyleT>
+        void setFillPaint(const StyleT& paint)
+        {
+            fDrawingState->fFillPaint.assign(paint);
+            markModified();
+        }
+
+        double getFillOpacity() const { return fDrawingState->fFillOpacity; }
+        void setFillOpacity(double opacity) {
+            fDrawingState->fFillOpacity = opacity;
+            markModified();
+        }
+
+        uint8_t getFillRule() const { return fDrawingState->fFillRule; }
+        void setFillRule(BLFillRule fRule) { fDrawingState->fFillRule = fRule; markModified(); }
 
         // Typography
-        SVGAlignment textAnchor() const { return fTextHAlignment; }
-        void textAnchor(SVGAlignment anchor)
+        SVGAlignment getTextAnchor() const { return fDrawingState->fTextHAlignment; }
+        void setTextAnchor(SVGAlignment anchor)
         {
-            fTextHAlignment = anchor;
+            fDrawingState->fTextHAlignment = anchor;
+            markModified();
         }
 
-        TXTALIGNMENT textAlignment() const { return fTextVAlignment; }
-        void textAlignment(TXTALIGNMENT align)
+        TXTALIGNMENT getTextAlignment() const { return fDrawingState->fTextVAlignment; }
+        void setTextAlignment(TXTALIGNMENT align)
         {
-            fTextVAlignment = align;
+            fDrawingState->fTextVAlignment = align;
+            markModified();
         }
 
-        BLPoint textCursor() const { return fTextCursor; }
-        void textCursor(const BLPoint& cursor) { fTextCursor = cursor; }
+        BLPoint getTextCursor() const { return fDrawingState->fTextCursor; }
+        void setTextCursor(const BLPoint& cursor)
+        {
+            fDrawingState->fTextCursor = cursor; markModified();
+        }
 
 
         // Fontography
-        const BLFont& font() const { return fFont; }
-        virtual void font(BLFont& afont) { fFont = afont; }
-        
-        void fontFamily(const ByteSpan& familyNames) noexcept
+        virtual void resetFont() {}
+
+        const BLFont& getFont() const { return fDrawingState->fFont; }
+        virtual void setFont(BLFont& afont)
         {
-            fFamilyNames = familyNames;
-            resetFont();
+            fDrawingState->fFont = afont; markModified();
         }
 
-
-
-
-        double fontSize() const noexcept { return fFontSize; }
-        void fontSize(float size) noexcept
+        const ByteSpan& getFontFamily() const noexcept { return fDrawingState->fFamilyNames; }
+        void setFontFamily(const ByteSpan& familyNames) noexcept
         {
-            fFontSize = size;
+            fDrawingState->fFamilyNames = familyNames;
             resetFont();
+            markModified();
         }
 
-        void fontStyle(BLFontStyle style) noexcept
+        double getFontSize() const noexcept { return fDrawingState->fFontSize; }
+        void setFontSize(float size) noexcept
         {
-            fFontStyle = style;
+            fDrawingState->fFontSize = size;
             resetFont();
+            markModified();
         }
 
-        void fontWeight(BLFontWeight weight) noexcept
+        BLFontStyle getFontStyle() const noexcept { return fDrawingState->fFontStyle; }
+        void setFontStyle(BLFontStyle style) noexcept
         {
-            fFontWeight = weight;
+            fDrawingState->fFontStyle = style;
             resetFont();
+            markModified();
         }
 
-        void fontStretch(BLFontStretch stretch) noexcept
+        BLFontWeight getFontWeight() const noexcept { return fDrawingState->fFontWeight; }
+        void setFontWeight(BLFontWeight weight) noexcept
         {
-            fFontStretch = stretch;
+            fDrawingState->fFontWeight = weight;
             resetFont();
+            markModified();
         }
 
-        // setAttribute()
-        // Set a specific attribute of the drawing state
-        // in some cases, we can use the loadChunk() call on the attribute
-        // if it has one.
-        bool setAttribute(const ByteSpan& attName, const ByteSpan& attValue)
+        BLFontStretch getFontStretch() const noexcept { return fDrawingState->fFontStretch; }
+        void setFontStretch(BLFontStretch stretch) noexcept
         {
+            fDrawingState->fFontStretch = stretch;
+            resetFont();
+            markModified();
+        }
 
-    
+        // Apply those attributes that need to be on 
+        // the BLContext
+        virtual bool applyToContext(BLContext* ctx)
+        {
+            // clear the clipping state
+            ctx->restoreClipping();
+            const BLRect& cRect = getClipRect();
+            if ((cRect.w > 0) && (cRect.h > 0))
+                ctx->clipToRect(cRect);
+
+
+            ctx->setCompOp((BLCompOp)getCompositeMode());
+            ctx->setFillRule((BLFillRule)getFillRule());
+
+            // Set the transform
+            ctx->setTransform(getTransform());
+
+            // Stroke Options
+            ctx->setStrokeOptions(fDrawingState->fStrokeOptions);
+
+            // Paints
+            ctx->setStrokeStyle(getStrokePaint());
+            ctx->setFillStyle(getFillPaint());
+            ctx->setGlobalAlpha(getGlobalOpacity());
+            ctx->setStrokeAlpha(getStrokeOpacity());
+            ctx->setFillAlpha(getFillOpacity());
+
+
             return true;
         }
 
-
-        virtual bool applyStateSelf(BLContext* ctx)
-        {
-            return true;
-        }
-        
-        virtual bool applyState(BLContext* ctx)
-        {
-            // Fill attributes
-            ctx->setFillStyle(fFillPaint);
-            
-            // stroke caps
-            // stroke linejoin
-			ctx->setStrokeStyle(fStrokePaint);
-            ctx->setStrokeJoin(getLineJoin());
-            ctx->setStrokeWidth(getStrokeWidth());
-
-            // font
-
-
-
-            // probably applying font characteristics
-            // probably apply paint
-            this->applyStateSelf(ctx);
-            
-            return true;
-        }
-        
     };
 }

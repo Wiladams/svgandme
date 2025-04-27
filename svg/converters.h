@@ -143,12 +143,13 @@ namespace waavs {
         return true;
     }
 
-    // read and unsigned integer value from the ByteSpan
+    // Read an unsigned integer value from the ByteSpan
     // use the dual constraints of the limits of the ByteSpan
     // as well as the maximum number of digits to read
     // There MUST be the required number of digits available
     // or return false.
-    // read_uint("234", &value, 2);
+    // read_required_digits("234", &value, 2);
+    // Will return '23' as a value
     //
     static INLINE bool read_required_digits(ByteSpan &s, uint64_t &v, size_t requiredDigits) noexcept
     {
@@ -196,6 +197,9 @@ namespace waavs {
 		return true;
     }
 
+	// read_u64
+	// Read a 64-bit unsigned integer from the input span
+    // advance the span 
     static INLINE bool read_u64(ByteSpan& s, uint64_t& v) noexcept
     {
         if (!s)

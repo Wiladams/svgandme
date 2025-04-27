@@ -14,14 +14,14 @@
 
 
 
-
 namespace waavs {
-	//====================================
-//
-// SVGPathBasedGeometry
-// These are the elements that are based on a path object
-// they support markers, and winding order
-//
+
+	// SVGPathBasedGeometry
+	//
+	// All SVG shapes are represented using the BLPath
+	// ultimately.  This serves as a base object for all the shapes
+	// It handles the various attributes, and drawing of markers
+	//
 	struct SVGPathBasedGeometry : public SVGGraphicsElement
 	{
 		BLPath fPath{};
@@ -64,13 +64,13 @@ namespace waavs {
 			// check to see if we have a transform property
 			// if we do, transform the points through that transform
 			// then check to see if the point is inside the transformed path
-			if (fHasTransform)
-			{
+			//if (fHasTransform)
+			//{
 				// get the inverse transform
-				auto inverse = fTransform;
-				inverse.invert();
-				localPoint = inverse.mapPoint(localPoint);
-			}
+			//	auto inverse = fTransform;
+			//	inverse.invert();
+			//	localPoint = inverse.mapPoint(localPoint);
+			//}
 
 			
 			// BUGBUG - should use actual fill rule
@@ -81,7 +81,6 @@ namespace waavs {
 		
 		bool checkForMarkers()
 		{
-
 			// figure out if we have any markers set
 			auto mStart = getAttribute("marker-start");
 			auto mMid = getAttribute("marker-mid");
@@ -101,12 +100,16 @@ namespace waavs {
 			checkForMarkers();
 		}
 		
+		//
+		// drawMarker
+		//
+		// Draw a single marker along the path.
+		// propname - specifies the kind of marker
+		// pos - specifies the position of the marker
+
 		bool drawMarker(IRenderSVG* ctx, IAmGroot* groot, const ByteSpan propname, MarkerPosition pos, const BLPoint& p1, const BLPoint& p2, const BLPoint& p3)
 		{
 			std::shared_ptr<SVGVisualProperty> prop = getVisualProperty(propname);
-			
-
-
 			
 			// Look for the default marker if the specified one is not found
 			if (nullptr == prop)
@@ -153,7 +156,7 @@ namespace waavs {
 			}
 
 			// BUGBUG - red (start), green (mid), blue(end)
-			ctx->fillCircle(transP.x, transP.y, 2, transC);
+			//ctx->fillCircle(transP.x, transP.y, 2, transC);
 
 
 
@@ -377,10 +380,19 @@ namespace waavs {
 
 		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-			ctx->drawShape(fPath);
-			/*
+			// Note:
+			// Since we need to deal with markers, we can not
+			// use the simple drawShape() function, as it does 
+			// not deal with markers.
+			ctx->beginDrawShape(fPath);
+
 			// Get the paint order from the context
-			uint32_t porder = ctx->paintOrder();
+			// Note: It might be interesting to have a simple
+			// functor that takes the porder as a 'program', and
+			// the drawing routines as a lambda expression, or even
+			// just a table of routines to be executed depending
+			// on the instruction.
+			uint32_t porder = ctx->getPaintOrder();
 
 			for (int slot = 0; slot < 3; slot++)
 			{
@@ -389,11 +401,11 @@ namespace waavs {
 				switch (ins)
 				{
 				case PaintOrderKind::SVG_PAINT_ORDER_FILL:
-					ctx->fillPath(fPath);
+					ctx->fillShape(fPath);
 					break;
 					
 				case PaintOrderKind::SVG_PAINT_ORDER_STROKE:
-					ctx->strokePath(fPath);
+					ctx->strokeShape(fPath);
 					break;
 
 				case PaintOrderKind::SVG_PAINT_ORDER_MARKERS:
@@ -406,8 +418,8 @@ namespace waavs {
 				// discard instruction, shift down to get the next one ready
 				porder = porder >> 2;
 			}
-			*/
 
+			ctx->endDrawShape();
 		}
 
 	};

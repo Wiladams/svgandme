@@ -263,8 +263,10 @@
     <ClInclude Include="..\..\svg\membuff.h" />
     <ClInclude Include="..\..\svg\pathsegmenter.h" />
     <ClInclude Include="..\..\svg\pubsub.h" />
+    <ClInclude Include="..\..\svg\smildatatypes.h" />
     <ClInclude Include="..\..\svg\svg.h" />
     <ClInclude Include="..\..\svg\svgattributes.h" />
+    <ClInclude Include="..\..\svg\svgb2ddriver.h" />
     <ClInclude Include="..\..\svg\svgclip.h" />
     <ClInclude Include="..\..\svg\svgcolors.h" />
     <ClInclude Include="..\..\svg\svgconditional.h" />
@@ -300,6 +302,8 @@
     <ClInclude Include="..\..\svg\xmlentity.h" />
     <ClInclude Include="..\..\svg\xmliter.h" />
     <ClInclude Include="..\..\svg\xmlscan.h" />
+    <ClInclude Include="..\..\svg\xmlschema.h" />
+    <ClInclude Include="..\..\svg\xmltypes.h" />
     <ClInclude Include="svgicons.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

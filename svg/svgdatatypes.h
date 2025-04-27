@@ -23,94 +23,6 @@
 //
 
 
-namespace waavs {
-    
-
-/*    
-    // readNextNumber()
-    // 
-    // Consume the next number off the front of the chunk
-    // modifying the input chunk to advance past the  removed number
-    // Return true if we found a number, false otherwise
-    //
-    static inline bool readNextNumber(ByteSpan& s, double& outNumber) noexcept
-    {
-        // typical whitespace found in lists of numbers, like on paths and polylines
-        static const charset nextNumWsp(",+\t\n\f\r ");          
-
-        // clear up leading whitespace, including ','
-        s = chunk_ltrim(s, nextNumWsp);
-        if (!s)
-            return false;
-
-		return readNumber(s, outNumber);
-    }
-
-    static inline bool readNextFlag(ByteSpan& s, double& outNumber) noexcept
-    {
-        // typical whitespace found in lists of numbers, like on paths and polylines
-        static charset whitespaceChars(",\t\n\f\r ");
-
-        // clear up leading whitespace, including ','
-        s = chunk_ltrim(s, whitespaceChars);
-
-        ByteSpan numChunk{};
-
-		if (*s == '0' || *s == '1') {
-			outNumber = (double)(*s - '0');
-			s++;
-			return true;
-		}
-        
-		return false;
-
-    }
-
-
-    // readNumericArguments()
-    //
-    // Read a list of numeric arguments as specified in the 'argTypes'
-    // c, r - read a number
-	// f - read a flag
-    // 
-	// The number of arguments read is determined by the length of the argTypes string
-    //
-    static bool readNumericArguments(ByteSpan& s, const char* argTypes, double* outArgs) noexcept
-    {
-        // typical whitespace found in lists of numbers, like on paths and polylines
-        static charset segWspChars(",\t\n\f\r ");
-
-
-        for (int i = 0; argTypes[i]; i++)
-        {
-            switch (argTypes[i])
-            {
-            case 'c':		// read a coordinate
-            case 'r':		// read a radius
-            {
-                if (!readNextNumber(s, outArgs[i]))
-                    return false;
-            } break;
-
-            case 'f':		// read a flag
-            {
-                if (!readNextFlag(s, outArgs[i]))
-                    return false;
-            } break;
-
-            default:
-            {
-                return false;
-            }
-            }
-        }
-
-        return true;
-    }
-*/    
-}
-
-
 
 namespace waavs {
     static bool parseViewBox(const ByteSpan& inChunk, BLRect &r) noexcept
@@ -910,10 +822,16 @@ namespace waavs
     //
     // parsing transforms
     //
+    // parse a number of numeric arguments from a chunk.  The numbers
+    // are delimited by whitspace, and/or ',' characters.
+    // Parameters
+    //   'args' is an array where the values will be stored
+    //   'maxNa' is the maximum number of arguments
+    //   'na' - returns the number of arguments actually retrieved
     static ByteSpan parseTransformArgs(const ByteSpan& inChunk, double* args, int maxNa, int& na)
     {
         // Now we're ready to parse the individual numbers
-        static const charset numDelims = xmlwsp + ',';
+        //static const charset numDelims = xmlwsp + ',';
         
         na = 0;
 

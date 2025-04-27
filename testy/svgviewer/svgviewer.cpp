@@ -13,8 +13,6 @@
 
 using namespace waavs;
 
-// Drawing context used for drawing document
-IRenderSVG gDrawingContext(nullptr);
 
 // Reference to currently active document
 std::shared_ptr<SVGDocument> gDoc{ nullptr };
@@ -27,6 +25,14 @@ bool gPerformTransform{ true };
 bool gAutoGrow{ false };
 
 double gRecordingStart{ 0 };
+
+// retrieve a pointer to a unique drawing context
+IRenderSVG *getDrawingContext()
+{
+	static std::unique_ptr<IRenderSVG> sDrawingContext = std::make_unique<IRenderSVG>();
+
+	return sDrawingContext.get();
+}
 
 // docFromFilename
 //
@@ -55,39 +61,36 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 
 static void drawBackground()
 {
-	gDrawingContext.renew();
-}
-
-static void drawDocument()
-{
-	//gDrawingContext.background(BLRgba32(0xffA6A6A6));
-	gDrawingContext.background(BLRgba32(0xffffffff));
-
-	double startTime = seconds();
-
-	
-	// setup any transform
-	if (gPerformTransform)
-		gDrawingContext.setTransform(gNavigator.sceneToSurfaceTransform());
-
-
-	// draw the document into the ctx
-	if (gDoc != nullptr)
-		gDoc->draw(&gDrawingContext, gDoc.get(), canvasWidth, canvasHeight);
-
-	gDrawingContext.flush();
-	
-	double endTime = seconds();
-	//printf("Drawing Duration: %f\n", endTime - startTime);
+	getDrawingContext()->renew();
 }
 
 static void drawForeground()
 {
-
 }
+
+static void drawDocument()
+{
+
+	
+	// setup any transform
+	if (gPerformTransform)
+		getDrawingContext()->setTransform(gNavigator.sceneToSurfaceTransform());
+
+
+	// draw the document into the ctx
+	if (gDoc != nullptr)
+		gDoc->draw(getDrawingContext(), gDoc.get(), canvasWidth, canvasHeight);
+
+	getDrawingContext()->flush();
+	
+}
+
+
 
 static void draw()
 {	
+	double startTime = seconds();
+
 	drawBackground();
 	drawDocument();
 	drawForeground();
@@ -189,8 +192,9 @@ static void onResizeEvent(const ResizeEvent& re)
 	//printf("onResizeEvent: %d x %d\n", re.width, re.height);
 	BLContextCreateInfo ctxInfo{};
 	ctxInfo.threadCount = 4;
+	//ctxInfo.threadCount = 0;
 
-	gDrawingContext.attach(appFrameBuffer()->getBlend2dImage(), &ctxInfo);
+	getDrawingContext()->attach(appFrameBuffer()->getBlend2dImage(), &ctxInfo);
 	handleChange(true);
 }
 
@@ -248,8 +252,6 @@ static void setupFonts()
 	//loadFontDirectory("d:\\commonfonts");
 	//loadFontDirectory("..\\resources");
 
-	
-	gDrawingContext.fontHandler(FontHandler::getFontHandler());
 }
 
 
@@ -257,37 +259,30 @@ static void setupFonts()
 void setup()
 {
     //printf("setup()\n");
-	
+
+	// register to receive various events
+	subscribe(onFileDrop);
+	subscribe(onResizeEvent);
+	//subscribe(onFrameEvent);
+	subscribe(onMouseEvent);
+	subscribe(onKeyboardEvent);
+
+
 	setupFonts();
 	
 	frameRate(30);
 	
     dropFiles();
-
-
-	//layered();
 	
 	// set app window size and title
-	createAppWindow(1024, 768, "SVGViewer");
+	createAppWindow(1280, 1024, "SVGViewer");
 	
 	gRecorder.reset(&appFrameBuffer()->getBlend2dImage(), "frame", 15, 0);
 	
-	// register to receive various events
-	subscribe(onFileDrop);
-	subscribe(onFrameEvent);
-	subscribe(onMouseEvent);
-	subscribe(onResizeEvent);
-	subscribe(onKeyboardEvent);
 	
+	// set the background to white to start
+	//getDrawingContext()->background(BLRgba32(0xffffffff));
 
-
-	BLContextCreateInfo ctxInfo{};
-	ctxInfo.threadCount = 4;
-	//ctxInfo.threadCount = 0;
-	gDrawingContext.attach(appFrameBuffer()->getBlend2dImage(), &ctxInfo);
-	// clear the buffer to white to start
-	gDrawingContext.background(BLRgba32(0xffffffff));
-	
 	// Set the initial viewport
 	//gViewPort.surfaceFrame({0, 0, (double)canvasWidth, (double)canvasHeight});
 	gNavigator.setFrame({ 0, 0, (double)canvasWidth, (double)canvasHeight });

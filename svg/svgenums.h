@@ -26,6 +26,7 @@
 #include "wsenum.h"
 
 
+
 namespace waavs {
 	enum SpaceUnitsKind : uint32_t {
 		SVG_SPACE_USER = 0,
@@ -83,11 +84,11 @@ namespace waavs {
 	// They are required to be these bit patterns
 	// to make the rendering work in the right order
 	enum PaintOrderKind : uint32_t {
-		SVG_PAINT_ORDER_NONE = 0,		// 00
-		SVG_PAINT_ORDER_FILL = 1,		// 01
-		SVG_PAINT_ORDER_STROKE = 2,		// 10
-		SVG_PAINT_ORDER_MARKERS = 3,	// 11
-		SVG_PAINT_ORDER_NORMAL = 57,	// 111001 (fill, stroke, markers)
+		SVG_PAINT_ORDER_NONE	= 0,		// 00, indicates end of program
+		SVG_PAINT_ORDER_FILL	= 1,		// 01
+		SVG_PAINT_ORDER_STROKE	= 2,		// 10
+		SVG_PAINT_ORDER_MARKERS = 3,		// 11
+		SVG_PAINT_ORDER_NORMAL	= 57,		// 111001 (fill, stroke, markers)
 	};
 
 	static WSEnum SVGPaintOrderEnum = {
@@ -97,7 +98,35 @@ namespace waavs {
 	};
 }
 
+//
+// Alignment for symbol reference point
+namespace waavs {
+	enum RefXKind : uint32_t {
+		SVG_REFX_LENGTH = 0,
+		SVG_REFX_LEFT = 1,
+		SVG_REFX_CENTER = 2,
+		SVG_REFX_RIGHT = 3
+	};
 
+	enum RefYKind :uint32_t {
+		SVG_REFY_LENGTH = 0,
+		SVG_REFY_TOP = 1,
+		SVG_REFY_CENTER = 2,
+		SVG_REFY_BOTTOM = 3
+	};
+
+	static WSEnum RefXEnum = {
+	{"left", RefXKind::SVG_REFX_LEFT},
+	{"center", RefXKind::SVG_REFX_CENTER},
+	{"right", RefXKind::SVG_REFX_RIGHT},
+	};
+
+	static WSEnum RefYEnum = {
+	{"top", RefYKind::SVG_REFY_BOTTOM},
+	{"center", RefYKind::SVG_REFY_CENTER},
+	{"bottom", RefYKind::SVG_REFY_BOTTOM},
+	};
+}
 
 
 namespace waavs {
@@ -171,6 +200,9 @@ namespace waavs {
 	{"xxx-large", SVGSizeAbsoluteKind::SVG_SIZE_ABSOLUTE_XXX_LARGE},
 	};
 
+	// When setting a font relative the the currently used
+	// size.  These relative sizes grow or shrink by a fixed
+	// percentage of current size.
 	enum SVGSizeRelativeKind : uint32_t
 	{
 		SVG_SIZE_RELATIVE_LARGER = 1,

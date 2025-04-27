@@ -61,14 +61,14 @@ namespace waavs {
 
 			switch (hAlignment)
 			{
-			case TXTALIGNMENT::LEFT:
+			case SVGAlignment::SVG_ALIGNMENT_START:
 				// do nothing
 				// x = x;
 				break;
-			case TXTALIGNMENT::CENTER:
+			case SVGAlignment::SVG_ALIGNMENT_MIDDLE:
 				x = x - (cx / 2);
 				break;
-			case TXTALIGNMENT::RIGHT:
+			case SVGAlignment::SVG_ALIGNMENT_END:
 				x = x - cx;
 				break;
 
@@ -146,7 +146,8 @@ namespace waavs {
 //  - When style is applied in a 'tspan', it remains local to that tspan, and will not
 //    affect sibling tspans
 //  - 'x' and 'y' positions, 'text' element, default to '0', while 'tspan' default to the 
-//    whereever the text cursor currently sits.
+//    whereever the text cursor sits after the last text rendering
+//	  action.
 //
 namespace waavs {
 	// SVGTextRun
@@ -320,14 +321,14 @@ namespace waavs {
 				auto textNode = std::dynamic_pointer_cast<SVGTextRun>(node);
 				if (nullptr != textNode)
 				{
-					SVGAlignment anchor = ctx->textAnchor();
+					SVGAlignment anchor = ctx->getTextAnchor();
 					ByteSpan txt = textNode->text();
 					BLPoint pos = ctx->textCursor();
-					BLRect pRect = Fontography::calcTextPosition(ctx->font(), txt, pos.x, pos.y, anchor, fTextVAlignment, fDominantBaseline);
+					BLRect pRect = Fontography::calcTextPosition(ctx->getFont(), txt, pos.x, pos.y, anchor, fTextVAlignment, fDominantBaseline);
 					expandRect(fBBox, pRect);
 					
 					// Get the paint order from the context
-					uint32_t porder = ctx->paintOrder();
+					uint32_t porder = ctx->getPaintOrder();
 
 					for (int slot = 0; slot < 3; slot++)
 					{
@@ -384,13 +385,13 @@ namespace waavs {
 			fY = cursor.y;
 
 			if (fDimX.isSet())
-				fX = fDimX.calculatePixels(ctx->font(), w, 0, 96);
+				fX = fDimX.calculatePixels(ctx->getFont(), w, 0, 96);
 			if (fDimY.isSet())
-				fY = fDimY.calculatePixels(ctx->font(), h, 0, 96);
+				fY = fDimY.calculatePixels(ctx->getFont(), h, 0, 96);
 			if (fDimDx.isSet())
-				fDx = fDimDx.calculatePixels(ctx->font(), w, 0, 96);
+				fDx = fDimDx.calculatePixels(ctx->getFont(), w, 0, 96);
 			if (fDimDy.isSet())
-				fDy = fDimDy.calculatePixels(ctx->font(), h, 0, 96);
+				fDy = fDimDy.calculatePixels(ctx->getFont(), h, 0, 96);
 
 
 			fX = fX + fDx;
@@ -439,20 +440,20 @@ namespace waavs {
 			auto w = cFrame.w;
 			auto h = cFrame.h;
 			
-			double fSize = ctx->fontSize();
+			double fSize = ctx->getFontSize();
 			
 			// For a text node, the default position is zero
 			fX = 0;
 			fY = 0;
 			
 			if (fDimX.isSet())
-				fX = fDimX.calculatePixels(ctx->font(), w, 0, 96);
+				fX = fDimX.calculatePixels(ctx->getFont(), w, 0, 96);
 			if (fDimY.isSet())
-				fY = fDimY.calculatePixels(ctx->font(), h, 0, 96);
+				fY = fDimY.calculatePixels(ctx->getFont(), h, 0, 96);
 			if (fDimDx.isSet())
-				fDx = fDimDx.calculatePixels(ctx->font(), w, 0, 96);
+				fDx = fDimDx.calculatePixels(ctx->getFont(), w, 0, 96);
 			if (fDimDy.isSet())
-				fDy = fDimDy.calculatePixels(ctx->font(), h, 0, 96);
+				fDy = fDimDy.calculatePixels(ctx->getFont(), h, 0, 96);
 
 			
 			fX = fX + fDx;
