@@ -147,7 +147,7 @@ namespace waavs {
         
         // A convenience to construct the document from a chunk, and return
         // a shared pointer to the document
-        static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, FontHandler* fh, const double w, const double h, const double ppi)
+        static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, FontHandler* fh, const double w = 640, const double h = 480, const double ppi = 96)
         {
             auto sFactory = SVGFactory::getFactory();
             
