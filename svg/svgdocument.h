@@ -58,7 +58,6 @@ namespace waavs {
     //
     struct SVGDocument : public  SVGGraphicsElement, public IAmGroot 
     {
-        
         MemBuff fSourceMem{};
         
 		FontHandler* fFontHandler = nullptr;
@@ -274,8 +273,14 @@ namespace waavs {
             // since we use memory references, we need
             // to keep the memory around for the duration of the 
             // document's life
+            // BUGBUG - ideally, we should take this opportunity to expand
+            // basic entities, and eliminate whitespace, if that's what we're doing
+            // It will cause some performance slow down here, but simplify later
+            // processing.
+
             fSourceMem.initFromSpan(srcChunk);
-            
+            //size_t sz = expandXmlEntities(srcChunk, fSourceMem.span());
+
 			// Create the XML Iterator we're going to use to parse the document
             XmlElementIterator iter(fSourceMem.span(), true);
 			//XmlElementInfoIterator infoIter(fSourceMem.span(), true);

@@ -6,9 +6,13 @@
 #include "viewport.h"
 
 #include "mappedfile.h"
+#include "svgb2ddriver.h"
 
 
 using namespace waavs;
+
+#define CAN_WIDTH 800
+#define CAN_HEIGHT 600
 
 
 // Reference to currently active document
@@ -20,7 +24,6 @@ FontHandler gFontHandler{};
 
 static void loadFontDirectory(const char* dir)
 {
-
 	const std::filesystem::path fontPath(dir);
 	
 	for (const auto& dir_entry : std::filesystem::directory_iterator(fontPath))
@@ -32,9 +35,12 @@ static void loadFontDirectory(const char* dir)
 				(dir_entry.path().extension() == ".TTF"))
 			{
 				BLFontFace ff{};
-				bool success = gFontHandler.loadFontFace(dir_entry.path().generic_string().c_str(), ff);
+				if (!FontHandler::getFontHandler()->loadFontFace(dir_entry.path().generic_string().c_str(), ff))
+				{
+					printf("FontHandler::loadFontFace() failed: %s\n", dir_entry.path().generic_string().c_str());
+					return;
+				}
 			}
-			
 		}
 	}
 }
@@ -43,13 +49,7 @@ static void loadFontDirectory(const char* dir)
 static void setupFonts()
 {
 	loadFontDirectory("c:\\Windows\\Fonts");
-
 }
-
-
-
-#define CAN_WIDTH 800
-#define CAN_HEIGHT 600
 
 
 int main(int argc, char **argv)
@@ -63,7 +63,7 @@ int main(int argc, char **argv)
         return 1;
     }
 	
-	//setupFonts();
+	setupFonts();
 
     // create an mmap for the specified file
     const char* filename = argv[1];
@@ -78,15 +78,13 @@ int main(int argc, char **argv)
 	}
     
 	ByteSpan mappedSpan(mapped->data(), mapped->size());
-    //gDoc = SVGFactory::createDOM(mappedSpan, &gFontHandler);
-	gDoc = SVGFactory::createFromChunk(mappedSpan, &gFontHandler, CAN_WIDTH, CAN_HEIGHT, 96.0);
+	gDoc = SVGFactory::createFromChunk(mappedSpan, FontHandler::getFontHandler(), CAN_WIDTH, CAN_HEIGHT, 96.0);
 
     if (gDoc == nullptr)
-        return 1;
+		return 1;
 
 	// Now create a drawing context so we can
 	// do the rendering
-	IRenderSVG ctx(&gFontHandler);
 	BLImage img(CAN_WIDTH, CAN_HEIGHT, BL_FORMAT_PRGB32);
 
 	// Attach the drawing context to the image
@@ -94,8 +92,9 @@ int main(int argc, char **argv)
 	// operations, including the transform
 	BLContextCreateInfo createInfo{};
 	createInfo.threadCount = 0;
+	SVGB2DDriver ctx;
 	ctx.attach(img, &createInfo);
-	ctx.clearAll();
+	//ctx.clearAll();
 
 	
 	// Create a rectangle the size of the BLImage we want to render into
@@ -118,7 +117,7 @@ int main(int argc, char **argv)
 
 
 	// apply the viewport's sceneToSurface transform to the context
-	auto res = ctx.setTransform(vp.viewBoxToViewportTransform());
+	ctx.setTransform(vp.viewBoxToViewportTransform());
 	//printf("setTransform RESULT: %d\n", res);
 	
 

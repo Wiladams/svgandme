@@ -29,5 +29,8 @@
     <ClInclude Include="..\..\svg\svgb2ddriver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\svg\svgfactory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -36,9 +36,9 @@
 #include "xmlschema.h"
 
 namespace waavs {
-    static charset xmlwsp(" \t\r\n");
-    static charset xmlalpha("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
-    static charset xmldigit("0123456789");
+    static constexpr charset xmlwsp(" \t\r\n");
+    static constexpr charset xmlalpha("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
+    static constexpr charset xmldigit("0123456789");
 }
 
 namespace waavs {
@@ -69,10 +69,9 @@ namespace waavs {
         target = tempTarget;
 
         // trim whitespace
-        src.prefix_trim(chrWspChars);
+        src.skipWhile(chrWspChars);
 
         // Mark content start
-        const unsigned char* contentStart = src.data();
         rest = src;
 
         // Find the closing '?>' sequence
@@ -239,7 +238,7 @@ namespace waavs {
             chunk_read_quoted(src, systemId);
 
 			// Skip past the whitespace
-            src.prefix_trim(xmlwsp);
+            src.skipWhile(chrWspChars);
 
 			// If we have a closing '>', then we're done
 			if (*src == '>')
@@ -276,7 +275,8 @@ namespace waavs {
             chunk_read_quoted(src, systemId);
 
 			// Skip past the whitespace
-			src.prefix_trim(xmlwsp);
+			//src.prefix_trim(xmlwsp);
+            src.skipWhile(chrWspChars);
 
 			// If we have a closing '>', then we're done
 			if (*src == '>')
@@ -324,7 +324,8 @@ namespace waavs {
 
         // Use memchr to quickly locate the '>' character
         // trim whitespace
-		src.prefix_trim(chrWspChars);
+		//src.prefix_trim(chrWspChars);
+        src.skipWhile(chrWspChars);
 
         const unsigned char* srcPtr = src.begin();
         const unsigned char* endPtr = src.end();
@@ -388,26 +389,22 @@ namespace waavs {
 
     static bool scanInfoNameSpan(const ByteSpan &src, ByteSpan &name, ByteSpan &rest)
     {
-        ByteSpan s = src;
-        bool start = false, end = false;
-
-        if (!s)
+        if (src.empty())
             return false;
+
+        ByteSpan s = src;
 
         // Look to see if it's a closing tag name
         if (*s == '/')
         {
             s++;
-            end = true;
         }
         else {
-            start = true;
         }
 
         name = s;
-        // skip leading whitespace
-        while (s && !chrWspChars[*s])
-            s++;
+
+        s.scanUntil(chrWspChars);
 
         name.fEnd = s.fStart;
         rest = s;
@@ -515,8 +512,9 @@ namespace waavs {
                         // if the content is all whitespace
                         // don't return anything
                         // BUGBUG - deal with XML preserve whitespace
-                        if (params.fSkipWhitespace)
-                            content = chunk_trim(content, xmlwsp);
+                        if (params.fSkipWhitespace) {
+							content.skipWhile(chrWspChars);
+                        }
 
                         if (content)
                         {
@@ -603,7 +601,6 @@ namespace waavs {
 
         return !elem.empty();
     }
-        
 
     // XmlElementGenerator
     // 
@@ -611,7 +608,7 @@ namespace waavs {
     // By putting the necessary parsing in here, we can use both std
     // c++ iteration idioms, as well as a more straight forward C++ style
     // which does not require all the C++ iteration boilerplate
-    static bool XmlElementGenerator(const XmlIteratorParams& params, XmlIteratorState& st, XmlElement &elem)
+    static bool nextXmlElement(const XmlIteratorParams& params, XmlIteratorState& st, XmlElement &elem)
     {
         elem.reset(XML_ELEMENT_TYPE_INVALID, {},  {});
 
@@ -640,8 +637,7 @@ namespace waavs {
                         // BUGBUG - deal with XML preserve whitespace
                         if (params.fSkipWhitespace)
                         {
-							content.prefix_trim(chrWspChars);
-							//content.prefix_trim(xmlwsp);
+							content.skipWhile(chrWspChars);
                         }
 
                         if (!content.empty())
@@ -664,7 +660,7 @@ namespace waavs {
             } else if (st.fState == XML_ITERATOR_STATE_START_TAG)
             {
                 // strip leading whitespace
-                st.fSource.prefix_trim(chrWspChars);
+				st.fSource.skipWhile(chrWspChars);
 
                 // Create a chunk that encapsulates the element tag 
                 // up to, but not including, the '>' character
@@ -672,53 +668,66 @@ namespace waavs {
                 elementChunk.fEnd = st.fSource.fStart;
                 int kind = XML_ELEMENT_TYPE_START_TAG;
 
-                if (*st.fSource == '?')
+                switch (*st.fSource)
                 {
-                    kind = XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION;
+                    default:
+                    {
+                        readTag(st.fSource, tagName, elementChunk);
+                        if (chunk_ends_with_char(elementChunk, '/'))
+                            kind = XML_ELEMENT_TYPE_SELF_CLOSING;
+                    }
+                    break;
+                    
+                    case '?':
+                    {
+                        kind = XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION;
 
-                    // deal with a processing instruction
-                    if (!readPI(st.fSource, tagName, elementChunk))
-                        return false;
+                        // deal with a processing instruction
+                        if (!readPI(st.fSource, tagName, elementChunk))
+                            return false;
 
-                    // Deal with each processing target
-                    if (tagName == "xml")
-                    {
-                        kind = XML_ELEMENT_TYPE_XMLDECL;
-                    }
+                        // Deal with each processing target
+                        if (tagName == "xml")
+                        {
+                            kind = XML_ELEMENT_TYPE_XMLDECL;
+                        }
 
-                }
-                else if (*st.fSource == '!')
-                {
-                    if (st.fSource.startsWith("!DOCTYPE"))
-                    {
-                        kind = XML_ELEMENT_TYPE_DOCTYPE;
-                        readDoctype(st.fSource, elementChunk);
                     }
-                    else if (st.fSource.startsWith("!--"))
+                    break;
+
+                    case '!':
                     {
-                        kind = XML_ELEMENT_TYPE_COMMENT;
-                        readComment(st.fSource, elementChunk);
+                        if (st.fSource.startsWith("!DOCTYPE"))
+                        {
+                            kind = XML_ELEMENT_TYPE_DOCTYPE;
+                            readDoctype(st.fSource, elementChunk);
+                        }
+                        else if (st.fSource.startsWith("!--"))
+                        {
+                            kind = XML_ELEMENT_TYPE_COMMENT;
+                            readComment(st.fSource, elementChunk);
+                        }
+                        else if (st.fSource.startsWith("![CDATA["))
+                        {
+                            kind = XML_ELEMENT_TYPE_CDATA;
+                            readCData(st.fSource, elementChunk);
+                        }
+                        else if (st.fSource.startsWith("!ENTITY"))
+                        {
+                            kind = XML_ELEMENT_TYPE_ENTITY;
+                            readEntityDeclaration(st.fSource, elementChunk);
+                        }
                     }
-                    else if (st.fSource.startsWith("![CDATA["))
+                    break;
+
+                    case '/':
                     {
-                        kind = XML_ELEMENT_TYPE_CDATA;
-                        readCData(st.fSource, elementChunk);
+                        kind = XML_ELEMENT_TYPE_END_TAG;
+                        readEndTag(st.fSource, tagName, elementChunk);
                     }
-                    else if (st.fSource.startsWith("!ENTITY"))
-                    {
-                        kind = XML_ELEMENT_TYPE_ENTITY;
-                        readEntityDeclaration(st.fSource, elementChunk);
-                    }
-                }
-                else if (st.fSource.startsWith("/"))
-                {
-                    kind = XML_ELEMENT_TYPE_END_TAG;
-                    readEndTag(st.fSource, tagName, elementChunk);
-                }
-                else {
-                    readTag(st.fSource, tagName, elementChunk);
-                    if (chunk_ends_with_char(elementChunk, '/'))
-                        kind = XML_ELEMENT_TYPE_SELF_CLOSING;
+                    break;
+
+
                 }
 
                 st.fState = XML_ITERATOR_STATE_CONTENT;

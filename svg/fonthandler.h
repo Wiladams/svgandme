@@ -162,13 +162,13 @@ namespace waavs {
             qprops.weight = weight;
             
             // nammes are quoted, or separated by commas
-            while (s.size() > 0)
+            while (!s.empty())
             {
                 s = chunk_ltrim(s, fontWsp);
                 ByteSpan name = chunk_token(s, delims);
                 name = chunk_trim(name, quoteChars);
 
-                if (!name)
+                if (name.empty())
                     break;
 
                 BLStringView familyNameView{};
@@ -223,10 +223,11 @@ namespace waavs {
             // If none found, try our default font
             if (!success)
             {
-                success = selectFontFamily("Arial", face, style, weight, stretch);
-                
-                if (!success)
-                    return false;
+                return false;
+
+                //success = selectFontFamily("Arial", face, style, weight, stretch);
+                //if (!success)
+                //    return false;
             }
             
             // Now that we've gotten a face, we need to fill in the font

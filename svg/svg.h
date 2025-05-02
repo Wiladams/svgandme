@@ -22,4 +22,3 @@
 #include "svgdocument.h"
 #include "svgfactory.h"
 
-

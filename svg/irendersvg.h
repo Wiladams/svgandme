@@ -17,7 +17,6 @@ namespace waavs
     // This is used when rendering a tree of SVG elements
     struct IRenderSVG : public IAccessSVGState // , public BLContext
     {
-        //std::unique_ptr<BLContext> fDrawingContext;
         SVGDrawingState *fCurrentDrawingState;
         SVGStateStack fStateStack;
 
@@ -27,7 +26,6 @@ namespace waavs
             // Create a context by default, so we have 
             // something initially, so we don't have to use
             // null checks everywhere
-            //fDrawingContext = std::make_unique<BLContext>();
 
             initState();
         }
@@ -67,14 +65,14 @@ namespace waavs
         
         virtual void onResetFont() {}
 
-        void resetFont()
+        void resetFont() override
         {
             auto fh = FontHandler::getFontHandler();
 
             if (nullptr != fh)
             {
                 BLFont aFont;
-                auto success = fh->selectFont(fCurrentDrawingState->fFamilyNames,
+                auto success = fh->selectFont(getFontFamily(),
                     aFont, getFontSize(), getFontStyle(), getFontWeight(), getFontStretch());
 
                 if (success)

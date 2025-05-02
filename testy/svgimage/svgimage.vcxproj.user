@@ -9,7 +9,7 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
-    <LocalDebuggerCommandArguments>c:\repos\svgandme\testy\resources\style2.svg</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>c:\svgarchive\misc\gnuplot_1486234729.svg</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
 </Project>

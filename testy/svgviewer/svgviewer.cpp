@@ -10,6 +10,7 @@
 #include "svgwaavs.h"
 #include "svgicons.h"
 #include "viewnavigator.h"
+#include "svgb2ddriver.h"
 
 using namespace waavs;
 
@@ -27,9 +28,9 @@ bool gAutoGrow{ false };
 double gRecordingStart{ 0 };
 
 // retrieve a pointer to a unique drawing context
-IRenderSVG *getDrawingContext()
+static IRenderSVG *getDrawingContext()
 {
-	static std::unique_ptr<IRenderSVG> sDrawingContext = std::make_unique<IRenderSVG>();
+	static std::unique_ptr<SVGB2DDriver> sDrawingContext = std::make_unique<SVGB2DDriver>();
 
 	return sDrawingContext.get();
 }

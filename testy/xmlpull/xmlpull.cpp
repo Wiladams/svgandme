@@ -72,7 +72,7 @@ static void printXmlElementInfo(const XmlElementInfo& elem)
     {
         printf("  ");
         writeChunk(key);
-        printf("   = ");
+        printf(" = ");
         printChunk(value);
     }
 }
@@ -97,7 +97,7 @@ static void testXmlElementScan(const ByteSpan& s)
     fParams.fSkipWhitespace = true;
 
 	XmlElement elem;
-	while (XmlElementGenerator(fParams, fState, elem))
+	while (nextXmlElement(fParams, fState, elem))
 	{
 		waavs::printXmlElement(elem);
 	}
@@ -273,8 +273,8 @@ int main(int argc, char** argv)
     
 
     //testElementInfo(s);
-    testXmlElementScan(s);
-    //testXmlIter(s);
+    //testXmlElementScan(s);
+    testXmlIter(s);
 	//testElementContainer(s);
     //testElementFilter(s);
     //testXPathFilter();

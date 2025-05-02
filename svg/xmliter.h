@@ -152,7 +152,7 @@ namespace waavs {
         //const XmlElement & next(XmlElement& elem)
         bool next()
         {
-            bool validElement = XmlElementGenerator(fParams, fState, fCurrentElement);
+            bool validElement = nextXmlElement(fParams, fState, fCurrentElement);
             return validElement;
         }
     };

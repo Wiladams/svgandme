@@ -14,13 +14,7 @@ namespace waavs {
             registerNodeTypes();
         }
 
-        // We have a singleton factory object for the entire application
-        static SVGFactory* getFactory()
-        {
-			static std::unique_ptr<SVGFactory> sFactory = std::make_unique<SVGFactory>();
 
-			return sFactory.get();
-        }
         
         void registerNodeTypes()
         {
@@ -128,42 +122,66 @@ namespace waavs {
 
         }
 
+    private:
         // createDOM
-		// Create a new SVGDocument object
+        // Create a new SVGDocument object
         // This document is not bound to a drawing context, so a lot of things are not going
         // to be resolved, particularly relative sizing, and fonts
         // But, tree visitors can be used to turn the DOM into something useful, like 
         // a graphics rendering tree.
-        static std::shared_ptr<SVGDocument> createDOM(const ByteSpan& srcChunk, FontHandler* fh)
+        std::shared_ptr<SVGDocument> createDOMInternal(const ByteSpan& srcChunk, FontHandler* fh)
         {
-            auto sFactory = SVGFactory::getFactory();
-
-            auto doc = std::make_shared<SVGDocument>(fh, 640, 480,96);
+            auto doc = std::make_shared<SVGDocument>(fh, 640, 480, 96);
             if (!doc->loadFromChunk(srcChunk, fh))
                 return {};
 
             return doc;
+        }
+
+        // A convenience to construct the document from a chunk, and return
+        // a shared pointer to the document
+        static std::shared_ptr<SVGDocument> createFromChunkInternal(const ByteSpan& srcChunk, FontHandler* fh, const double w, const double h, const double ppi)
+        {
+            // this MUST be done, or node registrations will not happen
+            auto sFactory = getFactory();
+
+            auto doc = std::make_shared<SVGDocument>(fh, w, h, ppi);
+            if (!doc->loadFromChunk(srcChunk, fh))
+            {
+                printf("SVGFactory::CreateFromChunk() failed to load\n");
+                return nullptr;
+            }
+
+            // BUGBUG - render into a dummy context so that we can
+            // get the sizing.
+            IRenderSVG actx; // (fh);
+            actx.setViewport(BLRect(0, 0, w, h));
+            doc->draw(&actx, doc.get());
+            //printf("SVGFactory::CreateFromChunk(), END\n");
+
+            return doc;
+        }
+
+    public:
+        // We have a singleton factory object for the entire application
+        static SVGFactory* getFactory()
+        {
+            static std::unique_ptr<SVGFactory> sFactory = std::make_unique<SVGFactory>();
+
+            return sFactory.get();
+        }
+
+        static std::shared_ptr<SVGDocument> createDOM(const ByteSpan& srcChunk, FontHandler* fh)
+        {
+            // this MUST be done, or node registrations will not happen
+            return getFactory()->createDOMInternal(srcChunk, fh);
         }
         
         // A convenience to construct the document from a chunk, and return
         // a shared pointer to the document
         static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, FontHandler* fh, const double w, const double h, const double ppi)
         {
-            auto sFactory = SVGFactory::getFactory();
-            
-            auto doc = std::make_shared<SVGDocument>(fh, w, h, ppi);
-            if (!doc->loadFromChunk(srcChunk, fh))
-                return {};
-
-            // BUGBUG - Maybe we should stop here, and use
-            // a visitor to convert the raw DOM into a graphics tree
-            // render into a blank context to get sizing
-            IRenderSVG actx; // (fh);
-            actx.setViewport(BLRect(0, 0, w, h));
-            doc->draw(&actx, doc.get());
-            printf("SVGFactory::CreateFromChunk(), END\n");
-
-            return doc;
+            return getFactory()->createFromChunkInternal(srcChunk, fh, w, h, ppi);
         }
     };
 }

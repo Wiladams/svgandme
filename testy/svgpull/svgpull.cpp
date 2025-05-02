@@ -58,7 +58,7 @@ static void testAViewport(const char *xmlattrs)
 	vp.loadFromAttributes(attrs);
 
     // Create a render context so the viewport can be bound to it
-	IRenderSVG ctx(nullptr);
+	IRenderSVG ctx;
 	
 	// Bind the viewport to the context
 	vp.bindToContext(&ctx, nullptr);

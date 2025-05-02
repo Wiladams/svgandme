@@ -27,21 +27,7 @@ namespace waavs
 
 
         virtual ~SVGB2DDriver() = default;
-        /*
-        void initState()
-        {
-            fCurrentDrawingState = fStateStack.currentState();
-            setDrawingState(fCurrentDrawingState);
 
-            background(BLRgba32(0xFFFFFFFF));
-            lineJoin(BL_STROKE_JOIN_MITER_CLIP);
-            strokeMiterLimit(4);
-            fillRule(BL_FILL_RULE_NON_ZERO);
-            fill(BLRgba32(0, 0, 0));
-            noStroke();
-            strokeWidth(1.0);
-        }
-        */
 
         virtual void onAttach(BLImageCore& image, const BLContextCreateInfo* createInfo)
         {
@@ -290,11 +276,11 @@ namespace waavs
             fDrawingContext->restoreClipping();
         }
 
-        void onBeginShape(const BLPath& apath) override
+        void onBeginDrawShape(const BLPath& apath) override
         {
         }
 
-        void onEndShape() override
+        void onEndDrawShape() override
         {
         }
 

@@ -28,12 +28,19 @@ namespace waavs {
 	// of paths, so we want to make this as fast as possible.
 	struct B2DPathBuilder
 	{
-		uint8_t lastCmd{ 0 };	// The last command we processed
+		//uint8_t lastCmd{ 0 };	// The last command we processed
 		BLPath& fPath;			// Reference to the path we are building
+		bool pathJustClosed = false;	// has the path seen a 'Z' or 'z' yet
+
 
 		// Initialize a path builder with a reference to a path
 		B2DPathBuilder(BLPath& apath) :fPath(apath) {}
 
+		inline void setPathClosed() noexcept { pathJustClosed = true; }
+		inline void clearPathClosed() noexcept { pathJustClosed = false; }
+
+
+		/*
 		using CommandFunc = int (B2DPathBuilder::*)(const double*, int);
 		static inline const std::array<CommandFunc, 128>& getCommandTable()
 		{
@@ -54,6 +61,7 @@ namespace waavs {
 
 			return cmdTbl;
 		}
+		*/
 
 		//
 		// addSegment()
@@ -67,18 +75,54 @@ namespace waavs {
 			// if the last command was a 'Z' or 'z', then, if the next
 			// command is not a 'M' or 'm', we need to first insert a moveTo
 			// for the last location, then perform the next command
-			if (((lastCmd == 'Z') || (lastCmd == 'z')) && (cmd != 'M' && cmd != 'm'))
+			// Only inject moveTo if last operation closed the path
+			if (pathJustClosed && (cmd != 'M' && cmd != 'm')) 
 			{
 				BLPoint lastPos{};
 				fPath.getLastVertex(&lastPos);
-
 				fPath.moveTo(lastPos.x, lastPos.y);
 			}
 
+			// Fast path: inline the hottest commands
+			if (cmd == 'M') return moveTo(args, iteration);
+			if (cmd == 'L') return lineTo(args, iteration);
+			if (cmd == 'C') return cubicTo(args, iteration);
+			if (cmd == 'Z' || cmd == 'z') return close(args, iteration);
+
+			// Fallback switch
+			switch (cmd) {
+			case 'm': return moveBy(args, iteration);
+			case 'l': return lineBy(args, iteration);
+			case 'c': return cubicBy(args, iteration);
+			case 'H': return hLineTo(args, iteration);
+			case 'h': return hLineBy(args, iteration);
+			case 'V': return vLineTo(args, iteration);
+			case 'v': return vLineBy(args, iteration);
+			case 'Q': return quadTo(args, iteration);
+			case 'q': return quadBy(args, iteration);
+			case 'S': return smoothCubicTo(args, iteration);
+			case 's': return smoothCubicBy(args, iteration);
+			case 'T': return smoothQuadTo(args, iteration);
+			case 't': return smoothQuadBy(args, iteration);
+			case 'A': return arcTo(args, iteration);
+			case 'a': return arcBy(args, iteration);
+			default:
+				printf("Unknown command: %c\n", cmd);
+				return -1;
+			}
+			/*
 			const auto& commandTable = getCommandTable();
-			if (cmd < 128 && commandTable[cmd])
+			if (cmd < 128)
 			{
-				int err = (this->*(commandTable[cmd]))(args, iteration);
+				auto cmdFunc = commandTable[cmd];
+				if (cmdFunc == nullptr)
+				{
+					printf("B2DPathBuilder, ERROR: command %c not found\n", cmd);
+					return -1;	// error in cmd
+				}
+
+				int err = (this->*(cmdFunc))(args, iteration);
+
 				if (err != BL_SUCCESS)
 				{
 					printf("B2DPathBuilder, ERROR in command: \n");
@@ -89,8 +133,8 @@ namespace waavs {
 				printf("B2DPathBuilder, INVALID Command: %c\n", cmd);
 				return -1;	// error in cmd
 			}
+			*/
 
-			lastCmd = cmd;
 		}
 
 		// Overload operator() to handle the events we are subscribed to
@@ -188,6 +232,7 @@ namespace waavs {
 			else {
 				res = fPath.lineTo(args[0], args[1]);
 			}
+			clearPathClosed();
 
 			return res;
 		}
@@ -200,12 +245,18 @@ namespace waavs {
 			BLPoint lastPos{};
 			fPath.getLastVertex(&lastPos);
 
+			double dx = args[0];
+			double dy = args[1];
+
 			if (iteration == 0) {
-				res = fPath.moveTo(lastPos.x + args[0], lastPos.y + args[1]);
+				//res = fPath.moveTo(lastPos.x + args[0], lastPos.y + args[1]);
+
+				res = fPath.moveTo(dx, dy);
 			}
 			else {
 				res = fPath.lineTo(lastPos.x + args[0], lastPos.y + args[1]);
 			}
+			clearPathClosed();
 
 			return res;
 		}
@@ -277,24 +328,34 @@ namespace waavs {
 		//
 		int close(const double* args, int iteration) noexcept
 		{
-			return fPath.close();
+			int err = fPath.close();
+			setPathClosed();
+
+			return err;
 		}
 
 	};
 
 
 	// parsePath()
-	// parse a path string, filling in a BLPath object
-	// along the way.
+	// parse a path string, filling in a BLPath object according
+	// to the individual segment commands.
+	// 
 	// Return 'false' if there are any errors
+	//
 	static INLINE bool parsePath(const waavs::ByteSpan& inSpan, BLPath& apath) noexcept
 	{
-		PathCommandDispatch dispatch;
 		B2DPathBuilder builder(apath);
-
-		dispatch.addSubscriber(builder);
-		dispatch.parse(inSpan);
 	
+
+		SVGSegmentParseParams params{};
+		SVGSegmentParseState cmdState(inSpan);
+
+		while (readNextSegmentCommand(params, cmdState))
+		{
+			builder(cmdState);
+		}
+
 		return true;
 	}
 }

@@ -56,7 +56,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>ClangCL</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
@@ -216,23 +216,30 @@
     <ClInclude Include="..\..\svg\base64.h" />
     <ClInclude Include="..\..\svg\bithacks.h" />
     <ClInclude Include="..\..\svg\bspan.h" />
+    <ClInclude Include="..\..\svg\charset.h" />
     <ClInclude Include="..\..\svg\definitions.h" />
     <ClInclude Include="..\..\svg\geometry.h" />
+    <ClInclude Include="..\..\svg\imanagesvgstate.h" />
     <ClInclude Include="..\..\svg\irendersvg.h" />
     <ClInclude Include="..\..\svg\maths.h" />
+    <ClInclude Include="..\..\svg\membuff.h" />
     <ClInclude Include="..\..\svg\svg.h" />
     <ClInclude Include="..\..\svg\svgattributes.h" />
+    <ClInclude Include="..\..\svg\svgb2ddriver.h" />
     <ClInclude Include="..\..\svg\svgcolors.h" />
     <ClInclude Include="..\..\svg\svgcss.h" />
     <ClInclude Include="..\..\svg\svgdatatypes.h" />
     <ClInclude Include="..\..\svg\svgdocument.h" />
     <ClInclude Include="..\..\svg\svgdrawingcontext.h" />
+    <ClInclude Include="..\..\svg\svgdrawingstate.h" />
     <ClInclude Include="..\..\svg\svgfactory.h" />
     <ClInclude Include="..\..\svg\svgfont.h" />
     <ClInclude Include="..\..\svg\svgpath.h" />
     <ClInclude Include="..\..\svg\svgshapes.h" />
     <ClInclude Include="..\..\svg\svgstructuretypes.h" />
+    <ClInclude Include="..\..\svg\svgtext.h" />
     <ClInclude Include="..\..\svg\viewport.h" />
+    <ClInclude Include="..\..\svg\xmlentity.h" />
     <ClInclude Include="..\..\svg\xmlscan.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

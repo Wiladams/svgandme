@@ -105,7 +105,7 @@ namespace waavs
 
             if (filehandle == INVALID_HANDLE_VALUE) {
                 // BUGBUG - do anything more than returning invalid?
-                printf("Could not create/open file for mmap: %d  %s", ::GetLastError(), fname);
+                printf("Could not create/open file for mmap: %d  %s", static_cast<int>(::GetLastError()), fname);
                 return {};
             }
 

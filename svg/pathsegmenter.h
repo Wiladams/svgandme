@@ -109,15 +109,13 @@ namespace waavs {
 	//
 	static bool readNextSegmentCommand(SVGSegmentParseParams& params, SVGSegmentParseState& cmdState)
 	{
-		static charset leadingChars("0123456789.+-");          // digits, symbols, and letters found at start of numbers
-		static  charset pathWsp = chrWspChars + ',';
+		constexpr charset leadingChars("0123456789.+-");          // digits, symbols, and letters found at start of numbers
+		constexpr  charset pathWsp = chrWspChars + ',';
 		
-		//bool success = false;
-
 		// always ignore leading whitespace
-		cmdState.remains = chunk_ltrim(cmdState.remains, pathWsp);
+		cmdState.remains.skipWhile(pathWsp);
 
-		if (!cmdState.remains)
+		if (cmdState.remains.empty())
 			return false;
 
 		if (!leadingChars(*cmdState.remains)) {
@@ -133,8 +131,11 @@ namespace waavs {
 				cmdState.fArgCount = strlen(argTypes);
 
 			}
-			else
+			else {
+				// Invalid command
+				cmdState.fError = -1;	// Indicate parsing error
 				return false;
+			}
 		}
 
 		if ((cmdState.fArgTypes != nullptr) && (cmdState.fArgCount > 0))
@@ -169,7 +170,7 @@ namespace waavs {
 
 			while (readNextSegmentCommand(params, cmdState))
 			{
-				notify(cmdState);
+				publish(cmdState);
 			}
 
 			return true;

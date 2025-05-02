@@ -199,7 +199,7 @@ namespace waavs {
 
 		// Some convenient routines
 		ByteSpan &prefix_trim(const charset& skippable) noexcept
-		{
+		{			
 			while (fStart < fEnd && skippable(*fStart))
 				++fStart;
 
@@ -214,6 +214,83 @@ namespace waavs {
 		bool endsWith(const ByteSpan& b) const noexcept
 		{
 			return (subSpan(size() - b.size(), b.size()) == b);
+		}
+
+		// Move the start of the span forward while the predicate
+		// returns true for the current starting pointer
+		// Example: Skipping whitespace
+		//	ByteSpan aSpan("   Hello World");
+		//	aSpan.skip<IsSpace>();
+		//
+		template <typename Predicate>
+		ByteSpan& skipWhile() noexcept 
+		{
+			auto* p = fStart;
+			auto* end = fEnd;
+			Predicate pred{};
+
+			while (p < end) {
+				unsigned char c = static_cast<unsigned char>(*p);
+				if (!pred(c))
+					break;
+				++p;
+			}
+
+			fStart = p;
+			return *this;
+		}
+
+
+		template<typename Predicate>
+		ByteSpan& skipWhile(Predicate pred) noexcept
+		{
+			auto* p = fStart;
+			auto* ending = fEnd;
+
+			while (p < ending && pred(*p))
+				++p;
+
+			fStart = p;
+
+			return *this;
+		}
+
+		// Advance the start of the span until the predicate returns true
+		// Typically used to move forward through the span until we reach
+		// a character in a specified set of characters
+		// Example: Scanning until we see a space
+		//   ByteSpan aSpan("Hello World");
+		//   unint8_t *tokenStart = aSpan.data();
+		//   aSpan.scanUntil<is_space>(chrWspChars);
+		//   unint8_t *tokenEnd = aSpan.data();
+
+		template<typename Predicate>
+		ByteSpan& scanUntil() noexcept
+		{
+			auto* p = fStart;
+			auto* ending = fEnd;
+
+			Predicate pred{};
+			while (p < ending && !pred(*p))
+				++p;
+
+			fStart = p;
+
+			return *this;
+		}
+
+		template<typename Predicate>
+		ByteSpan& scanUntil(Predicate pred) noexcept
+		{
+			auto* p = fStart;
+			auto* ending = fEnd;
+
+			while (p < ending && !pred(*p))
+				++p;
+
+			fStart = p;
+
+			return *this;
 		}
 	};
 
@@ -233,11 +310,6 @@ namespace waavs {
 	INLINE ByteSpan& chunk_skip_to_end(ByteSpan& dc) noexcept;
 
 	
-
-
-
-
-
 	// ByteSpan routines
 
 	// inline size_t chunk_size(const ByteSpan& a) noexcept { return a.size(); }
@@ -774,10 +846,8 @@ namespace waavs {
 		key.reset();
 		value.reset();
 
-		static charset quoteChars("\"'");
-
 		// Trim leading whitespace
-		src = chunk_ltrim(src, chrWspChars);
+		src.skipWhile(chrWspChars);
 
 		if (!src)
 			return false;
@@ -786,30 +856,44 @@ namespace waavs {
 		if (*src == '/')
 			return false;
 
-		// Extract attribute name (before '=')
-		ByteSpan attrNameChunk = chunk_token_char(src, '=');
-		key = chunk_trim(attrNameChunk, chrWspChars);
+		// Capture attribute name up to '='
+		const uint8_t* keyStart = src.fStart;
+		const uint8_t* keyEnd = keyStart; // track last non-whitespace char seen
+		while (src.fStart < src.fEnd && *src.fStart != '=')
+		{
+			if (!chrWspChars(*src.fStart)) 
+			{
+				keyEnd = src.fStart + 1; // past the last non-space character
+			}
+			++src.fStart;
+		}
 
 		// If no '=' found, return false
-		if (!src)
+		if (src.empty())
 			return false;
 
-		// Skip past '=' and any whitespace
-		src = chunk_ltrim(src, chrWspChars);
+		// Assign key — trimmed to exclude any trailing whitespace
+		key = ByteSpan(keyStart, keyEnd);
 
-		if (!src)
+		// Move past '='
+		++src.fStart;
+
+		// Skip any whitespace
+		src.skipWhile(chrWspChars);
+
+		if (src.empty())
 			return false;
 
 		// Ensure we have a quoted value
-		uint8_t quote = *src;
-		if (!quoteChars(quote))
+		uint8_t quoteChar = *src;
+		if (quoteChar !='"' && quoteChar !='\'')
 			return false;
 
 		// Move past the opening quote
 		src++;
 
 		// Locate the closing quote using `memchr`
-		const uint8_t* endQuote = static_cast<const uint8_t*>(std::memchr(src.fStart, quote, src.size()));
+		const uint8_t* endQuote = static_cast<const uint8_t*>(std::memchr(src.fStart, quoteChar, src.size()));
 
 		if (!endQuote)
 			return false; // No closing quote found
