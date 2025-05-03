@@ -44,6 +44,7 @@ namespace waavs {
 namespace waavs {
 
     // readPI()
+    // 
     // Read Processing Instruction
     // '<?' PITarget (S (Char* - (Char* '?>' Char*)))? '?>'
     static bool readPI(ByteSpan& src, ByteSpan& target, ByteSpan &rest)
@@ -58,13 +59,6 @@ namespace waavs {
         ByteSpan tempTarget;
         if (!readXsdName(src, tempTarget))
             return false;
-
-        // reject 'xml' case-insensitive
-        //if (tempTarget.size() == 3 &&
-        //    (tempTarget[0] == 'x' || tempTarget[0] == 'X') &&
-        //    (tempTarget[1] == 'm' || tempTarget[1] == 'M') &&
-        //    (tempTarget[2] == 'l' || tempTarget[2] == 'L'))
-        //    return false;
 
         target = tempTarget;
 
@@ -198,13 +192,13 @@ namespace waavs {
 
         // Skip past the whitespace
         // to get to the beginning of things
-        src.prefix_trim(xmlwsp);
+		src.skipWhile(chrWspChars);
 
         // Get the name of the root element
-        auto element = chunk_token(src, xmlwsp);
+        auto element = chunk_token(src, chrWspChars);
         
         // Trim whitespace as usual
-		src.prefix_trim(xmlwsp);
+        src.skipWhile(chrWspChars);
         
         // If the next thing we see is a '[', then we have 
         // an 'internal' DTD.  Read to the closing ']>' and be done
@@ -275,7 +269,6 @@ namespace waavs {
             chunk_read_quoted(src, systemId);
 
 			// Skip past the whitespace
-			//src.prefix_trim(xmlwsp);
             src.skipWhile(chrWspChars);
 
 			// If we have a closing '>', then we're done
@@ -386,7 +379,7 @@ namespace waavs {
         return true;
     }
 
-
+    /*
     static bool scanInfoNameSpan(const ByteSpan &src, ByteSpan &name, ByteSpan &rest)
     {
         if (src.empty())
@@ -442,6 +435,7 @@ namespace waavs {
 
         return true;
     }
+    */
 }
 
 
@@ -481,6 +475,7 @@ namespace waavs {
         ByteSpan fMark{};
     };
     
+    /*
     // XmlElementGenerator
     // A function to get the next element in an iteration
     // By putting the necessary parsing in here, we can use both std
@@ -601,13 +596,98 @@ namespace waavs {
 
         return !elem.empty();
     }
+    */
 
-    // XmlElementGenerator
+    // nextXmlElement
     // 
     // A function to get the next element in an iteration
     // By putting the necessary parsing in here, we can use both std
     // c++ iteration idioms, as well as a more straight forward C++ style
     // which does not require all the C++ iteration boilerplate
+    static bool nextXmlElement(const XmlIteratorParams& params, XmlIteratorState& st, XmlElement& elem)
+    {
+        elem.reset(XML_ELEMENT_TYPE_INVALID, {}, {});
+
+        if (st.fSource.empty())
+            return false;
+
+        // 1. Search for next '<'
+        const unsigned char* lt = (const unsigned char*)memchr(st.fSource.fStart, '<', st.fSource.size());
+
+        if (lt) {
+            // Return content if present before the '<'
+            if (lt != st.fSource.fStart) {
+                elem.reset(XML_ELEMENT_TYPE_CONTENT, {}, { st.fSource.fStart, lt });
+                st.fSource.fStart = lt; // next call will process the tag
+                return true;
+            }
+
+            // Now at a tag, consume '<'
+            st.fSource.fStart = lt + 1;
+
+            // Begin tag parsing
+            st.fSource.skipWhile(chrWspChars);
+            ByteSpan tagName{};
+            ByteSpan elementChunk = st.fSource;
+            elementChunk.fEnd = st.fSource.fStart;
+            int kind = XML_ELEMENT_TYPE_START_TAG;
+
+            switch (*st.fSource)
+            {
+            default:
+                readTag(st.fSource, tagName, elementChunk);
+                if (chunk_ends_with_char(elementChunk, '/'))
+                    kind = XML_ELEMENT_TYPE_SELF_CLOSING;
+                break;
+
+            case '?':
+                kind = XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION;
+                if (!readPI(st.fSource, tagName, elementChunk))
+                    return false;
+                if (tagName == "xml")
+                    kind = XML_ELEMENT_TYPE_XMLDECL;
+                break;
+
+            case '!':
+                if (st.fSource.startsWith("!DOCTYPE")) {
+                    kind = XML_ELEMENT_TYPE_DOCTYPE;
+                    readDoctype(st.fSource, elementChunk);
+                }
+                else if (st.fSource.startsWith("!--")) {
+                    kind = XML_ELEMENT_TYPE_COMMENT;
+                    readComment(st.fSource, elementChunk);
+                }
+                else if (st.fSource.startsWith("![CDATA[")) {
+                    kind = XML_ELEMENT_TYPE_CDATA;
+                    readCData(st.fSource, elementChunk);
+                }
+                else if (st.fSource.startsWith("!ENTITY")) {
+                    kind = XML_ELEMENT_TYPE_ENTITY;
+                    readEntityDeclaration(st.fSource, elementChunk);
+                }
+                break;
+
+            case '/':
+                kind = XML_ELEMENT_TYPE_END_TAG;
+                readEndTag(st.fSource, tagName, elementChunk);
+                break;
+            }
+
+            elem.reset(kind, tagName, elementChunk);
+            return true;
+        }
+
+        // 2. No '<' found: optional trailing content
+        if (!st.fSource.empty()) {
+            elem.reset(XML_ELEMENT_TYPE_CONTENT, {}, st.fSource);
+            st.fSource.fStart = st.fSource.fEnd;  // EOF
+            return true;
+        }
+
+        return false;
+    }
+
+/*
     static bool nextXmlElement(const XmlIteratorParams& params, XmlIteratorState& st, XmlElement &elem)
     {
         elem.reset(XML_ELEMENT_TYPE_INVALID, {},  {});
@@ -626,6 +706,8 @@ namespace waavs {
                     // for next turn through iteration
                     st.fState = XML_ITERATOR_STATE_START_TAG;
 
+					// If we've moved past the mark, then we have content
+                    // so, either return that as an element, or ignore it
                     if (!st.fSource.isEqual(st.fMark))
                     {
                         // Encapsulate the content in a chunk
@@ -745,6 +827,6 @@ namespace waavs {
 
         return !elem.empty();
     }
-    
+    */
 }
 

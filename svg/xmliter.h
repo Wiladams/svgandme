@@ -5,7 +5,7 @@
 #include "xpath.h"
 
 namespace waavs {
-
+    /*
     // XmlElementInfoIterator
     // 
 	// Iterate over a container of XmlElementInfo
@@ -71,7 +71,7 @@ namespace waavs {
             return validElement;
         }
     };
-
+    */
 
     // XmlElementIterator
     // scans XML generating a sequence of XmlElements

@@ -2,21 +2,13 @@
 
 #include "charset.h"
 #include "bspan.h"
-
+#include "xmltoken.h"
 
 // These routines validate xml names
 // They only support an ASCII subset, and not the full unicode
 //
 namespace waavs
 {
-	// Valid starting chars for xsd:Name / xsd:NCName (ASCII subset)
-	static charset xmlNameStartChars = chrAlphaChars + "_";
-
-	// Valid trailing chars for xsd:Name
-	static charset xmlNameChars = chrAlphaChars + chrDecDigits + ".-_:";
-
-	// Valid trailing chars for xsd:NCName
-	static charset xmlNcnameChars = chrAlphaChars + chrDecDigits + ".-_";
 
 	// Check if input is a valid ASCII xsd:Name (input already trimmed)
 	static bool isXsdName(const ByteSpan& inChunk) noexcept

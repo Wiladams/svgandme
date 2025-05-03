@@ -6,6 +6,7 @@
 
 #include "xmliter.h"
 #include "wsenum.h"
+#include "xmltojson.h"
 
 
 using namespace waavs;
@@ -77,17 +78,23 @@ static void printXmlElementInfo(const XmlElementInfo& elem)
     }
 }
 
-
-
-static void testElementInfo(const ByteSpan& s)
+static void testTokenizer(const ByteSpan& src)
 {
-	XmlElementInfoIterator iter(s);
-	while (iter.next())
-	{
-		printXmlElementInfo(*iter);
-	}
+    XmlTokenState tokState = { src, false };
+    XmlToken tok;
 
+    while (nextXmlToken(tokState, tok)) 
+    {
+        printf("Token %d: [%.*s]\n", tok.type, (int)tok.value.size(), tok.value.data());
+    }
 }
+
+static void testXmlToJson(const ByteSpan& src)
+{
+	// convert the XML to JSON
+	printXmlToJson(src, stdout, true);
+}
+
 
 static void testXmlElementScan(const ByteSpan& s)
 {
@@ -110,8 +117,16 @@ static void testXmlIter(const ByteSpan& s)
     do
     {
         const XmlElement& elem = *iter;
+        if (elem.isContent())
+        {
+			// only print content if it is not whitespace
+            ByteSpan content = elem.data();
+			content.skipWhile(chrWspChars);
+            if (!content.empty())
+                printXmlElementInfo(elem);
+        } else 
+            printXmlElementInfo(elem);
 
-        printXmlElementInfo(elem);
     } while (iter.next());
 
 }
@@ -271,10 +286,10 @@ int main(int argc, char** argv)
 
     waavs::ByteSpan s(mapped->data(), mapped->size());
     
-
-    //testElementInfo(s);
+    //testTokenizer(s);
+    testXmlToJson(s);
     //testXmlElementScan(s);
-    testXmlIter(s);
+    //testXmlIter(s);
 	//testElementContainer(s);
     //testElementFilter(s);
     //testXPathFilter();

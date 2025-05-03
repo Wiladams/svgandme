@@ -198,6 +198,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\app\mappedfile.h" />
+    <ClInclude Include="..\..\app\xmltojson.h" />
     <ClInclude Include="..\..\app\xmlutil.h" />
     <ClInclude Include="..\..\svg\bspan.h" />
     <ClInclude Include="..\..\svg\charset.h" />
@@ -206,6 +207,8 @@
     <ClInclude Include="..\..\svg\svgcss.h" />
     <ClInclude Include="..\..\svg\xmliter.h" />
     <ClInclude Include="..\..\svg\xmlscan.h" />
+    <ClInclude Include="..\..\svg\xmlschema.h" />
+    <ClInclude Include="..\..\svg\xmltoken.h" />
     <ClInclude Include="..\..\svg\xmltypes.h" />
     <ClInclude Include="..\..\svg\xpath.h" />
   </ItemGroup>
