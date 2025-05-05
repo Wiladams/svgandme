@@ -48,6 +48,14 @@ namespace waavs
                 printf("BLRgba32(%d,%d,%d,%d)", value.r(), value.g(), value.b(), value.a());
             }
             break;
+			case BLObjectType::BL_OBJECT_TYPE_GRADIENT:
+			{
+				BLGradient value = style.as<BLGradient>();
+				printStyleGradient(value, "gradient");
+			}
+            default:
+				printf("NYI Style: %d\n", style.type());
+                break;
             }
         }
 
@@ -71,7 +79,7 @@ namespace waavs
             case BLGradientType::BL_GRADIENT_TYPE_RADIAL:
             {
                 const BLRadialGradientValues& values = agrad.radial();
-                printf("BLGradient %s(BLRadialGradient(%f,%f,%f,%f,%f,%f));\n",
+                printf("BLGradient %s(BLRadialGradientValues(%f,%f,%f,%f,%f,%f));\n",
                     name, 
                     values.x0, values.y0, values.x1, values.y1, values.r0, values.r1);
 
@@ -100,7 +108,7 @@ namespace waavs
             // the identity transform
             if (agrad.hasTransform())
             {
-                printf("%s.setMatrix(", name);
+                printf("%s.setTransform(", name);
                 writeTransform(agrad.transform());
                 printf(");\n");
             }
@@ -116,7 +124,7 @@ namespace waavs
                 case BLObjectType::BL_OBJECT_TYPE_RGBA32:
                 {
                     const BLRgba32 &value = style.as<BLRgba32>();
-                    printf("BLRgba32 style%d(%d,%d,%d,$d);", fStyleCounter,
+                    printf("BLRgba32 %s(%d,%d,%d,%d);\n", name,
                         value.r(), value.g(), value.b(), value.a());
                 }
                 break;
@@ -144,11 +152,16 @@ namespace waavs
             size_t count = view.size;
 
             printf("BLPath %s;\n", pathName);
+            uint8_t lastCmd = 255;
+			BLPoint lastPoint = { 0, 0 };
 
             for (size_t i = 0; i < count; ++i) {
                 switch (commands[i]) {
                 case BL_PATH_CMD_MOVE:
-                    printf("%s.moveTo(%g, %g);\n", pathName, points[i].x, points[i].y);
+					//if (lastCmd != BL_PATH_CMD_MOVE)
+                        printf("%s.moveTo(%g, %g);\n", pathName, points[i].x, points[i].y);
+                    //else
+                    //    printf("%s.lineTo(%g, %g);\n", pathName, lastPoint.x+points[i].x, lastPoint.y+points[i].y);
                     break;
                 case BL_PATH_CMD_ON:
                     printf("%s.lineTo(%g, %g);\n", pathName, points[i].x, points[i].y);
@@ -177,6 +190,9 @@ namespace waavs
                     printf("// Unknown command: %d\n", commands[i]);
                     break;
                 }
+
+                lastCmd = commands[i];
+				lastPoint = points[i];
             }
         }
 
@@ -337,7 +353,7 @@ namespace waavs
         {
             auto paint = getFillPaint();
             if (paint.isNull())
-                printf("ctx.noFill();");
+                printf("ctx.disableFillStyle();\n");
             else {
                 printStyle(paint, "fillStyle");
 
@@ -367,11 +383,11 @@ namespace waavs
         {
             auto paint = getStrokePaint();
             if (paint.isNull())
-                printf("ctx.noStroke();");
+                printf("ctx.disableStrokeStyle();\n");
             else {
-                printf("ctx.setStrokeStyle(");
-                writeStyle(getStrokePaint());
-                printf("); \n");
+                printStyle(paint, "strokeStyle");
+
+                printf("ctx.setStrokeStyle(strokeStyle);\n");
             }
         }
 

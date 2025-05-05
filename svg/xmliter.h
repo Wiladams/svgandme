@@ -5,73 +5,7 @@
 #include "xpath.h"
 
 namespace waavs {
-    /*
-    // XmlElementInfoIterator
-    // 
-	// Iterate over a container of XmlElementInfo
-    // 
-    struct XmlElementInfoIterator {
 
-        using difference_type = std::ptrdiff_t;
-        using value_type = XmlElementInfo;
-        using pointer = const XmlElementInfo*;
-        using reference = const XmlElementInfo&;
-        using iterator_category = std::forward_iterator_tag;
-
-
-    private:
-        XmlIteratorParams fParams{};
-        XmlIteratorState fState{};
-        XmlElementInfo fCurrentElement{};
-
-    public:
-        XmlElementInfoIterator() = default;
-
-        // Construct an iterator from a chunk of XML
-        XmlElementInfoIterator(const ByteSpan& inChunk, bool autoScanAttributes = false)
-            : fState{ XML_ITERATOR_STATE_CONTENT, inChunk, inChunk }
-        {
-            fParams.fAutoScanAttributes = autoScanAttributes;
-        }
-
-        // return 'true' if the node we're currently sitting on is valid
-        // return 'false' if otherwise
-        explicit operator bool() { return !fCurrentElement.empty(); }
-
-        // STL-compliant equality comparison
-        bool operator==(const XmlElementInfoIterator& other) const noexcept
-        {
-            return fState.fSource == other.fState.fSource;
-        }
-
-        bool operator!=(const XmlElementInfoIterator& other) const noexcept
-        {
-            return !(*this == other);
-        }
-
-        // These operators make it operate like an iterator
-        const XmlElementInfo& operator*() const { return fCurrentElement; }
-        const XmlElementInfo* operator->() const { return &fCurrentElement; }
-
-        // Increment the iterator either pre, or post notation
-        XmlElementInfoIterator& operator++() { next(); return *this; }
-        XmlElementInfoIterator operator++(int)
-        {
-            XmlElementInfoIterator temp = *this;  // Copy current state
-            next();
-            return temp;  // Return previous state
-        }
-
-
-        // Return the current value of the iteration
-        //const XmlElement & next(XmlElement& elem)
-        bool next()
-        {
-            bool validElement = XmlNextElementInfo(fParams, fState, fCurrentElement);
-            return validElement;
-        }
-    };
-    */
 
     // XmlElementIterator
     // scans XML generating a sequence of XmlElements
@@ -112,7 +46,7 @@ namespace waavs {
 
         // Construct an iterator from a chunk of XML
         XmlElementIterator(const ByteSpan& inChunk, bool autoScanAttributes = false)
-            : fState{ XML_ITERATOR_STATE_CONTENT, inChunk, inChunk }
+            : fState{ inChunk }
         {
             fParams.fAutoScanAttributes = autoScanAttributes;
             next();

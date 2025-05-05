@@ -99,7 +99,7 @@ static void testXmlToJson(const ByteSpan& src)
 static void testXmlElementScan(const ByteSpan& s)
 {
 	XmlIteratorParams fParams{};
-	XmlIteratorState fState{ XML_ITERATOR_STATE_CONTENT, s, s };
+	XmlIteratorState fState{ s};
 	fParams.fAutoScanAttributes = false;
     fParams.fSkipWhitespace = true;
 

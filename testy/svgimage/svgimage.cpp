@@ -1,18 +1,18 @@
 
 #include <filesystem>
 
+#include "mappedfile.h"
 
 #include "svg.h"
 #include "viewport.h"
 
-#include "mappedfile.h"
 #include "svgb2ddriver.h"
 
 
 using namespace waavs;
 
-#define CAN_WIDTH 800
-#define CAN_HEIGHT 600
+#define CAN_WIDTH 1920
+#define CAN_HEIGHT 1280
 
 
 // Reference to currently active document
@@ -83,20 +83,26 @@ int main(int argc, char **argv)
     if (gDoc == nullptr)
 		return 1;
 
-	// Now create a drawing context so we can
-	// do the rendering
+	// Create an image that we will draw into
 	BLImage img(CAN_WIDTH, CAN_HEIGHT, BL_FORMAT_PRGB32);
 
 	// Attach the drawing context to the image
 	// We MUST do this before we perform any other
 	// operations, including the transform
 	BLContextCreateInfo createInfo{};
-	createInfo.threadCount = 0;
+	createInfo.threadCount = 4;
 	SVGB2DDriver ctx;
 	ctx.attach(img, &createInfo);
-	//ctx.clearAll();
 
-	
+	// setup for drawing.  Not strictly necessary.
+	// you can setup the context however you want before actually
+	// drawing.
+	ctx.background(BLRgba32(0xFFFFFFFF));	// white background
+	ctx.renew();
+
+	// We are doing 'fit to canvas' drawing, so we need
+	// to calculate the scaling factors for the x and y 
+	// axes.  The easiest way to do that is to create a viewport
 	// Create a rectangle the size of the BLImage we want to render into
 	BLRect surfaceFrame{ 0, 0, CAN_WIDTH, CAN_HEIGHT };
 
@@ -114,19 +120,15 @@ int main(int argc, char **argv)
 	vp.viewBoxFrame(sceneFrame);		// The part of the scene we want to display
 	vp.viewportFrame(surfaceFrame);		// The surface we want to fit to 
 	
-
-
 	// apply the viewport's sceneToSurface transform to the context
-	ctx.setTransform(vp.viewBoxToViewportTransform());
-	//printf("setTransform RESULT: %d\n", res);
-	
-
+	BLMatrix2D tform = vp.viewBoxToViewportTransform();
+	ctx.transform(tform);
 	
 	// Render the document into the context
 	gDoc->draw(&ctx, gDoc.get());
 
-	// detach should do a final flush, so we're ready to save
-	// the image
+	// detach automatically does a final flush, 
+	// so we're ready to save the image after that
 	ctx.detach();
 	
 	// Save the image from the drawing context out to a file

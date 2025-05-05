@@ -1,6 +1,6 @@
 #pragma once
 
-#include "irendersvg.h"
+#include "svgb2ddriver.h"
 #include "viewport.h"
 #include "uievent.h"
 
@@ -83,7 +83,7 @@ namespace waavs {
 
 			ctx->push();
 			ctx->translate(fr.x, fr.y);
-			ctx->clipToRect(BLRect(0,0,fr.w, fr.h));
+			ctx->clipRect(BLRect(0,0,fr.w, fr.h));
 			drawBackground(ctx);
 			ctx->noClip();
 			ctx->pop();
@@ -91,7 +91,7 @@ namespace waavs {
 			// Apply viewport transformation
 			ctx->push();
 			ctx->translate(fr.x, fr.y);
-			ctx->clipToRect(BLRect(0, 0, fr.w, fr.h));
+			ctx->clipRect(BLRect(0, 0, fr.w, fr.h));
 			//ctx->setTransform(sceneToSurfaceTransform());
 			drawSelf(ctx);
 			ctx->noClip();
@@ -99,7 +99,7 @@ namespace waavs {
 
 			ctx->push();
 			ctx->translate(frame().x, frame().y);
-			ctx->clipToRect(BLRect(0, 0, fr.w, fr.h));
+			ctx->clipRect(BLRect(0, 0, fr.w, fr.h));
 			drawForeground(ctx);
 			ctx->noClip();
 			ctx->pop();
@@ -112,14 +112,14 @@ namespace waavs {
 	struct SVGCachedView : public GraphicView
 	{
 		BLImage fCachedImage{};
-		IRenderSVG fCacheContext{ nullptr };
+		SVGB2DDriver fCacheContext;
 
 		bool fNeedsRedraw{ true };
 
 		SVGCachedView(const BLRect& aframe, FontHandler *fh)
 			:GraphicView(aframe)
 		{
-			fCacheContext.fontHandler(fh);
+			//fCacheContext.fontHandler(fh);
 
 			setFrame(aframe);
 		}
@@ -134,8 +134,8 @@ namespace waavs {
 			GraphicView::setFrame(arect);
 			fCachedImage.reset();
 			fCachedImage.create(static_cast<int>(arect.w), static_cast<int>(arect.h), BL_FORMAT_PRGB32);
-			fCacheContext.begin(fCachedImage);
-			fCacheContext.fontFamily("Arial");
+			fCacheContext.attach(fCachedImage);
+			//fCacheContext.fontFamily("Arial");
 			fCacheContext.setViewport(arect);
 			
 			setNeedsRedraw(true);
@@ -161,7 +161,7 @@ namespace waavs {
 				// Apply viewport transformation
 				fCacheContext.push();
 				//ctx->translate(frame().x, frame().y);
-				fCacheContext.setTransform(sceneToSurfaceTransform());
+				fCacheContext.transform(sceneToSurfaceTransform());
 				drawSelf(&fCacheContext);
 				fCacheContext.pop();
 

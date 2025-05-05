@@ -118,12 +118,16 @@ namespace waavs {
 		if (cmdState.remains.empty())
 			return false;
 
+		// if the next character is not numeric, then 
+		// it must be a command
 		if (!leadingChars(*cmdState.remains)) {
 			// If we're in here, there must be a command
 			// if there isn't it's an error
 			const char* argTypes = getSegmentArgTypes(*cmdState.remains);
 			if (argTypes != nullptr)
 			{
+				// start with iteration == 0 to indicate this is
+				// the first instance of the segment
 				cmdState.fSegmentKind = *cmdState.remains;
 				cmdState.iteration = 0;
 				cmdState.remains++;
@@ -137,7 +141,14 @@ namespace waavs {
 				return false;
 			}
 		}
+		else {
+			// If we are here, the next token is numeric
+			// so, we assume we're in the next iteration of the same
+			// command, so increment the iteration count
+			cmdState.iteration++;
+		}
 
+		// Now, we need to read the numeric arguments
 		if ((cmdState.fArgTypes != nullptr) && (cmdState.fArgCount > 0))
 		{
 			if (cmdState.fArgCount != readNumericArguments(cmdState.remains, cmdState.fArgTypes, cmdState.args))

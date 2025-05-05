@@ -15,6 +15,8 @@
 #include "svgfilelistview.h"
 #include "bgselector.h"
 #include "svgicons.h"
+#include "svgb2ddriver.h"
+
 
 using namespace waavs;
 
@@ -43,7 +45,7 @@ static SVGFactory gSVG;
 
 
 // Drawing context used for drawing document
-IRenderSVG gDrawingContext(nullptr);
+SVGB2DDriver gDrawingContext;
 
 
 // Animation management
@@ -150,7 +152,7 @@ static void onFrameEvent(const FrameCountEvent& fe)
 static void onResizeEvent(const ResizeEvent& re)
 {
 	//printf("onResizeEvent: %d x %d\n", re.width, re.height);
-	gDrawingContext.begin(appFrameBuffer()->getBlend2dImage());
+	gDrawingContext.attach(appFrameBuffer()->getBlend2dImage());
 	refreshDoc();
 }
 
@@ -226,7 +228,7 @@ static void setupFonts()
 	//loadFontDirectory("..\\resources");
 	//loadFontDirectory("d:\\commonfonts");
 
-	gDrawingContext.fontHandler(FontHandler::getFontHandler());
+	//gDrawingContext.fontHandler(FontHandler::getFontHandler());
 }
 
 
@@ -260,8 +262,8 @@ static void setup()
 	BLContextCreateInfo ctxInfo{};
 	ctxInfo.threadCount = 4;
 	//ctxInfo.threadCount = 0;
-	gDrawingContext.begin(appFrameBuffer()->getBlend2dImage(), &ctxInfo);
-	gDrawingContext.fillAll(BLRgba32(0xffffffff));
+	gDrawingContext.attach(appFrameBuffer()->getBlend2dImage(), &ctxInfo);
+	gDrawingContext.background(BLRgba32(0xffffffff));
 	
 	//gFileListView.setFontHandler(FontHandler::getFontHandler());
 

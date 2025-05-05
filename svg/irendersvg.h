@@ -81,6 +81,30 @@ namespace waavs
                 }
             }
         }
+        
+
+        // Call this before each frame to be drawn
+        virtual void onRenew() {}
+        void renew()
+        {
+            // Clear the canvas first
+            clear();
+
+            //resetState();
+            initState();
+
+            // Setup the default drawing state
+            // to conform to what SVG expects
+            //blendMode(BL_COMP_OP_SRC_OVER);
+            //strokeMiterLimit(4.0);
+            //lineJoin(BL_STROKE_JOIN_MITER_CLIP);
+            //fillRule(BL_FILL_RULE_NON_ZERO);
+
+            //fill(BLRgba32(0, 0, 0));
+            //noStroke();
+            //strokeWidth(1.0);
+            onRenew();
+        }
 
         virtual void onPush() {}
         void push()  
@@ -106,19 +130,10 @@ namespace waavs
         virtual void onFlush() {}
         void flush()
         {
-
             onFlush();
-
         }
 
-        /*
-        void resetState()
-        {
-            IManageSVGState::reset();
-            
-            resetTransform();
-        }
-        */
+
 
         // Canvas management
         virtual void onClear() {}
@@ -127,34 +142,8 @@ namespace waavs
             onClear();
         }
 
-        // Call this before each frame to be drawn
-        virtual void onRenew() {}
-        void renew()
-        {
-            // Clear the canvas first
-            //fDrawingContext->clearAll();
 
-            // If a background paint is set, use it
 
-            //if (!getBackgroundPaint().isNull())
-            //{
-            //    fDrawingContext->fillAll(getBackgroundPaint());
-            //}
-
-            //resetState();
-
-            // Setup the default drawing state
-            // to conform to what SVG expects
-            blendMode(BL_COMP_OP_SRC_OVER);
-            strokeMiterLimit(4.0);
-            lineJoin(BL_STROKE_JOIN_MITER_CLIP);
-            fillRule(BL_FILL_RULE_NON_ZERO);
-
-            fill(BLRgba32(0, 0, 0));
-            noStroke();
-            strokeWidth(1.0);
-            onRenew();
-        }
 
         // Coordinate system transformation management
         // The difference between transform(), and applyTransform() is

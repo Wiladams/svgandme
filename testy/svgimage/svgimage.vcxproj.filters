@@ -107,5 +107,8 @@
     <ClInclude Include="..\..\svg\svgdrawingstate.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\svg\pathsegmenter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

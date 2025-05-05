@@ -75,7 +75,7 @@ static void drawDocument()
 	
 	// setup any transform
 	if (gPerformTransform)
-		getDrawingContext()->setTransform(gNavigator.sceneToSurfaceTransform());
+		getDrawingContext()->transform(gNavigator.sceneToSurfaceTransform());
 
 
 	// draw the document into the ctx

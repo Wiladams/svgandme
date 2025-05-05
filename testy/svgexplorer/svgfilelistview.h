@@ -76,17 +76,24 @@ namespace waavs {
 			BLRect fr = frame();
 			ctx->strokeWidth(3);
 
-			if (isSelected())
-				ctx->strokeRect(BLRect(1, 1, fr.w - 2, fr.h - 2), BLRgba32(0xff7f2f2f));
-			else
-				ctx->strokeRect(BLRect(1, 1, fr.w - 2, fr.h - 2), BLRgba32(0xff7fA0A0));
+			BLPath apath;
+			BLRect rect(0, 0, fr.w, fr.h);
+			apath.addRect(rect);
 
+			if (isSelected())
+				ctx->stroke(BLRgba32(0xff7f2f2f));
+			else
+				ctx->stroke(BLRgba32(0xff7fA0A0));
+
+			ctx->strokeShape(apath);
 		}
 
 		void drawForeground(IRenderSVG* ctx) override
 		{
 			// Draw border around file icon
-			ctx->strokeRect(fDocIcon.frame(), BLRgba32(0xffffE0E0));
+			BLPath rpath;
+			rpath.addRect(0, 0, fDocIcon.frame().w, fDocIcon.frame().h);
+			ctx->strokeShape(rpath);
 			
 			// Draw Draw the icon's filename
 
@@ -96,8 +103,12 @@ namespace waavs {
 			
 			// Draw the mouse hover state
 			if (isHover())
-				ctx->fillRect(0,0,fr.w, fr.h, BLRgba32(0x80A0A0A0));
-
+			{
+				BLPath apath;
+				apath.addRect(0, 0, fr.w, fr.h);
+				ctx->fill(BLRgba32(0x80A0A0A0));
+				ctx->fillShape(apath);
+			}
 		}
 
 		
@@ -380,7 +391,10 @@ namespace waavs {
 		void drawForeground(IRenderSVG* ctx) override
 		{
 			ctx->strokeWidth(4);
-			ctx->strokeRect(BLRect(0, 0, frame().w, frame().h), BLRgba32(0xffA0A0A0));
+			BLPath apath;
+			apath.addRect(0, 0, frame().w, frame().h);
+			ctx->stroke(BLRgba32(0xffA0A0A0));
+			ctx->strokeShape(apath);
 
 			// draw a semi-transparent rectangle around the hover icon frame
 			// get the frame of the hover icon
@@ -395,8 +409,8 @@ namespace waavs {
 		{
 			ctx->resetFont();
 
-			ctx->fontFamily("Arial");
-			ctx->fontSize(16);
+			ctx->setFontFamily("Arial");
+			ctx->setFontSize(16);
 			ctx->noStroke();
 			ctx->fill(BLRgba32(0xff000000));
 

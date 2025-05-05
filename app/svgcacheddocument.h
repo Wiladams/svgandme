@@ -70,7 +70,7 @@ namespace waavs {
 		void drawSelf(IRenderSVG* ctx)
 		{
 			if (nullptr != fDocument) {
-				ctx->fontHandler(fDocument->fontHandler());
+				//ctx->fontHandler(fDocument->fontHandler());
 				fDocument->draw(ctx, fDocument.get());
 			}
 		}

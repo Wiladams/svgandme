@@ -94,7 +94,15 @@ namespace waavs
         // Canvas management
         void onClear() override
         {
-            fDrawingContext->clearAll();
+			const BLVar &bgpaint = getBackgroundPaint();
+			if (!bgpaint.isNull())
+			{
+				fDrawingContext->fillAll(bgpaint);
+			}
+			else
+			{
+				fDrawingContext->clearAll();
+			}
         }
 
 
@@ -117,13 +125,13 @@ namespace waavs
         void onTransform(const BLMatrix2D& value) override
         {
             fDrawingContext->setTransform(value);
-            setTransform(fDrawingContext->userTransform());
+            //setTransform(fDrawingContext->userTransform());
         }
 
         void onApplyTransform(const BLMatrix2D& value) override
         {
             fDrawingContext->applyTransform(value);
-            setTransform(fDrawingContext->userTransform());
+            //setTransform(fDrawingContext->userTransform());
         }
 
         void onScale(double x, double y) override
