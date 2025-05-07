@@ -90,7 +90,7 @@ namespace waavs {
 
 			
 
-			BLVar aVar = paint.getVariant(nullptr, nullptr);
+			BLVar aVar = paint.getVariant(nullptr, groot);
 			uint32_t colorValue = 0;
 			auto res = blVarToRgba32(&aVar, &colorValue);
 			fColor.value = colorValue;

@@ -249,12 +249,10 @@ namespace waavs {
 			double dy = args[1];
 
 			if (iteration == 0) {
-				//res = fPath.moveTo(lastPos.x + args[0], lastPos.y + args[1]);
-
-				res = fPath.moveTo(dx, dy);
+				res = fPath.moveTo(lastPos.x + dx, lastPos.y + dy);
 			}
 			else {
-				res = fPath.lineTo(lastPos.x + args[0], lastPos.y + args[1]);
+				res = fPath.lineTo(lastPos.x + dx, lastPos.y + dy);
 			}
 			clearPathClosed();
 

@@ -407,7 +407,7 @@ namespace waavs {
         
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->setFontSize(static_cast<float>(fValue));
+            ctx->fontSize(static_cast<float>(fValue));
         }
     };
 
@@ -454,7 +454,7 @@ namespace waavs {
         
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->setFontFamily(fValue);
+            ctx->fontFamily(fValue);
         }
     };
 
@@ -495,7 +495,7 @@ namespace waavs {
 
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->setFontStyle(fValue);
+            ctx->fontStyle(fValue);
         }
     };
     
@@ -526,7 +526,7 @@ namespace waavs {
 
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->setFontWeight(value());
+            ctx->fontWeight(value());
         }
 	};
 
@@ -558,7 +558,7 @@ namespace waavs {
 
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->setFontStretch(value());
+            ctx->fontStretch(value());
         }
         
     };
@@ -589,7 +589,7 @@ namespace waavs {
         {
 			// If our raw value is 'currentColor', then we need to get the current color
 			// from the context
-			if (rawValue() == "currentColor")
+			if (ctx!=nullptr && rawValue() == "currentColor")
 			{
 				return ctx->getDefaultColor();
 			}

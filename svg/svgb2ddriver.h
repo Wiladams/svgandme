@@ -10,7 +10,7 @@ namespace waavs
 
     // A specialization of state management, connected to a BLContext
     // This is used when rendering a tree of SVG elements
-    struct SVGB2DDriver : public IRenderSVG // , public BLContext
+    struct SVGB2DDriver : public IRenderSVG
     {
         std::unique_ptr<BLContext> fDrawingContext;
 
@@ -29,7 +29,7 @@ namespace waavs
         virtual ~SVGB2DDriver() = default;
 
 
-        virtual void onAttach(BLImageCore& image, const BLContextCreateInfo* createInfo)
+        void onAttach(BLImageCore& image, const BLContextCreateInfo* createInfo) override
         {
             BLResult res = fDrawingContext->begin(image, createInfo);
             applyToContext(fDrawingContext.get());
@@ -37,12 +37,12 @@ namespace waavs
 
 
 
-        virtual void onDetach()
+        void onDetach() override
         {
             fDrawingContext->end();
         }
 
-        virtual void onResetFont() 
+        void onResetFont() override
         {
             auto fh = FontHandler::getFontHandler();
 
@@ -59,20 +59,20 @@ namespace waavs
             }
         }
 
-        virtual void onPush() 
+        void onPush() override
         {
             fDrawingContext->save();
         }
 
 
-        virtual void onPop() 
+        void onPop() override
         {
             fDrawingContext->restore();
 
             //applyToContext(fDrawingContext.get());
         }
 
-        virtual void onFlush() 
+        void onFlush() override
         {
             BLResult bResult = fDrawingContext->flush(BL_CONTEXT_FLUSH_SYNC);
             if (bResult != BL_SUCCESS)
@@ -81,15 +81,6 @@ namespace waavs
             }
         }
 
-
-        /*
-        void resetState()
-        {
-            IManageSVGState::reset();
-
-            resetTransform();
-        }
-        */
 
         // Canvas management
         void onClear() override
@@ -131,40 +122,36 @@ namespace waavs
         void onApplyTransform(const BLMatrix2D& value) override
         {
             fDrawingContext->applyTransform(value);
-            //setTransform(fDrawingContext->userTransform());
         }
 
         void onScale(double x, double y) override
         {
             fDrawingContext->scale(x, y);
-            //setTransform(fDrawingContext->userTransform());
         }
 
         void onTranslate(double x, double y) override
         {
             fDrawingContext->translate(x, y);
-            //setTransform(fDrawingContext->userTransform());
         }
 
 
         void onRotate(double angle, double cx, double cy) override
         {
             fDrawingContext->rotate(angle);
-            //setTransform(fDrawingContext->userTransform());
         }
 
         // Drawing attributes
-        virtual void onStrokeBeforeTransform() 
+        void onStrokeBeforeTransform() override
         {
             fDrawingContext->setStrokeTransformOrder(getStrokeBeforeTransform() ? BL_STROKE_TRANSFORM_ORDER_BEFORE : BL_STROKE_TRANSFORM_ORDER_AFTER);
         }
 
-        virtual void onBlendMode() 
+        void onBlendMode() override
         {
             fDrawingContext->setCompOp((BLCompOp)getCompositeMode());
         }
 
-        virtual void onGlobalOpacity() 
+        void onGlobalOpacity() override
         {
             fDrawingContext->setGlobalAlpha(getGlobalOpacity());
         }
@@ -254,32 +241,34 @@ namespace waavs
 
         // Set a background that will be used
         // to fill the canvas before any drawing
-        virtual void onBackground() {}
+        void onBackground() override {}
 
 
 
         // Typography
-        virtual void onTextCursor() {}
+        void onTextCursor() override {}
 
 
         // BUGBUG - this should become a part of the state management
-        virtual void onFillMask() 
+        void onFillMask() override
         {
             //fDrawingContext->fillMask(origin, mask, maskArea);
         }
 
-        virtual void onFillMask(BLImage& mask, const BLRectI& maskArea)
-        {
+		//virtual void onFillMask(BLImage& mask, const BLRectI& maskArea) override
+		//{
+		//	BLPointI origin(maskArea.x, maskArea.y);
+		//	fDrawingContext->fillMask(origin, mask, maskArea);
+		//}
 
-        }
 
         // Clipping
-        virtual void onClipRect() 
+        void onClipRect() override
         {
             fDrawingContext->clipToRect(getClipRect());
         }
 
-        virtual void onNoClip() 
+        void onNoClip() override
         {
             fDrawingContext->restoreClipping();
         }
@@ -340,14 +329,14 @@ namespace waavs
 
 
         // Bitmap drawing
-        virtual void onImage(const BLImage& img, double x, double y)
+        void onImage(const BLImage& img, double x, double y) override
         {
             fDrawingContext->blitImage(BLPoint(x, y), img);
         }
 
-        virtual void onScaleImage(const BLImage& src,
+        void onScaleImage(const BLImage& src,
             int srcX, int srcY, int srcWidth, int srcHeight,
-            double dstX, double dstY, double dstWidth, double dstHeight)
+            double dstX, double dstY, double dstWidth, double dstHeight) override
         {
             BLRect dst{ dstX,dstY,dstWidth,dstHeight };
             BLRectI srcArea{ srcX,srcY,srcWidth,srcHeight };
@@ -357,17 +346,17 @@ namespace waavs
 
 
         // Text Drawing
-        virtual void onStrokeText(const ByteSpan& txt, double x, double y)
+        void onStrokeText(const ByteSpan& txt, double x, double y) override
         {
             fDrawingContext->strokeUtf8Text(BLPoint(x, y), getFont(), (char*)txt.data(), txt.size());
         }
 
-        virtual void onFillText(const ByteSpan& txt, double x, double y)
+        void onFillText(const ByteSpan& txt, double x, double y) override
         {
             fDrawingContext->fillUtf8Text(BLPoint(x, y), getFont(), (char*)txt.data(), txt.size());
         }
 
-        virtual void onDrawText(const ByteSpan& txt, double x, double y) 
+        void onDrawText(const ByteSpan& txt, double x, double y) override
         {
             // Get the paint order from the context
             uint32_t porder = getPaintOrder();

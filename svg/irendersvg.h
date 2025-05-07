@@ -63,24 +63,7 @@ namespace waavs
             onDetach();
         }
         
-        virtual void onResetFont() {}
 
-        void resetFont() override
-        {
-            auto fh = FontHandler::getFontHandler();
-
-            if (nullptr != fh)
-            {
-                BLFont aFont;
-                auto success = fh->selectFont(getFontFamily(),
-                    aFont, getFontSize(), getFontStyle(), getFontWeight(), getFontStretch());
-
-                if (success)
-                {
-                    setFont(aFont);
-                }
-            }
-        }
         
 
         // Call this before each frame to be drawn
@@ -451,6 +434,63 @@ namespace waavs
 
 
         // Text Drawing
+        virtual void onResetFont() {}
+
+        void resetFont() override
+        {
+            auto fh = FontHandler::getFontHandler();
+
+            if (nullptr != fh)
+            {
+                BLFont aFont;
+                auto success = fh->selectFont(getFontFamily(),
+                    aFont, getFontSize(), getFontStyle(), getFontWeight(), getFontStretch());
+
+                if (success)
+                {
+                    setFont(aFont);
+                }
+            }
+        }
+
+		// Font management attributes
+		virtual void onFontFamily(const ByteSpan& family) {}
+        virtual void onFontSize(double size) {}
+		virtual void onFontStyle(BLFontStyle style) {}
+		virtual void onFontWeight(BLFontWeight weight) {}
+		virtual void onFontStretch(BLFontStretch stretch) {}
+
+		void fontStretch(BLFontStretch stretch)
+		{
+			setFontStretch(stretch);
+			onFontStretch(stretch);
+		}
+
+		void fontStyle(BLFontStyle style)
+		{
+			setFontStyle(style);
+			onFontStyle(style);
+		}
+		
+        void fontWeight(BLFontWeight weight)
+		{
+			setFontWeight(weight);
+			onFontWeight(weight);
+		}
+
+		void fontSize(double size)
+		{
+			setFontSize(size);
+			onFontSize(size);
+		}
+
+		void fontFamily(const ByteSpan& family)
+		{
+			setFontFamily(family);
+			onResetFont();
+		}
+
+        // Text drawing
         virtual void onStrokeText(const ByteSpan& txt, double x, double y) {}
 		void strokeText(const ByteSpan& txt, double x, double y) 
         {

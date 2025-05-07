@@ -28,6 +28,15 @@ static void printTransform(const BLMatrix2D& tform)
     printf("%3.2f  %3.2f\n", tform.m[4], tform.m[5]);
 }
 
+static void printADoc(const ByteSpan &src)
+{
+    auto doc = SVGFactory::createDOM(src, nullptr);
+
+    std::unique_ptr<SVGAPIPrinter> printer = std::make_unique<SVGAPIPrinter>();
+
+    doc->draw(printer.get(), doc.get());
+}
+
 static void testFile(int argc, char **argv)
 {
     // create an mmap for the specified file
@@ -44,14 +53,28 @@ static void testFile(int argc, char **argv)
 
     waavs::ByteSpan s(mapped->data(), mapped->size());
 
-    auto doc = SVGFactory::createDOM(s, nullptr);
-
-    std::unique_ptr<SVGAPIPrinter> printer = std::make_unique<SVGAPIPrinter>();
-
-    doc->draw(printer.get(), doc.get());
+    printADoc(s);
 
     // close the mapped file
     mapped->close();
+}
+
+static void testChunk()
+{
+    const char * s = R"||(
+    <svg xmlns = 'http://www.w3.org/2000/svg' width = "1920" height = "1280" viewBox = "0 0 1920 1280">
+        <path
+        style = 'fill:#ffffff; stroke:url(#linearGradient4068); stroke-width:15; stroke-linecap:round; stroke-linejoin:miter; stroke-miterlimit:4; stroke-dasharray:30, 15; stroke-dashoffset:4.5; stroke-opacity:1"
+        d = 'm 301.22749, 1104.8385 2.12222, 153.7785'
+        id = 'path4050' />
+    </svg>
+)||";
+
+
+	// create a chunk from the string
+	ByteSpan chunk(s);
+
+    printADoc(chunk);
 }
 
 static void testAPI()
@@ -68,8 +91,8 @@ static void testAPI()
 int main(int argc, char** argv)
 {
     //testAPI();
-
-    testFile(argc, argv);
+	testChunk();
+    //testFile(argc, argv);
 
     return 0;
 }
