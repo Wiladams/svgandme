@@ -360,12 +360,13 @@ namespace waavs {
     //
     static inline bool readNextNumber(ByteSpan& s, double& outNumber) noexcept
     {
-        // typical whitespace found in lists of numbers, like on paths and polylines
-        static const charset nextNumWsp(",+\t\n\f\r ");          
+        // typical whitespace found in lists of numbers, 
+        // like on paths and polylines
+        static const charset nextNumWsp = chrWspChars + ",+"; // (",+\t\n\f\r ");
 
-        // clear up leading whitespace, including ','
-        s = chunk_ltrim(s, nextNumWsp);
-        if (!s)
+		s.skipWhile(nextNumWsp);
+
+        if (s.empty())
             return false;
 
 		return readNumber(s, outNumber);
@@ -374,12 +375,10 @@ namespace waavs {
     static inline bool readNextFlag(ByteSpan& s, double& outNumber) noexcept
     {
         // typical whitespace found in lists of numbers, like on paths and polylines
-        static charset whitespaceChars(",\t\n\f\r ");
+        static charset wspChars = chrWspChars + ",";
 
         // clear up leading whitespace, including ','
-        s = chunk_ltrim(s, whitespaceChars);
-
-        ByteSpan numChunk{};
+		s.skipWhile(wspChars);
 
 		if (*s == '0' || *s == '1') {
 			outNumber = (double)(*s - '0');
@@ -402,7 +401,7 @@ namespace waavs {
     static int readNumericArguments(ByteSpan& s, const char* argTypes, double* outArgs) noexcept
     {
         // typical whitespace found in lists of numbers, like on paths and polylines
-        static charset segWspChars(",\t\n\f\r ");
+        //static charset segWspChars(",\t\n\f\r ");
 
         int i = 0;
         for (i = 0; argTypes[i]; i++)

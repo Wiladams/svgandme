@@ -90,7 +90,7 @@ namespace waavs
             {
                 const BLConicGradientValues& values = agrad.conic();
                 printf("BLGradient %s(BLConicGradientValues(%g,%g,%g,%g));",
-                    values.x0, values.y0, values.angle, values.repeat);
+                    name, values.x0, values.y0, values.angle, values.repeat);
             }
             }
 
@@ -360,7 +360,11 @@ namespace waavs
                 printf("ctx.setFillStyle(fillStyle);\n");
             }
         }
-
+        
+        void onNoFill() override
+        {
+            printf("ctx.disableFillStyle();\n");
+        }
 
         void onFillOpacity() override
         {

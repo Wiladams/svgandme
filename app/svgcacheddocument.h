@@ -1,7 +1,5 @@
 #pragma once
 
-// SVGSprite
-// A struct that takes an svg string and renders it to a bitmap
 
 #include "bspan.h"
 #include "svgdocument.h"
@@ -60,17 +58,10 @@ namespace waavs {
 			setNeedsRedraw(true);
 			onDocumentLoad();
 		}
-		
-		/*
-		void drawBackground(IRenderSVG *ctx) override
-		{	
-		}
-		*/
 
 		void drawSelf(IRenderSVG* ctx)
 		{
 			if (nullptr != fDocument) {
-				//ctx->fontHandler(fDocument->fontHandler());
 				fDocument->draw(ctx, fDocument.get());
 			}
 		}

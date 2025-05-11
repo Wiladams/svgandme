@@ -59,7 +59,7 @@
     <ClInclude Include="..\..\svg\definitions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\svgpath.h">
+    <ClInclude Include="..\..\svg\b2dpathbuilder.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\svgcolors.h">
@@ -234,6 +234,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\xmlschema.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\app\waavsdisplaycapture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\app\waavsstrokebrush.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

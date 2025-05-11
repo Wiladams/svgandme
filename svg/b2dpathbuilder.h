@@ -40,29 +40,6 @@ namespace waavs {
 		inline void clearPathClosed() noexcept { pathJustClosed = false; }
 
 
-		/*
-		using CommandFunc = int (B2DPathBuilder::*)(const double*, int);
-		static inline const std::array<CommandFunc, 128>& getCommandTable()
-		{
-			static std::array<CommandFunc, 128> cmdTbl = [] {
-				std::array<CommandFunc, 128> table{};  // Zero-initializes all elements to nullptr
-				table['A'] = &B2DPathBuilder::arcTo;   table['a'] = &B2DPathBuilder::arcBy;
-				table['C'] = &B2DPathBuilder::cubicTo; table['c'] = &B2DPathBuilder::cubicBy;
-				table['L'] = &B2DPathBuilder::lineTo;  table['l'] = &B2DPathBuilder::lineBy;
-				table['M'] = &B2DPathBuilder::moveTo;  table['m'] = &B2DPathBuilder::moveBy;
-				table['Q'] = &B2DPathBuilder::quadTo;  table['q'] = &B2DPathBuilder::quadBy;
-				table['S'] = &B2DPathBuilder::smoothCubicTo; table['s'] = &B2DPathBuilder::smoothCubicBy;
-				table['T'] = &B2DPathBuilder::smoothQuadTo;  table['t'] = &B2DPathBuilder::smoothQuadBy;
-				table['H'] = &B2DPathBuilder::hLineTo; table['h'] = &B2DPathBuilder::hLineBy;
-				table['V'] = &B2DPathBuilder::vLineTo; table['v'] = &B2DPathBuilder::vLineBy;
-				table['Z'] = &B2DPathBuilder::close;   table['z'] = &B2DPathBuilder::close;
-				return table;
-				}();
-
-			return cmdTbl;
-		}
-		*/
-
 		//
 		// addSegment()
 		// Similar to addGeometry on the BLPath object
@@ -110,30 +87,6 @@ namespace waavs {
 				printf("Unknown command: %c\n", cmd);
 				return -1;
 			}
-			/*
-			const auto& commandTable = getCommandTable();
-			if (cmd < 128)
-			{
-				auto cmdFunc = commandTable[cmd];
-				if (cmdFunc == nullptr)
-				{
-					printf("B2DPathBuilder, ERROR: command %c not found\n", cmd);
-					return -1;	// error in cmd
-				}
-
-				int err = (this->*(cmdFunc))(args, iteration);
-
-				if (err != BL_SUCCESS)
-				{
-					printf("B2DPathBuilder, ERROR in command: \n");
-					return err;	// indicating an error
-				}
-			}
-			else {
-				printf("B2DPathBuilder, INVALID Command: %c\n", cmd);
-				return -1;	// error in cmd
-			}
-			*/
 
 		}
 

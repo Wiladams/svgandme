@@ -297,6 +297,14 @@ namespace waavs {
 }
 
 
+namespace waavs {
+	static inline bool isAll(const ByteSpan& src, const charset& aset)
+	{
+		ByteSpan s = src;
+		s.skipWhile(aset);
+		return s.empty();
+	}
+}
 
 namespace waavs {
 	INLINE size_t copy(ByteSpan& a, const ByteSpan& b) noexcept;

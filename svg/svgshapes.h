@@ -7,7 +7,7 @@
 #include <unordered_map>
 
 #include "svgattributes.h"
-#include "svgpath.h"
+#include "b2dpathbuilder.h"
 #include "svgtext.h"
 #include "viewport.h"
 #include "svgmarker.h"

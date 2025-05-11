@@ -212,13 +212,15 @@
     <ClCompile Include="svgimage.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\app\svgwaavs.h" />
     <ClInclude Include="..\..\app\uievent.h" />
+    <ClInclude Include="..\..\app\waavsstrokebrush.h" />
     <ClInclude Include="..\..\svg\base64.h" />
     <ClInclude Include="..\..\svg\bithacks.h" />
     <ClInclude Include="..\..\svg\bspan.h" />
     <ClInclude Include="..\..\svg\charset.h" />
+    <ClInclude Include="..\..\svg\curves.h" />
     <ClInclude Include="..\..\svg\definitions.h" />
-    <ClInclude Include="..\..\svg\geometry.h" />
     <ClInclude Include="..\..\svg\imanagesvgstate.h" />
     <ClInclude Include="..\..\svg\irendersvg.h" />
     <ClInclude Include="..\..\svg\maths.h" />
@@ -240,6 +242,7 @@
     <ClInclude Include="..\..\svg\svgstructuretypes.h" />
     <ClInclude Include="..\..\svg\svgtext.h" />
     <ClInclude Include="..\..\svg\viewport.h" />
+    <ClInclude Include="..\..\svg\wsenum.h" />
     <ClInclude Include="..\..\svg\xmlentity.h" />
     <ClInclude Include="..\..\svg\xmlscan.h" />
   </ItemGroup>

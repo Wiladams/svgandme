@@ -1,6 +1,5 @@
 #pragma once
 
-//#include <array>
 
 #include "blend2d.h"
 #include "pathsegmenter.h"
@@ -8,6 +7,30 @@
 
 using namespace waavs;
 
+namespace waavs {
+	// PathCommandDispatch
+	// 
+	// A topic which will generate SVGSegmentParseState events
+	// An interested party can subscribe to this topic
+	// and handle the incoming events in whatever way they want
+	// By having this as a topic, we get a loose coupling, which does
+	// not require complex inheritance chains to deal with the events
+	struct PathCommandDispatch : public Topic<SVGSegmentParseState>
+	{
+		bool parse(const waavs::ByteSpan& inSpan) noexcept
+		{
+			SVGSegmentParseParams params{};
+			SVGSegmentParseState cmdState(inSpan);
+
+			while (readNextSegmentCommand(params, cmdState))
+			{
+				publish(cmdState);
+			}
+
+			return true;
+		}
+	};
+}
 
 static void testPathPrinter()
 {

@@ -31,10 +31,12 @@ namespace waavs {
 		
 		void onDocumentLoad() override
 		{
-			fNavigator.setBounds(fDocument->getBBox());
+			auto dbox = fDocument->getBBox();
+			fNavigator.setBounds(dbox);
 			setBounds(fDocument->getBBox());
 			
-			setSceneToSurfaceTransform(fNavigator.sceneToSurfaceTransform());
+			const BLMatrix2D & tform = fNavigator.sceneToSurfaceTransform();
+			setSceneToSurfaceTransform(tform);
 		}
 		
 

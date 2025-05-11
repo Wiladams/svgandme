@@ -17,6 +17,16 @@
 #include <cstddef>		// nullptr_t, ptrdiff_t, size_t
 #include <cctype>
 
+/*
+// Platform intrinsics
+#if defined(__ARM_NEON) || defined(__aarch64__)
+#include <arm_neon.h>
+#endif
+#if defined(__AVX2__)
+#include <immintrin.h>
+#endif
+*/
+
 #define WAAVS_NOMINMAX 1
 
 

@@ -763,7 +763,7 @@ namespace waavs {
                 unsigned int outBuffSize = base64::getDecodeOutputSize(value.size());
                 MemBuff outBuff(outBuffSize);
                 
-                auto decodedSize = base64::decode((const char*)value.data(), value.size(), outBuff.data());
+                auto decodedSize = base64::decode(value.data(), value.size(), outBuff.data(), outBuffSize);
 
 				if (decodedSize > 0)
 				{
@@ -780,7 +780,10 @@ namespace waavs {
 					{
 						success = true;
 					}
-				}
+                }
+                else {
+					printf("parseFont() - Error base64 decoding font data\n");
+                }
 			}
 		}
 

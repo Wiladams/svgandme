@@ -13,12 +13,12 @@ namespace waavs {
         bool hasChildren = false;
     };
 
-    static inline bool isAllWhitespace(const ByteSpan& src) 
-    {
-        ByteSpan s = src;
-        s.skipWhile(chrWspChars);
-        return s.empty();
-    }
+    //static inline bool isAllWhitespace(const ByteSpan& src) 
+    //{
+    //    ByteSpan s = src;
+    //    s.skipWhile(chrWspChars);
+    //    return s.empty();
+    //}
 
     static void jsonEscaped(const ByteSpan& span, FILE* out = stdout) {
         fwrite("\"", 1, 1, out);
@@ -125,7 +125,8 @@ namespace waavs {
             }
 
             case XML_TOKEN_TEXT:
-                if (collapseWhitespace && isAllWhitespace(tok.value)) {
+                if (collapseWhitespace && isAll(tok.value, chrWspChars)) 
+                {
                     // skip this text node
                     break;
                 }

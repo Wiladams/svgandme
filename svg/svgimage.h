@@ -47,13 +47,16 @@ namespace waavs {
             unsigned int outBuffSize = base64::getDecodeOutputSize(value.size());
             MemBuff outBuff(outBuffSize);
 
-            auto decodedSize = base64::decode((const char*)value.data(), value.size(), outBuff.data());
+            auto decodedSize = base64::decode(value.data(), value.size(), outBuff.data(), outBuffSize);
 
             // BUGBUG - write chunk to file for debugging
             //ByteSpan outChunk = ByteSpan(outBuff.data(), outBuff.size());
-            //char filename[256]{ 0 };
+			//char filename[256]{ 0 };
 			//sprintf_s(filename, "base64_%02d.dat", n++);
-            //writeChunkToFile(outChunk, filename);
+			//FILE *s = fopen(filename, "wb");
+			//fwrite(outBuff.data(), 1, outBuff.size(), s);
+			//fclose(s);
+
             
             if (decodedSize < 1) {
                 printf("parseImage: Error in base54::decode, decoded \n");

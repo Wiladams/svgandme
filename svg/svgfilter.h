@@ -107,7 +107,7 @@ namespace waavs {
 			return true;
 		}
 
-		virtual bool addNode(std::shared_ptr < ISVGElement > node, IAmGroot* groot)
+		bool addNode(std::shared_ptr < ISVGElement > node, IAmGroot* groot) override
 		{
 			// if superclass fails to add the node, then forget it
 			if (!SVGGraphicsElement::addNode(node, groot))

@@ -7,7 +7,7 @@
 
 
 #include "svgshapes.h"
-#include "svgpath.h"
+#include "b2dpathbuilder.h"
 #include "svgcss.h"
 
 

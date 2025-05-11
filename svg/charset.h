@@ -4,7 +4,7 @@
 
 namespace waavs {
 
-	// Represent a set of characters as a bitset
+// Represent a set of characters as a bitset
 //
 // Typical usage:
 //   charset whitespaceChars("\t\n\f\r ");
@@ -227,6 +227,8 @@ namespace waavs {
 	static constexpr bool is_cntrl(const unsigned char c) noexcept { return (c < 0x20) || (c == 0x7F); }
 	static constexpr bool is_graph(const unsigned char c) noexcept { return (c >= 0x21 && c <= 0x7E); }
 
+
+
 	/*
 	struct Whitespace
 	{
@@ -292,3 +294,4 @@ namespace waavs {
 	static constexpr charset chrDecDigits("0123456789");
 	static constexpr charset chrHexDigits("0123456789ABCDEFabcdef");
 }
+

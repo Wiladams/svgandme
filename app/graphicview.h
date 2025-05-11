@@ -49,7 +49,10 @@ namespace waavs {
 
 
 		const BLRect & frame() const { return fFrame; }
-		virtual void setFrame(const BLRect& arect) { fFrame = arect;  }
+		virtual void setFrame(const BLRect& arect) 
+		{ 
+			fFrame = arect;  
+		}
 
 
 		const BLRect & bounds() const { return fBounds; }

@@ -15,21 +15,15 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="svg2api.cpp">
+    <ClCompile Include="tryit.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\svg\b2dpath.h">
+    <ClInclude Include="..\..\svg\parametric.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\svgb2ddriver.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\svg\svgfactory.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\app\SVGAPIPrinter.h">
+    <ClInclude Include="..\..\svg\curvefx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

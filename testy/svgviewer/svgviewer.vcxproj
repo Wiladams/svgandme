@@ -249,6 +249,8 @@
     <ClInclude Include="..\..\app\svgwaavs.h" />
     <ClInclude Include="..\..\app\user32pixelmap.h" />
     <ClInclude Include="..\..\app\viewnavigator.h" />
+    <ClInclude Include="..\..\app\waavsdisplaycapture.h" />
+    <ClInclude Include="..\..\app\waavsstrokebrush.h" />
     <ClInclude Include="..\..\svg\base64.h" />
     <ClInclude Include="..\..\svg\bithacks.h" />
     <ClInclude Include="..\..\svg\bspan.h" />
@@ -286,7 +288,7 @@
     <ClInclude Include="..\..\svg\svgimage.h" />
     <ClInclude Include="..\..\svg\svgmarker.h" />
     <ClInclude Include="..\..\svg\svgmask.h" />
-    <ClInclude Include="..\..\svg\svgpath.h" />
+    <ClInclude Include="..\..\svg\b2dpathbuilder.h" />
     <ClInclude Include="..\..\svg\svgpattern.h" />
     <ClInclude Include="..\..\svg\svgscript.h" />
     <ClInclude Include="..\..\svg\svgshapes.h" />

@@ -36,6 +36,19 @@
 #include "converters.h"
 #include "pubsub.h"
 
+namespace waavs 
+{
+	// A path is composed of several segments
+	// The PathSegment structure is a compact representation
+	// of that segment.  You can reconstruct the segment in text
+	// form, or pass this along to other functions for processing
+	struct PathSegment {
+		double args[10]{ 0 };				// The arguments for the command
+		int fArgCount{ 0 };					// how many args used
+		unsigned char fSegmentKind{ 0 };	// Single segment command from SVG
+	};
+}
+
 
 namespace waavs {
 	// Used for the iterator
@@ -46,15 +59,12 @@ namespace waavs {
 		bool fFlattenCommands{ true };
 	};
 
-
-	struct SVGSegmentParseState {
+	struct SVGSegmentParseState : public PathSegment 
+	{
+		const char* fArgTypes{};
 		ByteSpan remains{};
-		unsigned char fSegmentKind{ 0 };
 		int iteration{ 0 };
 		int fError{ 0 };
-		const char* fArgTypes{};
-		int fArgCount{ 0 };
-		double args[8]{ 0 };		// The arguments for the command
 
 		SVGSegmentParseState() = default;
 
@@ -63,8 +73,22 @@ namespace waavs {
 			remains = aSpan;
 		}
 
+		unsigned char command() const {
+			return fSegmentKind;
+		}
+
+		// Does the command use relative coordinates?
+		bool isRelative() const {
+			return (fSegmentKind >= 'a' && fSegmentKind <= 'z');
+		}
+
+		// Does the command use absolute coordinates?
+		bool isAbsolute() const {
+			return (fSegmentKind >= 'A' && fSegmentKind <= 'Z');
+		}
+
 		bool hasMore() const {
-			return remains.size() > 0;
+			return !remains.empty();
 		}
 	};
 }
@@ -164,30 +188,7 @@ namespace waavs {
 	}
 }
 
-namespace waavs {
-	// PathCommandDispatch
-	// 
-	// A topic which will generate SVGSegmentParseState events
-	// An interested party can subscribe to this topic
-	// and handle the incoming events in whatever way they want
-	// By having this as a topic, we get a loose coupling, which does
-	// not require complex inheritance chains to deal with the events
-	struct PathCommandDispatch : public Topic<SVGSegmentParseState>
-	{
-		bool parse(const waavs::ByteSpan& inSpan) noexcept
-		{
-			SVGSegmentParseParams params{};
-			SVGSegmentParseState cmdState(inSpan);
 
-			while (readNextSegmentCommand(params, cmdState))
-			{
-				publish(cmdState);
-			}
-
-			return true;
-		}
-	};
-}
 
 
 namespace waavs {

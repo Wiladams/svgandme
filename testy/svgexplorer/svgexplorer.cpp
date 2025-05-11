@@ -9,7 +9,7 @@
 #include "svguiapp.h"
 #include "svgwaavs.h"
 
-#include "svgcacheddocument.h"
+//#include "svgcacheddocument.h"
 
 #include "svgdocumentbrowser.h"
 #include "svgfilelistview.h"
@@ -242,7 +242,7 @@ static void setup()
 	// Setup runtime specific stuff
 	createAppWindow(APP_WIDTH, APP_HEIGHT, "SVG Explorer");
 	dropFiles();
-	frameRate(60);
+	frameRate(30);
 
 	// register to receive various events
 	subscribe(onFileDrop);
@@ -265,8 +265,6 @@ static void setup()
 	gDrawingContext.attach(appFrameBuffer()->getBlend2dImage(), &ctxInfo);
 	gDrawingContext.background(BLRgba32(0xffffffff));
 	
-	//gFileListView.setFontHandler(FontHandler::getFontHandler());
-
 	// Set the initial viewport
 	gBrowsingView.subscribe(portalChanged);
 	gFileListView.Topic<bool>::subscribe(portalChanged);

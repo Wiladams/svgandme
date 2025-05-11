@@ -186,6 +186,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\app\gcode.h" />
     <ClInclude Include="..\..\app\pathcmdprinter.h" />
     <ClInclude Include="..\..\svg\pathsegmenter.h" />
   </ItemGroup>

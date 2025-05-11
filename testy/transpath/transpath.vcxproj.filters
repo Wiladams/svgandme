@@ -21,6 +21,9 @@
     <ClInclude Include="..\..\app\pathcmdprinter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\app\gcode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="transpath.cpp">
