@@ -16,23 +16,33 @@ namespace waavs {
         T operator()(double t) const { return eval(t); }
     };
 
-    struct IParametricSegment 
-    {
-        double t0 = 0.0;
-        double t1 = 1.0;
-    };
+    //struct IParametricSegment 
+    //{
+    //    double t0 = 0.0;
+    //    double t1 = 1.0;
+    //};
 }
 
-namespace waavs {
-    // Parametric stop map
+namespace waavs 
+{
+
+    // ParametricStopMap
+    // Define a fixed set of stops, with offsets between [0..1]
+    // Associate values with each of the stops.
+    // When eval(t) is called, a value is returned which is 
+    // an interpolation between the nearest stops.
+	// An easing function can be supplied to control the interpolation
+    //
+    // Note: Since this implements IParametricSource, it can be used
+	// as a curve, and passed to other functions that expect a curve
+    //
     template <typename T>
-    class ParametricStopMap : public IParametricSource<T> 
+    struct ParametricStopMap : public IParametricSource<T> 
     {
-    public:
         using EasingFunction = std::function<double(double localT, double globalT)>;
 
         ParametricStopMap()
-            : fEasing([](double localT, double /*globalT*/) { return localT; }) // linear by default
+            : fEasing([](double localT, double globalT) { return localT; }) // linear by default
         {
         }
 
@@ -87,7 +97,10 @@ namespace waavs {
             fSorted = true;
         }
 
-        static T interpolate(const T& a, const T& b, double t) {
+		// Interpolation requires the type T to support +,- and * operators
+        // The type must support a scalar multiplication
+        static T interpolate(const T& a, const T& b, double t) 
+        {
             return a + (b - a) * t;
         }
     };

@@ -33,7 +33,9 @@ namespace waavs {
 			fPortal.reset();
 			fIsDragging = false;
 			fDragPos = { 0,0 };
+			fBaseAngle = 2.0;
 			fZoomFactor = 0.1;
+			fSpeedFactor = 1.0;
 		}
 
 		void setAspectAlign(const PreserveAspectRatio &preserve)

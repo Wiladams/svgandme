@@ -424,8 +424,6 @@ namespace waavs {
         ByteSpan fStyleAttribute{};
         ByteSpan fClassAttribute{};
 
-		//BLMatrix2D fTransform{};
-		//bool fHasTransform{ false };
         
         std::unordered_map<ByteSpan, std::shared_ptr<SVGVisualProperty>, ByteSpanHash, ByteSpanEquivalent> fVisualProperties{};
         

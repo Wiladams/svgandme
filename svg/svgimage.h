@@ -59,7 +59,7 @@ namespace waavs {
 
             
             if (decodedSize < 1) {
-                printf("parseImage: Error in base54::decode, decoded \n");
+                printf("parseImage: Error in base64::decode, decoded \n");
                 return false;
             }
             

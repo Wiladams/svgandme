@@ -24,17 +24,17 @@ double millis() noexcept
 }
 
 
-//waavs::FontHandler & getFontHandler() {
-//	static waavs::FontHandler fh;
-//	return fh;
-//}
 
-
-APP_EXTERN waavs::Recorder gRecorder{ nullptr };
+//APP_EXTERN waavs::Recorder gRecorder{ nullptr };
 
 static VOIDROUTINE gSetupHandler = nullptr;
 
 
+waavs::Recorder* getRecorder() noexcept
+{
+	static std::unique_ptr<waavs::Recorder> gRecorder = std::make_unique<Recorder>(nullptr);
+	return gRecorder.get();
+}
 
 // Typography
 bool loadFont(const char* filename, BLFontFace& ff) noexcept

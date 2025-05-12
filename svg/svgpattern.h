@@ -12,7 +12,7 @@
 #include "svgattributes.h"
 #include "svgstructuretypes.h"
 #include "svgportal.h"
-
+#include "svgb2ddriver.h"
 
 namespace waavs {
 
@@ -395,7 +395,7 @@ namespace waavs {
 			auto box = getBBox();
 
 			fPatternCache.create(static_cast<int>(fPatternBoundingBox.w), static_cast<int>(fPatternBoundingBox.h), BL_FORMAT_PRGB32);
-			IRenderSVG ictx; // (FontHandler::getFontHandler());
+			SVGB2DDriver ictx; 
 			ictx.attach(fPatternCache);
 
 

@@ -373,7 +373,8 @@ namespace waavs {
         {
             canvasSize(cWidth, cHeight);
             
-            this->bindToContext(ctx, groot, cWidth, cHeight);
+            if (needsBinding())
+                this->bindToContext(ctx, groot, cWidth, cHeight);
 
             ctx->push();
             ctx->setObjectFrame(getBBox());

@@ -26,5 +26,8 @@
     <ClInclude Include="..\..\svg\curvefx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\svg\waavsgraph.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

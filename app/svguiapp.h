@@ -6,9 +6,7 @@
 
 
 
-APP_EXTERN waavs::Recorder gRecorder;
-
-//APP_EXPORT waavs::FontHandler & getFontHandler();
+waavs::Recorder* getRecorder() noexcept;
 
 #ifdef __cplusplus
 extern "C" {

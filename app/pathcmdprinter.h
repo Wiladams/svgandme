@@ -4,10 +4,10 @@
 #include "pathsegmenter.h"
 
 namespace waavs {
-	struct PathPoint {
-		double x;
-		double y;
-	};
+	//struct PathPoint {
+	//	double x;
+	//	double y;
+	//};
 
 
 	// Take path segment commands, and turn them into print statements
@@ -16,8 +16,8 @@ namespace waavs {
 	{
 		// A tiny bit of state we maintain
 		// primarily to support relative position operations 'by'
-		PathPoint fLastMoveTo{};
-		PathPoint fLastPoint{};
+		Point fLastMoveTo{};
+		Point fLastPoint{};
 
 		// Return the array that maps the single letter commands to the functions
 		// that handle their arguments
@@ -85,7 +85,7 @@ namespace waavs {
 
 		// Given a reference point, and an array of doubles, return a new point
 		// which is the reference point plus the x and y values in the array
-		inline PathPoint relativePoint(const PathPoint& ref, const double* args, int offset = 0) noexcept
+		inline Point relativePoint(const Point& ref, const double* args, int offset = 0) noexcept
 		{
 			return { ref.x + args[offset], ref.y + args[offset + 1] };
 		}
@@ -140,7 +140,7 @@ namespace waavs {
 			bool larc = args[3] > 0.5;
 			bool swp = args[4] > 0.5;
 			double xrot = radians(args[2]);
-			PathPoint lastPos = relativePoint(fLastPoint, args, 5);
+			Point lastPos = relativePoint(fLastPoint, args, 5);
 
 			printf("apath.ellipticArcTo(BLPoint(%f, %f), %f, %d, %d, BLPoint(%f, %f));\n",
 				args[0], args[1], xrot, larc, swp, lastPos.x, lastPos.y);
@@ -159,7 +159,7 @@ namespace waavs {
 		// Command - c
 		void cubicBy(const double* args, int iteration) noexcept
 		{
-			PathPoint lastPos = relativePoint(fLastPoint, args, 4);
+			Point lastPos = relativePoint(fLastPoint, args, 4);
 
 			printf("apath.cubicTo(%f, %f, %f, %f, %f, %f);\n", fLastPoint.x + args[0], fLastPoint.y + args[1], fLastPoint.x + args[2], fLastPoint.y + args[3], lastPos.x, lastPos.y);
 			fLastPoint = lastPos;
@@ -193,7 +193,7 @@ namespace waavs {
 		// Command 'l' - LineBy
 		void lineBy(const double* args, int iteration) noexcept
 		{
-			PathPoint lastPos = relativePoint(fLastPoint, args, 0);
+			Point lastPos = relativePoint(fLastPoint, args, 0);
 
 			printf("apath.lineTo(%f, %f);\n", lastPos.x, lastPos.y);
 			fLastPoint = lastPos;
@@ -220,7 +220,7 @@ namespace waavs {
 		{
 
 			if (iteration == 0) {
-				PathPoint lastPos = relativePoint(fLastPoint, args, 0);
+				Point lastPos = relativePoint(fLastPoint, args, 0);
 
 				printf("apath.moveTo(%f, %f);\n", lastPos.x, lastPos.y);
 				fLastMoveTo = lastPos;
@@ -242,7 +242,7 @@ namespace waavs {
 		// Command - q
 		void quadBy(const double* args, int iteration) noexcept
 		{
-			PathPoint lastPos = relativePoint(fLastPoint, args, 2);
+			Point lastPos = relativePoint(fLastPoint, args, 2);
 
 			printf("apath.quadTo(%f, %f, %f, %f);\n", fLastPoint.x + args[0], fLastPoint.y + args[1], lastPos.x, lastPos.y);
 			fLastPoint = lastPos;
@@ -258,7 +258,7 @@ namespace waavs {
 		// Command - s
 		void smoothCubicBy(const double* args, int iteration) noexcept
 		{
-			PathPoint lastPos = relativePoint(fLastPoint, args, 2);
+			Point lastPos = relativePoint(fLastPoint, args, 2);
 
 			printf("apath.smoothCubicTo(%f, %f, %f, %f);\n", fLastPoint.x + args[0], fLastPoint.y + args[1], fLastPoint.x + args[2], fLastPoint.y + args[3]);
 			fLastPoint = lastPos;
@@ -274,7 +274,7 @@ namespace waavs {
 		// Command - t
 		void smoothQuadBy(const double* args, int iteration) noexcept
 		{
-			PathPoint lastPos = relativePoint(fLastPoint, args, 0);
+			Point lastPos = relativePoint(fLastPoint, args, 0);
 
 			printf("apath.smoothQuadTo(%f, %f);\n", fLastPoint.x + args[0], fLastPoint.y + args[1]);
 			fLastPoint = lastPos;

@@ -71,8 +71,6 @@ static void drawForeground()
 
 static void drawDocument()
 {
-
-	
 	// setup any transform
 	if (gPerformTransform)
 		getDrawingContext()->transform(gNavigator.sceneToSurfaceTransform());
@@ -83,7 +81,6 @@ static void drawDocument()
 		gDoc->draw(getDrawingContext(), gDoc.get(), canvasWidth, canvasHeight);
 
 	getDrawingContext()->flush();
-	
 }
 
 
@@ -181,7 +178,7 @@ static void onFrameEvent(const FrameCountEvent& fe)
 		refreshScreenNow();
 	}
 
-	gRecorder.saveFrame();
+	getRecorder()->saveFrame();
 }
 
 
@@ -221,15 +218,15 @@ static void onKeyboardEvent(const KeyboardEvent& ke)
 			case VK_PLAY:
 			case VK_PAUSE:
 			case 'R':
-				gRecorder.toggleRecording();
-				if (gRecorder.isRecording())
+				getRecorder()->toggleRecording();
+				if (getRecorder()->isRecording())
 				{
 					gRecordingStart = seconds();
 				}
 				else
 				{
 					double duration = seconds() - gRecordingStart;
-					printf("Recording Frames: %d  Duration: %3.2f  FPS: %f\n", gRecorder.frameCount(), duration, gRecorder.frameCount() / duration);
+					printf("Recording Frames: %d  Duration: %3.2f  FPS: %f\n", getRecorder()->frameCount(), duration, getRecorder()->frameCount() / duration);
 				}
 			break;			
 
@@ -278,7 +275,7 @@ void setup()
 	// set app window size and title
 	createAppWindow(1280, 1024, "SVGViewer");
 	
-	gRecorder.reset(&appFrameBuffer()->getBlend2dImage(), "frame", 15, 0);
+	getRecorder()->reset(&appFrameBuffer()->getBlend2dImage(), "frame", 15, 0);
 	
 	
 	// set the background to white to start

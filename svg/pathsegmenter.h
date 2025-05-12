@@ -35,19 +35,9 @@
 #include "bspan.h"
 #include "converters.h"
 #include "pubsub.h"
+#include "waavsgraph.h"
 
-namespace waavs 
-{
-	// A path is composed of several segments
-	// The PathSegment structure is a compact representation
-	// of that segment.  You can reconstruct the segment in text
-	// form, or pass this along to other functions for processing
-	struct PathSegment {
-		double args[10]{ 0 };				// The arguments for the command
-		int fArgCount{ 0 };					// how many args used
-		unsigned char fSegmentKind{ 0 };	// Single segment command from SVG
-	};
-}
+
 
 
 namespace waavs {
@@ -61,7 +51,6 @@ namespace waavs {
 
 	struct SVGSegmentParseState : public PathSegment 
 	{
-		const char* fArgTypes{};
 		ByteSpan remains{};
 		int iteration{ 0 };
 		int fError{ 0 };

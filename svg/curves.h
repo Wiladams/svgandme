@@ -9,38 +9,7 @@
 
 #include "pathsegmenter.h"
 #include "parametric.h"
-
-
-namespace waavs
-{
-    struct Point {
-        double x = 0, y = 0;
-
-        Point operator-(const Point& rhs) const { return { x - rhs.x, y - rhs.y }; }
-        Point operator+(const Point& rhs) const { return { x + rhs.x, y + rhs.y }; }
-        Point operator*(double s) const { return { x * s, y * s }; }
-
-        Point midpoint(const Point& b) const { return (*this + b) * 0.5; }
-
-        void normalize() {
-            double len = std::sqrt(x * x + y * y);
-            if (len > 1e-8) {
-                x /= len;
-                y /= len;
-            }
-        }
-
-    };
-
-    static double distanceToLine(const Point& pt, const Point& a, const Point& b) {
-        double dx = b.x - a.x;
-        double dy = b.y - a.y;
-        double num = std::abs(dy * pt.x - dx * pt.y + b.x * a.y - b.y * a.x);
-        double den = std::sqrt(dx * dx + dy * dy);
-        return den > 0 ? num / den : 0.0;
-    }
-
-}
+#include "waavsgraph.h"
 
 
 namespace waavs

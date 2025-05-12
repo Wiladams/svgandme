@@ -16,7 +16,7 @@ namespace waavs {
 		
 		bool fAnimate{ false };
 		bool fPerformTransform{ true };
-		bool fUseCheckerBackground{ false };
+		bool fUseCheckerBackground{ true };
 		
 		SVGBrowsingView(const BLRect &aframe)
 			:SVGCachedDocument(aframe)
@@ -31,9 +31,15 @@ namespace waavs {
 		
 		void onDocumentLoad() override
 		{
+			fNavigator.resetNavigator();	// Reset the view
+			auto & aframe = frame();
+			// Set this up again so we start in a know viewing state
+			fNavigator.setFrame(BLRect(0, 0, aframe.w, aframe.h));
+			fNavigator.setBounds(BLRect(0, 0, aframe.w, aframe.h));
+
 			auto dbox = fDocument->getBBox();
 			fNavigator.setBounds(dbox);
-			setBounds(fDocument->getBBox());
+			//setBounds(fDocument->getBBox());
 			
 			const BLMatrix2D & tform = fNavigator.sceneToSurfaceTransform();
 			setSceneToSurfaceTransform(tform);
@@ -56,7 +62,7 @@ namespace waavs {
 		void drawForeground(IRenderSVG* ctx) override
 		{
 			ctx->strokeWidth(4);
-			ctx->stroke(BLRgba32(0xffA0A0A0));
+			ctx->stroke(BLRgba32(0xffA000A0));
 			BLPath apath;
 			apath.addRect(0, 0, frame().w, frame().h);
 			ctx->strokeShape(apath);
