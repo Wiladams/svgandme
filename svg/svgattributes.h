@@ -251,9 +251,9 @@ namespace waavs {
         }
 
     };
-
-
 }
+
+
 
 //==================================================================
 //  SVG Text Properties
@@ -293,7 +293,6 @@ namespace waavs {
         {
             ctx->setTextAnchor(fValue);
         }
-
 
     };
 }

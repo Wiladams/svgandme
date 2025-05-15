@@ -9,8 +9,6 @@
 #include "svguiapp.h"
 #include "svgwaavs.h"
 
-//#include "svgcacheddocument.h"
-
 #include "svgdocumentbrowser.h"
 #include "svgfilelistview.h"
 #include "bgselector.h"
@@ -146,7 +144,7 @@ static void onFrameEvent(const FrameCountEvent& fe)
 		refreshScreenNow();
 	}
 
-	gRecorder.saveFrame();
+	getRecorder()->saveFrame();
 }
 
 static void onResizeEvent(const ResizeEvent& re)

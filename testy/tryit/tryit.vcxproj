@@ -191,6 +191,7 @@
     <ClCompile Include="tryit.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\app\morse.h" />
     <ClInclude Include="..\..\svg\curvefx.h" />
     <ClInclude Include="..\..\svg\parametric.h" />
     <ClInclude Include="..\..\svg\waavsgraph.h" />

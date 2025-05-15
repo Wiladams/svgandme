@@ -323,8 +323,38 @@ namespace waavs {
 }
 
 namespace waavs {
+
+    struct CurveParametricSegmentGenerator {
+    private:
+        const IParametricCurve& fCurve;
+        int fSteps;
+        int fIndex;
+        double fT0;
+        double fT1;
+
+    public:
+        CurveParametricSegmentGenerator(const IParametricCurve& curve, int steps, double t0 = 0.0, double t1 = 1.0)
+            : fCurve(curve), fSteps(steps), fIndex(0), fT0(t0), fT1(t1) {
+        }
+
+        bool next(Point& out, double& t) {
+            if (fIndex > fSteps) return false;
+
+            double alpha = static_cast<double>(fIndex++) / fSteps;
+            t = fT0 + (fT1 - fT0) * alpha;
+            out = fCurve.eval(t);
+            return true;
+        }
+    };
+
+    /*
     struct CurveParametricSegmentGenerator
     {
+    private:
+        const IParametricCurve& fCurve;
+        int fSteps;
+        int fIndex;
+
     public:
         CurveParametricSegmentGenerator(const IParametricCurve& curve, int steps)
             : fCurve(curve), fSteps(steps), fIndex(0) {
@@ -337,11 +367,8 @@ namespace waavs {
             return true;
         }
 
-    private:
-        const IParametricCurve& fCurve;
-        int fSteps;
-        int fIndex;
     };
+    */
 
     class CurveArcLengthSegmentGenerator {
     public:

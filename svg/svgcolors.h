@@ -23,7 +23,8 @@ namespace waavs
     
     // getSVGColorByName
     //
-    // Returns a color, based on a name
+    // Returns a color, based on a name (case insensitive).  If the name is not found in the
+	// database, it returns a default color (gray).
     static BLRgba32 getSVGColorByName(const ByteSpan &colorName) noexcept
     {
 

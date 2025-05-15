@@ -78,7 +78,7 @@ namespace waavs {
 
             // Non-Structural Nodes
             SVGSolidColorElement::registerFactory();    // 'solidColor'
-            SVGClipPathElement::registerFactory();             // 'clipPath'
+            SVGClipPathElement::registerFactory();      // 'clipPath'
             SVGDefsNode::registerFactory();             // 'defs'
             SVGConicGradient::registerFactory();        // 'conicGradient'
             SVGLinearGradient::registerFactory();       // 'linearGradient'

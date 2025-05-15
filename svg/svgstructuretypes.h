@@ -24,7 +24,8 @@
 
 
 
-namespace waavs {
+namespace waavs 
+{
     struct IAmGroot;        // forward declaration
     struct IManageReferences;  // forward declaration
 

@@ -8,7 +8,7 @@
 #include <functional>
 #include <unordered_map>
 
-#include "irendersvg.h"
+#include "svgb2ddriver.h"
 #include "svgattributes.h"
 #include "svgstructuretypes.h"
 
@@ -66,7 +66,7 @@ namespace waavs {
 
 				// Draw our content into the image
 				{
-					IRenderSVG rctx;
+					SVGB2DDriver rctx;
 					rctx.attach(fImage);
 
 					rctx.blendMode(BL_COMP_OP_SRC_COPY);

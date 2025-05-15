@@ -5,6 +5,7 @@
 #include "curves.h"
 #include "curvefx.h"
 #include "SVGAPIPrinter.h"
+#include "morse.h"
 
 using namespace waavs;
 
@@ -12,21 +13,28 @@ using namespace waavs;
 #define CAN_HEIGHT 1280
 
 
+SVGB2DDriver ctx;
 
-static bool builder(BLPath& path, std::shared_ptr<ISegmentSource> input, size_t segCount=20) {
+
+static bool builder(BLPath& path, ISegmentSource& input, size_t segCount = 20) 
+{
 	CurveSegment seg;
 	bool started = false;
 
-	while (input->nextSegment(seg)) {
-		CurveParametricSegmentGenerator gen(*seg.curve, segCount);
+	while (input.nextSegment(seg)) {
+		CurveParametricSegmentGenerator gen(*seg.curve, segCount, seg.t0, seg.t1);
 		Point pt;
 		double t;
-		started = false;
 
+		bool segStarted = false;
 		while (gen.next(pt, t)) {
 			if (!started) {
 				path.moveTo(pt.x, pt.y);
 				started = true;
+			}
+			else if (!segStarted) {
+				path.lineTo(pt.x, pt.y);  // Move to start of this segment
+				segStarted = true;
 			}
 			else {
 				path.lineTo(pt.x, pt.y);
@@ -36,6 +44,7 @@ static bool builder(BLPath& path, std::shared_ptr<ISegmentSource> input, size_t 
 
 	return started;
 }
+
 
 static void testFxChain()
 {
@@ -74,7 +83,7 @@ static void testFxChain()
 //					source(curve)))))
 
 
-	if (builder(path,dasher))
+	if (builder(path,*dasher))
 	{
 		SVGAPIPrinter printer{};
 
@@ -89,82 +98,7 @@ static void testFxChain()
 
 }
 
-#include <vector>
-#include <unordered_map>
-#include <cctype>
-#include <cstring>
 
-size_t createMorseCode(const char* src, std::vector<double>& out, double dotDuration = 1.0) {
-	static const std::unordered_map<char, const char*> morseMap = {
-		{'A', ".-"},    {'B', "-..."},  {'C', "-.-."},  {'D', "-.."},
-		{'E', "."},     {'F', "..-."},  {'G', "--."},   {'H', "...."},
-		{'I', ".."},    {'J', ".---"},  {'K', "-.-"},   {'L', ".-.."},
-		{'M', "--"},    {'N', "-."},    {'O', "---"},   {'P', ".--."},
-		{'Q', "--.-"},  {'R', ".-."},   {'S', "..."},   {'T', "-"},
-		{'U', "..-"},   {'V', "...-"},  {'W', ".--"},   {'X', "-..-"},
-		{'Y', "-.--"},  {'Z', "--.."},
-		{'0', "-----"}, {'1', ".----"}, {'2', "..---"}, {'3', "...--"},
-		{'4', "....-"}, {'5', "....."}, {'6', "-...."}, {'7', "--..."},
-		{'8', "---.."}, {'9', "----."}
-	};
-
-	bool atWordStart = true;
-	size_t count = 0;
-
-	for (size_t i = 0; src[i]; ++i) {
-		char ch = std::toupper(src[i]);
-
-		if (ch == ' ') {
-			if (!out.empty()) {
-				// Extend last 'off' to represent inter-word space (7 units total)
-				out.back() += dotDuration * 7;
-			}
-			atWordStart = true;
-			continue;
-		}
-
-		auto it = morseMap.find(ch);
-		if (it == morseMap.end()) continue;
-
-		if (!atWordStart && !out.empty()) {
-			// Extend last 'off' to 3 units (inter-character space)
-			out.back() += dotDuration * 3;
-		}
-
-		const char* code = it->second;
-		bool firstSymbol = true;
-		for (size_t j = 0; code[j]; ++j) {
-			if (!firstSymbol) {
-				// Intra-character space (1 unit off)
-				out.push_back(dotDuration); // off
-			}
-
-			if (code[j] == '.') {
-				out.push_back(dotDuration); // on
-			}
-			else if (code[j] == '-') {
-				out.push_back(dotDuration * 3); // on
-			}
-
-			// Followed by off-time unless it's the last symbol (handled in next)
-			out.push_back(0); // placeholder for next off
-			firstSymbol = false;
-		}
-
-		// Pop last dummy off if at end
-		if (!out.empty() && out.back() == 0.0)
-			out.pop_back();
-
-		atWordStart = false;
-		++count;
-	}
-
-	// Ensure even length (end with 'off' if needed)
-	if (out.size() % 2 != 0)
-		out.push_back(dotDuration * 7); // trailing silence
-
-	return count;
-}
 
 static void testMorseCode()
 {
@@ -257,7 +191,7 @@ static void testVariableWidth()
 
 	// 4. Build the Blend2D path
 	BLPath path{};
-	if (builder(path, widthMorpher))
+	if (builder(path, *widthMorpher))
 	{
 		// 5. Render the filled shape
 		SVGAPIPrinter printer{};
@@ -324,6 +258,9 @@ int main(int argc, char** argv)
 {
 	//printf("argc: %d\n", argc);
 
+	// Create an image that we will draw into
+	BLImage img(CAN_WIDTH, CAN_HEIGHT, BL_FORMAT_PRGB32);
+
 	//if (argc < 2)
 	//{
 	//	printf("Usage: svgimage <xml file>  [output file]\n");
@@ -361,15 +298,12 @@ int main(int argc, char** argv)
 	if (gDoc == nullptr)
 		return 1;
 
-	// Create an image that we will draw into
-	BLImage img(CAN_WIDTH, CAN_HEIGHT, BL_FORMAT_PRGB32);
 
 	// Attach the drawing context to the image
 	// We MUST do this before we perform any other
 	// operations, including the transform
 	BLContextCreateInfo createInfo{};
 	createInfo.threadCount = 4;
-	SVGB2DDriver ctx;
 	ctx.attach(img, &createInfo);
 
 	// setup for drawing.  Not strictly necessary.
