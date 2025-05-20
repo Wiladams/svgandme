@@ -34,9 +34,9 @@
 
 #include "bspan.h"
 #include "converters.h"
-#include "pubsub.h"
+//#include "pubsub.h"
 #include "waavsgraph.h"
-
+#include "pipeline.h"
 
 
 
@@ -49,10 +49,10 @@ namespace waavs {
 		bool fFlattenCommands{ true };
 	};
 
-	struct SVGSegmentParseState : public PathSegment 
+	struct SVGSegmentParseState
 	{
+		PathSegment seg;
 		ByteSpan remains{};
-		int iteration{ 0 };
 		int fError{ 0 };
 
 		SVGSegmentParseState() = default;
@@ -63,17 +63,17 @@ namespace waavs {
 		}
 
 		unsigned char command() const {
-			return fSegmentKind;
+			return static_cast<unsigned char>(seg.fSegmentKind);
 		}
 
 		// Does the command use relative coordinates?
 		bool isRelative() const {
-			return (fSegmentKind >= 'a' && fSegmentKind <= 'z');
+			return (static_cast<unsigned char>(seg.fSegmentKind) >= 'a' && static_cast<unsigned char>(seg.fSegmentKind) <= 'z');
 		}
 
 		// Does the command use absolute coordinates?
 		bool isAbsolute() const {
-			return (fSegmentKind >= 'A' && fSegmentKind <= 'Z');
+			return (static_cast<unsigned char>(seg.fSegmentKind) >= 'A' && static_cast<unsigned char>(seg.fSegmentKind) <= 'Z');
 		}
 
 		bool hasMore() const {
@@ -141,11 +141,13 @@ namespace waavs {
 			{
 				// start with iteration == 0 to indicate this is
 				// the first instance of the segment
-				cmdState.fSegmentKind = *cmdState.remains;
-				cmdState.iteration = 0;
+				//cmdState.fSegmentKind = *cmdState.remains;
+				//cmdState.iteration = 0;
+				//cmdState.fArgTypes = argTypes;
+				//cmdState.fArgCount = strlen(argTypes);
+				cmdState.seg.reset(nullptr, strlen(argTypes), argTypes, 
+					static_cast<SVGPathCommand>(*cmdState.remains),0);
 				cmdState.remains++;
-				cmdState.fArgTypes = argTypes;
-				cmdState.fArgCount = strlen(argTypes);
 
 			}
 			else {
@@ -158,13 +160,14 @@ namespace waavs {
 			// If we are here, the next token is numeric
 			// so, we assume we're in the next iteration of the same
 			// command, so increment the iteration count
-			cmdState.iteration++;
+			cmdState.seg.fIteration++;
 		}
 
 		// Now, we need to read the numeric arguments
-		if ((cmdState.fArgTypes != nullptr) && (cmdState.fArgCount > 0))
+		//if ((cmdState.fArgTypes != nullptr) && (cmdState.seg.fArgCount > 0))
+		if (cmdState.seg.fArgCount > 0)
 		{
-			if (cmdState.fArgCount != readNumericArguments(cmdState.remains, cmdState.fArgTypes, cmdState.args))
+			if (cmdState.seg.fArgCount != readFloatArguments(cmdState.remains, cmdState.seg.fArgTypes, cmdState.seg.fArgs))
 			{
 				cmdState.fError = -1;	// Indicate parsing error
 				return false;
@@ -178,8 +181,31 @@ namespace waavs {
 }
 
 
+namespace waavs {
+	struct SVGPathSegmentGenerator : public IProduce<PathSegment>
+	{
+		SVGSegmentParseParams fParams{};
+		SVGSegmentParseState fCmdState;
 
+		SVGPathSegmentGenerator(const ByteSpan& pathSpan)
+			: fCmdState(pathSpan)
+		{
+		}
 
+		bool next(PathSegment& seg) override
+		{
+			auto success = readNextSegmentCommand(fParams, fCmdState);
+			if (!success)
+				return false;
+			seg = fCmdState.seg;
+
+			return true;
+		}
+
+	};
+}
+
+/*
 namespace waavs {
 	// SVGPathSegmentIterator
 	// A convenience class.  Given a span that contains a path to 
@@ -212,3 +238,4 @@ namespace waavs {
 		}
 	};
 }
+*/

@@ -1,6 +1,8 @@
 #pragma once
 
 #include "bspan.h"
+#include "pipeline.h"
+
 
 namespace waavs {
     // Valid starting chars for xsd:Name / xsd:NCName (ASCII subset)
@@ -26,21 +28,25 @@ namespace waavs {
         XML_TOKEN_TEXT,     // Raw character content
     };
 
-    struct XmlToken {
+    struct XmlToken 
+    {
         XmlTokenType type = XML_TOKEN_INVALID;
         ByteSpan value;
 
-        void reset(XmlTokenType t = XML_TOKEN_INVALID, ByteSpan v = {}) noexcept {
+        void reset(XmlTokenType t = XML_TOKEN_INVALID, ByteSpan v = {}) noexcept 
+        {
             type = t;
             value = v;
         }
     };
 
+    // The retained state of the nextXmlToken function
     struct XmlTokenState {
         ByteSpan input;
         bool inTag = false;
     };
 
+    // generator of xml tokens
     static inline bool nextXmlToken(XmlTokenState& state, XmlToken& out)
     {
         out.reset();
@@ -110,4 +116,23 @@ namespace waavs {
         out.reset(XML_TOKEN_INVALID, { state.input.fStart - 1, state.input.fStart });
         return true;
     }
+}
+
+namespace waavs
+{
+    // Objectified XML token generator
+    struct XmlTokenGenerator : IProduce<XmlToken>
+    {
+        XmlTokenState fState{};
+
+        XmlTokenGenerator(const ByteSpan& src)
+            :fState{ src, false }
+        {
+        }
+
+        bool next(XmlToken& tok) override
+        {
+            return nextXmlToken(fState, tok);
+        }
+    };
 }

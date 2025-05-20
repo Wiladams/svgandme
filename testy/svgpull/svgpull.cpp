@@ -9,9 +9,10 @@
 
 
 #include "svgdatatypes.h"
-#include "svgpath.h"
 #include "svgportal.h"
 #include "collections.h"
+#include "b2dpathbuilder.h"
+#include "pathsegmenter.h"
 
 using namespace waavs;
 
@@ -79,58 +80,16 @@ static void testViewport()
     testAViewport("id = 'myDot' width = '10' height = '10' viewBox = '0 0 2 2'");
 }
 
-static void testPathParse1()
-{
-    BLPath aPath{};
-
-    parsePath("M 10 10 L 90 90", aPath);
-}
-
-
-static void testPathParse()
-{
-
-    SVGPathSegmentIterator iter("M 10, 50Q 25, 25 40, 50t 30, 0 30, 0 30, 0 30, 0 30, 0");
-
-    SVGSegmentParseState seg;
-    while (iter.nextSegment(seg))
-    {
-		printf("%c ", seg.fSegmentKind);
-        int n = strlen(seg.fArgTypes);
-        switch (n) {
-        case 7:
-            printf("%3.2f ", seg.args[n - 7]);
-        case 6:
-            printf("%3.2f ", seg.args[n - 6]);
-        case 5:
-            printf("%3.2f ", seg.args[n - 5]);
-        case 4:
-            printf("%3.2f ", seg.args[n - 4]);
-        case 3:
-            printf("%3.2f ", seg.args[n - 3]);
-        case 2:
-            printf("%3.2f ", seg.args[n - 2]);
-        case 1:
-            printf("%3.2f ", seg.args[n - 1]);
-        default:
-            printf("\n");
-        }
-    }
-}
-
 
 int main(int argc, char** argv)
 {
-
     // create an mmap for the specified file
     if (argc > 1) {
         const char* filename = argv[1];
         //testFile(filename);
     }
 
+    testViewport();
 
-    //testViewport();
-    testPathParse();
-    
     return 0;
 }

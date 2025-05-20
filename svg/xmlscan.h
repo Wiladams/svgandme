@@ -412,7 +412,6 @@ namespace waavs {
     // after it has returned a value.
     struct XmlIteratorState {
         ByteSpan fSource{};
-        //ByteSpan fMark{};
     };
     
 
@@ -508,3 +507,22 @@ namespace waavs {
 
 }
 
+namespace waavs
+{
+    // Objectified XML token generator
+    struct XmlElementGenerator : IProduce<XmlElement>
+    {
+		XmlIteratorParams fParams{};
+        XmlIteratorState fState{};
+
+        XmlElementGenerator(const ByteSpan& src)
+            :fState{ src}
+        {
+        }
+
+        bool next(XmlElement & elem) override
+        {
+            return nextXmlElement(fParams, fState, elem);
+        }
+    };
+}

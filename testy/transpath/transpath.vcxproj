@@ -188,7 +188,9 @@
   <ItemGroup>
     <ClInclude Include="..\..\app\gcode.h" />
     <ClInclude Include="..\..\app\pathcmdprinter.h" />
+    <ClInclude Include="..\..\svg\b2dpathbuilder.h" />
     <ClInclude Include="..\..\svg\pathsegmenter.h" />
+    <ClInclude Include="..\..\svg\pipeline.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="transpath.cpp" />

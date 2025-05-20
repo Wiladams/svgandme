@@ -18,6 +18,7 @@
 
 
 #include "pathsegmenter.h"
+#include "pipeline.h"
 #include "blend2d.h"
 
 
@@ -26,9 +27,8 @@ namespace waavs {
 	//
 	// Note:  Most SVG objects of significance will have a lot
 	// of paths, so we want to make this as fast as possible.
-	struct B2DPathBuilder
+	struct B2DPathBuilder : public IConsume<PathSegment>
 	{
-		//uint8_t lastCmd{ 0 };	// The last command we processed
 		BLPath& fPath;			// Reference to the path we are building
 		bool pathJustClosed = false;	// has the path seen a 'Z' or 'z' yet
 
@@ -47,13 +47,13 @@ namespace waavs {
 		// segments, addSegment is higher level, dealing with segment commands, which 
 		// in the end might result in multiple 'geometries' being added to the BLPath
 		// as certain curves are broken down into multiple simpler curves
-		int addSegment(unsigned char cmd, const double *args, size_t iteration=0)
+		void consume(const PathSegment& seg)
 		{
 			// if the last command was a 'Z' or 'z', then, if the next
 			// command is not a 'M' or 'm', we need to first insert a moveTo
 			// for the last location, then perform the next command
 			// Only inject moveTo if last operation closed the path
-			if (pathJustClosed && (cmd != 'M' && cmd != 'm')) 
+			if (pathJustClosed && (seg.fSegmentKind != SVGPathCommand::M && seg.fSegmentKind != SVGPathCommand::m))
 			{
 				BLPoint lastPos{};
 				fPath.getLastVertex(&lastPos);
@@ -61,129 +61,121 @@ namespace waavs {
 			}
 
 			// Fast path: inline the hottest commands
-			if (cmd == 'M') return moveTo(args, iteration);
-			if (cmd == 'L') return lineTo(args, iteration);
-			if (cmd == 'C') return cubicTo(args, iteration);
-			if (cmd == 'Z' || cmd == 'z') return close(args, iteration);
+			if (seg.fSegmentKind == SVGPathCommand::M) { moveTo(seg); return; }
+			if (seg.fSegmentKind == SVGPathCommand::L) { lineTo(seg); return; }
+			if (seg.fSegmentKind == SVGPathCommand::C) { cubicTo(seg); return; }
+			if (seg.fSegmentKind == SVGPathCommand::Z || seg.fSegmentKind == SVGPathCommand::z) { close(seg); return; }
 
 			// Fallback switch
-			switch (cmd) {
-			case 'm': return moveBy(args, iteration);
-			case 'l': return lineBy(args, iteration);
-			case 'c': return cubicBy(args, iteration);
-			case 'H': return hLineTo(args, iteration);
-			case 'h': return hLineBy(args, iteration);
-			case 'V': return vLineTo(args, iteration);
-			case 'v': return vLineBy(args, iteration);
-			case 'Q': return quadTo(args, iteration);
-			case 'q': return quadBy(args, iteration);
-			case 'S': return smoothCubicTo(args, iteration);
-			case 's': return smoothCubicBy(args, iteration);
-			case 'T': return smoothQuadTo(args, iteration);
-			case 't': return smoothQuadBy(args, iteration);
-			case 'A': return arcTo(args, iteration);
-			case 'a': return arcBy(args, iteration);
+			switch (seg.fSegmentKind) {
+			case SVGPathCommand::m: { moveBy(seg); return; }
+			case SVGPathCommand::l: { lineBy(seg); return; }
+			case SVGPathCommand::c: { cubicBy(seg); return; }
+			case SVGPathCommand::H: { hLineTo(seg); return; }
+			case SVGPathCommand::h: { hLineBy(seg); return; }
+			case SVGPathCommand::V: { vLineTo(seg); return; }
+			case SVGPathCommand::v: { vLineBy(seg); return; }
+			case SVGPathCommand::Q: { quadTo(seg); return; }
+			case SVGPathCommand::q: { quadBy(seg); return; }
+			case SVGPathCommand::S: { smoothCubicTo(seg); return; }
+			case SVGPathCommand::s: { smoothCubicBy(seg); return; }
+			case SVGPathCommand::T: { smoothQuadTo(seg); return; }
+			case SVGPathCommand::t: { smoothQuadBy(seg); return; }
+			case SVGPathCommand::A: { arcTo(seg); return; }
+			case SVGPathCommand::a: { arcBy(seg); return; }
 			default:
-				printf("Unknown command: %c\n", cmd);
-				return -1;
+				printf("Unknown command: %c\n", static_cast<char>(seg.fSegmentKind));
+				return ;
 			}
 
-		}
-
-		// Overload operator() to handle the events we are subscribed to
-		// This allows the class to be a subscriber, and all the events
-		// will be handled by this function
-		int operator()(const SVGSegmentParseState& cmdState)
-		{
-			return addSegment(cmdState.fSegmentKind, cmdState.args, cmdState.iteration);
 		}
 
 		// All the routines that do the actual work of building the path
 		// Command - A
-		int arcTo(const double* args, int iteration) noexcept
+		int arcTo(const PathSegment &seg) noexcept
 		{
-			bool larc = args[3] > 0.5f;
-			bool swp = args[4] > 0.5f;
-			double xrot = radians(args[2]);
+			bool larc = seg.args()[3] > 0.5f;
+			bool swp = seg.args()[4] > 0.5f;
+			double xrot = radians(seg.fArgs[2]);
 
-			return fPath.ellipticArcTo(BLPoint(args[0], args[1]), xrot, larc, swp, BLPoint(args[5], args[6]));
+			return fPath.ellipticArcTo(BLPoint(seg.args()[0] , seg.args()[1]), xrot, larc, swp, BLPoint(seg.args()[5], seg.args()[6]));
 		}
 
 		// Command - a
-		int arcBy(const double* args, int iteration) noexcept
+		int arcBy(const PathSegment& seg) noexcept
 		{
 
 			BLPoint lastPos{};
 			fPath.getLastVertex(&lastPos);
 
-			bool larc = args[3] > 0.5;
-			bool swp = args[4] > 0.5;
-			double xrot = radians(args[2]);
+			bool larc = seg.args()[3] > 0.5;
+			bool swp = seg.args()[4] > 0.5;
+			double xrot = radians(seg.args()[2]);
 
 
-			return  fPath.ellipticArcTo(BLPoint(args[0], args[1]), xrot, larc, swp, BLPoint(lastPos.x + args[5], lastPos.y + args[6]));
+			return  fPath.ellipticArcTo(BLPoint(seg.args()[0], seg.args()[1]), xrot, larc, swp, BLPoint(lastPos.x + seg.args()[5], lastPos.y + seg.args()[6]));
 		}
 
 
 		// Command - C
-		int cubicTo(const double* args, int iteration) noexcept
+		int cubicTo(const PathSegment& seg) noexcept
 		{
-			return  fPath.cubicTo(args[0], args[1], args[2], args[3], args[4], args[5]);
+			return  fPath.cubicTo(seg.args()[0], seg.args()[1], seg.args()[2], seg.args()[3], seg.args()[4], seg.args()[5]);
 		}
 
 		// Command - c
-		int cubicBy(const double* args, int iteration) noexcept
+		int cubicBy(const PathSegment& seg) noexcept
 		{
 			BLPoint lastPos{};
 			fPath.getLastVertex(&lastPos);
 
-			return fPath.cubicTo(lastPos.x + args[0], lastPos.y + args[1], lastPos.x + args[2], lastPos.y + args[3], lastPos.x + args[4], lastPos.y + args[5]);
+			return fPath.cubicTo(lastPos.x + seg.args()[0], lastPos.y + seg.args()[1], lastPos.x + seg.args()[2], lastPos.y + seg.args()[3], lastPos.x + seg.args()[4], lastPos.y + seg.args()[5]);
 		}
 
 		// Command - H
-		int hLineTo(const double* args, int iteration) noexcept
+		int hLineTo(const PathSegment& seg) noexcept
 		{
 			BLPoint lastPos{};
 			fPath.getLastVertex(&lastPos);
 
-			return fPath.lineTo(args[0], lastPos.y);
+			return fPath.lineTo(seg.args()[0], lastPos.y);
 		}
 
 		// Command - h
-		int hLineBy(const double* args, int iteration) noexcept
+		int hLineBy(const PathSegment& seg) noexcept
 		{
 			BLPoint lastPos{};
 			fPath.getLastVertex(&lastPos);
 
-			auto res = fPath.lineTo(lastPos.x + args[0], lastPos.y);
+			auto res = fPath.lineTo(lastPos.x + seg.args()[0], lastPos.y);
 			return res;
 		}
 
 		// Command 'L' - LineTo
-		int lineTo(const double* args, int iteration) noexcept
+		int lineTo(const PathSegment& seg) noexcept
 		{
-			return fPath.lineTo(args[0], args[1]);
+			return fPath.lineTo(seg.args()[0], seg.args()[1]);
 		}
 
 		// Command 'l' - LineBy
-		int lineBy(const double* args, int iteration) noexcept
+		int lineBy(const PathSegment& seg) noexcept
 		{
 			BLPoint lastPos{};
 			fPath.getLastVertex(&lastPos);
 
-			return fPath.lineTo(lastPos.x + args[0], lastPos.y + args[1]);
+			return fPath.lineTo(lastPos.x + seg.args()[0], lastPos.y + seg.args()[1]);
 		}
 
 		// Command - M
-		int moveTo(const double* args, int iteration) noexcept
+		int moveTo(const PathSegment& seg) noexcept
 		{
 			BLResult res = BL_SUCCESS;
 
-			if (iteration == 0) {
-				res = fPath.moveTo(args[0], args[1]);
+			if (seg.iteration() == 0) {
+				res = fPath.moveTo(seg.args()[0], seg.args()[1]);
 			}
 			else {
-				res = fPath.lineTo(args[0], args[1]);
+				res = fPath.lineTo(seg.args()[0], seg.args()[1]);
 			}
 			clearPathClosed();
 
@@ -191,17 +183,17 @@ namespace waavs {
 		}
 
 		// Command - m
-		int moveBy(const double* args, int iteration) noexcept
+		int moveBy(const PathSegment& seg) noexcept
 		{
 			BLResult res = BL_SUCCESS;
 
 			BLPoint lastPos{};
 			fPath.getLastVertex(&lastPos);
 
-			double dx = args[0];
-			double dy = args[1];
+			double dx = seg.args()[0];
+			double dy = seg.args()[1];
 
-			if (iteration == 0) {
+			if (seg.iteration() == 0) {
 				res = fPath.moveTo(lastPos.x + dx, lastPos.y + dy);
 			}
 			else {
@@ -213,71 +205,71 @@ namespace waavs {
 		}
 
 		// Command - Q
-		int quadTo(const double* args, int iteration) noexcept
+		int quadTo(const PathSegment& seg) noexcept
 		{
-			return fPath.quadTo(args[0], args[1], args[2], args[3]);
+			return fPath.quadTo(seg.args()[0], seg.args()[1], seg.args()[2], seg.args()[3]);
 		}
 
 		// Command - q
-		int quadBy(const double* args, int iteration) noexcept
+		int quadBy(const PathSegment& seg) noexcept
 		{
 			BLPoint lastPos{};
 			fPath.getLastVertex(&lastPos);
 
-			return fPath.quadTo(lastPos.x + args[0], lastPos.y + args[1], lastPos.x + args[2], lastPos.y + args[3]);
+			return fPath.quadTo(lastPos.x + seg.args()[0], lastPos.y + seg.args()[1], lastPos.x + seg.args()[2], lastPos.y + seg.args()[3]);
 		}
 
 		// Command - S
-		int smoothCubicTo(const double* args, int iteration) noexcept
+		int smoothCubicTo(const PathSegment& seg) noexcept
 		{
-			return fPath.smoothCubicTo(args[0], args[1], args[2], args[3]);
+			return fPath.smoothCubicTo(seg.args()[0], seg.args()[1], seg.args()[2], seg.args()[3]);
 		}
 
 		// Command - s
-		int smoothCubicBy(const double* args, int iteration) noexcept
+		int smoothCubicBy(const PathSegment& seg) noexcept
 		{
 			BLPoint lastPos{};
 			fPath.getLastVertex(&lastPos);
 
-			return fPath.smoothCubicTo(lastPos.x + args[0], lastPos.y + args[1], lastPos.x + args[2], lastPos.y + args[3]);
+			return fPath.smoothCubicTo(lastPos.x + seg.args()[0], lastPos.y + seg.args()[1], lastPos.x + seg.args()[2], lastPos.y + seg.args()[3]);
 		}
 
 		// Command - T
-		int smoothQuadTo(const double* args, int iteration) noexcept
+		int smoothQuadTo(const PathSegment& seg) noexcept
 		{
-			return fPath.smoothQuadTo(args[0], args[1]);
+			return fPath.smoothQuadTo(seg.args()[0], seg.args()[1]);
 		}
 
 		// Command - t
-		int smoothQuadBy(const double* args, int iteration) noexcept
+		int smoothQuadBy(const PathSegment& seg) noexcept
 		{
 			BLPoint lastPos{};
 			fPath.getLastVertex(&lastPos);
 
-			return fPath.smoothQuadTo(lastPos.x + args[0], lastPos.y + args[1]);
+			return fPath.smoothQuadTo(lastPos.x + seg.args()[0], lastPos.y + seg.args()[1]);
 		}
 
 		// Command - V
-		int vLineTo(const double* args, int iteration) noexcept
+		int vLineTo(const PathSegment& seg) noexcept
 		{
 			BLPoint lastPos{};
 			fPath.getLastVertex(&lastPos);
 
-			return fPath.lineTo(lastPos.x, args[0]);
+			return fPath.lineTo(lastPos.x, seg.args()[0]);
 		}
 
 		// Command - v
-		int vLineBy(const double* args, int iteration) noexcept
+		int vLineBy(const PathSegment& seg) noexcept
 		{
 			BLPoint lastPos{};
 			fPath.getLastVertex(&lastPos);
 
-			return fPath.lineTo(lastPos.x, lastPos.y + args[0]);
+			return fPath.lineTo(lastPos.x, lastPos.y + seg.args()[0]);
 		}
 
 		// Command - Z, z
 		//
-		int close(const double* args, int iteration) noexcept
+		int close(const PathSegment& seg) noexcept
 		{
 			int err = fPath.close();
 			setPathClosed();
@@ -298,13 +290,12 @@ namespace waavs {
 	{
 		B2DPathBuilder builder(apath);
 	
+		SVGPathSegmentGenerator segmentGen(inSpan);
 
-		SVGSegmentParseParams params{};
-		SVGSegmentParseState cmdState(inSpan);
-
-		while (readNextSegmentCommand(params, cmdState))
+		PathSegment seg{};
+		while (segmentGen.next(seg))
 		{
-			builder(cmdState);
+			builder(seg);
 		}
 
 		return true;

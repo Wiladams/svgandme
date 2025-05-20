@@ -2,8 +2,10 @@
 
 #include <vector>
 #include <algorithm>
-#include <functional>
 
+#include "generator.h"
+
+/*
 namespace waavs {
     template <typename T>
     class IParametricSource {
@@ -15,13 +17,8 @@ namespace waavs {
         // Makes it callable like a function
         T operator()(double t) const { return eval(t); }
     };
-
-    //struct IParametricSegment 
-    //{
-    //    double t0 = 0.0;
-    //    double t1 = 1.0;
-    //};
 }
+*/
 
 namespace waavs 
 {

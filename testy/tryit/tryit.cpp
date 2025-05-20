@@ -16,14 +16,14 @@ using namespace waavs;
 SVGB2DDriver ctx;
 
 
-static bool builder(BLPath& path, ISegmentSource& input, size_t segCount = 20) 
+static bool builder(BLPath& path, IPipelineSource<CurveSegment>& input, size_t segCount = 20) 
 {
 	CurveSegment seg;
 	bool started = false;
 
-	while (input.nextSegment(seg)) {
+	while (input.next(seg)) {
 		CurveParametricSegmentGenerator gen(*seg.curve, segCount, seg.t0, seg.t1);
-		Point pt;
+		Point2d pt;
 		double t;
 
 		bool segStarted = false;
@@ -45,11 +45,22 @@ static bool builder(BLPath& path, ISegmentSource& input, size_t segCount = 20)
 	return started;
 }
 
+static void testCurveSource()
+{
+	auto curve = std::make_shared<CubicCurve>(Point2d{ 50, 250 }, Point2d{ 150, 50 }, Point2d{ 250, 450 }, Point2d{ 350, 250 });
+	PVXCurveSource source(curve);
+
+	CurveSegment seg;
+	while (source.next(seg)) {
+		printf("Segment t0=%.2f, t1=%.2f\n", seg.t0, seg.t1);
+	}
+
+}
 
 static void testFxChain()
 {
 	BLPath path{};
-	auto curve = std::make_shared<CubicCurve>(Point{ 50, 250 }, Point{ 150, 50 }, Point{ 250, 450 }, Point{ 350, 250 });
+	auto curve = std::make_shared<CubicCurve>(Point2d{ 50, 250 }, Point2d{ 150, 50 }, Point2d{ 250, 450 }, Point2d{ 350, 250 });
 	auto source = std::make_shared<PVXCurveSource>(curve);
 	auto dasher = std::make_shared<PVXDashFilter>(source, std::vector<double>{ 5, 4, 5, 4, 5, 4, 10, 4, 10, 4, 10, 4, 5, 4, 5, 4, 5, 4 });
 
@@ -109,13 +120,13 @@ static void testMorseCode()
 	std::vector<double> morseCode;
 	createMorseCode("HELLO WORLD", morseCode, 2);
 
-	auto curve = std::make_shared<CubicCurve>(Point{ 50, 250 }, Point{ 150, 50 }, Point{ 250, 450 }, Point{ 350, 250 });
+	auto curve = std::make_shared<CubicCurve>(Point2d{ 50, 250 }, Point2d{ 150, 50 }, Point2d{ 250, 450 }, Point2d{ 350, 250 });
 	//auto curve = std::make_shared<LineCurve>(Point{ 10, 20 }, Point{ 1920, 20 });
 	auto source = std::make_shared<PVXCurveSource>(curve);
 	auto dasher = std::make_shared<PVXDashFilter>(source, morseCode);
 
 	CurveSegment seg;
-	while (dasher->nextSegment(seg)) {
+	while (dasher->next(seg)) {
 		if (seg.visible) {
 			printf("apath.moveTo(%.3f, %.3f);\n", seg.start.x, seg.start.y);
 			printf("apath.lineTo(%.3f, %.3f);\n", seg.end.x, seg.end.y);
@@ -146,12 +157,12 @@ static void testDashedCurve()
 	// 'visible' attribute, as well as the start and stop points.
 	// We're simply going to use the start/stop points to draw
 	// simple line segments.
-	auto curve = std::make_shared<CubicCurve>(Point{ 50, 250 }, Point{ 150, 50 }, Point{ 250, 450 }, Point{ 350, 250 });
+	auto curve = std::make_shared<CubicCurve>({ 50, 250 }, { 150, 50 }, { 250, 450 }, { 350, 250 });
 	auto source = std::make_shared<PVXCurveSource>(curve);
 	PVXDashFilter dashing(source, { 5,4,5,4,5,4,10,4,10,4,10,4,5,4,5,4,5,4 });
 
 	CurveSegment seg;
-	while (dashing.nextSegment(seg)) {
+	while (dashing.next(seg)) {
 		if (seg.visible) {
 			printf("apath.moveTo(%.3f, %.3f);\n", seg.start.x, seg.start.y);
 			printf("apath.lineTo(%.3f, %.3f);\n", seg.end.x, seg.end.y);
@@ -166,10 +177,10 @@ static void testVariableWidth()
 {
 	// 1. Define a cubic curve
 	auto curve = std::make_shared<CubicCurve>(
-		Point{ 50.0, 250.0 },
-		Point{ 150.0, 200.0 },
-		Point{ 250.0, 200.0 },
-		Point{ 350.0, 250.0 }
+		Point2d{ 50.0, 250.0 },
+		Point2d{ 150.0, 200.0 },
+		Point2d{ 250.0, 200.0 },
+		Point2d{ 350.0, 250.0 }
 	);
 	auto source = std::make_shared<PVXCurveSource>(curve);
 

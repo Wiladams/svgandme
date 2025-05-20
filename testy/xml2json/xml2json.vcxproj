@@ -29,8 +29,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{bb3b510e-113e-4a0c-b14b-6809db96dd97}</ProjectGuid>
-    <RootNamespace>tryit</RootNamespace>
+    <ProjectGuid>{bc16b40b-1f2f-42e5-9b77-8dc0d2c1058c}</ProjectGuid>
+    <RootNamespace>xml2json</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -63,7 +63,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>ClangCL</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'" Label="Configuration">
@@ -159,14 +159,11 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
-      <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>..\;..\..\;..\..\blend2d;..\..\svg;..\..\app;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\;..\..\;..\..\app;..\..\svg;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\lib\ARM64\Debug</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
@@ -177,28 +174,17 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\;..\..\;..\..\blend2d;..\..\svg;..\..\app;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\;..\..\;..\..\app;..\..\svg;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\lib\ARM64\Release</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="tryit.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\..\app\morse.h" />
-    <ClInclude Include="..\..\svg\curvefx.h" />
-    <ClInclude Include="..\..\svg\curves.h" />
-    <ClInclude Include="..\..\svg\definitions.h" />
-    <ClInclude Include="..\..\svg\generator.h" />
-    <ClInclude Include="..\..\svg\stopsmap.h" />
-    <ClInclude Include="..\..\svg\pipeline.h" />
-    <ClInclude Include="..\..\svg\waavsgraph.h" />
+    <ClCompile Include="xml2json.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

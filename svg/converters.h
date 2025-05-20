@@ -358,11 +358,33 @@ namespace waavs {
     // modifying the input chunk to advance past the  removed number
     // Return true if we found a number, false otherwise
     //
-    static inline bool readNextNumber(ByteSpan& s, double& outNumber) noexcept
+    static inline bool readNextFloat(ByteSpan& s, float& outNumber) noexcept
     {
         // typical whitespace found in lists of numbers, 
         // like on paths and polylines
         static const charset nextNumWsp = chrWspChars + ",+"; // (",+\t\n\f\r ");
+
+        s.skipWhile(nextNumWsp);
+
+        if (s.empty())
+            return false;
+        double aNumber{ 0 };
+        auto success = readNumber(s, aNumber);
+
+		if (success)
+		{
+			outNumber = (float)aNumber;
+			return true;
+		}
+
+        return false;
+    }
+
+    static inline bool readNextNumber(ByteSpan& s, double& outNumber) noexcept
+    {
+        // typical whitespace found in lists of numbers, 
+        // like on paths and polylines
+        static const charset nextNumWsp = chrWspChars + ",+"; // (",+\t\n\r ");
 
 		s.skipWhile(nextNumWsp);
 
@@ -372,6 +394,25 @@ namespace waavs {
 		return readNumber(s, outNumber);
     }
 
+    static inline bool readNextFlag(ByteSpan& s, int& outNumber) noexcept
+    {
+        // typical whitespace found in lists of numbers, like on paths and polylines
+        static charset wspChars = chrWspChars + ",";
+
+        // clear up leading whitespace, including ','
+        s.skipWhile(wspChars);
+
+        if (*s == '0' || *s == '1') {
+            outNumber = (int)(*s - '0');
+            s++;
+            return true;
+        }
+
+        return false;
+
+    }
+
+    /*
     static inline bool readNextFlag(ByteSpan& s, double& outNumber) noexcept
     {
         // typical whitespace found in lists of numbers, like on paths and polylines
@@ -389,8 +430,9 @@ namespace waavs {
 		return false;
 
     }
-
-        // readNumericArguments()
+    */
+    
+    // readNumericArguments()
     //
     // Read a list of numeric arguments as specified in the 'argTypes'
     // c, r - read a number
@@ -398,6 +440,38 @@ namespace waavs {
     // 
 	// The number of arguments read is determined by the length of the argTypes string
     //
+    static int readFloatArguments(ByteSpan& s, const char* argTypes, float* outArgs) noexcept
+    {
+        int i = 0;
+        for (i = 0; argTypes[i]; i++)
+        {
+            switch (argTypes[i])
+            {
+            case 'c':		// read a coordinate
+            case 'r':		// read a radius
+            {
+                if (!readNextFloat(s, outArgs[i]))
+                    return i;
+            } break;
+
+            case 'f':		// read a flag
+            {
+                int aflag{ 0 };
+                if (!readNextFlag(s, aflag))
+                    return i;
+                outArgs[i] = aflag;
+            } break;
+
+            default:
+            {
+                return 0;
+            }
+            }
+        }
+
+        return i;
+    }
+
     static int readNumericArguments(ByteSpan& s, const char* argTypes, double* outArgs) noexcept
     {
         // typical whitespace found in lists of numbers, like on paths and polylines
@@ -417,8 +491,11 @@ namespace waavs {
 
             case 'f':		// read a flag
             {
-                if (!readNextFlag(s, outArgs[i]))
+                int aflag{ 0 };
+                if (!readNextFlag(s, aflag))
                     return i;
+                outArgs[i] = aflag;
+
             } break;
 
             default:

@@ -2,7 +2,10 @@
 
 #include <memory>
 #include <deque>
-#include <functional>
+
+#include "pipeline.h"
+
+
 
 namespace waavs {
 	/*

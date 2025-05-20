@@ -95,7 +95,7 @@ namespace waavs {
 			return fHasMarkers;
 		}
 
-		void fixupSelfStyleAttributes(IRenderSVG* ctx, IAmGroot* groot) override
+		void fixupSelfStyleAttributes(IRenderSVG* , IAmGroot* ) override
 		{
 			checkForMarkers();
 		}
@@ -617,6 +617,7 @@ namespace waavs {
 			{
 			}
 
+			fPath.clear();
 			if (fIsRound)
 				fPath.addRoundRect(geom);
 			else {
@@ -690,6 +691,7 @@ namespace waavs {
 			geom.cy = fCy.calculatePixels(h, 0, dpi);
 			geom.r = fR.calculatePixels(w, h, dpi);
 
+			fPath.clear();
 			fPath.addCircle(geom);
 			fPath.shrink();
 
@@ -757,6 +759,7 @@ namespace waavs {
 			geom.rx = fRx.calculatePixels(w, 0, dpi);
 			geom.ry = fRy.calculatePixels(h, 0, dpi);
 
+			fPath.clear();
 			fPath.addEllipse(geom);
 			fPath.shrink();
 		}
@@ -791,6 +794,7 @@ namespace waavs {
 
 			double args[2]{ 0 };
 
+
 			if (readNumericArguments(points, "cc", args))
 			{
 				fPath.moveTo(args[0], args[1]);
@@ -807,6 +811,8 @@ namespace waavs {
 		
 		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{
+			fPath.clear();
+
 			loadPoints(getAttribute("points"));
 			fPath.shrink();
 		}
@@ -889,11 +895,13 @@ namespace waavs {
 		{
 		}
 		
-		virtual void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+		virtual void bindSelfToContext(IRenderSVG*, IAmGroot*) override
 		{
+			fPath.clear();
+
 			auto d = getAttribute("d");
 			if (d) {
-				auto success = parsePath(d, fPath);
+				parsePath(d, fPath);
 				fPath.shrink();
 			}
 		}

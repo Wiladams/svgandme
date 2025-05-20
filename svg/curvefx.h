@@ -1,6 +1,7 @@
 #pragma once
 
 #include "curves.h"
+#include "pipeline.h"
 
 namespace waavs {
 
@@ -17,32 +18,12 @@ namespace waavs {
 	};
 }
 
-//
-// Components for chainging components together
-//
-namespace waavs {
-	struct ISegmentSource {
-		virtual ~ISegmentSource() = default;
-		virtual bool nextSegment(CurveSegment& out) = 0;
 
-	};
-
-	struct ISegmentFilter : public ISegmentSource {
-		virtual void setInput(std::shared_ptr<ISegmentSource> input) = 0;
-	};
-
-	struct ISegmentSink {
-		virtual ~ISegmentSink() = default;
-		virtual void consume(const CurveSegment& seg) = 0;
-	};
-
-}
 
 // Here are some concrete components
-namespace waavs
+namespace waavs 
 {
-	// A simple segment source that emits a single curve
-	struct PVXCurveSource : public ISegmentSource
+	struct PVXCurveSource : public IPipelineSource<CurveSegment>
 	{
 		std::shared_ptr<IParametricCurve> fCurve;
 		bool fEmitted = false;
@@ -51,10 +32,8 @@ namespace waavs
 			: fCurve(std::move(c)) {
 		}
 
-		bool nextSegment(CurveSegment& out) override
+		bool next(CurveSegment& out) override
 		{
-			// We return the whole curve as a single segment
-			// So, if we've already emitted it, we're done
 			if (fEmitted)
 				return false;
 
@@ -65,16 +44,67 @@ namespace waavs
 
 			return true;
 		}
-
-		//static std::shared_ptr<ISegmentSource> makeShared(std::shared_ptr<IParametricCurve> curve)
-		//{
-		//	return std::make_shared<CurveSource>(curve);
-		//}
-
 	};
 }
 
+namespace waavs {
 
+	class PVXDashFilter : public IPipelineFilter<CurveSegment, CurveSegment> {
+	public:
+		PVXDashFilter(std::vector<double> pattern, int arcSteps = 100)
+			: fPattern(std::move(pattern)), fArcSteps(arcSteps)
+		{
+			if (fPattern.empty())
+				fPattern = { 1.0 };  // Fallback to simple solid line
+		}
+
+		void setInput(std::function<bool(CurveSegment&)> input) override {
+			fInput = std::move(input);
+			fReady = false;
+			fGen = nullptr;
+		}
+
+		bool next(CurveSegment& out) override {
+			while (true) {
+				// If we have a generator, try to yield the next dashed segment
+				if (fGen) {
+					while (fGen->nextSegment(out)) {
+						if (out.visible || !fReturnVisibleOnly)
+							return true;
+					}
+					fGen = nullptr;  // Done with this curve
+				}
+
+				// If no input source or exhausted
+				if (!fInput)
+					return false;
+
+				// Get the next base segment from input
+				CurveSegment base{};
+				if (!fInput(base))
+					return false;
+
+				// Create a new generator for this base segment
+				fGen = std::make_unique<DashedCurveGenerator>(*base.curve, fPattern, 0.0, fArcSteps);
+			}
+		}
+
+		void returnAll(bool all) {
+			fReturnVisibleOnly = !all;
+		}
+
+	private:
+		std::function<bool(CurveSegment&)> fInput;
+		std::vector<double> fPattern;
+		std::unique_ptr<DashedCurveGenerator> fGen;
+		bool fReady = false;
+		bool fReturnVisibleOnly = true;
+		int fArcSteps;
+	};
+
+}
+
+/*
 namespace waavs 
 {
 	// Take in a segment source, and generate a dashed version of it
@@ -176,6 +206,7 @@ namespace waavs
 	};
 
 }
+*/
 
 namespace waavs {
 

@@ -29,6 +29,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "smilanim", "smilanim\smilan
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tryit", "tryit\tryit.vcxproj", "{BB3B510E-113E-4A0C-B14B-6809DB96DD97}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xml2json", "xml2json\xml2json.vcxproj", "{BC16B40B-1F2F-42E5-9B77-8DC0D2C1058C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -195,6 +197,18 @@ Global
 		{BB3B510E-113E-4A0C-B14B-6809DB96DD97}.Release|x64.Build.0 = Release|x64
 		{BB3B510E-113E-4A0C-B14B-6809DB96DD97}.Release|x86.ActiveCfg = Release|Win32
 		{BB3B510E-113E-4A0C-B14B-6809DB96DD97}.Release|x86.Build.0 = Release|Win32
+		{BC16B40B-1F2F-42E5-9B77-8DC0D2C1058C}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{BC16B40B-1F2F-42E5-9B77-8DC0D2C1058C}.Debug|ARM64.Build.0 = Debug|ARM64
+		{BC16B40B-1F2F-42E5-9B77-8DC0D2C1058C}.Debug|x64.ActiveCfg = Debug|x64
+		{BC16B40B-1F2F-42E5-9B77-8DC0D2C1058C}.Debug|x64.Build.0 = Debug|x64
+		{BC16B40B-1F2F-42E5-9B77-8DC0D2C1058C}.Debug|x86.ActiveCfg = Debug|Win32
+		{BC16B40B-1F2F-42E5-9B77-8DC0D2C1058C}.Debug|x86.Build.0 = Debug|Win32
+		{BC16B40B-1F2F-42E5-9B77-8DC0D2C1058C}.Release|ARM64.ActiveCfg = Release|ARM64
+		{BC16B40B-1F2F-42E5-9B77-8DC0D2C1058C}.Release|ARM64.Build.0 = Release|ARM64
+		{BC16B40B-1F2F-42E5-9B77-8DC0D2C1058C}.Release|x64.ActiveCfg = Release|x64
+		{BC16B40B-1F2F-42E5-9B77-8DC0D2C1058C}.Release|x64.Build.0 = Release|x64
+		{BC16B40B-1F2F-42E5-9B77-8DC0D2C1058C}.Release|x86.ActiveCfg = Release|Win32
+		{BC16B40B-1F2F-42E5-9B77-8DC0D2C1058C}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

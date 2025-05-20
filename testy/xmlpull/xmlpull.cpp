@@ -26,6 +26,20 @@ static const WSEnum XML_ELEMENT_TYPE_WSEnum = {
     { "ENTITY", XML_ELEMENT_TYPE_ENTITY }
 };
 
+static const WSEnum XML_TOKEN_TYPE_WSEnum = 
+{
+    {"INVALID", XML_TOKEN_INVALID},
+    {"<", XML_TOKEN_LT},
+    {">", XML_TOKEN_GT},
+	{"/", XML_TOKEN_SLASH},
+	{"=", XML_TOKEN_EQ},
+	{"?", XML_TOKEN_QMARK},
+	{"!", XML_TOKEN_BANG},
+	{"NAME", XML_TOKEN_NAME},
+	{"STRING", XML_TOKEN_STRING},
+	{"TEXT", XML_TOKEN_TEXT}
+};
+
 
 static void printXmlElementInfo(const XmlElementInfo& elem)
 {
@@ -78,6 +92,15 @@ static void printXmlElementInfo(const XmlElementInfo& elem)
     }
 }
 
+static void printToken(const XmlToken& tok)
+{
+	ByteSpan kindname{};
+	getEnumKey(XML_TOKEN_TYPE_WSEnum, tok.type, kindname);
+	printf("Token [%d] %.*s : [%.*s]\n",
+		tok.type, (int)kindname.size(), kindname.data(),
+		(int)tok.value.size(), tok.value.data());
+}
+
 static void testTokenizer(const ByteSpan& src)
 {
     XmlTokenState tokState = { src, false };
@@ -85,14 +108,20 @@ static void testTokenizer(const ByteSpan& src)
 
     while (nextXmlToken(tokState, tok)) 
     {
-        printf("Token %d: [%.*s]\n", tok.type, (int)tok.value.size(), tok.value.data());
+        printToken(tok);
     }
 }
 
-static void testXmlToJson(const ByteSpan& src)
+
+static void testTokenGenerator(const ByteSpan& src)
 {
-	// convert the XML to JSON
-	printXmlToJson(src, stdout, true);
+    XmlTokenGenerator gen(src);
+
+    XmlToken tok;
+    while (gen.next(tok))
+    {
+        printToken(tok);
+    }
 }
 
 
@@ -110,6 +139,17 @@ static void testXmlElementScan(const ByteSpan& s)
 	}
 }
 
+static void testXmlElementGenerator(const ByteSpan& s)
+{
+	XmlElementGenerator gen(s);
+	XmlElement elem;
+	while (gen.next(elem))
+	{
+		waavs::printXmlElement(elem);
+	}
+}
+
+/*
 static void testXmlIter(const ByteSpan& s)
 {
     XmlElementIterator iter(s);
@@ -164,91 +204,9 @@ static void testElementFilter(const ByteSpan& s)
         waavs::printXmlElement(elem);
     }
 }
-
-
-/*
-        case XPathTokenKind::ROOT:           printf("ROOT\n"); break;
-        case XPathTokenKind::CHILD:          printf("CHILD\n"); break;
-        case XPathTokenKind::DESCENDANT:     printf("DESCENDANT\n"); break;
-        case XPathTokenKind::SELF:           printf("SELF\n"); break;
-        case XPathTokenKind::PARENT:         printf("PARENT\n"); break;
-        case XPathTokenKind::WILDCARD_NODE:  printf("WILDCARD (*)\n"); break;
 */
 
 
-    static WSEnum XPathAxisEnum = 
-    {
-        { "ROOT", XPathTokenKind::ROOT },
-        { "CHILD", XPathTokenKind::CHILD },
-        { "DESCENDANT", XPathTokenKind::DESCENDANT },
-        { "SELF", XPathTokenKind::SELF },
-        { "PARENT", XPathTokenKind::PARENT },
-        { "WILDCARD_NODE", XPathTokenKind::WILDCARD_NODE }
-    };
-
-
-static void printXPathExpressions(const ByteSpan& xpath)
-{
-    XPathExpression expr(xpath);
-
-    if (!expr.parse(xpath))
-    {
-        printf("Failed to parse XPath expression: ");
-        printChunk(xpath);
-        return;
-    }
-
-    printf("Parsed XPath Expression: ");
-	printChunk(xpath);
-
-
-    for (size_t i = 0; i < expr.steps.size(); ++i)
-    {
-        const auto& step = expr.steps[i];
-
-        printf("Step %zu:\n", i + 1);
-        printf("  Node Name: ");
-        printChunk(step.nodeName.empty() ? ByteSpan("(*)") : step.nodeName);
-
-        printf("  Axis: ");
-		ByteSpan axisname;
-		getEnumKey(XPathAxisEnum, step.axis, axisname);
-		if (axisname.empty())
-			axisname = ByteSpan("UNKNOWN");
-        printChunk(axisname);
-
-        if (!step.attribute.empty())
-        {
-            printf("  Attribute: ");
-            printChunk(step.attribute);
-        }
-
-        if (!step.value.empty())
-        {
-            printf("  Value: ");
-            printChunk(step.value);
-        }
-
-        if (step.operatorType == XPathTokenKind::OPERATOR)
-        {
-            printf("  Operator: ");
-            //printChunk(step.op);
-        }
-
-        //if (!step.predicate.empty())
-        //{
-        //    printf("  Predicate: ");
-        //    printChunk(step.predicate);
-        //}
-
-        printf("\n");
-    }
-}
-
-static void testXPathExpressions()
-{
-	printXPathExpressions("/root/item[@id=\"SVGID_7_\"]");
-}
 
 static void printModuleName()
 {
@@ -287,31 +245,18 @@ int main(int argc, char** argv)
     waavs::ByteSpan s(mapped->data(), mapped->size());
     
     //testTokenizer(s);
-    testXmlToJson(s);
+	//testTokenGenerator(s);
+
     //testXmlElementScan(s);
+    testXmlElementGenerator(s);
+
     //testXmlIter(s);
 	//testElementContainer(s);
     //testElementFilter(s);
-    //testXPathFilter();
-    //testXPathExpressions();
 
-    // iterate over the elements
-    // printing each one
-    // There is no regard to hierarchy here, just raw
-    // element output
-    // Printing an element will print its attributes though
-	// and printing a pure content node will print its content
-	// and printing a comment will print the comment
-
-    // Use an iterator directly
-    //XmlElementIterator iter(s);
-    //while (iter.next())
-    //{   
-    //    waavs::printXmlElement(*iter);
-   // }
 
     // close the mapped file
-    //mapped->close();
+    mapped->close();
 
 
     return 0;
