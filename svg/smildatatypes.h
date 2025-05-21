@@ -6,9 +6,6 @@
 #include "converters.h"
 #include "xmlschema.h"
 
-//#include "svgstructuretypes.h"
-//#include "wsenum.h"
-
 
 
 namespace waavs {

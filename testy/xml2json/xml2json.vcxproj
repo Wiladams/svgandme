@@ -186,6 +186,10 @@
   <ItemGroup>
     <ClCompile Include="xml2json.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\svg\xmltoken.h" />
+    <ClInclude Include="xmltojson.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

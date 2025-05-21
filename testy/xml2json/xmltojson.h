@@ -13,13 +13,6 @@ namespace waavs {
         bool hasChildren = false;
     };
 
-    //static inline bool isAllWhitespace(const ByteSpan& src) 
-    //{
-    //    ByteSpan s = src;
-    //    s.skipWhile(chrWspChars);
-    //    return s.empty();
-    //}
-
     static void jsonEscaped(const ByteSpan& span, FILE* out = stdout) {
         fwrite("\"", 1, 1, out);
         for (const unsigned char* p = span.fStart; p < span.fEnd; ++p) {
@@ -36,10 +29,11 @@ namespace waavs {
 
     static void printXmlToJson(const ByteSpan& src, FILE* out = stdout, bool collapseWhitespace=true)
     {
-        XmlTokenState state{ src,false };
+        XmlTokenGenerator xmlGen(src);
+        XmlToken tok;
 
         std::vector<JsonElement> stack;
-        XmlToken tok;
+
         bool needComma = false;
 
 		// simple lambda to handle indentation
@@ -49,19 +43,18 @@ namespace waavs {
             };
 
         // repeatedly pull xml tokens out of the byte stream
-        while (nextXmlToken(state, tok)) {
+        while (xmlGen.next(tok)) {
             switch (tok.type) {
             case XML_TOKEN_LT: {
-                // Peek next token to determine tag kind
-                XmlTokenState backup = state;
-                XmlToken next;
-                if (!nextXmlToken(state, next))
+
+                XmlToken nxtoken;
+                if (!xmlGen.next(nxtoken))
                     return;
 
-                if (next.type == XML_TOKEN_SLASH) {
+                if (nxtoken.type == XML_TOKEN_SLASH) {
                     // End tag
-                    nextXmlToken(state, next); // tag name
-                    nextXmlToken(state, next); // >
+                    xmlGen.next(nxtoken); // tag name
+                    xmlGen.next(nxtoken); // >
                     if (!stack.empty()) {
                         indent(stack.size() - 1);
                         fputs("] }", out);
@@ -69,27 +62,27 @@ namespace waavs {
                         needComma = true;
                     }
                 }
-                else if (next.type == XML_TOKEN_NAME) {
+                else if (nxtoken.type == XML_TOKEN_NAME) {
                     // Start or self-closing tag
-                    ByteSpan tagName = next.value;
+                    ByteSpan tagName = nxtoken.value;
                     std::vector<std::pair<ByteSpan, ByteSpan>> attrs;
                     bool selfClosing = false;
 
                     // Consume attributes
-                    while (nextXmlToken(state, next)) {
-                        if (next.type == XML_TOKEN_GT) {
+                    while (xmlGen.next(nxtoken)) {
+                        if (nxtoken.type == XML_TOKEN_GT) {
                             break;
                         }
-                        else if (next.type == XML_TOKEN_SLASH) {
-                            nextXmlToken(state, next); // should be GT
+                        else if (nxtoken.type == XML_TOKEN_SLASH) {
+                            xmlGen.next(nxtoken); // should be GT
                             selfClosing = true;
                             break;
                         }
-                        else if (next.type == XML_TOKEN_NAME) {
-                            ByteSpan attrName = next.value;
-                            if (!nextXmlToken(state, next) || next.type != XML_TOKEN_EQ) break;
-                            if (!nextXmlToken(state, next) || next.type != XML_TOKEN_STRING) break;
-                            attrs.emplace_back(attrName, next.value);
+                        else if (nxtoken.type == XML_TOKEN_NAME) {
+                            ByteSpan attrName = nxtoken.value;
+                            if (!xmlGen.next(nxtoken) || nxtoken.type != XML_TOKEN_EQ) break;
+                            if (!xmlGen.next(nxtoken) || nxtoken.type != XML_TOKEN_STRING) break;
+                            attrs.emplace_back(attrName, nxtoken.value);
                         }
                     }
 

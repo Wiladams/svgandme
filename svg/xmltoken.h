@@ -28,15 +28,17 @@ namespace waavs {
         XML_TOKEN_TEXT,     // Raw character content
     };
 
-    struct XmlToken 
+    struct XmlToken final
     {
         XmlTokenType type = XML_TOKEN_INVALID;
         ByteSpan value;
+        bool inTag = false;
 
-        void reset(XmlTokenType t = XML_TOKEN_INVALID, ByteSpan v = {}) noexcept 
+        void reset(XmlTokenType t = XML_TOKEN_INVALID, ByteSpan v = {}, bool inTagFlag=false) noexcept 
         {
             type = t;
             value = v;
+			inTag = inTagFlag;
         }
     };
 
@@ -46,35 +48,32 @@ namespace waavs {
         bool inTag = false;
     };
 
-    // generator of xml tokens
-    static inline bool nextXmlToken(XmlTokenState& state, XmlToken& out)
+    // === Outside of tag ===
+    static inline bool readText(XmlTokenState& state, XmlToken& out)
     {
-        out.reset();
+        const unsigned char* start = state.input.fStart;
+        const unsigned char* lt = static_cast<const unsigned char*>(memchr(start, '<', state.input.size()));
+        
+        if (!lt)
+            lt = state.input.fEnd;
 
-        if (state.input.empty())
-            return false;
-
-        // === Outside of tag ===
-        if (!state.inTag) {
-            const unsigned char* start = state.input.fStart;
-            const unsigned char* lt = static_cast<const unsigned char*>(memchr(start, '<', state.input.size()));
-            if (!lt)
-                lt = state.input.fEnd;
-
-            if (lt != start) {
-                out.reset(XML_TOKEN_TEXT, { start, lt });
-                state.input.fStart = lt;
-                return true;
-            }
-
-            // Found '<'
-            ++state.input.fStart;
-            state.inTag = true;
-            out.reset(XML_TOKEN_LT);
+        if (lt != start) {
+            out.reset(XML_TOKEN_TEXT, { start, lt }, false);
+            state.input.fStart = lt;
             return true;
         }
 
-        // === Inside tag ===
+        // Found '<'
+        ++state.input.fStart;
+        state.inTag = true;
+        out.reset(XML_TOKEN_LT, {}, true);
+
+        return true;
+    }
+
+    // === Inside tag ===
+    static inline bool readTagToken(XmlTokenState& state, XmlToken& out)
+    {
         state.input.skipWhile(chrWspChars);
         if (state.input.empty())
             return false;
@@ -83,12 +82,12 @@ namespace waavs {
         switch (ch) {
         case '>':
             state.inTag = false;
-            out.reset(XML_TOKEN_GT);
+            out.reset(XML_TOKEN_GT, {}, true);
             return true;
-        case '/': out.reset(XML_TOKEN_SLASH); return true;
-        case '=': out.reset(XML_TOKEN_EQ); return true;
-        case '?': out.reset(XML_TOKEN_QMARK); return true;
-        case '!': out.reset(XML_TOKEN_BANG); return true;
+        case '/': out.reset(XML_TOKEN_SLASH, {}, true); return true;
+        case '=': out.reset(XML_TOKEN_EQ, {}, true); return true;
+        case '?': out.reset(XML_TOKEN_QMARK, {}, true); return true;
+        case '!': out.reset(XML_TOKEN_BANG, {}, true); return true;
 
         case '"':
         case '\'':
@@ -97,7 +96,7 @@ namespace waavs {
             const unsigned char* end = start;
             while (end < state.input.fEnd && *end != ch)
                 ++end;
-            out.reset(XML_TOKEN_STRING, { start, end });
+            out.reset(XML_TOKEN_STRING, { start, end }, true);
             state.input.fStart = (end < state.input.fEnd) ? end + 1 : end;
             return true;
         }
@@ -107,20 +106,39 @@ namespace waavs {
                 const unsigned char* start = state.input.fStart - 1;
                 while (!state.input.empty() && xmlNameChars(*state.input))
                     ++state.input.fStart;
-                out.reset(XML_TOKEN_NAME, { start, state.input.fStart });
+                out.reset(XML_TOKEN_NAME, { start, state.input.fStart }, true);
                 return true;
             }
             break;
         }
 
-        out.reset(XML_TOKEN_INVALID, { state.input.fStart - 1, state.input.fStart });
+        out.reset(XML_TOKEN_INVALID, { state.input.fStart - 1, state.input.fStart }, state.inTag);
         return true;
+    }
+
+    // generator of xml tokens
+    // If the return value is false, then the state of the token 
+    // is not valid.
+    static inline bool nextXmlToken(XmlTokenState& state, XmlToken& out)
+    {
+        if (state.input.empty())
+        {
+			out.reset();
+            return false;
+        }
+
+        return state.inTag ? readTagToken(state, out)
+            : readText(state, out);
+
     }
 }
 
 namespace waavs
 {
     // Objectified XML token generator
+    // Put a IProduce interface on it, and maintain
+    // the state associated with the tokenizer
+    //
     struct XmlTokenGenerator : IProduce<XmlToken>
     {
         XmlTokenState fState{};

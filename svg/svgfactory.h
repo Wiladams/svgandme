@@ -131,6 +131,9 @@ namespace waavs {
         // a graphics rendering tree.
         std::shared_ptr<SVGDocument> createDOMInternal(const ByteSpan& srcChunk, FontHandler* fh)
         {
+            // this MUST be done, or node registrations will not happen
+            //auto sFactory = getFactory();
+
             auto doc = std::make_shared<SVGDocument>(fh, 640, 480, 96);
             if (!doc->loadFromChunk(srcChunk, fh))
                 return {};
@@ -143,7 +146,7 @@ namespace waavs {
         static std::shared_ptr<SVGDocument> createFromChunkInternal(const ByteSpan& srcChunk, FontHandler* fh, const double w, const double h, const double ppi)
         {
             // this MUST be done, or node registrations will not happen
-            auto sFactory = getFactory();
+            //auto sFactory = getFactory();
 
             auto doc = std::make_shared<SVGDocument>(fh, w, h, ppi);
             if (!doc->loadFromChunk(srcChunk, fh))

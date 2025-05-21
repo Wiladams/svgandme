@@ -34,7 +34,7 @@ namespace waavs {
 	// as a 'cursor' to traverse the data it points to.
 
 
-	struct ByteSpan
+	struct ByteSpan final
 	{
 		const unsigned char* fStart{ nullptr };
 		const unsigned char* fEnd{ nullptr };
@@ -49,14 +49,18 @@ namespace waavs {
 		constexpr ByteSpan() = default;
 		constexpr ByteSpan(const unsigned char* start, const unsigned char* end) noexcept : fStart(start), fEnd(end) {}
 		ByteSpan(const char* cstr) noexcept
-			: fStart(reinterpret_cast<const uint8_t*>(cstr)),
-			fEnd(reinterpret_cast<const uint8_t*>(cstr) + std::strlen(cstr)) {
+		{
+			fStart = (reinterpret_cast<const uint8_t*>(cstr));
+			fEnd = fStart;
+			while (*fEnd != '\0') {
+				++fEnd;
+			}
 		}
 		explicit constexpr ByteSpan(const void* data, size_t sz) noexcept
 			: fStart(static_cast<const uint8_t*>(data)), fEnd(fStart + sz) {
 		}
 
-		~ByteSpan() = default;
+		//~ByteSpan() = default;
 
 		constexpr void reset() { fStart = nullptr; fEnd = nullptr; }
 		
@@ -240,17 +244,9 @@ namespace waavs {
 			return *this;
 		}
 
-
-		template<typename Predicate>
-		ByteSpan& skipWhile(Predicate pred) noexcept
+		ByteSpan& skipWhile(const charset & aset) noexcept
 		{
-			auto* p = fStart;
-			auto* ending = fEnd;
-
-			while (p < ending && pred(*p))
-				++p;
-
-			fStart = p;
+			fStart = aset.skipWhile(fStart, fEnd);
 
 			return *this;
 		}
@@ -263,46 +259,24 @@ namespace waavs {
 		//   unint8_t *tokenStart = aSpan.data();
 		//   aSpan.scanUntil<is_space>(chrWspChars);
 		//   unint8_t *tokenEnd = aSpan.data();
-
-		template<typename Predicate>
-		ByteSpan& scanUntil() noexcept
+		ByteSpan& skipUntil(const charset & aset) noexcept
 		{
-			auto* p = fStart;
-			auto* ending = fEnd;
-
-			Predicate pred{};
-			while (p < ending && !pred(*p))
-				++p;
-
-			fStart = p;
-
-			return *this;
-		}
-
-		template<typename Predicate>
-		ByteSpan& scanUntil(Predicate pred) noexcept
-		{
-			auto* p = fStart;
-			auto* ending = fEnd;
-
-			while (p < ending && !pred(*p))
-				++p;
-
-			fStart = p;
+			fStart = aset.skipUntil(fStart, fEnd);
 
 			return *this;
 		}
 	};
 
+	ASSERT_MEMCPY_SAFE(ByteSpan);
 }
 
 
 namespace waavs {
+	// isAll() - Check if all characters in the span are in the specified charset
 	static inline bool isAll(const ByteSpan& src, const charset& aset)
 	{
-		ByteSpan s = src;
-		s.skipWhile(aset);
-		return s.empty();
+		auto found = aset.skipWhile(src.fStart, src.fEnd);
+		return found != src.fEnd;
 	}
 }
 

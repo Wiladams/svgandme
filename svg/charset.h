@@ -44,7 +44,11 @@ namespace waavs {
 	//
 	// The constructors are constexpr, which makes it easy to statically
 	// implement characters sets, either at compile time, or at runtime
-	struct charset {
+	struct charset final
+	{
+		// Scoped fast-path toggle
+		static constexpr bool kUseFastPath = true;
+
 		alignas(64) uint8_t bits[256] = {};
 
 		// Common Constructors
@@ -203,9 +207,72 @@ namespace waavs {
 			return result;
 		}
 
+		// Configurable skipWhile
+		inline const unsigned char* skipWhile(const unsigned char* p, const unsigned char* end) const noexcept 
+		{
+			if constexpr (kUseFastPath) {
+				// 4-at-a-time fast scan
+				while (p + 3 < end) {
+					const unsigned char c0 = p[0];
+					const unsigned char c1 = p[1];
+					const unsigned char c2 = p[2];
+					const unsigned char c3 = p[3];
+
+					if ((bits[c0] & bits[c1] & bits[c2] & bits[c3]) == 0)
+						break;
+
+					p += 4;
+				}
+			}
+			else {
+				// 2-at-a-time fallback
+				while (p + 1 < end) {
+					if (!bits[static_cast<unsigned char>(p[0])]) return p;
+					if (!bits[static_cast<unsigned char>(p[1])]) return p + 1;
+					p += 2;
+				}
+			}
+
+			// Cleanup remaining characters
+			while (p < end && bits[static_cast<unsigned char>(*p)])
+				++p;
+
+			return p;
+		}
+
+
+		inline const unsigned char* skipUntil(const unsigned char* p, const unsigned char* end) const noexcept 
+		{
+			if constexpr (kUseFastPath) {
+				// 4-at-a-time fast scan
+				while (p + 3 < end) {
+					const unsigned char c0 = p[0];
+					const unsigned char c1 = p[1];
+					const unsigned char c2 = p[2];
+					const unsigned char c3 = p[3];
+
+					if ((bits[c0] | bits[c1] | bits[c2] | bits[c3]) != 0)
+						break;
+
+					p += 4;
+				}
+			}
+			else {
+				// 2-at-a-time fallback
+				while (p + 1 < end) {
+					if (bits[static_cast<unsigned char>(p[0])]) return p;
+					if (bits[static_cast<unsigned char>(p[1])]) return p + 1;
+					p += 2;
+				}
+			}
+
+			// Cleanup remaining characters
+			while (p < end && !bits[static_cast<unsigned char>(*p)])
+				++p;
+
+			return p;
+		}
 	};
-
-
 
 }
 
