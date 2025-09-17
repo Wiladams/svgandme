@@ -42,3 +42,8 @@
 /testy/transpath/ARM64
 /testy/xmlpull/ARM64
 /testy/svgviewer/ARM64
+/testy/svg2api/ARM64
+/testy/svgexplorer/ARM64
+/testy/svgimage/ARM64
+/testy/svgpull/ARM64
+/testy/tryit/ARM64

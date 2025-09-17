@@ -7,7 +7,7 @@
 namespace waavs 
 {
 	// ConsumerFn interface for printing path segments
-	static void printPathSegment(const PathSegment& seg)
+	static void printCompactPathSegment(const PathSegment& seg)
 	{
 		printf("%c ", static_cast<char>(seg.fSegmentKind));
 		int n = seg.fArgCount;
@@ -33,6 +33,14 @@ namespace waavs
 
 	}
 	
+	static void printCompactSegments(ProducerFn<PathSegment> src)
+	{
+		PathSegment seg{};
+		while (src(seg))
+		{
+			printCompactPathSegment(seg);
+		}
+	}
 
 	// Take path segment commands, and turn them into print statements
 	// that show how the commands apply to a BLPath object
