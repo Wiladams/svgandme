@@ -1,11 +1,19 @@
 
+// This is a simple example of how to use the SVG library
+// to render an SVG file into a bitmap image using svgandme 
+// with the blend2d library.  
+// The SVGFactory is used to create a document from a file, 
+// and then uses the SVGB2DDriver to render the document into a BLImage.
+//
+// The example also shows how to use the ViewportTransformer
+// to scale and translate the document to fit into the 
+// image.
+
 #include <filesystem>
 
 #include "mappedfile.h"
-
 #include "svg.h"
 #include "viewport.h"
-
 #include "svgb2ddriver.h"
 
 
@@ -13,13 +21,6 @@ using namespace waavs;
 
 #define CAN_WIDTH 1920
 #define CAN_HEIGHT 1280
-
-
-// Reference to currently active document
-std::shared_ptr<SVGDocument> gDoc{ nullptr };
-
-FontHandler gFontHandler{};
-
 
 
 static void loadFontDirectory(const char* dir)
@@ -51,37 +52,36 @@ static void setupFonts()
 	loadFontDirectory("c:\\Windows\\Fonts");
 }
 
-
-int main(int argc, char **argv)
+// createDocument
+// This is a little helper that takes a filename and creates a
+// SVGDocument from it.  You can create an in memory representation 
+// of the documet however you like.
+// Calling SVGFactory::createFromChunk() is the critical piece
+//
+static SVGDocumentHandle createDocument(const char *filename)
 {
-
-	printf("argc: %d\n", argc);
-	
-	if (argc < 2)
-    {
-        printf("Usage: svgimage <xml file>  [output file]\n");
-        return 1;
-    }
-	
-	setupFonts();
-
-    // create an mmap for the specified file
-    const char* filename = argv[1];
-
 	auto mapped = MappedFile::create_shared(filename);
-    
+	
 	// if the mapped file does not exist, return
 	if (mapped == nullptr)
 	{
 		printf("File not found: %s\n", filename);
-		return 1;
+		return nullptr;
 	}
-    
-	ByteSpan mappedSpan(mapped->data(), mapped->size());
-	gDoc = SVGFactory::createFromChunk(mappedSpan, FontHandler::getFontHandler(), CAN_WIDTH, CAN_HEIGHT, 96.0);
 
-    if (gDoc == nullptr)
-		return 1;
+	ByteSpan mappedSpan(mapped->data(), mapped->size());
+	auto doc = SVGFactory::createFromChunk(mappedSpan, FontHandler::getFontHandler(), CAN_WIDTH, CAN_HEIGHT, 96.0);
+
+	return doc;
+}
+
+static void renderImage(SVGDocumentHandle gDoc, const char* outfilename)
+{
+	if (gDoc == nullptr)
+	{
+		printf("Document is null\n");
+		return;
+	}
 
 	// Create an image that we will draw into
 	BLImage img(CAN_WIDTH, CAN_HEIGHT, BL_FORMAT_PRGB32);
@@ -106,8 +106,9 @@ int main(int argc, char **argv)
 	// Create a rectangle the size of the BLImage we want to render into
 	BLRect surfaceFrame{ 0, 0, CAN_WIDTH, CAN_HEIGHT };
 
-	// Now that we've processed the document, we have correct sizing
-	// Get the frame size from the document
+	// If the document does not already have a viewBox/width/height
+	// getBBox() will not return a proper size.  So, the document
+	// must be well formed in that way for this to work.
 	// This is the extent of the document, in user units
 	BLRect sceneFrame = gDoc->getBBox();
 	printf("viewport: %3.0f %3.0f %3.0f %3.0f\n", sceneFrame.x, sceneFrame.y, sceneFrame.w, sceneFrame.h);
@@ -116,33 +117,55 @@ int main(int argc, char **argv)
 	// At this point, we could just do the render, but we go further
 	// and create a viewport, which will handle the scaling and translation
 	// This will essentially do a 'scale to fit'
+	// You don't have to go this route.  You can simply calculate the scaling
+	// and apply that to the context.
 	ViewportTransformer vp{};
 	vp.viewBoxFrame(sceneFrame);		// The part of the scene we want to display
 	vp.viewportFrame(surfaceFrame);		// The surface we want to fit to 
-	
+
 	// apply the viewport's sceneToSurface transform to the context
 	BLMatrix2D tform = vp.viewBoxToViewportTransform();
 	ctx.transform(tform);
-	
+
 	// Render the document into the context
 	gDoc->draw(&ctx, gDoc.get());
 
 	// detach automatically does a final flush, 
 	// so we're ready to save the image after that
 	ctx.detach();
-	
+
 	// Save the image from the drawing context out to a file
 	// or do whatever you're going to do with it
-	const char* outfilename = nullptr;
+	img.writeToFile(outfilename);
+}
 
+
+int main(int argc, char** argv)
+{
+	printf("argc: %d\n", argc);
 	
+	if (argc < 2)
+    {
+        printf("Usage: svgimage <svg file>  [output file]\n");
+        return 1;
+    }
+	
+	// This is a platform specific step required to get fonts setup
+	// before rendering.
+	setupFonts();
+
+    // create an mmap for the specified file
+    const char* infilename = argv[1];
+	
+	const char* outfilename = nullptr;
 	if (argc >= 3)
 		outfilename = argv[2];
-	else 
+	else
 		outfilename = "output.png";
 
-	img.writeToFile(outfilename);
+	auto gDoc = createDocument(infilename);
 
+	renderImage(gDoc, outfilename);
 
     return 0;
 }

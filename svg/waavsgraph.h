@@ -222,6 +222,14 @@ namespace waavs
 		constexpr uint16_t iteration() const { return fIteration; }
 		constexpr SVGPathCommand command() const { return fSegmentKind; }
 
+		bool isRelative() const {
+			return (static_cast<unsigned char>(fSegmentKind) >= 'a' && static_cast<unsigned char>(fSegmentKind) <= 'z');
+		}
+
+		// Does the command use absolute coordinates?
+		bool isAbsolute() const {
+			return (static_cast<unsigned char>(fSegmentKind) >= 'A' && static_cast<unsigned char>(fSegmentKind) <= 'Z');
+		}
 	};
 
 	ASSERT_MEMCPY_SAFE(PathSegment);
