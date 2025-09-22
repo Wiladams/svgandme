@@ -60,7 +60,15 @@ namespace waavs {
 
 
 
-	// parseMetric - Extracts the metric type but does not apply scaling
+	// parseMetric
+	// 
+	// Extracts the metric type but does not apply scaling.  Valid metric
+	// are here:
+	//   ms		- milliseconds
+	//   min	- minutes
+	//   h		- hours
+	//   s		- seconds
+	//
 	static bool parseMetric(ByteSpan& span, AnimMetricType& metricType)
 	{
 		metricType = AnimMetricType::TIME_METRIC_NONE;
@@ -105,10 +113,12 @@ namespace waavs {
 	}
 
 	//
-	// scaledSeconds()
+	// scaledSeconds
 	// 
 	// Convert a value to seconds, according to the kind of scale
 	// the value represents.
+	// 'inValue' is specified in the metricType, and this routine will
+	// convert to how many seconds that equates to.
 	// 
 	static double scaledSeconds(double inValue, AnimMetricType metricType)
 	{
@@ -198,7 +208,10 @@ namespace waavs {
 		return true;
 	}
 
-
+	// parseFullClockValue
+	//
+	// Full-clock-value    ::= Hours ":" Minutes ":" Seconds ("." Fraction)?
+	//
 	static bool parseFullClockValue(ByteSpan& part1, ByteSpan& part2, ByteSpan& part3, double& outSecs)
 	{
 		double hours, minutes, seconds;
@@ -210,6 +223,10 @@ namespace waavs {
 		return true;
 	}
 
+	// parsePartialClockValue
+	//
+	// Partial-clock-value ::= Minutes ":" Seconds ("." Fraction)?
+	//
 	static bool parsePartialClockValue(ByteSpan& part1, ByteSpan& part2, double& outSecs)
 	{
 		double minutes, seconds;
@@ -220,6 +237,10 @@ namespace waavs {
 		return true;
 	}
 
+	// parseTimecountValue
+	//
+	// Timecount-value     ::= Timecount ("." Fraction)? (Metric)?
+	//
 	static bool parseTimecountValue(ByteSpan& part1, double& outSecs)
 	{
 		double value = 0;
