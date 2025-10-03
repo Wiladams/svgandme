@@ -34,7 +34,6 @@
 
 #include "bspan.h"
 #include "converters.h"
-//#include "pubsub.h"
 #include "waavsgraph.h"
 #include "pipeline.h"
 
@@ -205,37 +204,3 @@ namespace waavs {
 	};
 }
 
-/*
-namespace waavs {
-	// SVGPathSegmentIterator
-	// A convenience class.  Given a span that contains a path to 
-	// be parsed, the iterator will setup the param, and initial state
-	// then provide a 'nextSegment()', which will return 'true' as long
-	// as there are valid segments to be returned.  False, upon error
-	// or end of path. 
-
-	struct SVGPathSegmentIterator
-	{
-	private:
-		SVGSegmentParseParams fParams{};
-		SVGSegmentParseState fCmdState;
-
-
-	public:
-		SVGPathSegmentIterator(const ByteSpan& pathSpan)
-			: fCmdState(pathSpan)
-		{}
-
-		bool nextSegment(SVGSegmentParseState& cmdState)
-		{
-			auto success = readNextSegmentCommand(fParams, fCmdState);
-			if (!success)
-				return false;
-
-			cmdState = fCmdState;
-
-			return true;
-		}
-	};
-}
-*/

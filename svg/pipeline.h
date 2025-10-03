@@ -3,10 +3,10 @@
 #include <functional>
 #include <memory>
 
-namespace waavs 
+namespace waavs
 {
 	// Producer: generates data of type T into an output reference
-	// Returns true if a value was produced, false if stream is finished
+	// Returns true if a value was produced, false if no value is produced
 	template<typename T>
 	using ProducerFn = std::function<bool(T&)>;
 
@@ -20,27 +20,33 @@ namespace waavs
 	using ConsumerFn = std::function<void(const T&)>;
 }
 
+// Class based interfaces for producers, consumers, and transformers
+// pipeline construction
 namespace waavs 
 {
+
 	template <typename OutType>
 	struct IProduce
 	{
+        using OutputType = OutType; // For type inference in helpers
+
 		virtual ~IProduce() = default;
 		virtual bool next(OutType& out) = 0;
 
 		// Don't do the following, as when you pass an object
 		// to a function that expects a function, it will make
 		// a copy of this object!
-		//bool operator()(OutType& out)
-		//{
-		//	return next(out);
-		//}
+		bool operator()(OutType& out)
+		{
+			return next(out);
+		}
 	};
 
 	template <typename InType>
 	struct IConsume
 	{
 		virtual ~IConsume() = default;
+
 		virtual void consume(const InType& in) = 0;
 
 		//void setInput(ProducerFn<InType>)
@@ -78,8 +84,10 @@ namespace waavs
 	};
 }
 
+/*
 // Some helpers that make chaining better
-namespace waavs {
+namespace waavs 
+{
 	template <typename T, typename ProducerT>
 	std::function<bool(T&)> PLProducer(ProducerT& producer)
 	{
@@ -89,9 +97,7 @@ namespace waavs {
 	}
 
 
-}
 
-namespace waavs {
 	template <typename T, typename ConsumerT>
 	std::function<void(const T&)> PLConsumer(ConsumerT& consumer)
 	{
@@ -99,9 +105,8 @@ namespace waavs {
 			consumer.consume(in);
 			};
 	}
-}
 
-namespace waavs {
+
 
 	// Reference-based: caller owns the transformer
 	template <typename TransformT>
@@ -179,3 +184,6 @@ namespace waavs {
 		}
 	}
 }
+
+*/
+

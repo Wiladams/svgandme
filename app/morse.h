@@ -7,8 +7,11 @@
 
 namespace waavs 
 {
-	size_t createMorseCode(const char* src, std::vector<double>& out, double dotDuration = 1.0) {
+	static const std::unordered_map<char, const char*> & getMorseCodeMap()
+	{
 		static const std::unordered_map<char, const char*> morseMap = {
+            // Original 1865 Morse Code
+			// Letters A–Z
 			{'A', ".-"},    {'B', "-..."},  {'C', "-.-."},  {'D', "-.."},
 			{'E', "."},     {'F', "..-."},  {'G', "--."},   {'H', "...."},
 			{'I', ".."},    {'J', ".---"},  {'K', "-.-"},   {'L', ".-.."},
@@ -16,15 +19,46 @@ namespace waavs
 			{'Q', "--.-"},  {'R', ".-."},   {'S', "..."},   {'T', "-"},
 			{'U', "..-"},   {'V', "...-"},  {'W', ".--"},   {'X', "-..-"},
 			{'Y', "-.--"},  {'Z', "--.."},
+
+			// Numbers 0–9
 			{'0', "-----"}, {'1', ".----"}, {'2', "..---"}, {'3', "...--"},
 			{'4', "....-"}, {'5', "....."}, {'6', "-...."}, {'7', "--..."},
-			{'8', "---.."}, {'9', "----."}
+			{'8', "---.."}, {'9', "----."},
+
+			// Extensions based on (ITU-T F.1 + 2004 @)
+			// Punctuation / symbols
+			{'.', ".-.-.-"},   // Period
+			{',', "--..--"},   // Comma
+			{'?', "..--.."},   // Question mark
+			{'\'', ".----."},  // Apostrophe
+			{'!', "-.-.--"},   // Exclamation mark
+			{'/', "-..-."},    // Slash
+			{'(', "-.--."},    // Left parenthesis
+			{')', "-.--.-"},   // Right parenthesis
+			{'&', ".-..."},    // Ampersand
+			{':', "---..."},   // Colon
+			{';', "-.-.-."},   // Semicolon
+			{'=', "-...-"},    // Equals
+			{'+', ".-.-."},    // Plus / AR prosign
+			{'-', "-....-"},   // Hyphen / dash
+			{'_', "..--.-"},   // Underscore
+			{'"', ".-..-."},   // Quotation mark
+			{'$', "...-..-"},  // Dollar sign
+			{'@', ".--.-."}    // At sign (added 2004)
 		};
 
+		return morseMap;
+	}
+
+    // returns how many characters were encoded
+	size_t createMorseCode(const char* src, std::vector<double>& out, double dotDuration = 1.0) 
+	{
+        static const auto morseMap = getMorseCodeMap();
 		bool atWordStart = true;
 		size_t count = 0;
 
-		for (size_t i = 0; src[i]; ++i) {
+		for (size_t i = 0; src[i]; ++i) 
+		{
 			char ch = std::toupper(src[i]);
 
 			if (ch == ' ') {

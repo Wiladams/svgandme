@@ -7,6 +7,9 @@
 
 #include "definitions.h"
 
+#include "coloring.h"
+
+/*
 // Some data structures used for graphics
 namespace waavs {
 
@@ -23,6 +26,7 @@ namespace waavs {
 	}
 
 
+
 	// struct Color
 	// A simple structure to hold a color
 	// constexpr is used everywhere so the Color structure can 
@@ -30,23 +34,28 @@ namespace waavs {
 	// The arithmetic operators are implemented so interpolation can be done
 	//
 	struct Color {
-		double r, g, b, a;
+		float r, g, b, a;
 
 		constexpr Color() : r(0), g(0), b(0), a(0) {}
-		constexpr Color(double r, double g, double b, double a)
+		constexpr Color(float r, float g, float b, float a)
 			: r(r), g(g), b(b), a(a) {
 		}
 
+        // Note:  There's more than one way to compute luminance
+		// Relative luminance
+		// Perceived lightness
+		// Luma
+		// 
 		// Perceptual luminance (W3C)
 		constexpr double luminance() const {
 			return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 		}
 
 		// Euclidean RGB distance
-		constexpr double colorDistance(const Color& other) const {
-			double dr = r - other.r;
-			double dg = g - other.g;
-			double db = b - other.b;
+		constexpr float colorDistance(const Color& other) const {
+			float dr = r - other.r;
+			float dg = g - other.g;
+			float db = b - other.b;
 			return dr * dr + dg * dg + db * db;
 		}
 
@@ -81,9 +90,9 @@ namespace waavs {
 				nearlyEqual(a, other.a, epsilon);
 		}
 	};
-	
-
 }
+*/
+
 
 namespace waavs
 {
@@ -115,6 +124,7 @@ namespace waavs
 	};
 
 	ASSERT_POD_TYPE(Point2d);
+	ASSERT_STRUCT_SIZE(Point2d, 16);
 
 	// distanceToLine()
 	// 
@@ -172,10 +182,9 @@ namespace waavs
 
 	// struct PathSegment
 	// 
-	// A path is composed of several segments
-	// The PathSegment structure is a compact representation
-	// of that segment.  You can reconstruct the segment in text
-	// form, or pass this along to other functions for processing
+    // This structure represents a single segment of an SVG path.
+    // When parsing an SVG path, you get a series of segments,
+    // Each segment has a command, and a set of arguments.
 	//
 	// BUGBUG - maybe need packing pragma to ensure tight packing
 	struct PathSegment final

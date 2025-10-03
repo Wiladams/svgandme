@@ -18,15 +18,6 @@
 #include <cctype>
 #include <type_traits>
 
-/*
-// Platform intrinsics
-#if defined(__ARM_NEON) || defined(__aarch64__)
-#include <arm_neon.h>
-#endif
-#if defined(__AVX2__)
-#include <immintrin.h>
-#endif
-*/
 
 #define WAAVS_NOMINMAX 1
 
@@ -60,6 +51,25 @@
         #undef max
     #endif
 #endif
+
+
+
+#ifndef WAAVS_ALIGN_UP_POW2
+# define WAAVS_ALIGN_UP_POW2(x,a) ( ((x) + ((a)-1)) & ~((a)-1) )
+#endif
+
+
+
+
+// Definition of fmaf if not already defined
+#ifndef WAAVS_FMAF
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+#define WAAVS_FMAF(a,b,c) fmaf((a),(b),(c))
+#else
+#define WAAVS_FMAF(a,b,c) ((a)*(b)+(c))
+#endif
+#endif
+
 
 
 

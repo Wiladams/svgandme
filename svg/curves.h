@@ -8,8 +8,7 @@
 #include <memory>
 
 #include "pathsegmenter.h"
-#include "pipeline.h"
-#include "waavsgraph.h"
+
 
 
 namespace waavs
@@ -102,6 +101,7 @@ namespace waavs {
             : fBase(base)
             , fT0(t0)
             , fT1(t1) {}
+
 
         Point2d eval(double t) const override {
             double mapped = fT0 + t * (fT1 - fT0);

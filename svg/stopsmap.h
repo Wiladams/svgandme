@@ -5,20 +5,7 @@
 
 #include "generator.h"
 
-/*
-namespace waavs {
-    template <typename T>
-    class IParametricSource {
-    public:
-        virtual ~IParametricSource() = default;
 
-        virtual T eval(double t) const = 0;
-
-        // Makes it callable like a function
-        T operator()(double t) const { return eval(t); }
-    };
-}
-*/
 
 namespace waavs 
 {

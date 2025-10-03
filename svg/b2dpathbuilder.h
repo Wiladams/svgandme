@@ -295,7 +295,7 @@ namespace waavs {
 		PathSegment seg{};
 		while (segmentGen.next(seg))
 		{
-			builder(seg);
+			builder.consume(seg);
 		}
 
 		return true;
