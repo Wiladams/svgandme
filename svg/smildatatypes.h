@@ -7,7 +7,6 @@
 #include "xmlschema.h"
 
 
-
 namespace waavs {
 
 	/*
@@ -41,22 +40,7 @@ namespace waavs {
 	// returns 'true' if successful, and outSecs contains
 	// the clock value converted to seconds
 
-	// readTwoDigits()
-	// Reads exactly two digits.  
-	// Will only return 'true' if at least two digits are present
-	// if there are fewer, it will return 'false'
-	// A higher level scanner will need to deal with the fact that
-	// there might be more digits after the two digits have been read
-	static inline bool readTwoDigits(ByteSpan& b, double& val)
-	{
-		uint64_t digits{ 0 };
-		if (!read_required_digits(b, digits, 2))
-			return false;
 
-		val = digits;
-
-		return true;
-	}
 
 
 
@@ -167,8 +151,11 @@ namespace waavs {
 
 		// Use `readTwoDigits()` for MM and SS, otherwise `read_u64()`
 		if (twoDigitsRequired) {
-			if (!readTwoDigits(s, value))
+			uint64_t digits{ 0 };
+			if (!read_required_digits(s, digits, 2))
 				return false;
+
+			value = static_cast<double>(digits);
 		}
 		else {
 			uint64_t myint{ 0 };

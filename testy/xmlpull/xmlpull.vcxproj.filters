@@ -59,7 +59,10 @@
     <ClInclude Include="..\..\svg\xmlschema.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\app\xmltojson.h">
+    <ClInclude Include="..\..\svg\xmltokengen.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\xmlelementgen.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

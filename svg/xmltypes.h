@@ -5,23 +5,26 @@
 
 #include "bspan.h"
 
+enum XML_ELEMENT_TYPE {
+    XML_ELEMENT_TYPE_INVALID = 0
+    , XML_ELEMENT_TYPE_XMLDECL                      // <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    , XML_ELEMENT_TYPE_START_TAG                    // <tag>
+    , XML_ELEMENT_TYPE_END_TAG                      // </tag>
+    , XML_ELEMENT_TYPE_SELF_CLOSING                 // <tag/>
+    , XML_ELEMENT_TYPE_EMPTY_TAG                    // <br>
+    , XML_ELEMENT_TYPE_CONTENT                      // <tag>content</tag>
+    , XML_ELEMENT_TYPE_COMMENT                      // <!-- comment -->
+    , XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION       // <?target data?>
+    , XML_ELEMENT_TYPE_CDATA                        // <![CDATA[<greeting>Hello, world!</greeting>]]>
+    , XML_ELEMENT_TYPE_DOCTYPE                      // <!DOCTYPE greeting SYSTEM "hello.dtd">
+    , XML_ELEMENT_TYPE_ENTITY                       // <!ENTITY hello "Hello">
+};
+
 namespace waavs {
-    enum XML_ELEMENT_TYPE : uint32_t {
-        XML_ELEMENT_TYPE_INVALID = 0
-        , XML_ELEMENT_TYPE_XMLDECL                      // <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-        , XML_ELEMENT_TYPE_START_TAG                    // <tag>
-        , XML_ELEMENT_TYPE_END_TAG                      // </tag>
-        , XML_ELEMENT_TYPE_SELF_CLOSING                 // <tag/>
-        , XML_ELEMENT_TYPE_EMPTY_TAG                    // <br>
-        , XML_ELEMENT_TYPE_CONTENT                      // <tag>content</tag>
-        , XML_ELEMENT_TYPE_COMMENT                      // <!-- comment -->
-        , XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION       // <?target data?>
-        , XML_ELEMENT_TYPE_CDATA                        // <![CDATA[<greeting>Hello, world!</greeting>]]>
-        , XML_ELEMENT_TYPE_DOCTYPE                      // <!DOCTYPE greeting SYSTEM "hello.dtd">
-        , XML_ELEMENT_TYPE_ENTITY                       // <!ENTITY hello "Hello">
-    };
+
 
     // XmlElementInfo
+    // 
     // This data structure contains the raw scanned information for an XML node
     // The data is separated into the name component, the kind of node,
     // and the attributes are separated from the rest, but not 'parsed'.
@@ -32,7 +35,7 @@ namespace waavs {
     // For other node types, the fData represents the content of the node
     struct XmlElementInfo
     {
-        uint32_t fElementKind{ XML_ELEMENT_TYPE_INVALID };
+        uint8_t fElementKind{ XML_ELEMENT_TYPE_INVALID };
         ByteSpan fNameSpan{};
         ByteSpan fData{};
 

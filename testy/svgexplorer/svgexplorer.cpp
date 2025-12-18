@@ -54,7 +54,7 @@ bool gCheckerBackground = true;
 
 
 SVGBrowsingView gBrowsingView(BLRect(BROWSER_LEFT, BROWSER_TOP, BROWSER_WIDTH, BROWSER_HEIGHT));
-SVGFileListView gFileListView(BLRect(EXPLORER_LEFT, EXPLORER_TOP, EXPLORER_WIDTH, EXPLORER_HEIGHT), FontHandler::getFontHandler());
+SVGFileListView gFileListView(BLRect(EXPLORER_LEFT, EXPLORER_TOP, EXPLORER_WIDTH, EXPLORER_HEIGHT));
 BackgroundSelector gBrowserTool(BLRect(BROWSER_LEFT, BROWSER_TOOL_TOP, BROWSER_TOOL_WIDTH, BROWSER_TOOL_HEIGHT));
 
 
@@ -91,8 +91,9 @@ static void loadDocFromFilename(const char* filename)
 		return ;
 	}
 
-	ByteSpan aspan(mapped->data(), mapped->size());
-	auto doc = SVGFactory::createFromChunk(aspan, FontHandler::getFontHandler(), canvasWidth, canvasHeight, physicalDpi);
+	ByteSpan aspan;
+	aspan.resetFromSize(mapped->data(), mapped->size());
+	auto doc = SVGFactory::createFromChunk(aspan, FontHandler::getFontHandler(), appFrameWidth, appFrameHeight, physicalDpi);
 	
 	gBrowsingView.resetFromDocument(doc);
 	refreshDoc();
@@ -150,7 +151,7 @@ static void onFrameEvent(const FrameCountEvent& fe)
 static void onResizeEvent(const ResizeEvent& re)
 {
 	//printf("onResizeEvent: %d x %d\n", re.width, re.height);
-	gDrawingContext.attach(appFrameBuffer()->getBlend2dImage());
+	gDrawingContext.attach(getAppFrameBuffer()->getBlend2dImage());
 	refreshDoc();
 }
 
@@ -238,9 +239,9 @@ static void setup()
 	//printf("setup()\n");
 
 	// Setup runtime specific stuff
-	createAppWindow(APP_WIDTH, APP_HEIGHT, "SVG Explorer");
+	createAppWindow(APP_WIDTH, APP_HEIGHT, "File Explorer");
 	dropFiles();
-	frameRate(30);
+	setFrameRate(30);
 
 	// register to receive various events
 	subscribe(onFileDrop);
@@ -253,14 +254,14 @@ static void setup()
 	// Setup application specific items
 	setupFonts();
 
-	getRecorder()->reset(&appFrameBuffer()->getBlend2dImage(), "frame", 15, 0);
+	getRecorder()->reset(&getAppFrameBuffer()->getBlend2dImage(), "frame", 15, 0);
 
 	// clear the buffer to white to start
 
 	BLContextCreateInfo ctxInfo{};
 	ctxInfo.threadCount = 4;
 	//ctxInfo.threadCount = 0;
-	gDrawingContext.attach(appFrameBuffer()->getBlend2dImage(), &ctxInfo);
+	gDrawingContext.attach(getAppFrameBuffer()->getBlend2dImage(), &ctxInfo);
 	gDrawingContext.background(BLRgba32(0xffffffff));
 	
 	// Set the initial viewport

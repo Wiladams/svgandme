@@ -161,7 +161,7 @@ namespace waavs {
 			fDimRefX.parseValue(fMarkerTranslation.x, ctx->getFont(), fMarkerBoundingBox.w, 0, dpi);
 			fDimRefY.parseValue(fMarkerTranslation.y, ctx->getFont(), fMarkerBoundingBox.h, 0, dpi);
 
-			fPortal.viewportFrame(fMarkerBoundingBox);
+			fPortal.setViewportFrame(fMarkerBoundingBox);
 		}
 		
 		virtual void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*)

@@ -4,9 +4,13 @@
 #include "bspan.h"
 
 namespace waavs {
+
+	// This is NOT thread safe
+    // an internal static buffer is used to hold the filename
 	static ByteSpan getModuleFileName()
 	{
 		static char lpFilename[512];
+
 		static DWORD nSize = 512;
 		static DWORD actualSize = 0;
 		static HMODULE hModule = NULL;
@@ -24,7 +28,9 @@ namespace waavs {
 			called = true;
 		}
 
-		return ByteSpan(lpFilename, actualSize);
+        ByteSpan result;
+		result.resetFromSize(lpFilename, actualSize);
+		return result;
 	}
 
 	static ByteSpan getModuleCommandLine()
@@ -36,7 +42,10 @@ namespace waavs {
 		static char* lpCmdLine = ::GetCommandLineA();
 		static bool called = false;
 
-		return ByteSpan(lpCmdLine, strlen(lpCmdLine));
+		ByteSpan result;
+        result.resetFromSize(lpCmdLine, strlen(lpCmdLine));
+
+		return result;
 	}
 	
 	// Command line argument iterator

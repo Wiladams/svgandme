@@ -5,6 +5,7 @@
 #include <cstdio>
 
 #include "xmltoken.h"
+#include "xmltokengen.h"
 
 
 namespace waavs {

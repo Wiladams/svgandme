@@ -42,6 +42,10 @@ namespace waavs {
 
 		//
 		// addSegment()
+		// 
+		
+		// consume()
+		// 
 		// Similar to addGeometry on the BLPath object
 		// whereas addGeometry is very low level, and not an exact match to the SVG
 		// segments, addSegment is higher level, dealing with segment commands, which 
@@ -61,7 +65,7 @@ namespace waavs {
 			}
 
 			// Fast path: inline the hottest commands
-			if (seg.fSegmentKind == SVGPathCommand::M) { moveTo(seg); return; }
+			if (seg.fSegmentKind == SVGPathCommand::M) { moveTo({ seg }); return; }
 			if (seg.fSegmentKind == SVGPathCommand::L) { lineTo(seg); return; }
 			if (seg.fSegmentKind == SVGPathCommand::C) { cubicTo(seg); return; }
 			if (seg.fSegmentKind == SVGPathCommand::Z || seg.fSegmentKind == SVGPathCommand::z) { close(seg); return; }
@@ -89,6 +93,7 @@ namespace waavs {
 			}
 
 		}
+
 
 		// All the routines that do the actual work of building the path
 		// Command - A

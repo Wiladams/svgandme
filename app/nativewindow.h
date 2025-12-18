@@ -23,12 +23,14 @@
 #include <cstdint>
 #include <memory>
 
-namespace waavs {
+namespace waavs 
+{
     // User32Window 
     // An instance of a User32WindowClass
     // Create one of these as a convenient way to manipulate a native window
     // 
-    class User32Window {
+    class User32Window 
+    {
     public:
 
         HWND fHandle{ nullptr };
@@ -43,10 +45,6 @@ namespace waavs {
         {
 
         }
-        //User32Window(HWND handle)
-        //{
-        //    fHandle = handle;
-        //}
 
         // Virtual destructor so the window can be sub-classed
         virtual ~User32Window()
@@ -54,7 +52,7 @@ namespace waavs {
             DestroyWindow(fHandle);
         }
 
-        //HWND getHandle() const { return fHandle; }
+
         HWND windowHandle() const { return fHandle; }
 		void setWindowHandle(HWND handle) { fHandle = handle; }
         
@@ -218,12 +216,13 @@ namespace waavs {
             return true;
         }
         
-        int setNonLayered()
+        bool setNonLayered()
         {
+            return setLayered(false);
             // Call this to ensure Windows actually updates the attributes
             // before moving on
-            ::SetWindowPos(fHandle, 0, 0, 0, 0, 0,
-                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+            //::SetWindowPos(fHandle, 0, 0, 0, 0, 0,
+            //    SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
         }
 
 
@@ -354,5 +353,3 @@ namespace waavs {
         }
     };
 }
-
-

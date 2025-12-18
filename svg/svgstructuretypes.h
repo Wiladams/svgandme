@@ -12,7 +12,7 @@
 
 #include "maths.h"
 
-#include "xmliter.h"
+//#include "xmliter.h"
 #include "xmlutil.h"
 
 #include "svgdatatypes.h"
@@ -198,7 +198,8 @@ namespace waavs {
     // Convenient function to register property constructors
     static void registerSVGAttribute(const ByteSpan& name, SVGAttributeToPropertyConverter func)
     {
-        getPropertyConstructionMap()[name] = func;
+        SVGPropertyConstructorMap& pmap = getPropertyConstructionMap();
+        pmap[name] = func;
     }
 
     static SVGAttributeToPropertyConverter getAttributeConverter(const ByteSpan &name)

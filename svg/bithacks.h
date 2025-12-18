@@ -184,23 +184,23 @@ namespace waavs {
 
 // for upto 16-bit binary constants, MSB first
 #define B16(dmsb,dlsb) ((unsigned short) (B8(dmsb) << 8) \
-									 | B8(dlsb))
+		| B8(dlsb))
 
 // for upto 32-bit binary constants, MSB first
 #define B32(dmsb,db2,db3,dlsb) ((unsigned long) (B8(dmsb) << 24) \
-												| (B8(db2) << 16) \
-												| (B8(db3) << 8) \
-												| B8(dlsb))
+		| (B8(db2) << 16) \
+		| (B8(db3) << 8) \
+		| B8(dlsb))
 
 // for upto 64-bit binary constants, MSB first
 #define B64(dmsb,db2,db3,db4,db5,db6,db7,dlsb) ((unsigned long long) (B8(dmsb) << 56) \
-																							 | (B8(db2) << 48) \
-																							 | (B8(db3) << 40) \
-																							 | (B8(db4) << 32) \
-																							 | (B8(db5) << 24) \
-																							 | (B8(db6) << 16) \
-																							 | (B8(db7) << 8) \
-																							 | B8(dlsb))
+		| (B8(db2) << 48) \
+		| (B8(db3) << 40) \
+		| (B8(db4) << 32) \
+		| (B8(db5) << 24) \
+		| (B8(db6) << 16) \
+		| (B8(db7) << 8) \
+		| B8(dlsb))
 
 
 

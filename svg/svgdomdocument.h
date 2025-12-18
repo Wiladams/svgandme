@@ -5,6 +5,7 @@
 #include <functional>
 
 #include "xmlscan.h"
+
 #include "svgcss.h"
 #include "membuff.h"
 

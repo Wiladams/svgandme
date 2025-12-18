@@ -1,3 +1,7 @@
+#ifndef CONVERTERS_H_INCLUDED
+#define CONVERTERS_H_INCLUDED
+
+
 #pragma once
 
 //
@@ -10,39 +14,46 @@
 #include "bspan.h"
 #include "maths.h"
 
-namespace waavs {
-    static INLINE uint8_t  hexToDec(const uint8_t vIn) noexcept
-    {
-        if (vIn >= '0' && vIn <= '9')
-            return vIn - '0';
-        else if (vIn >= 'a' && vIn <= 'f')
-            return vIn - 'a' + 10;
-        else if (vIn >= 'A' && vIn <= 'F')
-            return vIn - 'A' + 10;
-        else
-            return 0;
-    }
+// Forward declarations
+static INLINE uint8_t  hexToDec(const uint8_t vIn) ;
+static INLINE int toBoolInt(const waavs::ByteSpan& inChunk);
+
+
+
+
+// given an input character representing a hex digit
+// return the decimal value of that hex digit
+// BUGBUG - This assumes valid input.  No error checking is done.
+static INLINE uint8_t  hexToDec(const uint8_t vIn)
+{
+    if (vIn >= '0' && vIn <= '9')
+        return vIn - '0';
+    else if (vIn >= 'a' && vIn <= 'f')
+        return vIn - 'a' + 10;
+    else if (vIn >= 'A' && vIn <= 'F')
+        return vIn - 'A' + 10;
+    else
+        return 0;
 }
 
-namespace waavs {
 
-    // return 1 if the chunk is "true" or "1" or "t" or "T" or "y" or "Y" or "yes" or "Yes" or "YES"
-    // return 0 if the chunk is "false" or "0" or "f" or "F" or "n" or "N" or "no" or "No" or "NO"
-    // return 0 otherwise
-    static INLINE int toBoolInt(const ByteSpan& inChunk) noexcept
-    {
-        ByteSpan s = inChunk;
+// return 1 if the chunk is "true" or "1" or "t" or "T" or "y" or "Y" or "yes" or "Yes" or "YES"
+// return 0 if the chunk is "false" or "0" or "f" or "F" or "n" or "N" or "no" or "No" or "NO"
+// return 0 otherwise
+static INLINE int toBoolInt(const waavs::ByteSpan& inChunk)
+{
+    waavs::ByteSpan s = inChunk;
 
-        if (s == "true" || s == "1" || s == "t" || s == "T" || s == "y" || s == "Y" || s == "yes" || s == "Yes" || s == "YES")
-            return 1;
-        else if (s == "false" || s == "0" || s == "f" || s == "F" || s == "n" || s == "N" || s == "no" || s == "No" || s == "NO")
-            return 0;
-        else
-            return 0;
-    }
-
-
+    if (s == "true" || s == "1" || s == "t" || s == "T" || s == "y" || s == "Y" || s == "yes" || s == "Yes" || s == "YES")
+        return 1;
+    else if (s == "false" || s == "0" || s == "f" || s == "F" || s == "n" || s == "N" || s == "no" || s == "No" || s == "NO")
+        return 0;
+    else
+        return 0;
 }
+
+
+
 
 namespace waavs {
 
@@ -74,6 +85,11 @@ namespace waavs {
 }
 
 namespace waavs {
+    // In these routines, the difference between parse and read
+    // is that parse does not modify the input ByteSpan, whereas
+    // read will advance the start of the ByteSpan to after the
+    // last character that was parsed.
+    
     // parse64u
     // Parse a 64 bit unsigned integer from a string
     // return true if successful, false if not
@@ -106,6 +122,31 @@ namespace waavs {
         return true;
     }
 
+
+    // read_u64
+    //
+    // Read a 64-bit unsigned integer from the input span
+    // advance the span 
+    static INLINE bool read_u64(ByteSpan& s, uint64_t& v) noexcept
+    {
+        if (!s)
+            return false;
+
+        v = 0;
+        const unsigned char* sStart = s.fStart;
+        const unsigned char* sEnd = s.fEnd;
+
+        while ((sStart < sEnd) && is_digit(*sStart))
+        {
+            v = (v * 10) + (uint64_t)(*sStart - '0');
+            sStart++;
+        }
+
+        s.fStart = sStart;
+
+        return true;
+    }
+
     // parse64i
     // Parse a 64 bit signed integer from the input span
     // Return true if successful, false otherwise
@@ -114,7 +155,7 @@ namespace waavs {
     static INLINE bool parse64i(const ByteSpan& inChunk, int64_t& v) noexcept
     {
         ByteSpan s = inChunk;
-
+        
         if (!s)
             return false;
 
@@ -132,8 +173,11 @@ namespace waavs {
         }
 
         uint64_t uvalue{ 0 };
-        if (!parse64u(s, uvalue))
+        if (!read_u64(s, uvalue))
             return false;
+
+        //if (!parse64u(s, uvalue))
+        //    return false;
 
         if (sign < 0)
             v = -(int64_t)uvalue;
@@ -197,28 +241,7 @@ namespace waavs {
 		return true;
     }
 
-	// read_u64
-	// Read a 64-bit unsigned integer from the input span
-    // advance the span 
-    static INLINE bool read_u64(ByteSpan& s, uint64_t& v) noexcept
-    {
-        if (!s)
-            return false;
 
-        v = 0;
-        const unsigned char* sStart = s.fStart;
-        const unsigned char* sEnd = s.fEnd;
-
-        while ((sStart < sEnd) && is_digit(*sStart))
-        {
-            v = (v * 10) + (uint64_t)(*sStart - '0');
-            sStart++;
-        }
-
-        s.fStart = sStart;
-
-        return true;
-    }
 
     // Just put this from_chars implementation here in case
     // we ever want to use it instead
@@ -352,7 +375,7 @@ namespace waavs {
         return readNumber(s, value);
     }
 
-        // readNextNumber()
+    // readNextNumber()
     // 
     // Consume the next number off the front of the chunk
     // modifying the input chunk to advance past the  removed number
@@ -510,3 +533,4 @@ namespace waavs {
 }
 
 
+#endif // _CONVERTERS_H_INCLUDED

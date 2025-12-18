@@ -167,7 +167,7 @@ namespace waavs {
 
     public:
         // We have a singleton factory object for the entire application
-        static SVGFactory* getFactory()
+        static SVGFactory* getSingleton()
         {
             static std::unique_ptr<SVGFactory> sFactory = std::make_unique<SVGFactory>();
 
@@ -177,14 +177,14 @@ namespace waavs {
         static std::shared_ptr<SVGDocument> createDOM(const ByteSpan& srcChunk, FontHandler* fh)
         {
             // this MUST be done, or node registrations will not happen
-            return getFactory()->createDOMInternal(srcChunk, fh);
+            return getSingleton()->createDOMInternal(srcChunk, fh);
         }
         
         // A convenience to construct the document from a chunk, and return
         // a shared pointer to the document
         static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, FontHandler* fh, const double w, const double h, const double ppi)
         {
-            return getFactory()->createFromChunkInternal(srcChunk, fh, w, h, ppi);
+            return getSingleton()->createFromChunkInternal(srcChunk, fh, w, h, ppi);
         }
     };
 }

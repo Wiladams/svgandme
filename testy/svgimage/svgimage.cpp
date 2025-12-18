@@ -69,7 +69,8 @@ static SVGDocumentHandle createDocument(const char *filename)
 		return nullptr;
 	}
 
-	ByteSpan mappedSpan(mapped->data(), mapped->size());
+	ByteSpan mappedSpan;
+	mappedSpan.resetFromSize(mapped->data(), mapped->size());
 	auto doc = SVGFactory::createFromChunk(mappedSpan, FontHandler::getFontHandler(), CAN_WIDTH, CAN_HEIGHT, 96.0);
 
 	return doc;
@@ -121,7 +122,7 @@ static void renderImage(SVGDocumentHandle gDoc, const char* outfilename)
 	// and apply that to the context.
 	ViewportTransformer vp{};
 	vp.viewBoxFrame(sceneFrame);		// The part of the scene we want to display
-	vp.viewportFrame(surfaceFrame);		// The surface we want to fit to 
+	vp.setViewportFrame(surfaceFrame);		// The surface we want to fit to 
 
 	// apply the viewport's sceneToSurface transform to the context
 	BLMatrix2D tform = vp.viewBoxToViewportTransform();

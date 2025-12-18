@@ -94,7 +94,7 @@ namespace waavs {
                 //viewBoxFrame(fViewBoxFrame);
             }
 
-            viewportFrame(srfFrame);
+            setViewportFrame(srfFrame);
             
             //updateTransformMatrix();
 

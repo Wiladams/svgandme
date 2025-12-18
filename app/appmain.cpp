@@ -73,20 +73,21 @@ unsigned int gSystemThreadCount=0;  // how many compute threads the system repor
 
 static StopWatch gAppClock;
 
-
-
 bool gIsLayered = false;
 
 // Some globals friendly to the p5 environment
 // Display Globals
-int canvasWidth = 0;
-int canvasHeight = 0;
-uint8_t* canvasPixelData = nullptr;
-size_t canvasStride = 0;
+int appFrameWidth = 0;
+int appFrameHeight = 0;
+uint8_t* appFramePixelData = nullptr;
+size_t appFrameStride = 0;
 
 
-int rawPixelHeight = 0;
-int rawPixelWidth = 0;
+static int screenPixelHeight = 0;
+static int screenPixelWidth = 0;
+static double screenWidthInches;
+static double screenHeightInches;
+
 unsigned int physicalDpi = 192;   // starting pixel density
 
 // Stuff related to rate of displaying frames
@@ -95,6 +96,11 @@ double fInterval = 1000;
 double fNextMillis = 0;
 size_t fDroppedFrames = 0;
 uint64_t fFrameCount = 0;         // how many frames drawn so far
+
+
+
+
+
 
 
 // Keyboard globals
@@ -121,7 +127,25 @@ float rawMouseY = 0;
 static Joystick gJoystick1(JOYSTICKID1);
 static Joystick gJoystick2(JOYSTICKID2);
 
-AFrameBuffer* appFrameBuffer()
+
+APP_EXPORT bool getScreenPixelCount(int& pixelWidth, int& pixelHeight)
+{
+    pixelWidth = screenPixelWidth;
+    pixelHeight = screenPixelHeight;
+
+    return true;
+}
+
+
+APP_EXPORT bool getScreenInches(double& scrWidth, double& scrHeight)
+{
+    scrWidth = screenWidthInches;
+    scrHeight = screenHeightInches;
+
+    return true;
+}
+
+AFrameBuffer* getAppFrameBuffer()
 {
     static std::unique_ptr<AFrameBuffer> gAppFrameBuffer = std::make_unique<AFrameBuffer>();
     return gAppFrameBuffer.get();
@@ -168,22 +192,16 @@ static void HID_UnregisterDevice(USHORT usage)
 
 
 // Controlling drawing
-void frameRate(float newRate) noexcept
+void setFrameRate(float newRate) noexcept
 {
     fFrameRate = newRate;
     fInterval = 1000.0 / newRate;
     fNextMillis = gAppClock.millis() + fInterval;
 }
 
-float getFrameRate() noexcept
-{
-    return fFrameRate;
-}
+float getFrameRate() noexcept { return fFrameRate;}
 
-uint64_t frameCount() noexcept
-{
-    return fFrameCount;
-}
+uint64_t frameCount() noexcept { return fFrameCount;}
 
 
 
@@ -204,8 +222,8 @@ void refreshScreenNow()
         // This is the workhorse of displaying directly
         // to the screen.  Everything to be displayed
         // must be in the FrameBuffer, even window chrome
-        LayeredWindowInfo lw(canvasWidth, canvasHeight);
-        lw.display(getAppWindow()->windowHandle(), appFrameBuffer()->getGDIContext());
+        LayeredWindowInfo lw(appFrameWidth, appFrameHeight);
+        lw.display(getAppWindow()->windowHandle(), getAppFrameBuffer()->getGDIContext());
     }
 }
 
@@ -213,22 +231,34 @@ void refreshScreenNow()
 //
 //    Environment
 //
+
+// show()
+// Show the application window
+//
 void show()
 {
     getAppWindow()->show();
 }
 
+// hide()
+// Hide the application window
+//
 void hide()
 {
     getAppWindow()->hide();
 }
 
+// cursor()
+// Show the cursor, if there is one
+//
 void cursor()
 {
     ::ShowCursor(1);
 }
 
-// Show the cursor, if there is one
+// noCursor()
+// 
+// Hide the cursor, if there is one
 // BUGBUG - we should be more robust here and
 // check to see if there's even a mouse attached
 // Then, decrement count enough times to make showing
@@ -240,16 +270,21 @@ void noCursor()
 
 
 
-/*
-    Turn Windows keyboard messages into keyevents that can 
-    more easily be handled at the application level
-*/
+//  refreshKeyStates()
+// 
+//  Turn Windows keyboard messages into keyevents that can 
+//  more easily be handled at the application level
+//
 void refreshKeyStates()
 {
     // Get the state of all keys on the keyboard
     ::GetKeyboardState(keyStates);
 }
 
+//  HandleKeyboardMessage()
+// 
+//   Handle keyboard messages from Windows
+//
 static LRESULT HandleKeyboardMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     LRESULT res = 0;
@@ -295,6 +330,7 @@ static LRESULT HandleKeyboardMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
 }
 
 
+//  HandleMouseMessage()
 //
 //    Turn Windows mouse messages into mouse events which can
 //    be dispatched by the application.
@@ -401,10 +437,11 @@ static LRESULT HandleMouseMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
     return res;
 }
 
-
+// HandleRawInputMessage()
+//
 static LRESULT HandleRawInputMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    printf("HandleRawInputMessage (WM_INPUT)\n");
+    //printf("HandleRawInputMessage (WM_INPUT)\n");
     
     LRESULT res = 0;
     
@@ -447,6 +484,7 @@ static LRESULT HandleRawInputMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM 
     return res;
 }
 
+// HandleJoystickMessage()
 // 
 // Handling the joystick messages through the Windows
 // Messaging method is very limited.  It will only 
@@ -508,6 +546,8 @@ static LRESULT HandleJoystickMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
     return res;
 }
 
+// HandleTouchMessage()
+//
 static LRESULT HandleTouchMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     LRESULT res = 0;
@@ -629,6 +669,8 @@ static LRESULT HandleTouchMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
     return res;
 }
 
+// HandlePointerMessage()
+//
 static LRESULT HandlePointerMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     LRESULT res = 0;
@@ -640,6 +682,8 @@ static LRESULT HandlePointerMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
     return res;
 }
 
+// HandlePaintMessage()
+//
 static LRESULT HandlePaintMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     //printf("HandlePaintMessage\n");
@@ -651,16 +695,16 @@ static LRESULT HandlePaintMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
         
     int xDest = 0;
     int yDest = 0;
-    int DestWidth = canvasWidth;
-    int DestHeight = canvasHeight;
+    int DestWidth = appFrameWidth;
+    int DestHeight = appFrameHeight;
     int xSrc = 0;
     int ySrc = 0;
-    int SrcWidth = canvasWidth;
-    int SrcHeight = canvasHeight;
+    int SrcWidth = appFrameWidth;
+    int SrcHeight = appFrameHeight;
     UINT StartScan = 0;
-    UINT cLines = canvasHeight;
+    UINT cLines = appFrameHeight;
     
-    BITMAPINFO info = appFrameBuffer()->bitmapInfo();
+    BITMAPINFO info = getAppFrameBuffer()->bitmapInfo();
     
     // Make sure we sync all current drawing
     // BUGBUG - we don't have a way to guarantee this
@@ -684,7 +728,7 @@ static LRESULT HandlePaintMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
         ySrc,
         StartScan,
         cLines,
-        appFrameBuffer()->data(),
+        getAppFrameBuffer()->data(),
         &info,
         DIB_RGB_COLORS
     );
@@ -695,6 +739,8 @@ static LRESULT HandlePaintMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
     return res;
 }
 
+// HandleFileDropMessage()
+//
 static LRESULT HandleFileDropMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     LRESULT res = 0;
@@ -733,6 +779,8 @@ static LRESULT HandleFileDropMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM 
     return res;
 }
 
+// HandleGestureMessage()
+// 
 // Handling gestures
 // Gesture messages WM_GESTURE, will only arrive if we're NOT
 // registered for touch messages.  In an app, it might be useful
@@ -838,6 +886,8 @@ static LRESULT HandleGestureMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
     return res;
 }
 
+// HandleSizeMessage()
+// 
 // Handle messages related to resizing the window
 //
 static LRESULT HandleSizeMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -848,11 +898,11 @@ static LRESULT HandleSizeMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
     WORD newHeight = HIWORD(lParam);
     
     // Only resize bigger, never get smaller
-   	WORD canWidth = waavs::max(canvasWidth, newWidth);
-	WORD canHeight = waavs::max(canvasHeight, newHeight);
+   	WORD canWidth = waavs::max(appFrameWidth, newWidth);
+	WORD canHeight = waavs::max(appFrameHeight, newHeight);
     
 	//setCanvasSize(aWidth, aHeight);
-    setCanvasSize(newWidth, newHeight);
+    setAppFrameSize(newWidth, newHeight);
 
     // onCanvasResize();
     ResizeEvent re{ newWidth, newHeight };
@@ -1047,15 +1097,16 @@ void setCanvasPosition(int x, int y)
 
 
 
-bool setCanvasSize(long aWidth, long aHeight)
+
+bool setAppFrameSize(long aWidth, long aHeight)
 {
-    appFrameBuffer()->reset(aWidth, aHeight);
+    getAppFrameBuffer()->reset(aWidth, aHeight);
 
-    canvasWidth = aWidth;
-    canvasHeight = aHeight;
+    appFrameWidth = aWidth;
+    appFrameHeight = aHeight;
 
-    canvasPixelData = (uint8_t *)appFrameBuffer()->data();
-    canvasStride = appFrameBuffer()->stride();
+    appFramePixelData = (uint8_t *)getAppFrameBuffer()->data();
+    appFrameStride = getAppFrameBuffer()->stride();
 
     return true;
 }
@@ -1063,7 +1114,7 @@ bool setCanvasSize(long aWidth, long aHeight)
 // Put the application canvas into a window
 void createAppWindow(long aWidth, long aHeight, const char* title)
 {
-    setCanvasSize(aWidth, aHeight);
+    setAppFrameSize(aWidth, aHeight);
     getAppWindow()->setCanvasSize(aWidth, aHeight);
     getAppWindow()->setTitle(title);
 
@@ -1387,8 +1438,8 @@ static void setDPIAware()
     // If Windows 10.0 or higher
     ::SetProcessDpiAwarenessContext(dpiContext);
 
-	rawPixelWidth = ::GetSystemMetrics(SM_CXSCREEN);
-	rawPixelHeight = ::GetSystemMetrics(SM_CYSCREEN);
+	screenPixelWidth = ::GetSystemMetrics(SM_CXSCREEN);
+	screenPixelHeight = ::GetSystemMetrics(SM_CYSCREEN);
     
 
     // Create a DC to query EDID-basd physical size
@@ -1398,12 +1449,12 @@ static void setDPIAware()
 
     // How big is the screen physically
     // DeviceCaps gives it in millimeters, so we convert to inches
-    auto screenWidthInches = ::GetDeviceCaps(dhdc, HORZSIZE) / 25.4;
-    auto screenHeightInches = ::GetDeviceCaps(dhdc, VERTSIZE) / 25.4;
+    screenWidthInches = ::GetDeviceCaps(dhdc, HORZSIZE) / 25.4;
+    screenHeightInches = ::GetDeviceCaps(dhdc, VERTSIZE) / 25.4;
 
 
     // Calculate physical DPI (using vertial dimensions)
-    double screenPpi = (double)rawPixelHeight / screenHeightInches;
+    double screenPpi = (double)screenPixelHeight / screenHeightInches;
     physicalDpi = (unsigned int)std::round(screenPpi);
 
     ::DeleteDC(dhdc);
@@ -1411,15 +1462,20 @@ static void setDPIAware()
 
 
 // Initialize Windows networking
-static void setupNetworking()
+static bool setupNetworking()
 {
     
-// BUGBUG - decide whether or not we care about WSAStartup failing
+    // BUGBUG - decide whether or not we care about WSAStartup failing
     uint16_t version = MAKEWORD(2, 2);
     WSADATA lpWSAData;
     int res = ::WSAStartup(version, &lpWSAData);
     if (res != 0)
+    {
         printf("Error setting up networking: 0x%x\n", res);
+        return false;
+    }
+
+    return true;
 }
 
 //! \brief Retrieves the main (singleton) application window.
@@ -1468,11 +1524,10 @@ static bool prolog()
     setupNetworking();
 
     setDPIAware();
-    //setupDpi();
 
     // set the canvas a default size to start
     // but don't show it
-    setCanvasSize(320, 240);
+    setAppFrameSize(320, 240);
     //gAppWindow = gAppWindowKind.createWindow("Application Window", 320, 240);
 
     return true;

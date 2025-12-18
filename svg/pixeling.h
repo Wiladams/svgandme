@@ -1,6 +1,10 @@
 #ifndef PIXELING_H_INCLUDED
 #define PIXELING_H_INCLUDED
 
+#include <stdint.h>
+#include <stddef.h>
+#include <math.h>       /* fmaf; link with -lm on *nix */
+
 #include "coloring.h"
 
 
@@ -26,32 +30,22 @@
  *     only for packing (to match common API expectations).
  */
 
-#include "coloring.h"   /* ColorSRGB, ColorLinear, ColorPRGBA + helpers */
-#include <stdint.h>
-#include <stddef.h>
-#include <math.h>       /* fmaf; link with -lm on *nix */
 
- /* FMA macro (portable fallback if no C99 fmaf) */
-#ifndef WAAVS_FMAF
-# if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
-#   define WAAVS_FMAF(a,b,c) fmaf((a),(b),(c))
-# else
-#   define WAAVS_FMAF(a,b,c) ((a)*(b)+(c))
-# endif
-#endif
 
-/* In a 32-bit word: [A:R:G:B] means (A<<24)|(R<<16)|(G<<8)|B */
+
+
+// In a 32-bit word: [A:R:G:B] means (A<<24)|(R<<16)|(G<<8)|B 
 typedef uint32_t Pixel_ARGB32;
 typedef uint32_t Pixel_RGBA32;
 
-/* ------------------------------------------------------------------------- */
-/* Pack/unpack between PRGBA (linear floats) and ARGB32/RGBA32 (sRGB premul) */
-/* ------------------------------------------------------------------------- */
+//------------------------------------------------------------------------- 
+// Pack/unpack between PRGBA (linear floats) and ARGB32/RGBA32 (sRGB premul) 
+// ------------------------------------------------------------------------- 
 
-/* PRGBA (linear) -> ARGB32 (sRGB premultiplied) */
+// PRGBA (linear) -> ARGB32 (sRGB premultiplied) 
 static inline Pixel_ARGB32 pixeling_prgba_pack_ARGB32(const ColorPRGBA p)
 {
-    /* Convert to straight sRGB, then re-apply alpha in sRGB for packing */
+    // Convert to straight sRGB, then re-apply alpha in sRGB for packing 
     const ColorLinear lin = coloring_linear_unpremultiply(p);
     const ColorSRGB   s = coloring_linear_to_srgb(lin);
 
@@ -61,10 +55,10 @@ static inline Pixel_ARGB32 pixeling_prgba_pack_ARGB32(const ColorPRGBA p)
     const uint32_t G8 = (uint32_t)(WAAVS_CLAMP01(s.g) * A * 255.0f + 0.5f);
     const uint32_t B8 = (uint32_t)(WAAVS_CLAMP01(s.b) * A * 255.0f + 0.5f);
 
-    return (A8 << 24) | (R8 << 16) | (G8 << 8) | B8; /* [A:R:G:B] */
+    return (A8 << 24) | (R8 << 16) | (G8 << 8) | B8; // [A:R:G:B] 
 }
 
-/* ARGB32 (sRGB premultiplied) -> PRGBA (linear) */
+// ARGB32 (sRGB premultiplied) -> PRGBA (linear) 
 static inline ColorPRGBA pixeling_ARGB32_unpack_prgba(const Pixel_ARGB32 px)
 {
     const float inv = 1.0f / 255.0f;
@@ -74,18 +68,21 @@ static inline ColorPRGBA pixeling_ARGB32_unpack_prgba(const Pixel_ARGB32 px)
     float Gs = ((px >> 8) & 0xFF) * inv;
     float Bs = (px & 0xFF) * inv;
 
-    if (A > 0.0f) { Rs /= A; Gs /= A; Bs /= A; }
-    else { Rs = 0.0f; Gs = 0.0f; Bs = 0.0f; }
+    if (A > 0.0f) { 
+        Rs /= A; Gs /= A; Bs /= A; 
+    } else { 
+        Rs = 0.0f; Gs = 0.0f; Bs = 0.0f; 
+    }
 
-    const float Rl = coloring_srgbc_to_linear(Rs);
-    const float Gl = coloring_srgbc_to_linear(Gs);
-    const float Bl = coloring_srgbc_to_linear(Bs);
+    const float Rl = coloring_srgb_component_to_linear(Rs);
+    const float Gl = coloring_srgb_component_to_linear(Gs);
+    const float Bl = coloring_srgb_component_to_linear(Bs);
 
     ColorPRGBA p = { Rl * A, Gl * A, Bl * A, A };
     return p;
 }
 
-/* PRGBA (linear) -> RGBA32 (sRGB premultiplied) */
+// PRGBA (linear) -> RGBA32 (sRGB premultiplied) 
 static inline Pixel_RGBA32 pixeling_prgba_pack_RGBA32(const ColorPRGBA p)
 {
     const ColorLinear lin = coloring_linear_unpremultiply(p);
@@ -97,10 +94,10 @@ static inline Pixel_RGBA32 pixeling_prgba_pack_RGBA32(const ColorPRGBA p)
     const uint32_t G8 = (uint32_t)(WAAVS_CLAMP01(s.g) * A * 255.0f + 0.5f);
     const uint32_t B8 = (uint32_t)(WAAVS_CLAMP01(s.b) * A * 255.0f + 0.5f);
 
-    return (R8 << 24) | (G8 << 16) | (B8 << 8) | A8; /* [R:G:B:A] */
+    return (R8 << 24) | (G8 << 16) | (B8 << 8) | A8; // [R:G:B:A] 
 }
 
-/* RGBA32 (sRGB premultiplied) -> PRGBA (linear) */
+// RGBA32 (sRGB premultiplied) -> PRGBA (linear) 
 static inline ColorPRGBA pixeling_RGBA32_unpack_prgba(const Pixel_RGBA32 px)
 {
     const float inv = 1.0f / 255.0f;
@@ -115,9 +112,9 @@ static inline ColorPRGBA pixeling_RGBA32_unpack_prgba(const Pixel_RGBA32 px)
     float Gs = (A > 0.0f) ? (G8 / A8) * inv : 0.0f;
     float Bs = (A > 0.0f) ? (B8 / A8) * inv : 0.0f;
 
-    const float Rl = coloring_srgbc_to_linear(Rs);
-    const float Gl = coloring_srgbc_to_linear(Gs);
-    const float Bl = coloring_srgbc_to_linear(Bs);
+    const float Rl = coloring_srgb_component_to_linear(Rs);
+    const float Gl = coloring_srgb_component_to_linear(Gs);
+    const float Bl = coloring_srgb_component_to_linear(Bs);
 
     ColorPRGBA p = { Rl * A, Gl * A, Bl * A, A };
     return p;
@@ -307,7 +304,7 @@ static inline void pixeling_srgb_lut_init(Pixeling_SRGBLUT* L)
 {
     for (int i = 0; i < 256; ++i) {
         const float s = (float)i / 255.0f;
-        L->toLinear[i] = coloring_srgbc_to_linear(s);
+        L->toLinear[i] = coloring_srgb_component_to_linear(s);
     }
 }
 

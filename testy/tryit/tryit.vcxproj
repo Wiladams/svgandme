@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -202,10 +202,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\app\morse.h" />
+    <ClInclude Include="..\..\svg\coloring.h" />
     <ClInclude Include="..\..\svg\curvefx.h" />
     <ClInclude Include="..\..\svg\curves.h" />
     <ClInclude Include="..\..\svg\definitions.h" />
     <ClInclude Include="..\..\svg\generator.h" />
+    <ClInclude Include="..\..\svg\parse_color.h" />
     <ClInclude Include="..\..\svg\stopsmap.h" />
     <ClInclude Include="..\..\svg\pipeline.h" />
     <ClInclude Include="..\..\svg\waavsgraph.h" />

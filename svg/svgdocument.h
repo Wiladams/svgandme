@@ -31,8 +31,10 @@
 
 #include "maths.h"
 
-#include "xmliter.h"
+//#include "xmliter.h"
 #include "xmlutil.h"
+
+#include "fonthandler.h"
 #include "svgcss.h"
 
 #include "svgclip.h"

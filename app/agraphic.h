@@ -5,7 +5,7 @@
 
 #include "blend2d.h"
 #include "svgattributes.h"
-#include "svgpath.h"
+//#include "svgpath.h"
 #include "b2dpath.h"
 
 namespace waavs {
@@ -53,7 +53,7 @@ namespace waavs {
 		virtual BLRect viewport() const noexcept { return fPortal.viewportFrame(); }
 		void setViewport(const BLRect& fr)
 		{
-			fPortal.viewportFrame(fr);
+			fPortal.setViewportFrame(fr);
 		}
 		
 		// The bounds reports the portion of the graphic that
@@ -119,7 +119,7 @@ namespace waavs {
 			{
 				SVGPaint paint(nullptr);
 				paint.loadFromChunk(attValue);
-				fGraphState.fillPaint(paint.getVariant(nullptr, nullptr));
+				fGraphState.fill(paint.getVariant(nullptr, nullptr));
 			}
 			else if (attName == "stroke")
 			{

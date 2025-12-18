@@ -1,7 +1,7 @@
 #pragma once
 
-#include "charset.h"
-#include "bspan.h"
+//#include "charset.h"
+//#include "bspan.h"
 #include "xmltoken.h"
 
 // These routines validate xml names

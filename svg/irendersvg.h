@@ -8,6 +8,7 @@
 #include "fonthandler.h"
 #include "collections.h"
 #include "svgenums.h"
+#include "svgdrawingstate.h"
 #include "imanagesvgstate.h"
 
 namespace waavs

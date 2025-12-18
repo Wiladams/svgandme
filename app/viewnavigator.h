@@ -60,7 +60,7 @@ namespace waavs {
 		
 		// Setting scene and surface frames
 		// setting and getting surface frame
-		void setFrame(const BLRect& fr) { fPortal.viewportFrame(fr); }
+		void setFrame(const BLRect& fr) { fPortal.setViewportFrame(fr); }
 		const BLRect& frame() const { return fPortal.viewportFrame(); }
 
 		// setting and getting viewbox frame

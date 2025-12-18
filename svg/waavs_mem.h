@@ -5,8 +5,13 @@
 #include <stdint.h>
 #include <stdlib.h>     // aligned_alloc
 
-/* ---- alignment helpers ---- */
-/* ----- portability: 16-byte alignment for SIMD friendliness ----- */
+//
+// These are some memory allocation helpers for aligned memory
+//
+
+// ---- alignment helpers ----
+// Used to align a value up to the next multiple of alignment
+//
 #if defined(_MSC_VER)
 #define WAAVS_ALIGN16 __declspec(align(16))
 #elif defined(__GNUC__) || defined(__clang__)
@@ -35,6 +40,7 @@
 #   define WAAVS_ALIGN64
 # endif
 #endif
+
 
 // Forward function declarations
 static inline void* waavs_aligned_malloc(size_t size, size_t alignment);

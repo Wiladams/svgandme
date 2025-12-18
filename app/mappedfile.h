@@ -53,7 +53,10 @@ namespace waavs
             , fMapHandle(nullptr)
         {}
 
-        virtual ~MappedFile() noexcept { close(); }
+        virtual ~MappedFile() noexcept 
+        { 
+            close(); 
+        }
 
         bool isValid() const noexcept { return fIsValid; }
         void* data() const noexcept { return fData; }

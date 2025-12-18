@@ -52,8 +52,9 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 	}
 
 	
-	ByteSpan aspan(mapped->data(), mapped->size());
-	std::shared_ptr<SVGDocument> aDoc = SVGFactory::createFromChunk(aspan, FontHandler::getFontHandler(), canvasWidth, canvasHeight, physicalDpi);
+	ByteSpan aspan;
+	aspan.resetFromSize(mapped->data(), mapped->size());
+	std::shared_ptr<SVGDocument> aDoc = SVGFactory::createFromChunk(aspan, FontHandler::getFontHandler(), appFrameWidth, appFrameHeight, physicalDpi);
 	
 	return aDoc;
 }
@@ -78,7 +79,7 @@ static void drawDocument()
 
 	// draw the document into the ctx
 	if (gDoc != nullptr)
-		gDoc->draw(getDrawingContext(), gDoc.get(), canvasWidth, canvasHeight);
+		gDoc->draw(getDrawingContext(), gDoc.get(), appFrameWidth, appFrameHeight);
 
 	getDrawingContext()->flush();
 }
@@ -97,14 +98,17 @@ static void draw()
 static void resetView()
 {
 	gNavigator.resetNavigator();
-	gNavigator.setFrame(BLRect(0, 0, canvasWidth, canvasHeight));
-	gNavigator.setBounds(BLRect(0, 0, canvasWidth, canvasHeight));
+	gNavigator.setFrame(BLRect(0, 0, appFrameWidth, appFrameHeight));
+	gNavigator.setBounds(BLRect(0, 0, appFrameWidth, appFrameHeight));
 
 }
 
-static void handleChange(const bool&)
+static void handleChange(const bool& changeOccured)
 {
-	if (gDoc!=nullptr && gAnimate)
+	if (gDoc == nullptr)
+        return;
+
+	if (gAnimate)
 	{
 		gDoc->update(gDoc.get());
 	}
@@ -153,7 +157,7 @@ static void onFileDrop(const FileDropEvent& fde)
 
 			
 			// Set the initial viewport
-			gNavigator.setFrame({ 0, 0, (double)canvasWidth, (double)canvasHeight });
+			gNavigator.setFrame({ 0, 0, (double)appFrameWidth, (double)appFrameHeight });
 			gNavigator.setBounds(objFr);
 			
 			handleChange(true);
@@ -165,18 +169,17 @@ static void onFileDrop(const FileDropEvent& fde)
 }
 
 // Create a routine to respond to frameevents
+// which are sent at the frame rate specified
 static void onFrameEvent(const FrameCountEvent& fe)
 {
 	//printf("frameEvent: %d\n", (int)fe.frameCount);
 	//printf("Actual Frame Rate: %d\n", (int)(fe.frameCount / seconds()));
 	
-	if (gDoc != nullptr)
-	{
-		handleChange(true);
-	}
-	else {
-		refreshScreenNow();
-	}
+
+	handleChange(true);
+
+	refreshScreenNow();
+
 
 	getRecorder()->saveFrame();
 }
@@ -185,14 +188,14 @@ static void onFrameEvent(const FrameCountEvent& fe)
 
 static void onResizeEvent(const ResizeEvent& re)
 {
-	gNavigator.setFrame(BLRect(0, 0, canvasWidth, canvasHeight));
+	gNavigator.setFrame(BLRect(0, 0, appFrameWidth, appFrameHeight));
 	
 	//printf("onResizeEvent: %d x %d\n", re.width, re.height);
 	BLContextCreateInfo ctxInfo{};
 	ctxInfo.threadCount = 4;
 	//ctxInfo.threadCount = 0;
 
-	getDrawingContext()->attach(appFrameBuffer()->getBlend2dImage(), &ctxInfo);
+	getDrawingContext()->attach(getAppFrameBuffer()->getBlend2dImage(), &ctxInfo);
 	handleChange(true);
 }
 
@@ -268,22 +271,19 @@ void setup()
 
 	setupFonts();
 	
-	frameRate(30);
+	setFrameRate(30);
 	
     dropFiles();
 	
 	// set app window size and title
 	createAppWindow(1280, 1024, "SVGViewer");
 	
-	getRecorder()->reset(&appFrameBuffer()->getBlend2dImage(), "frame", 15, 0);
+	getRecorder()->reset(&getAppFrameBuffer()->getBlend2dImage(), "frame", 15, 0);
 	
 	
-	// set the background to white to start
-	//getDrawingContext()->background(BLRgba32(0xffffffff));
-
 	// Set the initial viewport
 	//gViewPort.surfaceFrame({0, 0, (double)canvasWidth, (double)canvasHeight});
-	gNavigator.setFrame({ 0, 0, (double)canvasWidth, (double)canvasHeight });
+	gNavigator.setFrame({ 0, 0, (double)appFrameWidth, (double) appFrameHeight });
 	gNavigator.subscribe(handleChange);
 	
 	// Load extension elements

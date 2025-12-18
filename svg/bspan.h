@@ -10,7 +10,8 @@
 #include "charset.h"
 
 
-namespace waavs {
+namespace waavs 
+{
 
 
 	//
@@ -46,26 +47,41 @@ namespace waavs {
 		}
 
 		// Constructors
-		constexpr ByteSpan() = default;
+		ByteSpan() = default;
+
+        // Construct from start and end pointers
 		constexpr ByteSpan(const unsigned char* start, const unsigned char* end) noexcept : fStart(start), fEnd(end) {}
+		
+        // Construct from a null-terminated C string
+        // Error:  If there is no null terminator, this will read past the end of the buffer
 		ByteSpan(const char* cstr) noexcept
 		{
-			fStart = (reinterpret_cast<const uint8_t*>(cstr));
+			fStart = (reinterpret_cast<const unsigned char *>(cstr));
 			fEnd = fStart;
+
+			// Advance the end pointer until we see the null terminator
 			while (*fEnd != '\0') {
 				++fEnd;
 			}
 		}
-		explicit constexpr ByteSpan(const void* data, size_t sz) noexcept
-			: fStart(static_cast<const uint8_t*>(data)), fEnd(fStart + sz) {
-		}
+
+		// Construct from a pointer and size
+		//explicit constexpr ByteSpan(const void* data, size_t sz) noexcept
+		//	: fStart(static_cast<const uint8_t*>(data)), 
+		//	fEnd(fStart + sz) {
+		//}
 
 		//~ByteSpan() = default;
 
 		constexpr void reset() { fStart = nullptr; fEnd = nullptr; }
-		
+		void resetFromSize(const void *data, size_t sz) noexcept
+		{
+			fStart = static_cast<const unsigned char *>(data);
+			fEnd = fStart + sz;
+        }
+
 		// setting up for a range-based for loop
-		constexpr const uint8_t* data() const noexcept { return (unsigned char*)fStart; }
+		constexpr const unsigned char* data() const noexcept { return (unsigned char*)fStart; }
 		constexpr const uint8_t* begin() const noexcept { return fStart; }
 		constexpr const uint8_t* end() const noexcept { return fEnd; }
 
@@ -74,7 +90,7 @@ namespace waavs {
 
 
 		// Type conversions
-		explicit constexpr operator bool() const noexcept { return (fEnd - fStart) > 0; };
+		explicit constexpr operator bool() const noexcept { return size() > 0; };
 
 
 		// Array access
@@ -278,6 +294,17 @@ namespace waavs {
 		auto found = aset.skipWhile(src.fStart, src.fEnd);
 		return found != src.fEnd;
 	}
+
+	// Generic: "are all chars in [span) members of 'set'?"
+	//inline bool isAllCharset(const ByteSpan& span, const charset& set) noexcept
+	//{
+	//	const unsigned char* p = span.fStart;
+	//	const unsigned char* end = span.fEnd;
+
+		// skipWhile stops when it finds a non-member (or end)
+	//	const unsigned char* firstNonMember = set.skipWhile(p, end);
+	//	return firstNonMember == end;   // true if we reached the end
+	//}
 }
 
 namespace waavs {

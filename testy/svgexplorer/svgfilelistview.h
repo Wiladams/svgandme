@@ -176,8 +176,8 @@ namespace waavs {
 		SVGFileIconHandle fHoverIcon{};
 		SVGFileIconHandle fSelectedIcon{};
 
-		SVGFileListView(const BLRect& aframe, FontHandler *fh)
-			:SVGCachedView(aframe, fh)
+		SVGFileListView(const BLRect& aframe)
+			:SVGCachedView(aframe)
 		{
 
 			fNavigator.setFrame(BLRect(0, 0, aframe.w, aframe.h));
@@ -221,8 +221,9 @@ namespace waavs {
 			}
 
 
-			ByteSpan aspan(mapped->data(), mapped->size());
-			auto doc = SVGFactory::createFromChunk(aspan, FontHandler::getFontHandler(), canvasWidth, canvasHeight, physicalDpi);
+			ByteSpan aspan;
+			aspan.resetFromSize(mapped->data(), mapped->size());
+			auto doc = SVGFactory::createFromChunk(aspan, FontHandler::getFontHandler(), appFrameWidth, appFrameHeight, physicalDpi);
 
 			int nFiles = fFileList.size();
 			//auto anItem = FileIconSmall::create(filename, doc, BLRect(3,nFiles*(sCellHeight),250,24));

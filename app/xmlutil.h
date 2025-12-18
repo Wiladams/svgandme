@@ -9,6 +9,35 @@
 
 namespace waavs {
 
+    static void printXmlAttributes(const XmlElement& elem)
+    {
+        ByteSpan src = elem.data();
+        ByteSpan key{};
+        ByteSpan value{};
+
+        printf("ATTRIBUTES:\n");
+        //printChunk(elem.data());
+
+        while (readNextKeyAttribute(src, key, value))
+        {
+            printf("  ");
+            writeChunk(key);
+            printf("   = ");
+            printChunk(value);
+        }
+    }
+
+    static void printXmlAttributeCollection(const XmlAttributeCollection& attrColl)
+    {
+
+        for (const auto& attr : attrColl.attributes())
+        {
+            printf("  ");
+            writeChunk(attr.first);
+            printf("   = ");
+            printChunk(attr.second);
+        }
+    }
 
     // printXmlElement
     // Print some basic information about an XML element
@@ -67,11 +96,13 @@ namespace waavs {
         case XML_ELEMENT_TYPE_START_TAG:
             printf("START_TAG: ");
             printChunk(elem.nameSpan());
+            printXmlAttributes(elem);
             break;
 
         case XML_ELEMENT_TYPE_SELF_CLOSING:
             printf("SELF_CLOSING: ");
             printChunk(elem.nameSpan());
+            printXmlAttributes(elem);
             break;
 
         case XML_ELEMENT_TYPE_END_TAG:
@@ -85,30 +116,10 @@ namespace waavs {
             break;
         }
 
-        // Print the attributes
-        ByteSpan src = elem.data();
 
-        ByteSpan key{};
-        ByteSpan value{};
-        while (readNextKeyAttribute(src, key, value))
-        {
-            printf("  ");
-            writeChunk(key);
-            printf("   = ");
-            printChunk(value);
-        }
+
     }
 
-	static void printXmlAttributes(const XmlAttributeCollection& attrColl)
-	{
 
-		for (const auto& attr : attrColl.attributes())
-		{
-			printf("  ");
-			writeChunk(attr.first);
-			printf("   = ");
-			printChunk(attr.second);
-		}
-	}
 }
 

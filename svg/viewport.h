@@ -291,7 +291,7 @@ namespace waavs {
 		}
 		
 		// setting and getting surface frame
-		bool viewportFrame(const BLRect& fr) 
+		bool setViewportFrame(const BLRect& fr) 
 		{
 			// return false if the frame is invalid
 			if (fr.w <= 0 || fr.h <= 0) 

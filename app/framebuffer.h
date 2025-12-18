@@ -14,8 +14,8 @@
 namespace waavs {
     //
     // AFrameBuffer - A structure that combines a GDI DIBSection with a blend2d BLImage
-    // You can get either a blend2d context out of it, 
-    // or a GDI32 Drawing Context
+    // You can get either a blend2d context out of it, or a GDI32 Drawing Context
+    // 
     // The BLImage is used to represent the image data for ease of use
     //
     struct AFrameBuffer
@@ -58,33 +58,74 @@ namespace waavs {
 
         const BITMAPINFO& bitmapInfo() const { return fGDIBMInfo; }
         HDC getGDIContext() { return fGDIBitmapDC; }
+        int fBaseGDIState{ 0 };
 
         
 
-
+        // resetGDIDC()
+        // 
+        // Reset the GDI context to a default state
+        //
         void resetGDIDC()
         {
-            if (fGDIBitmapDC)
-                ::DeleteDC(fGDIBitmapDC);
+            // If there's not DC yet, just return
+            if (!fGDIBitmapDC)
+                return;
+
+            ::RestoreDC(fGDIBitmapDC, fBaseGDIState);
+
+            fBaseGDIState = ::SaveDC(fGDIBitmapDC);
+
+            // BUGBUG - probably should not delete this as we've handed
+            // it out to users.
+            // We should just clear it out, and re-use it.
+            //if (fGDIBitmapDC)
+            //    ::DeleteDC(fGDIBitmapDC);
 
             // Create a GDI Device Context
-            fGDIBitmapDC = ::CreateCompatibleDC(nullptr);
+            //fGDIBitmapDC = ::CreateCompatibleDC(nullptr);
 
             // Do some setup to the DC to make it suitable
             // for drawing with GDI if we choose to do that
-            ::SetGraphicsMode(fGDIBitmapDC, GM_ADVANCED);
-            ::SetBkMode(fGDIBitmapDC, TRANSPARENT);        // for GDI text rendering
+            //::SetGraphicsMode(fGDIBitmapDC, GM_ADVANCED);
+            //::SetBkMode(fGDIBitmapDC, TRANSPARENT);        // for GDI text rendering
 
+        }
+
+        void initGDIDC()
+        {
+            if (!fGDIBitmapDC)
+            {
+                fGDIBitmapDC = ::CreateCompatibleDC(nullptr);
+
+                // Do default setup
+                ::SetGraphicsMode(fGDIBitmapDC, GM_ADVANCED);
+                ::SetBkMode(fGDIBitmapDC, TRANSPARENT);        // for GDI text rendering
+
+                // Set context on bitmap
+                if (fGDIDIBHandle){
+                    ::SelectObject(fGDIBitmapDC, fGDIDIBHandle);
+                }
+
+                // Save base state
+                fBaseGDIState = ::SaveDC(fGDIBitmapDC);
+            }
         }
 
         void resetGDIDibSection(int w, int h)
         {
-            // The framebuffer is based on a DIBSection
+            // delete in memory dc
+            if (fGDIBitmapDC) {
+                ::DeleteDC(fGDIBitmapDC);
+                fGDIBitmapDC = nullptr;
+            }
+
+            // destroy current DIB
             if (fGDIDIBHandle)
             {
-                // destroy current DIB
                 DeleteObject(fGDIDIBHandle);
                 fGDIDIBHandle = nullptr;
+                fFrameBufferData = nullptr;
             }
 
             fBytesPerRow = 4 * w;
@@ -101,8 +142,8 @@ namespace waavs {
 
             fGDIDIBHandle = ::CreateDIBSection(nullptr, &fGDIBMInfo, DIB_RGB_COLORS, (void**)&fFrameBufferData, nullptr, 0);
 
-            if ((fGDIBitmapDC != nullptr) && (fGDIDIBHandle != nullptr))
-                ::SelectObject(fGDIBitmapDC, fGDIDIBHandle);
+            initGDIDC();
+
         }
 
         void resetB2d(int w, int h)
@@ -125,7 +166,7 @@ namespace waavs {
         {
             fB2dContext.end();
 
-            resetGDIDC();
+            //resetGDIDC();
             resetGDIDibSection(w, h);
             resetB2d(w, h);
         }
@@ -134,66 +175,17 @@ namespace waavs {
         // clear the contents of the framebuffer to all '0' values
         void clear() 
         {
+            // BUGBUG - should use the blend2d context to clear, as it
+            // may be faster.  Although, memset is probably already SIMD optimized
+            // and we're not setting any specific pattern here.
+            // On the other hand, if by 'clear' we mean something other than transparent black
+            // the we definitely want to use the blend2d context.
+
 			memset(fFrameBufferData, 0, fBytesPerRow * height());
         }
     };
 
-    // struct SwapChain
-    // A structure consisting of a specified number of AFrameBuffer
-    // rendering targets.  They can be swapped using the 'swap()' method.
-    //
-    struct ASwapChain {
-        std::vector<std::unique_ptr<AFrameBuffer>> fBuffers{};
 
-        size_t fNumBuffers{ 0 };
-        size_t fFrontBufferIndex{ 0 };
-
-        ASwapChain(size_t sz)
-            : ASwapChain(10, 10, sz)
-        {}
-
-        ASwapChain(int w, int h, size_t sz)
-            : fNumBuffers(sz)
-        {
-            reset(w, h);
-        }
-
-        void reset(int w, int h)
-        {
-            fBuffers.clear();
-            for (size_t i = 0; i < fNumBuffers; i++)
-            {
-                auto fb = std::make_unique<AFrameBuffer>(w, h);
-
-                fBuffers.push_back(std::move(fb));
-            }
-
-            fFrontBufferIndex = 0;
-        }
-
-        size_t swap()
-        {
-            fFrontBufferIndex = (fFrontBufferIndex + 1) % fNumBuffers;
-            return fFrontBufferIndex;
-        }
-
-        AFrameBuffer* getNthBuffer(size_t n)
-        {
-            size_t realIndex = (fFrontBufferIndex + n) % fNumBuffers;
-            return fBuffers[realIndex].get();
-        }
-
-        AFrameBuffer* getFrontBuffer()
-        {
-            return getNthBuffer(0);
-        }
-
-        AFrameBuffer* getNextBuffer()
-        {
-            return getNthBuffer(1);
-        }
-
-    };
 
 } // namespace waavs
 

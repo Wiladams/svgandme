@@ -709,7 +709,7 @@ static void setDPIAware()
 
 
 // Initialize Windows networking
-static void setupNetworking()
+static bool setupNetworking()
 {
 
     // BUGBUG - decide whether or not we care about WSAStartup failing
@@ -717,7 +717,12 @@ static void setupNetworking()
     WSADATA lpWSAData;
     int res = ::WSAStartup(version, &lpWSAData);
     if (res != 0)
+    {
         printf("Error setting up networking: 0x%x\n", res);
+        return false;
+    }
+
+    return true;
 }
 
 //! \brief Retrieves the main (singleton) application window.

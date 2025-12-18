@@ -37,8 +37,7 @@ namespace waavs {
 
 
     protected:
-        XmlIteratorParams fParams{};
-        XmlIteratorState fState{};
+        XmlIterator iter;
         XmlElement fCurrentElement{};
 
     public:
@@ -46,9 +45,9 @@ namespace waavs {
 
         // Construct an iterator from a chunk of XML
         XmlElementIterator(const ByteSpan& inChunk, bool autoScanAttributes = false)
-            : fState{ inChunk }
+            : iter{ inChunk }
         {
-            fParams.fAutoScanAttributes = autoScanAttributes;
+            iter.fParams.fAutoScanAttributes = autoScanAttributes;
             next();
         }
 
@@ -59,8 +58,7 @@ namespace waavs {
         // STL-compliant equality comparison
         bool operator==(const XmlElementIterator& other) const noexcept
         {
-            return fState.fSource.data() == other.fState.fSource.data();
-            //return fState.fSource == other.fState.fSource;
+            return iter.fState.input.data() == other.iter.fState.input.data();
         }
 
         bool operator!=(const XmlElementIterator& other) const noexcept
@@ -86,7 +84,7 @@ namespace waavs {
         //const XmlElement & next(XmlElement& elem)
         bool next()
         {
-            bool validElement = nextXmlElement(fParams, fState, fCurrentElement);
+            bool validElement = nextXmlElement(iter, fCurrentElement);
             return validElement;
         }
     };

@@ -16,7 +16,7 @@ namespace waavs {
 
 
 		SVGCachedDocument(const BLRect& aframe, FontHandler *fh=nullptr)
-			:SVGCachedView(aframe, fh)
+			:SVGCachedView(aframe)
 		{
 		}
 		

@@ -4,8 +4,10 @@
 #include "app/mappedfile.h"
 #include "app/xmlutil.h"
 
-#include "xmliter.h"
+
 #include "wsenum.h"
+#include "xmltokengen.h"
+#include "xmlelementgen.h"
 
 
 using namespace waavs;
@@ -123,87 +125,33 @@ static void testTokenGenerator(const ByteSpan& src)
     }
 }
 
+static void testXmlElementGenerator(const ByteSpan& src)
+{
+    XmlElementGenerator gen(src);
+    XmlElement elem;
+    while (gen.next(elem))
+    {
+        waavs::printXmlElement(elem);
+    }
+}
+
 
 static void testXmlElementScan(const ByteSpan& s)
 {
-	XmlIteratorParams fParams{};
-	XmlIteratorState fState{ s};
-	fParams.fAutoScanAttributes = false;
-    fParams.fSkipWhitespace = true;
+	XmlIterator iter{ s};
+	iter.fParams.fAutoScanAttributes = false;
+    iter.fParams.fSkipWhitespace = true;
 
 	XmlElement elem;
-	while (nextXmlElement(fParams, fState, elem))
+	while (nextXmlElement(iter, elem))
 	{
 		waavs::printXmlElement(elem);
 	}
 }
 
-static void testXmlElementGenerator(const ByteSpan& s)
-{
-	XmlElementGenerator gen(s);
-	XmlElement elem;
-	while (gen.next(elem))
-	{
-		waavs::printXmlElement(elem);
-	}
-}
 
-/*
-static void testXmlIter(const ByteSpan& s)
-{
-    XmlElementIterator iter(s);
 
-    do
-    {
-        const XmlElement& elem = *iter;
-        if (elem.isContent())
-        {
-			// only print content if it is not whitespace
-            ByteSpan content = elem.data();
-			content.skipWhile(chrWspChars);
-            if (!content.empty())
-                printXmlElementInfo(elem);
-        } else 
-            printXmlElementInfo(elem);
 
-    } while (iter.next());
-
-}
-
-static void testElementContainer(const ByteSpan& s)
-{
-    // use a range loop to iterate over the elements
-    // and print them out
-    XmlElementContainer container(s);
-    for (XmlElement  const & elem : container)
-    {
-        waavs::printXmlElement(elem);
-    }
-}
-
-static void testElementFilter(const ByteSpan& s)
-{
-    // create a filter that will only include
-    // elements that are start tags
-    auto onlyStartTags = [](const XmlElement& elem) { return elem.isStart(); };
-
-    // a predicate that matches elements that have a 'cx' attribute
-    auto hasCxAttribute = [](const XmlElement& elem) { ByteSpan value{}; return elem.getRawAttributeValue("d", value); };
-
-    // create a container
-    XmlElementContainer container(s);
-
-    // create a filtered container
-    //XmlFilteredContainer predContainer(container, onlyStartTags);
-    XmlFilteredContainer predContainer(container, hasCxAttribute);
-
-    // iterate over the filtered container
-    for (XmlElement const& elem : predContainer)
-    {
-        waavs::printXmlElement(elem);
-    }
-}
-*/
 
 
 
@@ -241,7 +189,8 @@ int main(int argc, char** argv)
     if (nullptr == mapped)
         return 0;
 
-    waavs::ByteSpan s(mapped->data(), mapped->size());
+    waavs::ByteSpan s;
+    s.resetFromSize(mapped->data(), mapped->size());
     
     //testTokenizer(s);
 	//testTokenGenerator(s);

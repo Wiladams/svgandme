@@ -49,7 +49,8 @@ int main(int argc, char** argv)
     if (nullptr == mapped)
         return 0;
 
-    waavs::ByteSpan s(mapped->data(), mapped->size());
+    waavs::ByteSpan s;
+    s.resetFromSize(mapped->data(), mapped->size());
 
 
     testXmlToJson(s);

@@ -1,7 +1,23 @@
 #pragma once
 
 #include "bspan.h"
-#include "pipeline.h"
+
+
+enum XmlTokenType {
+    XML_TOKEN_INVALID = 0,
+    XML_TOKEN_LT,       // <
+    XML_TOKEN_GT,       // >
+    XML_TOKEN_SLASH,    // /
+    XML_TOKEN_EQ,       // =
+    XML_TOKEN_QMARK,    // ?
+    XML_TOKEN_BANG,      // !
+    XML_TOKEN_NAME,     // NMTOKEN or element/attribute name
+    XML_TOKEN_STRING,   // Quoted attribute value
+    XML_TOKEN_TEXT,     // Raw character content
+};
+
+
+
 
 
 namespace waavs {
@@ -14,20 +30,16 @@ namespace waavs {
     // Valid trailing chars for xsd:NCName
     static constexpr charset xmlNcnameChars = chrAlphaChars + chrDecDigits + ".-_";
 
+    // The retained state of the nextXmlToken function
+    struct XmlTokenState {
+        ByteSpan input;
+        bool inTag = false;
 
-    enum XmlTokenType {
-        XML_TOKEN_INVALID = 0,
-        XML_TOKEN_LT,       // <
-        XML_TOKEN_GT,       // >
-        XML_TOKEN_SLASH,    // /
-        XML_TOKEN_EQ,       // =
-        XML_TOKEN_QMARK,    // ?
-        XML_TOKEN_BANG,      // !
-        XML_TOKEN_NAME,     // NMTOKEN or element/attribute name
-        XML_TOKEN_STRING,   // Quoted attribute value
-        XML_TOKEN_TEXT,     // Raw character content
+        bool empty() const noexcept { return input.empty(); }   
     };
 
+
+    // 32-bytes
     struct XmlToken final
     {
         XmlTokenType type = XML_TOKEN_INVALID;
@@ -42,11 +54,7 @@ namespace waavs {
         }
     };
 
-    // The retained state of the nextXmlToken function
-    struct XmlTokenState {
-        ByteSpan input;
-        bool inTag = false;
-    };
+
 
     // === Outside of tag ===
     static inline bool readText(XmlTokenState& state, XmlToken& out)
@@ -133,24 +141,3 @@ namespace waavs {
     }
 }
 
-namespace waavs
-{
-    // Objectified XML token generator
-    // Put a IProduce interface on it, and maintain
-    // the state associated with the tokenizer
-    //
-    struct XmlTokenGenerator : IProduce<XmlToken>
-    {
-        XmlTokenState fState{};
-
-        XmlTokenGenerator(const ByteSpan& src)
-            :fState{ src, false }
-        {
-        }
-
-        bool next(XmlToken& tok) override
-        {
-            return nextXmlToken(fState, tok);
-        }
-    };
-}

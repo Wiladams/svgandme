@@ -39,7 +39,8 @@ static void testFile(const char *filename)
         return ;
 
 
-    waavs::ByteSpan s(mapped->data(), mapped->size());
+    waavs::ByteSpan s;
+    s.resetFromSize(mapped->data(), mapped->size());
 
     //auto doc = SVGDOMDocument::createFromChunk(s);
 

@@ -24,9 +24,6 @@ double millis() noexcept
 }
 
 
-
-//APP_EXTERN waavs::Recorder gRecorder{ nullptr };
-
 static VOIDROUTINE gSetupHandler = nullptr;
 
 

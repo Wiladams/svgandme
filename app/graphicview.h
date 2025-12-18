@@ -119,11 +119,9 @@ namespace waavs {
 
 		bool fNeedsRedraw{ true };
 
-		SVGCachedView(const BLRect& aframe, FontHandler *fh)
+		SVGCachedView(const BLRect& aframe)
 			:GraphicView(aframe)
 		{
-			//fCacheContext.fontHandler(fh);
-
 			setFrame(aframe);
 		}
 

@@ -249,7 +249,7 @@ namespace waavs
             // if we previously parsed something, and now
             // we're being asked to parse again, just leave
             // the old state if there's nothing new
-            if (!s)
+            if (s.empty())
                 return false;
 
             
@@ -513,8 +513,10 @@ namespace waavs {
     // without using scanf. return 'true' upon success
     // false for any error.
     // The format is either
+    // 
     // #RRGGBB
     // #RGB
+    // 
     // Anything else is an error
     static bool hexSpanToRgba32(const ByteSpan& inSpan, BLRgba32& outValue) noexcept
     {
@@ -669,8 +671,10 @@ namespace waavs {
     }
 
     // Parse rgb color. The pointer 'str' must point at "rgb(" (4+ characters).
-    // This function returns gray (rgb(128, 128, 128) == '#808080') on parse errors
-    // for backwards compatibility. Note: other image viewers return black instead.
+    // Default:
+    //      This function returns gray (rgb(128, 128, 128) == '#808080') on parse errors
+    //      for backwards compatibility. 
+    // Note: some image viewers return black instead.
 
     static bool parseColorRGB(const ByteSpan& inChunk, BLRgba32 &aColor)
     {
@@ -700,7 +704,7 @@ namespace waavs {
         if (num.size() < 1)
         {
             //aColor.reset(128, 128, 128, 0);
-            aColor.reset(255, 255, 0, 255);
+            aColor.reset(255, 255, 0, 255);     // Use turquoise to indicate error
             return false;
         }
         

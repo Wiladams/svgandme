@@ -31,16 +31,75 @@
 //
 
 
-#include "charset.h"
+#include "bspan.h"
 #include "xmltypes.h"
 #include "xmltoken.h"
+#include "xmltokengen.h"
 #include "xmlschema.h"
 
+
 namespace waavs {
+    // XML_ITERATOR_STATE
+    // An enumeration that represents the control
+    // state of the iterator
+    //enum XML_ITERATOR_STATE {
+    //    XML_ITERATOR_STATE_CONTENT = 0
+    //    , XML_ITERATOR_STATE_START_TAG
+    //};
+
+    // XmlIteratorParams
+    // 
+    // The set of parameters that configure how the iterator
+    // will operate
+    struct XmlIteratorParams
+    {
+        bool fSkipComments = true;
+        bool fSkipProcessingInstructions = false;
+        bool fSkipWhitespace = true;
+        bool fSkipCData = false;
+        bool fAutoScanAttributes = false;
+    };
+
+
+    struct XmlIterator
+    {
+        XmlIteratorParams fParams{};
+        XmlTokenState fState{};
+
+        XmlIterator() = default;
+        XmlIterator(const ByteSpan& inChunk)
+            : fState{  inChunk, false  }
+        {
+        }
+    };
+}
+
+
+// Forward declaration of some functions
+namespace waavs {
+    static bool readPI(ByteSpan& src, ByteSpan& target, ByteSpan& rest);
+    static bool readComment(ByteSpan& src, ByteSpan& dataChunk) noexcept;
+    static bool readCData(ByteSpan& src, ByteSpan& dataChunk) noexcept;
+    static bool readDoctype(ByteSpan& src, ByteSpan& dataChunk) noexcept;
+    static bool readEntityDeclaration(ByteSpan& src, ByteSpan& dataChunk) noexcept;
+
+}
+
+
+namespace waavs
+{
     static constexpr charset xmlwsp(" \t\r\n");
     static constexpr charset xmlalpha("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
     static constexpr charset xmldigit("0123456789");
+
+
+    // XML whitespace per your xmlwsp charset: " \t\r\n"
+    inline bool isAllXmlWhitespace(const ByteSpan& span) noexcept
+    {
+        return isAll(span, xmlwsp);
+    }
 }
+
 
 namespace waavs {
 
@@ -300,85 +359,6 @@ namespace waavs {
 		return false;
     }
     
-    //============================================================
-    // readTag()
-    // The dataChunk
-    // src is positioned just past the opening '<'
-    // with any whitespace already consumed.
-    //============================================================
-    static bool readTag(ByteSpan& src, ByteSpan& tagName, ByteSpan& rest) noexcept
-    {
-        if (src.empty())
-            return false;
-
-        // Read the name of the tag
-        // Might include namespace
-        if (!readXsdName(src, tagName))
-            return false;
-
-        // Use memchr to quickly locate the '>' character
-        // trim whitespace
-		//src.prefix_trim(chrWspChars);
-        src.skipWhile(chrWspChars);
-
-        const unsigned char* srcPtr = src.begin();
-        const unsigned char* endPtr = src.end();
-
-        const unsigned char* closingBracket = static_cast<const unsigned char*>(std::memchr(srcPtr, '>', endPtr - srcPtr));
-
-        // If no '>' is found, return false
-        if (!closingBracket)
-            return false;
-
-        // Capture everything between the '<' and '>' characters
-        rest = { srcPtr, closingBracket };
-
-        // Trim trailing whitespace
-        rest = chunk_rtrim(rest, xmlwsp);
-
-        // Move the source past '>', so scanning can continue afterward
-        src.fStart = closingBracket + 1;
-
-        return true;
-    }
-
-    static bool readEndTag(ByteSpan& src, ByteSpan& tagName, ByteSpan& rest) noexcept
-    {
-        if (src.empty() || src[0] != '/')
-            return false;
-
-        // move past '/'
-        src.remove_prefix(1);
-
-        // Read the name of the tag
-        // Might include namespace
-        if (!readXsdName(src, tagName))
-            return false;
-
-        // Use memchr to quickly locate the '>' character
-        // trim whitespace
-        const unsigned char* srcPtr = src.begin();
-        const unsigned char* endPtr = src.end();
-
-        const unsigned char* closingBracket = static_cast<const unsigned char*>(std::memchr(srcPtr, '>', endPtr - srcPtr));
-
-        // If no '>' is found, return false
-        if (!closingBracket)
-            return false;
-
-        // we don't really do anything with the 'rest' and there
-        // should not actually be any, but we'll capture it anyway
-        // Capture everything between the '<' and '>' characters
-        rest = { srcPtr, closingBracket };
-
-        // Trim trailing whitespace
-        //rest = chunk_rtrim(rest, xmlwsp);
-
-        // Move the source past '>', so scanning can continue afterward
-        src.fStart = closingBracket + 1;
-
-        return true;
-    }
 }
 
 
@@ -387,34 +367,303 @@ namespace waavs {
 // It will return the next xml info in the chunk.
 //
 namespace waavs {
-    // XML_ITERATOR_STATE
-    // An enumeration that represents the control
-    // state of the iterator
-    enum XML_ITERATOR_STATE {
-        XML_ITERATOR_STATE_CONTENT = 0
-        , XML_ITERATOR_STATE_START_TAG
 
-    };
-    
-    // XmlIteratorParams
-    // The set of parameters that configure how the iterator
-    // will operate
-    struct XmlIteratorParams {
-        bool fSkipComments = true;
-        bool fSkipProcessingInstructions = false;
-        bool fSkipWhitespace = true;
-        bool fSkipCData = false;
-        bool fAutoScanAttributes = false;
-    };
+    // parsePIFromTokens()
+    //
+    // Preconditions:
+    //   - We've just consumed a '<' token.
+    //   - The last token we saw was XML_TOKEN_QMARK (i.e. we just consumed '?').
+    //   - st.fState.input.fStart now points to the first byte *after* '?'.
+    //
+    // Behavior:
+    //   - Uses your existing readPI() to parse:
+    //        <?target    content   ?>
+    //   - Advances the token state's input past the closing '?>'.
+    //   - Sets st.fState.inTag = false (we are now outside any tag).
+    //   - Fills 'elem' with either XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION
+    //     or XML_ELEMENT_TYPE_XMLDECL (if the target is "xml").
+    //
+    static bool parsePIFromTokens(XmlIterator& st, XmlElement& elem) noexcept
+    {
+        // Rebuild a ByteSpan that *includes* the '?' we just tokenized.
+        ByteSpan src;
+        src.fStart = st.fState.input.fStart - 1;   // points to '?'
+        src.fEnd = st.fState.input.fEnd;
 
-	// XmlIteratorState
-    // The information needed for the iterator to continue
-    // after it has returned a value.
-    struct XmlIteratorState {
-        ByteSpan fSource{};
-    };
-    
+        ByteSpan target{};
+        ByteSpan content{};
 
+        if (!readPI(src, target, content))
+            return false;
+
+        // Sync the token state's input with where readPI() left off
+        st.fState.input.fStart = src.fStart;
+        // We've consumed the entire '<?...?>', so we're now outside the tag.
+        st.fState.inTag = false;
+
+        int kind = XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION;
+        if (target == "xml")
+            kind = XML_ELEMENT_TYPE_XMLDECL;
+
+        elem.reset(kind, target, content);
+
+        return true;
+    }
+
+
+    // parseEndTagFromTokens()
+    //
+    // Preconditions:
+    //   - We are inside a tag.
+    //   - The '<' and following '/' have already been consumed as tokens.
+    //   - tokenState.input points just after '</'.
+    //
+    // Behavior:
+    //   - Reads the tag name as a NAME token.
+    //   - Skips any whitespace (handled inside readTagToken / nextXmlToken).
+    //   - Expects a '>' token to terminate the end tag.
+    //   - Emits an XmlElement of type XML_ELEMENT_TYPE_END_TAG.
+    //
+    static bool parseEndTagFromTokens(XmlIterator& st, XmlElement& elem) noexcept
+    {
+        XmlToken tok{};
+
+        // 1. Read the tag name token
+        if (!nextXmlToken(st.fState, tok))
+            return false; // EOF after '</'
+
+        if (tok.type != XML_TOKEN_NAME) {
+            // Malformed end tag: no name after '</'
+            // You can choose to create an INVALID element instead of hard-failing.
+            return false;
+        }
+
+        ByteSpan tagName = tok.value;
+
+        // 2. After the name, XML only permits whitespace and then '>'.
+        //    nextXmlToken / readTagToken already skip whitespace, so we just
+        //    advance until we see XML_TOKEN_GT.
+        for (;;) {
+            if (!nextXmlToken(st.fState, tok))
+                return false; // EOF before closing '>'
+
+            if (tok.type == XML_TOKEN_GT) {
+                // We don't preserve a "rest" span here, mirroring your current
+                // readEndTag(), which also notes it doesn't really use 'rest'.
+                elem.reset(XML_ELEMENT_TYPE_END_TAG, tagName, {});
+                return true;
+            }
+
+            // Any other token after an end-tag name is technically malformed XML.
+            // Options:
+            //   - return false to signal a hard error
+            //   - or, if you want to be more forgiving, you could just continue
+            //     until you eventually see XML_TOKEN_GT.
+            return false;
+        }
+    }
+
+
+    // parseStartOrSelfClosingFromTokens()
+    // 
+    // We've gotten the '<' and the NAME token for the tag name (firstNameToken).
+    // Here, we read the attributes to the end of the tag, and return that as the 'data'
+    // of the element.  We also determine if it's a self-closing tag or a start tag.
+    // We will not auto parse attributes here; that can be done later if desired.
+    //
+    static bool parseStartOrSelfClosingFromTokens(XmlIterator& iter, XmlElement& elem, const XmlToken& firstNameToken)
+    {
+        ByteSpan tagName = firstNameToken.value;
+        const unsigned char * attrStart = iter.fState.input.fStart; // start of attributes-ish area
+        bool selfClosing = false;
+        XmlToken tok{};
+
+        //src.skipWhile(chrWspChars);
+
+        // Scan until '>' (or '/>')
+        // we don't want to use the tokenizer here, because it will parse attributes
+        // which we don't want right now.  We just want to find the closing '>' or '/>'
+        
+        // Use memchr to quickly locate the '>' character
+        //iter.fState.input.skipWhile(chrWspChars);
+
+        const unsigned char* srcPtr = iter.fState.input.begin();
+        const unsigned char* endPtr = iter.fState.input.end();
+
+        const unsigned char* closingBracket = static_cast<const unsigned char*>(std::memchr(srcPtr, '>', endPtr - srcPtr));
+
+        // If no '>' is found, malformed, so return false
+        if (!closingBracket)
+            return false;
+
+        // if the character before '>' is '/', then it's self-closing
+        if (closingBracket > srcPtr && closingBracket[-1] == '/') {
+            selfClosing = true;
+            // Move back one to exclude the '/' from the attributes span
+            closingBracket--;
+        }
+        ByteSpan rest(srcPtr, closingBracket);
+
+        // Move the source past '>', so scanning can continue afterward
+        if (selfClosing)
+            iter.fState.input.fStart = closingBracket + 2; // skip '/>'
+        else
+            iter.fState.input.fStart = closingBracket + 1;
+        // either way, we're now outside the tag
+        iter.fState.inTag = false;
+
+        elem.reset(selfClosing ? XML_ELEMENT_TYPE_SELF_CLOSING : XML_ELEMENT_TYPE_START_TAG, tagName, rest);
+
+        return true;
+    }
+
+
+    // parseBangConstructFromTokens()
+    //
+    // Preconditions:
+    //   - We've just consumed a '<' token.
+    //   - The last token we saw was XML_TOKEN_BANG (for '!').
+    //   - st.fState.input.fStart currently points to the first byte
+    //     *after* '!'.
+    //
+    // Behavior:
+    //   - Rebuilds a ByteSpan that includes the leading '!' (one byte back).
+    //   - Dispatches to readComment / readCData / readDoctype / readEntityDeclaration
+    //     based on the prefix.
+    //   - Advances st.fState.input to the position where the helper leaves off
+    //     (i.e., past '-->', ']]>', or the final '>').
+    //   - Sets st.fState.inTag = false, because we've consumed the entire markup.
+    //   - Fills 'elem' with the appropriate XmlElementType and data span.
+    //
+    static bool parseBangConstructFromTokens(XmlIterator& st, XmlElement& elem) noexcept
+    {
+        // Reconstruct a ByteSpan that starts at '!'
+        ByteSpan src;
+        src.fStart = st.fState.input.fStart - 1;   // back up to '!'
+        src.fEnd = st.fState.input.fEnd;
+
+        ByteSpan data{};
+
+        // COMMENT: <!-- ... -->
+        if (src.startsWith("!--")) {
+            if (!readComment(src, data))
+                return false;
+
+            // Sync token state to where readComment() left off
+            st.fState.input.fStart = src.fStart;
+            st.fState.inTag = false;
+
+            elem.reset(XML_ELEMENT_TYPE_COMMENT, {}, data);
+            return true;
+        }
+
+        // CDATA: <![CDATA[ ... ]]>
+        if (src.startsWith("![CDATA[")) {
+            if (!readCData(src, data))
+                return false;
+
+            st.fState.input.fStart = src.fStart;
+            st.fState.inTag = false;
+
+            elem.reset(XML_ELEMENT_TYPE_CDATA, {}, data);
+            return true;
+        }
+
+        // DOCTYPE: <!DOCTYPE ... >
+        if (src.startsWith("!DOCTYPE")) {
+            if (!readDoctype(src, data))
+                return false;
+
+            st.fState.input.fStart = src.fStart;
+            st.fState.inTag = false;
+
+            elem.reset(XML_ELEMENT_TYPE_DOCTYPE, {}, data);
+            return true;
+        }
+
+        // ENTITY declaration: <!ENTITY ... >
+        if (src.startsWith("!ENTITY")) {
+            if (!readEntityDeclaration(src, data))
+                return false;
+
+            st.fState.input.fStart = src.fStart;
+            st.fState.inTag = false;
+
+            elem.reset(XML_ELEMENT_TYPE_ENTITY, {}, data);
+            return true;
+        }
+
+        // Unknown or malformed <! ... > construct
+        return false;
+    }
+
+    // nextXmlElement
+    // 
+    // A function to get the next element in an iteration
+    // By putting the necessary parsing in here, we can use both std
+    // c++ iteration idioms, as well as a more straight forward C++ style
+    // which does not require all the C++ iteration boilerplate
+//    static bool nextXmlElement(const XmlIteratorParams& params, XmlIteratorState& st, XmlElement& elem)
+    static bool nextXmlElement(XmlIterator& iter, XmlElement& elem)
+    {
+        elem.reset(XML_ELEMENT_TYPE_INVALID, {}, {});
+
+        if (iter.fState.empty())
+            return false;
+
+        XmlToken tok{};
+
+        for (;;) {
+            if (!nextXmlToken(iter.fState, tok))
+                return false;   // EOF
+
+            if (!tok.inTag) {
+                // Outside tag: TEXT tokens become CONTENT elements
+                if (tok.type == XML_TOKEN_TEXT) {
+                    if (iter.fParams.fSkipWhitespace && isAllXmlWhitespace(tok.value))
+                        continue;
+
+                    elem.reset(XML_ELEMENT_TYPE_CONTENT, {}, tok.value);
+                    return true;
+                }
+
+                // We should never see NAME/STRING/etc with inTag == false
+                continue;
+            }
+
+
+            // At this point, tok.inTag == true
+
+            // Start of a tag is signaled as XML_TOKEN_LT with inTag = true
+            if (tok.type == XML_TOKEN_LT) {
+                if (!nextXmlToken(iter.fState, tok))
+                    return false;
+
+                switch (tok.type)
+                {
+                case XML_TOKEN_SLASH:  // End tag
+                    return parseEndTagFromTokens(iter, elem);
+                case XML_TOKEN_QMARK:  // Processing Instruction
+                    return parsePIFromTokens(iter, elem);
+                case XML_TOKEN_BANG:   // Comment, CDATA, Doctype, Entity
+                    return parseBangConstructFromTokens(iter, elem);
+                case XML_TOKEN_NAME:  // Start tag
+                    return parseStartOrSelfClosingFromTokens(iter, elem, tok);
+
+                default:
+                    // malformed tag; maybe signal an error element
+                    return false;
+                    break;
+                }
+            }
+
+            // If inTag but not a '<', that's also malformed
+        }
+    }
+
+
+
+    /*
     // nextXmlElement
     // 
     // A function to get the next element in an iteration
@@ -425,7 +674,7 @@ namespace waavs {
     {
         elem.reset(XML_ELEMENT_TYPE_INVALID, {}, {});
 
-        if (st.fSource.empty())
+        if (st.fState.empty())
             return false;
 
         // 1. Search for next '<'
@@ -503,26 +752,8 @@ namespace waavs {
 
         return false;
     }
+    */
 
 
 }
 
-namespace waavs
-{
-    // Objectified XML token generator
-    struct XmlElementGenerator : IProduce<XmlElement>
-    {
-		XmlIteratorParams fParams{};
-        XmlIteratorState fState{};
-
-        XmlElementGenerator(const ByteSpan& src)
-            :fState{ src}
-        {
-        }
-
-        bool next(XmlElement & elem) override
-        {
-            return nextXmlElement(fParams, fState, elem);
-        }
-    };
-}
