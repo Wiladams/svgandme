@@ -285,11 +285,9 @@ namespace waavs {
 
 			// Create the XML Iterator we're going to use to parse the document
             XmlElementIterator iter(fSourceMem.span(), true);
-			//XmlElementInfoIterator infoIter(fSourceMem.span(), true);
 
             // The first pass builds the DOM
             loadFromXmlIterator(iter, this);
-			//loadFromXmlInfoIterator(infoIter, this);
 
             
             return true;

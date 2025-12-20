@@ -292,7 +292,7 @@ namespace waavs {
 	static inline bool isAll(const ByteSpan& src, const charset& aset)
 	{
 		auto found = aset.skipWhile(src.fStart, src.fEnd);
-		return found != src.fEnd;
+        return found == src.fEnd;
 	}
 
 	// Generic: "are all chars in [span) members of 'set'?"

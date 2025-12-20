@@ -12,7 +12,8 @@
 
 #include "maths.h"
 
-//#include "xmliter.h"
+#include "xmlelementgen.h"
+#include "xmliter.h"
 #include "xmlutil.h"
 
 #include "svgdatatypes.h"

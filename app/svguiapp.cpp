@@ -62,14 +62,14 @@ bool loadFontDirectory(const char* dir) noexcept
 		return false;
 	}
 
+	auto fh = FontHandler::getFontHandler();
+	if (nullptr == fh)
+	{
+		return false;
+	}
+
 	for (const auto& dir_entry : std::filesystem::directory_iterator(fontPath))
 	{
-		auto fh = FontHandler::getFontHandler();
-		if (nullptr == fh)
-		{
-			return false;
-		}
-
 		if (dir_entry.is_regular_file())
 		{
 			if ((dir_entry.path().extension() == ".ttf") ||
@@ -77,11 +77,13 @@ bool loadFontDirectory(const char* dir) noexcept
 				(dir_entry.path().extension() == ".TTF"))
 			{
 				BLFontFace ff{};
-				const char* filename = dir_entry.path().generic_string().c_str();
-				if (!fh->loadFontFace(filename, ff))
+				//const char* filename = dir_entry.path().generic_string().c_str();
+				if (fh->loadFontFace(dir_entry.path().generic_string().c_str(), ff) != BL_SUCCESS)
 				{
-					printf("loadFontFace failed: %s\n", filename);
-					return false;
+                    // If a single font fails to load, continue to the next one
+					//printf("loadFontFace failed: %s\n", filename);
+					//return false;
+					continue;
 				}
 			}
 		}

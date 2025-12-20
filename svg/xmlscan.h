@@ -96,7 +96,8 @@ namespace waavs
     // XML whitespace per your xmlwsp charset: " \t\r\n"
     inline bool isAllXmlWhitespace(const ByteSpan& span) noexcept
     {
-        return isAll(span, xmlwsp);
+        bool allWhiteSpace = isAll(span, xmlwsp);
+        return allWhiteSpace;
     }
 }
 
@@ -476,7 +477,6 @@ namespace waavs {
         ByteSpan tagName = firstNameToken.value;
         const unsigned char * attrStart = iter.fState.input.fStart; // start of attributes-ish area
         bool selfClosing = false;
-        XmlToken tok{};
 
         //src.skipWhile(chrWspChars);
 

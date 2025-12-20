@@ -248,10 +248,27 @@ static void onKeyboardEvent(const KeyboardEvent& ke)
 
 static void setupFonts()
 {
-	//loadFontDirectory("c:\\windows\\fonts");
-	loadDefaultFonts();
-	//loadFontDirectory("d:\\commonfonts");
+	//loadDefaultFonts();
+	loadFontDirectory("c:\\windows\\fonts");
+	loadFontDirectory("x:\\Fonts\\Fonts");
+
+	//loadFontDirectory("x:\\Fonts\\commonfonts");
 	//loadFontDirectory("..\\resources");
+
+	/*
+	// stragglers
+	// Load in some fonts to start
+	std::vector<const char*> fontNames{
+		"x:\\Fonts\\Fonts\\Walkway Black.ttf",
+		"x:\\Fonts\\Fonts\\Walkway Bold.ttf",
+		"x:\\Fonts\\Fonts\\Walkway.ttf",
+	};
+
+	auto fh = FontHandler::getFontHandler();
+
+	if (nullptr != fh)
+		fh->loadFonts(fontNames);
+	*/
 
 }
 

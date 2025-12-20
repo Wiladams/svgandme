@@ -21,15 +21,7 @@
 
 
 namespace waavs {
-    /*
-	static bool endsWith(const std::string& src, const std::string &suffix) 
-    {
-        if (suffix.size() > src.size())
-            return false;
-        
-        return src.substr(src.size() - suffix.size()) == suffix;
-	}
-    */
+
     
     class FontHandler
     {
@@ -89,44 +81,44 @@ namespace waavs {
         // create a single font face by filename
         // Put it into the font manager
         // return it to the user
-        bool loadFontFace(const char* filename, BLFontFace &ff)
+        uint32_t loadFontFace(const char* filename, BLFontFace &ff)
         {
-            //BLFontFace ff;
+            //printf("FontHandler.loadFontFace(%s) \n", filename);
+
             //BLResult err = ff.createFromFile(filename, BL_FILE_READ_MMAP_AVOID_SMALL);
             BLResult err = ff.createFromFile(filename);
 
-            if (!err)
+            if (err == BL_SUCCESS)
             {
                 //printf("FontHandler.loadFont() adding: %s\n", ff.familyName().data());
 
-
-                
                 fFontManager.addFace(ff);
-                fFamilyNames.push_back(std::string(ff.familyName().data()));
-                return true;
-            }
-            else {
-                ;
-                printf("FontHandler::loadFont Error: %s (0x%x)\n", filename, err);
+                std::string familyName = std::string(ff.familyName().data());
+                fFamilyNames.push_back(familyName);
+
+                return BL_SUCCESS;
+            } else  {
+                //printf("FontHandler.loadFontFace() ERROR loading: %s, 0x%x\n", filename, err);
             }
 
-            return false;
+            return err;
         }
 
         // Load the list of font files into 
         // the font manager
         bool loadFonts(std::vector<const char*> fontNames)
         {
-            bool success{ false };
             
             for (const auto& filename : fontNames)
             {
                 BLFontFace ff{};
-                bool success = loadFontFace(filename, ff);
-                if (!success)
+                uint32_t err = loadFontFace(filename, ff);
+                if (err != BL_SUCCESS)
 				{
+                    printf("FontHandler::loadFonts Error: %s (0x%x)\n", filename, err);
+
                     //printf("loadFonts: %s, 0x%x\n", face.familyName().data(), face.isValid());
-					return false;
+					continue;
 				}
 
             }
