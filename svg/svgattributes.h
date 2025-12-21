@@ -45,7 +45,6 @@ namespace waavs {
             
             return success;
         }
-        
 
 	};
 }

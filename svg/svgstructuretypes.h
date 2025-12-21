@@ -621,6 +621,8 @@ namespace waavs {
             ByteSpan attrValue{};
 
             // Loop through the attributes
+            // setting well known attributes directly
+            // and presentation attributes into their own collection
             while (readNextKeyAttribute(src, attrName, attrValue))
             {
                 if (attrName == "id")

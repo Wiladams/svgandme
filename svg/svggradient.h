@@ -36,7 +36,7 @@ namespace waavs {
 			// Get the attributes from the element
 			ByteSpan attrSpan = elem.data();
 			XmlAttributeCollection attrs{};
-			attrs.scanAttributes(attrSpan);
+            scanAttributes(attrs, attrSpan);
 			
 			// If there's a style attribute, then add those to the collection
 			auto style = attrs.getAttribute("style");

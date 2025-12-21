@@ -4,7 +4,9 @@
 
 #include "bspan.h"
 
-namespace waavs {
+namespace waavs 
+{
+
     template <typename T>
     struct WSListNode {
         T value;
@@ -247,108 +249,5 @@ namespace waavs {
 }
 
 
-namespace waavs {
-    //============================================================
-    // XmlAttributeCollection
-    // A collection of the attibutes found on an XmlElement
-    //============================================================
-    using BSpanDictionary = std::unordered_map<ByteSpan, ByteSpan, ByteSpanHash, ByteSpanEquivalent>;
 
-    struct XmlAttributeCollection
-    {
-        BSpanDictionary fAttributes{};
-
-        XmlAttributeCollection() = default;
-        XmlAttributeCollection(const XmlAttributeCollection& other) noexcept
-            :fAttributes(other.fAttributes)
-        {}
-
-        XmlAttributeCollection(const ByteSpan& inChunk) noexcept
-        {
-            scanAttributes(inChunk);
-        }
-
-        // Return a const attribute collection
-        const BSpanDictionary& attributes() const noexcept { return fAttributes; }
-
-        size_t size() const noexcept { return fAttributes.size(); }
-
-        void clear() noexcept { fAttributes.clear(); }
-
-        // scanAttributes()
-        // Given a chunk that contains attribute key value pairs
-        // separated by whitespace, parse them, and store the key/value pairs 
-        // in the fAttributes map
-        bool scanAttributes(const ByteSpan& inChunk) noexcept
-        {
-            ByteSpan src = inChunk;
-            ByteSpan key;
-            ByteSpan value;
-
-            while (readNextKeyAttribute(src, key, value))
-            {
-                addAttribute(key, value);
-            }
-
-            return true;
-        }
-
-        bool hasAttribute(const ByteSpan& inName) const noexcept
-        {
-            return fAttributes.find(inName) != fAttributes.end();
-        }
-
-
-        // Add a single attribute to our collection of attributes
-        // if the attribute already exists, replace its value
-        // with the new value
-        //void addAttribute(const std::string& name, const ByteSpan& valueChunk)
-        void addAttribute(const ByteSpan& name, const ByteSpan& valueChunk) noexcept
-        {
-            fAttributes[name] = valueChunk;
-        }
-
-        // get an attribute from the collection, if it exists
-        bool getAttribute(const ByteSpan& name, ByteSpan& value) const noexcept
-        {
-            auto it = fAttributes.find(name);
-            if (it != fAttributes.end()) {
-                value = it->second;
-                return true;
-            }
-            value.reset(); // Explicitly clear value if attribute doesn't exist
-            return false;
-        }
-
-
-
-        ByteSpan getAttribute(const ByteSpan& name) const noexcept
-        {
-            auto it = fAttributes.find(name);
-            if (it != fAttributes.end())
-                return it->second;
-            return {};
-        }
-
-
-
-        // mergeAttributes()
-        // Combine collections of attributes
-		// If there are duplicates, the new value will replace the old
-        XmlAttributeCollection& mergeAttributes(const XmlAttributeCollection& other) noexcept
-        {
-            for (const auto& attr : other.fAttributes)
-            {
-                // Optimize update: Remove old value first, then emplace new one
-                fAttributes.erase(attr.first);
-                fAttributes.emplace(attr.first, attr.second);
-            }
-            return *this;
-        }
-
-
-
-
-    };
-}
 

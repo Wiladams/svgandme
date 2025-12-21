@@ -288,23 +288,16 @@ namespace waavs
 
 
 namespace waavs {
-	// isAll() - Check if all characters in the span are in the specified charset
+	// isAll()
+	// Check if all characters in the span are in the specified charset.
+	// This is typically used when you're trying to determine if the 
+	// whole span is whitespace.
 	static inline bool isAll(const ByteSpan& src, const charset& aset)
 	{
 		auto found = aset.skipWhile(src.fStart, src.fEnd);
         return found == src.fEnd;
 	}
 
-	// Generic: "are all chars in [span) members of 'set'?"
-	//inline bool isAllCharset(const ByteSpan& span, const charset& set) noexcept
-	//{
-	//	const unsigned char* p = span.fStart;
-	//	const unsigned char* end = span.fEnd;
-
-		// skipWhile stops when it finds a non-member (or end)
-	//	const unsigned char* firstNonMember = set.skipWhile(p, end);
-	//	return firstNonMember == end;   // true if we reached the end
-	//}
 }
 
 namespace waavs {
@@ -846,6 +839,10 @@ namespace waavs
 
 }
 
+
+
+
+
 namespace waavs {
 
 	// Efficiently reads the next key-value attribute pair from `src`
@@ -870,7 +867,7 @@ namespace waavs {
 		const uint8_t* keyEnd = keyStart; // track last non-whitespace char seen
 		while (src.fStart < src.fEnd && *src.fStart != '=')
 		{
-			if (!chrWspChars(*src.fStart)) 
+			if (!chrWspChars(*src.fStart))
 			{
 				keyEnd = src.fStart + 1; // past the last non-space character
 			}
@@ -895,7 +892,7 @@ namespace waavs {
 
 		// Ensure we have a quoted value
 		uint8_t quoteChar = *src;
-		if (quoteChar !='"' && quoteChar !='\'')
+		if (quoteChar != '"' && quoteChar != '\'')
 			return false;
 
 		// Move past the opening quote
@@ -915,7 +912,10 @@ namespace waavs {
 
 		return true;
 	}
+}
 
+
+namespace waavs {
 	// Searches `inChunk` for an attribute `key` and returns its value if found
 	static bool getKeyValue(const ByteSpan& inChunk, const ByteSpan& key, ByteSpan& value) noexcept
 	{

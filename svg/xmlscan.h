@@ -32,6 +32,7 @@
 
 
 #include "bspan.h"
+
 #include "xmltypes.h"
 #include "xmltoken.h"
 #include "xmltokengen.h"
@@ -475,7 +476,7 @@ namespace waavs {
     static bool parseStartOrSelfClosingFromTokens(XmlIterator& iter, XmlElement& elem, const XmlToken& firstNameToken)
     {
         ByteSpan tagName = firstNameToken.value;
-        const unsigned char * attrStart = iter.fState.input.fStart; // start of attributes-ish area
+        const unsigned char* attrStart = iter.fState.input.fStart; // start of attributes-ish area
         bool selfClosing = false;
 
         //src.skipWhile(chrWspChars);
@@ -483,7 +484,7 @@ namespace waavs {
         // Scan until '>' (or '/>')
         // we don't want to use the tokenizer here, because it will parse attributes
         // which we don't want right now.  We just want to find the closing '>' or '/>'
-        
+
         // Use memchr to quickly locate the '>' character
         //iter.fState.input.skipWhile(chrWspChars);
 
@@ -660,100 +661,99 @@ namespace waavs {
             // If inTag but not a '<', that's also malformed
         }
     }
+}
 
-
-
-    /*
-    // nextXmlElement
-    // 
-    // A function to get the next element in an iteration
-    // By putting the necessary parsing in here, we can use both std
-    // c++ iteration idioms, as well as a more straight forward C++ style
-    // which does not require all the C++ iteration boilerplate
-    static bool nextXmlElement(const XmlIteratorParams& params, XmlIteratorState& st, XmlElement& elem)
+namespace waavs {
+    // scanAttributes()
+// Given a chunk that contains attribute key value pairs
+// separated by whitespace, parse them, and store the key/value pairs 
+// in the fAttributes map
+    static bool scanAttributes(XmlAttributeCollection &attrs, const ByteSpan& inChunk) noexcept
     {
-        elem.reset(XML_ELEMENT_TYPE_INVALID, {}, {});
+        ByteSpan src = inChunk;
+        ByteSpan key;
+        ByteSpan value;
 
-        if (st.fState.empty())
+        while (readNextKeyAttribute(src, key, value))
+        {
+            attrs.addAttribute(key, value);
+        }
+
+        return true;
+    }
+}
+
+/*
+namespace waavs
+{
+    // Efficiently reads the next key-value attribute pair from `src`
+// Attributes are separated by '=' and values are enclosed in '"' or '\''
+    static bool readNextKeyAttribute(ByteSpan& src, ByteSpan& key, ByteSpan& value) noexcept
+    {
+        key.reset();
+        value.reset();
+
+        // Trim leading whitespace
+        src.skipWhile(chrWspChars);
+
+        if (!src)
             return false;
 
-        // 1. Search for next '<'
-        const unsigned char* lt = (const unsigned char*)memchr(st.fSource.fStart, '<', st.fSource.size());
+        // Handle end tag scenario (e.g., `/>`)
+        if (*src == '/')
+            return false;
 
-        if (lt) {
-            // Return content if present before the '<'
-            if (lt != st.fSource.fStart) {
-                elem.reset(XML_ELEMENT_TYPE_CONTENT, {}, { st.fSource.fStart, lt });
-                st.fSource.fStart = lt; // next call will process the tag
-                return true;
-            }
-
-            // Now at a tag, consume '<'
-            st.fSource.fStart = lt + 1;
-
-            // Begin tag parsing
-            st.fSource.skipWhile(chrWspChars);
-            ByteSpan tagName{};
-            ByteSpan elementChunk = st.fSource;
-            elementChunk.fEnd = st.fSource.fStart;
-            int kind = XML_ELEMENT_TYPE_START_TAG;
-
-            switch (*st.fSource)
+        // Capture attribute name up to '='
+        const uint8_t* keyStart = src.fStart;
+        const uint8_t* keyEnd = keyStart; // track last non-whitespace char seen
+        while (src.fStart < src.fEnd && *src.fStart != '=')
+        {
+            if (!chrWspChars(*src.fStart))
             {
-            default:
-                readTag(st.fSource, tagName, elementChunk);
-                if (chunk_ends_with_char(elementChunk, '/'))
-                    kind = XML_ELEMENT_TYPE_SELF_CLOSING;
-                break;
-
-            case '?':
-                kind = XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION;
-                if (!readPI(st.fSource, tagName, elementChunk))
-                    return false;
-                if (tagName == "xml")
-                    kind = XML_ELEMENT_TYPE_XMLDECL;
-                break;
-
-            case '!':
-                if (st.fSource.startsWith("!DOCTYPE")) {
-                    kind = XML_ELEMENT_TYPE_DOCTYPE;
-                    readDoctype(st.fSource, elementChunk);
-                }
-                else if (st.fSource.startsWith("!--")) {
-                    kind = XML_ELEMENT_TYPE_COMMENT;
-                    readComment(st.fSource, elementChunk);
-                }
-                else if (st.fSource.startsWith("![CDATA[")) {
-                    kind = XML_ELEMENT_TYPE_CDATA;
-                    readCData(st.fSource, elementChunk);
-                }
-                else if (st.fSource.startsWith("!ENTITY")) {
-                    kind = XML_ELEMENT_TYPE_ENTITY;
-                    readEntityDeclaration(st.fSource, elementChunk);
-                }
-                break;
-
-            case '/':
-                kind = XML_ELEMENT_TYPE_END_TAG;
-                readEndTag(st.fSource, tagName, elementChunk);
-                break;
+                keyEnd = src.fStart + 1; // past the last non-space character
             }
-
-            elem.reset(kind, tagName, elementChunk);
-            return true;
+            ++src.fStart;
         }
 
-        // 2. No '<' found: optional trailing content
-        if (!st.fSource.empty()) {
-            elem.reset(XML_ELEMENT_TYPE_CONTENT, {}, st.fSource);
-            st.fSource.fStart = st.fSource.fEnd;  // EOF
-            return true;
-        }
+        // If no '=' found, return false
+        if (src.empty())
+            return false;
 
-        return false;
+        // Assign key — trimmed to exclude any trailing whitespace
+        key = ByteSpan(keyStart, keyEnd);
+
+        // Move past '='
+        ++src.fStart;
+
+        // Skip any whitespace
+        src.skipWhile(chrWspChars);
+
+        if (src.empty())
+            return false;
+
+        // Ensure we have a quoted value
+        uint8_t quoteChar = *src;
+        if (quoteChar != '"' && quoteChar != '\'')
+            return false;
+
+        // Move past the opening quote
+        src++;
+
+        // Locate the closing quote using `memchr`
+        const uint8_t* endQuote = static_cast<const uint8_t*>(std::memchr(src.fStart, quoteChar, src.size()));
+
+        if (!endQuote)
+            return false; // No closing quote found
+
+        // Assign the attribute value (excluding quotes)
+        value = { src.fStart, endQuote };
+
+        // Move past the closing quote
+        src.fStart = endQuote + 1;
+
+        return true;
     }
-    */
-
 
 }
+*/
 
