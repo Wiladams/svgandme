@@ -6,7 +6,6 @@
 
 #include "blend2d.h"
 #include "fonthandler.h"
-#include "collections.h"
 #include "svgenums.h"
 #include "svgdrawingstate.h"
 
@@ -67,13 +66,13 @@ namespace waavs
 
         // Optimized Push Operation
         void push() {
-            if (fCurrentState->isModified() || stateStack.empty())
-            {
+            //if (fCurrentState->isModified() || stateStack.empty())
+            //{
                 SVGDrawingState* newState = memoryPool->allocate();
                 *newState = *fCurrentState;  // Shallow copy of the entire state
                 stateStack.push_back(newState);
                 fCurrentState->modifiedSinceLastPush = false;
-            }
+            //}
         }
 
         // Optimized Pop Operation

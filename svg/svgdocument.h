@@ -387,7 +387,19 @@ namespace waavs {
             ctx->pop();
         }
 
-        
+        static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, FontHandler* fh, const double w = 64, const double h = 64, const double ppi = 96)
+        {
+            // this MUST be done, or node registrations will not happen
+            //auto sFactory = getFactory();
+            auto doc = std::make_shared<SVGDocument>(fh, w, h, ppi);
+            if (!doc->loadFromChunk(srcChunk, fh))
+            {
+                printf("SVGFactory::CreateFromChunk() failed to load\n");
+                return nullptr;
+            }
+            return doc;
+        }
+
     };
 
     using SVGDocumentHandle = std::shared_ptr<SVGDocument>;

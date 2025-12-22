@@ -23,7 +23,8 @@ static INLINE int toBoolInt(const waavs::ByteSpan& inChunk);
 
 // given an input character representing a hex digit
 // return the decimal value of that hex digit
-// BUGBUG - This assumes valid input.  No error checking is done.
+// BUGBUG - This assumes valid input.  
+// No error checking is done. The input is presumed to be valid
 static INLINE uint8_t  hexToDec(const uint8_t vIn)
 {
     if (vIn >= '0' && vIn <= '9')

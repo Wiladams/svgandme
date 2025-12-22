@@ -147,9 +147,9 @@ namespace waavs {
         {
             // this MUST be done, or node registrations will not happen
             //auto sFactory = getFactory();
+            auto doc = SVGDocument::createFromChunk(srcChunk, fh, w, h, ppi);
 
-            auto doc = std::make_shared<SVGDocument>(fh, w, h, ppi);
-            if (!doc->loadFromChunk(srcChunk, fh))
+            if (doc == nullptr)
             {
                 printf("SVGFactory::CreateFromChunk() failed to load\n");
                 return nullptr;

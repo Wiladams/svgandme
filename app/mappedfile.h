@@ -69,15 +69,17 @@ namespace waavs
                 fData = nullptr;
             }
 
-            if (fMapHandle != INVALID_HANDLE_VALUE) {
+            if (fMapHandle != INVALID_HANDLE_VALUE && fMapHandle!=nullptr) 
+            {
                 ::CloseHandle(fMapHandle);
                 fMapHandle = INVALID_HANDLE_VALUE;
             }
 
-            if (fFileHandle != INVALID_HANDLE_VALUE) {
+            if (fFileHandle != INVALID_HANDLE_VALUE && fFileHandle != nullptr) {
                 ::CloseHandle(fFileHandle);
                 fFileHandle = INVALID_HANDLE_VALUE;
             }
+            fIsValid = false;
 
             return true;
         }
@@ -117,7 +119,14 @@ namespace waavs
             // if we're opening for writing, then we don't want to 
             // limit the size in CreateFileMappingA
             LARGE_INTEGER psize;
-            ::GetFileSizeEx(filehandle, &psize);
+            auto err = ::GetFileSizeEx(filehandle, &psize);
+            if (err == 0) 
+            {
+                // failed to get the file size
+                ::CloseHandle(filehandle);
+                filehandle = INVALID_HANDLE_VALUE;
+                return {};
+            }
             int64_t size = psize.QuadPart;
 
             // Open mapping
@@ -129,7 +138,7 @@ namespace waavs
                 //error("Could not create file map: "..tostring(ffi.C.GetLastError()))
                 // close file handle and set it to invalid
                 ::CloseHandle(filehandle);
-                filehandle = INVALID_HANDLE_VALUE;
+                //filehandle = INVALID_HANDLE_VALUE;
 
                 return {};
             }
@@ -138,11 +147,12 @@ namespace waavs
             void* data = ::MapViewOfFile(maphandle, FILE_MAP_READ, 0, 0, 0);
             //print("MAP VIEW: ", m.map)
 
-            if (data == nullptr) {
+            if (data == nullptr) 
+            {
                 ::CloseHandle(maphandle);
                 ::CloseHandle(filehandle);
-                maphandle = INVALID_HANDLE_VALUE;
-                filehandle = INVALID_HANDLE_VALUE;
+                //maphandle = INVALID_HANDLE_VALUE;
+                //filehandle = INVALID_HANDLE_VALUE;
 
                 return {};
             }

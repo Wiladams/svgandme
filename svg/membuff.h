@@ -120,8 +120,6 @@ namespace waavs {
 			// Leave 'other' in a valid, but empty state
 			other.fData = nullptr;
 			other.fSize = 0;
-
-			printf("MemBuff - END\n");
 			
 			return *this;
 		}

@@ -10,7 +10,7 @@
 #include <iterator>
 
 #include "xmlscan.h"
-#include "collections.h"
+//#include "collections.h"
 
 // Core data structures and types to support CSS parsing
 

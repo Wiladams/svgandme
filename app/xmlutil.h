@@ -5,7 +5,7 @@
 #include <map>
 
 #include "xmlscan.h"
-#include "collections.h"
+//#include "collections.h"
 
 namespace waavs {
 
@@ -96,13 +96,15 @@ namespace waavs {
         case XML_ELEMENT_TYPE_START_TAG:
             printf("START_TAG: ");
             printChunk(elem.nameSpan());
-            printXmlAttributes(elem);
+            if (elem.data())
+                printXmlAttributes(elem);
             break;
 
         case XML_ELEMENT_TYPE_SELF_CLOSING:
             printf("SELF_CLOSING: ");
             printChunk(elem.nameSpan());
-            printXmlAttributes(elem);
+            if (elem.data())
+                printXmlAttributes(elem);
             break;
 
         case XML_ELEMENT_TYPE_END_TAG:

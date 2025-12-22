@@ -217,7 +217,6 @@
         // 50%
         // 50
 
-        int i = 0;
         uint8_t rgbi[4]{};
 
         // Get the first token, which is red
@@ -230,7 +229,8 @@
             return 1;
         }
 
-        while (num)
+        int i = 0;
+        while (num && i<4)
         {
             SVGDimension cv{};
             cv.loadFromChunk(num);

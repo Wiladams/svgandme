@@ -4,7 +4,7 @@
 
 #include "blend2d.h"
 #include "fonthandler.h"
-#include "collections.h"
+//#include "collections.h"
 #include "svgenums.h"
 #include "imanagesvgstate.h"
 #include "irendersvg.h"

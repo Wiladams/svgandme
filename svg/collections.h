@@ -6,7 +6,7 @@
 
 namespace waavs 
 {
-
+    
     template <typename T>
     struct WSListNode {
         T value;
@@ -171,6 +171,7 @@ namespace waavs
         }
     };
     
+
 
     // Implementation of a Stack
     // first in last out

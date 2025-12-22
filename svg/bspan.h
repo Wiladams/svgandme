@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cctype>
 #include <cmath>
 #include <cstdint>
 #include <cstring>  // for std::memchr
