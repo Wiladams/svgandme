@@ -177,6 +177,9 @@ namespace waavs {
 
         // Extend the data chunk until we find the closing ]]>
         ByteSpan endCData = chunk_find_cstr(src, "]]>");
+        if (!endCData)
+            return false;
+
         dataChunk.fEnd = endCData.fStart;
 
         src = endCData;
@@ -230,6 +233,8 @@ namespace waavs {
 
 		// skip until we see the closing '>' character
 		src = chunk_find_char(src, '>');
+        if (!src)
+            return false;
 
         dataChunk.fEnd = src.fStart;
 
@@ -271,6 +276,9 @@ namespace waavs {
 
 			// Find the closing ']>'
 			ByteSpan endDTD = chunk_find_cstr(src, "]>");
+            if (!endDTD)
+                return false;
+
 			dataChunk = src;
 			dataChunk.fEnd = endDTD.fStart;
 
@@ -348,6 +356,9 @@ namespace waavs {
 
 				// Find the closing ']>'
 				ByteSpan endDTD = chunk_find_cstr(src, "]>");
+                if (!endDTD)
+                    return false;
+
 				dataChunk = src;
 				dataChunk.fEnd = endDTD.fStart;
 
@@ -378,8 +389,9 @@ namespace waavs {
     //   - st.fState.input.fStart now points to the first byte *after* '?'.
     //
     // Behavior:
-    //   - Uses your existing readPI() to parse:
+    //   - Use readPI() to parse:
     //        <?target    content   ?>
+    // 
     //   - Advances the token state's input past the closing '?>'.
     //   - Sets st.fState.inTag = false (we are now outside any tag).
     //   - Fills 'elem' with either XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION

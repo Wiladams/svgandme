@@ -22,7 +22,7 @@ ViewNavigator gNavigator{};
 
 // Animation management
 bool gAnimate{ false };
-bool gPerformTransform{ true };
+bool gPerformTransform{ false };
 bool gAutoGrow{ false };
 
 double gRecordingStart{ 0 };
@@ -74,7 +74,10 @@ static void drawDocument()
 {
 	// setup any transform
 	if (gPerformTransform)
-		getDrawingContext()->transform(gNavigator.sceneToSurfaceTransform());
+	{
+		const BLMatrix2D & m = gNavigator.sceneToSurfaceTransform();
+		getDrawingContext()->transform(m);
+	}
 
 
 	// draw the document into the ctx
@@ -95,12 +98,26 @@ static void draw()
 	drawForeground();
 }
 
-static void resetView()
+static void resetView(const BLRect &bd, const BLRect &fr)
 {
 	gNavigator.resetNavigator();
-	gNavigator.setFrame(BLRect(0, 0, appFrameWidth, appFrameHeight));
-	gNavigator.setBounds(BLRect(0, 0, appFrameWidth, appFrameHeight));
+	gNavigator.setFrame(fr);
+	gNavigator.setBounds(bd);
+}
 
+static void handleViewChange(const bool& changeOccured)
+{
+	if (gDoc == nullptr)
+		return;
+
+	//printf("svgviewer::handleChange\n");
+	draw();
+
+	// we do this screenRefresh here because mouse dragging
+	// runs the window in a modal way, starving us of regular
+	// redraw messages, based on timing, so we force a redraw
+	// message through the message queue
+	refreshScreenNow();
 }
 
 static void handleChange(const bool& changeOccured)
@@ -134,6 +151,7 @@ static void onFileDrop(const FileDropEvent& fde)
 		// Create a new SVGDocument for each file
 		// And create a window to display each document
 		//double startTime = seconds();
+        // BUGBUG - may need to explicityly unload previous document
 		gDoc = docFromFilename(fde.filenames[i].c_str());
 
 
@@ -151,14 +169,10 @@ static void onFileDrop(const FileDropEvent& fde)
 			
 			BLRect objFr = gDoc->getBBox();
 			//auto objFr = gDoc->frame();
-			
-			resetView();
+            BLRect viewFr{ 0,0, (double)appFrameWidth, (double)appFrameHeight };
 
-
-			
 			// Set the initial viewport
-			gNavigator.setFrame({ 0, 0, (double)appFrameWidth, (double)appFrameHeight });
-			gNavigator.setBounds(objFr);
+			resetView(objFr, viewFr);
 			
 			handleChange(true);
 
@@ -175,11 +189,14 @@ static void onFrameEvent(const FrameCountEvent& fe)
 	//printf("frameEvent: %d\n", (int)fe.frameCount);
 	//printf("Actual Frame Rate: %d\n", (int)(fe.frameCount / seconds()));
 	
-
-	handleChange(true);
+	//handleChange(true);
+	if (gAnimate)
+	{
+		gDoc->update(gDoc.get());
+		draw();
+	}
 
 	refreshScreenNow();
-
 
 	getRecorder()->saveFrame();
 }
@@ -301,7 +318,7 @@ void setup()
 	// Set the initial viewport
 	//gViewPort.surfaceFrame({0, 0, (double)canvasWidth, (double)canvasHeight});
 	gNavigator.setFrame({ 0, 0, (double)appFrameWidth, (double) appFrameHeight });
-	gNavigator.subscribe(handleChange);
+	gNavigator.subscribe(handleViewChange);
 	
 	// Load extension elements
 	DisplayCaptureElement::registerFactory();

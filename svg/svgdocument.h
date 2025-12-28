@@ -31,7 +31,6 @@
 
 #include "maths.h"
 
-//#include "xmliter.h"
 #include "xmlutil.h"
 
 #include "fonthandler.h"
@@ -55,7 +54,8 @@
 
 
 
-namespace waavs {
+namespace waavs 
+{
 
     //
     struct SVGDocument : public  SVGGraphicsElement, public IAmGroot 
@@ -112,7 +112,9 @@ namespace waavs {
             resetFromSpan(srcChunk, fh, w, h, ppi);
         }
         
-        
+        ~SVGDocument() = default;
+
+
         void resetFromSpan(const ByteSpan& srcChunk, FontHandler* fh, const double w, const double h, const double ppi=96)
         {
             // clear out the old document

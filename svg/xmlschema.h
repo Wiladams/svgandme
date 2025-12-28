@@ -4,6 +4,21 @@
 //#include "bspan.h"
 #include "xmltoken.h"
 
+// Forward declarations for convenience
+namespace waavs 
+{
+	static bool isXsdName(const ByteSpan& inChunk) noexcept;
+	static bool isXsdNCName(const ByteSpan& inChunk) noexcept;
+	static bool isXsdNMToken(const ByteSpan& inChunk) noexcept;
+
+	static bool parseXsdNmtoken(const ByteSpan& inChunk, ByteSpan& outValue) noexcept;
+	static bool parseXsdName(const ByteSpan& inChunk, ByteSpan& outValue) noexcept;
+	static bool parseXsdNCName(const ByteSpan& inChunk, ByteSpan& outValue) noexcept;
+
+	static bool readXsdName(ByteSpan& src, ByteSpan& name) noexcept;
+
+}
+
 // These routines validate xml names
 // They only support an ASCII subset, and not the full unicode
 //

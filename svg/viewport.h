@@ -146,24 +146,25 @@ namespace waavs {
 	// 
 	// The ViewportTransformer represents the mapping between a viewport and a viewbox.
 	// 
-	// The surfaceFrame, is where the image is projected.  This is typically
+	// The viewportFrame, is where the image is projected.  This is typically
 	// the actual window on the screen the user is interacting with.
 	// 
-	// The sceneFrame, is the content that is being looked at.  So, if you're looking
-	// through a window as a painting outside, the sceneFrame is the painting.
-	// The 'scene' is assumed to be an infinite canvas.  The 'sceneFrame' is the portion
-	// of that infinite canvas you want to actually show up within the surfaceFrame.
+	// The viewboxFrame, is the content that is being looked at.  So, if you're looking
+	// through a window as a painting outside, the viewboxFrame is the painting.
+	// The 'viewbox' is assumed to be an infinite canvas.  The 'viewboxFrame' is the portion
+	// of that infinite canvas you want to actually show up within the viewportFrame.
 	// 
 	// Interesting operations:
 	// 1) If you have a bounded thing, like a bitmap, and you want it to fill the surface
-	// you can specify the sceneFrame(BLRect(0,0,,img.width, img.height))
-	// 2) If you want to do some 'scolling', you send a sceneFrame to equal the size
-	// of the surfaceFrame initially, then use the translateBy(), and translateTo() functions
+	// you can specify the viewboxFrame(BLRect(0,0,,img.width, img.height))
+	// 
+	// 2) If you want to do some 'panning', you send a viewboxFrame to equal the size
+	// of the viewportFrame initially, then use the translateBy(), and translateTo() functions
 	// to adjust the position of that boundary against the scene you're scrolling.
 	// 
 	// The viewport allows you to do typical 'camera' kinds of movements, like pan, zoom,
-	// lookAt, and the like, and returns you the transformation matrix that will
-	// be applied to a drawing context.
+	// lookAt, and the like, and returns you the transformation matrix that you can 
+	// apply to a drawing context.
 	//
 
 	struct ViewportTransformer

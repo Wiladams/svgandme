@@ -2,6 +2,7 @@
 
 #include "viewport.h"
 #include "pubsub.h"
+#include "uievent.h"
 
 namespace waavs {
 	// ViewNavigator
