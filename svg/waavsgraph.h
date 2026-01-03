@@ -24,72 +24,6 @@ namespace waavs {
 	{
 		return absdiff(a,b) <= epsilon;
 	}
-
-
-
-	// struct Color
-	// A simple structure to hold a color
-	// constexpr is used everywhere so the Color structure can 
-	// be used as a literal value.
-	// The arithmetic operators are implemented so interpolation can be done
-	//
-	struct Color {
-		float r, g, b, a;
-
-		constexpr Color() : r(0), g(0), b(0), a(0) {}
-		constexpr Color(float r, float g, float b, float a)
-			: r(r), g(g), b(b), a(a) {
-		}
-
-        // Note:  There's more than one way to compute luminance
-		// Relative luminance
-		// Perceived lightness
-		// Luma
-		// 
-		// Perceptual luminance (W3C)
-		constexpr double luminance() const {
-			return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-		}
-
-		// Euclidean RGB distance
-		constexpr float colorDistance(const Color& other) const {
-			float dr = r - other.r;
-			float dg = g - other.g;
-			float db = b - other.b;
-			return dr * dr + dg * dg + db * db;
-		}
-
-		// Perceptual match: considers luminance and RGB delta
-		constexpr bool perceptualMatch(const Color& other,
-			double maxLumaDiff = 0.01,
-			double maxColorDist = 0.001,
-			double maxAlphaDiff = 0.01) const
-		{
-			return absdiff(luminance(), other.luminance()) <= maxLumaDiff &&
-				colorDistance(other) <= maxColorDist &&
-				absdiff(a, other.a) <= maxAlphaDiff;
-		}
-
-		constexpr Color operator+(const Color& other) const {
-			return Color(r + other.r, g + other.g, b + other.b, a + other.a);
-		}
-
-		constexpr Color operator-(const Color& other) const {
-			return Color(r - other.r, g - other.g, b - other.b, a - other.a);
-		}
-
-		constexpr Color operator*(double scalar) const {
-			return Color(r * scalar, g * scalar, b * scalar, a * scalar);
-		}
-
-		// Approximate equality
-		constexpr bool equals(const Color& other, double epsilon = 1e-6) const {
-			return nearlyEqual(r, other.r, epsilon) &&
-				nearlyEqual(g, other.g, epsilon) &&
-				nearlyEqual(b, other.b, epsilon) &&
-				nearlyEqual(a, other.a, epsilon);
-		}
-	};
 }
 */
 
@@ -142,6 +76,37 @@ namespace waavs
 
 namespace waavs
 {
+	/// <summary>
+	/// Return the type of arguments that are associated with a given segment command
+	/// </summary>
+	/// <param name="cmdIndex"></param>
+	/// <returns>a null terminated string of the argument types, or nullptr on invalid command</returns>
+	/// c - number
+	/// f - flag
+	/// r - radius
+	///
+
+	static const char* getSegmentArgTypes(unsigned char cmdIndex) noexcept {
+		static std::array<const char*, 128> lookupTable = [] {
+			std::array<const char*, 128> table{}; // Default initializes all to nullptr
+			table['A'] = table['a'] = "ccrffcc";  // ArcTo
+			table['C'] = table['c'] = "cccccc";   // CubicTo
+			table['H'] = table['h'] = "c";        // HLineTo
+			table['L'] = table['l'] = "cc";       // LineTo
+			table['M'] = table['m'] = "cc";       // MoveTo
+			table['Q'] = table['q'] = "cccc";     // QuadTo
+			table['S'] = table['s'] = "cccc";     // SmoothCubicTo
+			table['T'] = table['t'] = "cc";       // SmoothQuadTo
+			table['V'] = table['v'] = "c";        // VLineTo
+			table['Z'] = table['z'] = "";         // Close
+			return table;
+			}();
+
+		return cmdIndex < 128 ? lookupTable[cmdIndex] : nullptr;
+	}
+
+
+
 	// SVGPathCommand
 	// Represents the individual commands in an SVG path
 	enum class SVGPathCommand : uint8_t
@@ -182,15 +147,21 @@ namespace waavs
 
 	// struct PathSegment
 	// 
-    // This structure represents a single segment of an SVG path.
-    // When parsing an SVG path, you get a series of segments,
-    // Each segment has a command, and a set of arguments.
+	// This structure represents a single segment of an SVG path.
+	// When parsing an SVG path, you get a series of segments,
+	// Each segment has a command, and a set of arguments.
 	//
+	// Note:  By using the iteration field, we can do a rudimentary
+	// run length encoding.  This would work well for relative path segments,
+	// like a series of small line segments describing a circle.
+	// 
 	// BUGBUG - maybe need packing pragma to ensure tight packing
+	static constexpr size_t kMaxPathArgs = 8;
+
 	struct PathSegment final
 	{
-		float fArgs[8]{ 0.0 };             // 32 bytes
-		char fArgTypes[8]{ 0 };             // 8 bytes
+		float fArgs[kMaxPathArgs]{ 0.0 };             // 32 bytes
+		char fArgTypes[kMaxPathArgs]{ 0 };             // 8 bytes
 		uint8_t fArgCount{ 0 };             // 1 byte
 		SVGPathCommand fSegmentKind;      // 1 byte
 		uint16_t fIteration{ 0 };            // 2 byte
@@ -208,22 +179,28 @@ namespace waavs
 			fSegmentKind = kind;
 			fIteration = iteration;
 
+			// limit the number of args to copy
+			size_t maxArgsToCopy = std::min(static_cast<size_t>(argcount), kMaxPathArgs);
+
 			if (args != nullptr)
-				std::copy_n(args, argcount, fArgs);
+				std::copy_n(args, maxArgsToCopy, fArgs);
 			if (argtypes != nullptr)
-				std::copy_n(argtypes, argcount, fArgTypes);
+				std::copy_n(argtypes, maxArgsToCopy, fArgTypes);
 		}
 
 		const float* args() const { return fArgs; }
 		void setArgs(const float* args, uint8_t argcount)
 		{
+			// limit the number of args to copy
+			size_t maxArgsToCopy = std::min(static_cast<size_t>(argcount), kMaxPathArgs);
+
 			if (args != nullptr)
 			{
-				std::copy_n(args, argcount, fArgs);
-				fArgCount = argcount;
+				std::copy_n(args, maxArgsToCopy, fArgs);
+				fArgCount = maxArgsToCopy;
 			}
 			else {
-				std::fill_n(fArgs, 8, 0.0f);
+				std::fill_n(fArgs, maxArgsToCopy, 0.0f);
 				fArgCount = 0;
 			}
 		}

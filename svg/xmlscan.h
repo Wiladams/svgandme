@@ -31,13 +31,18 @@
 //
 
 
-#include "bspan.h"
 
 #include "xmltypes.h"
 #include "xmltoken.h"
 #include "xmltokengen.h"
 #include "xmlschema.h"
 
+
+namespace waavs {
+    static constexpr charset xmlwsp(" \t\r\n");
+    static constexpr charset xmlalpha("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
+    static constexpr charset xmldigit("0123456789");
+}
 
 namespace waavs {
     // XML_ITERATOR_STATE
@@ -81,19 +86,26 @@ namespace waavs {
     static bool readPI(ByteSpan& src, ByteSpan& target, ByteSpan& rest);
     static bool readComment(ByteSpan& src, ByteSpan& dataChunk) noexcept;
     static bool readCData(ByteSpan& src, ByteSpan& dataChunk) noexcept;
-    static bool readDoctype(ByteSpan& src, ByteSpan& dataChunk) noexcept;
     static bool readEntityDeclaration(ByteSpan& src, ByteSpan& dataChunk) noexcept;
+    static bool readDoctype(ByteSpan& src, ByteSpan& dataChunk) noexcept;
+
+
+    inline bool isAllXmlWhitespace(const ByteSpan& span) noexcept;
+    static bool skipAttributes(XmlIterator& iter, ByteSpan& attrSpan);
+
+    static bool parsePIFromTokens(XmlIterator& st, XmlElement& elem) noexcept;
+    static bool parseEndTagFromTokens(XmlIterator& st, XmlElement& elem) noexcept;
+    static bool parseStartOrSelfClosingFromTokens(XmlIterator& iter, XmlElement& elem, const XmlToken& firstNameToken);
+    static bool parseBangConstructFromTokens(XmlIterator& st, XmlElement& elem) noexcept;
+
+    static bool scanAttributes(XmlAttributeCollection& attrs, const ByteSpan& inChunk) noexcept;
+    static bool nextXmlElement(XmlIterator& iter, XmlElement& elem);
 
 }
 
 
 namespace waavs
 {
-    static constexpr charset xmlwsp(" \t\r\n");
-    static constexpr charset xmlalpha("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
-    static constexpr charset xmldigit("0123456789");
-
-
     // XML whitespace per your xmlwsp charset: " \t\r\n"
     inline bool isAllXmlWhitespace(const ByteSpan& span) noexcept
     {
@@ -477,6 +489,50 @@ namespace waavs {
         }
     }
 
+    // use the token stream to skip over the attributes, while retaining
+    // a byteSpan that represents those attributes.
+    // The attrSpan returns the beginning and ending of the attributes
+    // return 'false' if any error
+    // Note: assume we're already inside a tag, and have just consumed
+    // the tag name.
+    static bool skipAttributes(XmlIterator &iter, ByteSpan &attrSpan, XmlToken &endtok)
+    {
+        const unsigned char* attrStart = iter.fState.input.fStart;
+        XmlToken tok{};
+        // Scan until '>' (or '/>')
+        for (;;) {
+            if (!nextXmlToken(iter.fState, tok))
+                return false;   // EOF
+
+            if (tok.type == XML_TOKEN_GT) {
+                // normal end of tag
+                attrSpan.fStart = attrStart;
+                attrSpan.fEnd = tok.value.fStart - 1; // exclude '>'
+                endtok = tok;
+
+                return true;
+            }
+            else if (tok.type == XML_TOKEN_SLASH) {
+                // possible self-closing tag
+                if (!nextXmlToken(iter.fState, tok))
+                    return false;   // EOF
+                if (tok.type == XML_TOKEN_GT) {
+                    // self-closing tag
+                    attrSpan.fStart = attrStart;
+                    attrSpan.fEnd = tok.value.fStart - 2; // exclude '/>'
+                    return true;
+                }
+                else {
+                    // malformed
+                    return false;
+                }
+            }
+            // else, continue scanning attributes
+        }
+
+        return false;
+
+    }
 
     // parseStartOrSelfClosingFromTokens()
     // 
@@ -491,7 +547,6 @@ namespace waavs {
         const unsigned char* attrStart = iter.fState.input.fStart; // start of attributes-ish area
         bool selfClosing = false;
 
-        //src.skipWhile(chrWspChars);
 
         // Scan until '>' (or '/>')
         // we don't want to use the tokenizer here, because it will parse attributes
@@ -610,6 +665,25 @@ namespace waavs {
         return false;
     }
 
+
+    // scanAttributes()
+    // Given a chunk that contains attribute key value pairs
+    // separated by whitespace, parse them, and store the key/value pairs 
+    // in the fAttributes map
+    static bool scanAttributes(XmlAttributeCollection& attrs, const ByteSpan& inChunk) noexcept
+    {
+        ByteSpan src = inChunk;
+        ByteSpan key;
+        ByteSpan value;
+
+        while (readNextKeyAttribute(src, key, value))
+        {
+            attrs.addAttribute(key, value);
+        }
+
+        return true;
+    }
+    
     // nextXmlElement
     // 
     // A function to get the next element in an iteration
@@ -675,25 +749,7 @@ namespace waavs {
     }
 }
 
-namespace waavs {
-    // scanAttributes()
-// Given a chunk that contains attribute key value pairs
-// separated by whitespace, parse them, and store the key/value pairs 
-// in the fAttributes map
-    static bool scanAttributes(XmlAttributeCollection &attrs, const ByteSpan& inChunk) noexcept
-    {
-        ByteSpan src = inChunk;
-        ByteSpan key;
-        ByteSpan value;
 
-        while (readNextKeyAttribute(src, key, value))
-        {
-            attrs.addAttribute(key, value);
-        }
-
-        return true;
-    }
-}
 
 /*
 namespace waavs

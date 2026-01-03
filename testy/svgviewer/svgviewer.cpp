@@ -91,7 +91,7 @@ static void drawDocument()
 
 static void draw()
 {	
-	double startTime = seconds();
+	//double startTime = seconds();
 
 	drawBackground();
 	drawDocument();

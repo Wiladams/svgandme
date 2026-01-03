@@ -78,9 +78,9 @@ static void test_graph()
 
 int main(int argc, char** argv)
 {
-    //printMorseCode("SOS");
+    printMorseCode("SOS SAVE OUR SHIP");
     //test_pipeline();
-    test_graph();
+    //test_graph();
 
     return 0;
 }

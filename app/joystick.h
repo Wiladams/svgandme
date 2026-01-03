@@ -1,4 +1,7 @@
-#pragma once
+
+#ifndef JOYSTICK_H_INCLUDED
+#define JOYSTICK_H_INCLUDED
+
 
 #pragma comment(lib, "winmm.lib")
 
@@ -7,7 +10,8 @@
 #include "maths.h"
 #include "uievent.h"
 
-namespace waavs {
+namespace waavs 
+{
 	struct Joystick {
 		unsigned int fID;		// The joystick id
 		JOYINFOEX fInfo{};
@@ -60,7 +64,7 @@ namespace waavs {
 
 		bool getPosition(JoystickEvent& res)
 		{
-			JOYINFOEX info{ 0 };
+			JOYINFOEX info{};
 			info.dwSize = sizeof(info);
 			info.dwFlags = JOY_RETURNALL;
 
@@ -106,3 +110,5 @@ namespace waavs {
 	};
 
 }
+
+#endif // JOYSTICK_H_INCLUDED

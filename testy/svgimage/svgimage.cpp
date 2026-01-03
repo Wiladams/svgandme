@@ -19,10 +19,15 @@
 
 using namespace waavs;
 
+// These determine the size of the output image
+// The drawing is scaled to fit within this size
+// Change it to whatever you want
 #define CAN_WIDTH 1920
 #define CAN_HEIGHT 1280
 
 
+// The SVG library itself doesn't know anything about the
+// file system, so this routines helps load fonts from a director
 static void loadFontDirectory(const char* dir)
 {
 	const std::filesystem::path fontPath(dir);
@@ -46,7 +51,8 @@ static void loadFontDirectory(const char* dir)
 	}
 }
 
-
+// Here we load up whatever system fonts our drawing will use
+// The default example here loads the Windows system fonts
 static void setupFonts()
 {
 	loadFontDirectory("c:\\Windows\\Fonts");

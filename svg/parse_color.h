@@ -6,6 +6,8 @@
 #include "bspan.h"
 #include "converters.h"
 #include "coloring.h"
+#include "svgdatatypes.h"
+
 
 //======================================================
 // Definition of SVG colors

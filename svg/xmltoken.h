@@ -14,6 +14,8 @@ enum XmlTokenType {
     XML_TOKEN_NAME,     // NMTOKEN or element/attribute name
     XML_TOKEN_STRING,   // Quoted attribute value
     XML_TOKEN_TEXT,     // Raw character content
+
+    XML_TOKEN_SELF_CLOSE,   // />
 };
 
 
@@ -46,7 +48,14 @@ namespace waavs {
         ByteSpan value;
         bool inTag = false;
 
-        void reset(XmlTokenType t = XML_TOKEN_INVALID, ByteSpan v = {}, bool inTagFlag=false) noexcept 
+        void reset() noexcept
+        {
+            type = XML_TOKEN_INVALID;
+            value = {};
+            inTag = false;
+        }
+
+        void reset(XmlTokenType t, const ByteSpan v, bool inTagFlag) noexcept 
         {
             type = t;
             value = v;

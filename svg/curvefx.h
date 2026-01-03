@@ -3,6 +3,7 @@
 #include "curves.h"
 #include "pipeline.h"
 
+
 namespace waavs {
 
 	struct CurveSegment //: public IParametricSegment 

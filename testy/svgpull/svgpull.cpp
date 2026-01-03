@@ -53,7 +53,7 @@ static void testAViewport(const char *xmlattrs)
 {
     // Setup an XMLAttribute collection from a static string
     XmlAttributeCollection attrs{};
-	attrs.scanAttributes(xmlattrs);
+	scanAttributes(attrs, xmlattrs);
     
     // Create a viewport, and load the attributes
     SVGPortal vp{};

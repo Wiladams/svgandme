@@ -1,11 +1,22 @@
-#pragma once
+#ifndef XMLUTIL_H_INCLUDED
+#define XMLUTIL_H_INCLUDED
+
 
 
 
 #include <map>
 
 #include "xmlscan.h"
-//#include "collections.h"
+
+// Forward declarations
+namespace waavs 
+{
+    static void printXmlAttributes(const XmlElement& elem);
+    static void printXmlAttributeCollection(const XmlAttributeCollection& attrColl);
+    static void printXmlElement(const XmlElement& elem);
+
+}
+
 
 namespace waavs {
 
@@ -125,3 +136,4 @@ namespace waavs {
 
 }
 
+#endif // XMLUTIL_H_INCLUDED

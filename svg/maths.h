@@ -314,7 +314,7 @@ namespace waavs {
 
         };
 
-
+        constexpr vec4f(float X, float Y, float Z, float W) : x(X), y(Y), z(Z), w(W) {}
 
         INLINE float& operator[](int i);
         INLINE const float& operator[](int i) const;
@@ -905,10 +905,10 @@ namespace waavs
 
     // Small Fixed-size matrices stored in column major format.
     struct mat4f {
-        vec4f x = { 1, 0, 0, 0 };
-        vec4f y = { 0, 1, 0, 0 };
-        vec4f z = { 0, 0, 1, 0 };
-        vec4f w = { 0, 0, 0, 1 };
+        vec4f x = vec4f(1, 0, 0, 0);
+        vec4f y = vec4f(0, 1, 0, 0);
+        vec4f z = vec4f(0, 0, 1, 0);
+        vec4f w = vec4f(0, 0, 0, 1);
 
         INLINE vec4f& operator[](int i);
         INLINE const vec4f& operator[](int i) const;
@@ -1453,9 +1453,9 @@ namespace waavs
 
     // Vector operations.
     INLINE vec4f operator+(const vec4f& a) { return a; }
-    INLINE vec4f operator-(const vec4f& a) { return { -a.x, -a.y, -a.z, -a.w }; }
+    INLINE vec4f operator-(const vec4f& a) { return vec4f(-a.x, -a.y, -a.z, -a.w);}
     INLINE vec4f operator+(const vec4f& a, const vec4f& b) {
-        return { a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w };
+        return vec4f( a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w );
     }
     INLINE vec4f operator+(const vec4f& a, float b) {
         return { a.x + b, a.y + b, a.z + b, a.w + b };

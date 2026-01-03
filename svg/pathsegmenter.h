@@ -39,7 +39,8 @@
 
 
 
-namespace waavs {
+namespace waavs 
+{
 	// Used for the iterator
 	// Any  parameters we want to pass along to the
 	// routines doing the segmentation
@@ -79,39 +80,17 @@ namespace waavs {
 			return !remains.empty();
 		}
 	};
+
+	struct SVGSegmentIterator {
+        SVGSegmentParseParams fParams{};
+        SVGSegmentParseState fState;
+	 };
 }
 
 
 namespace waavs {
 	
-	/// <summary>
-	/// Return the type of arguments that are associated with a given segment command
-	/// </summary>
-	/// <param name="cmdIndex"></param>
-	/// <returns>a null terminated string of the argument types, or nullptr on invalid command</returns>
-	/// c - number
-	/// f - flag
-	/// r - radius
-	///
 
-	static const char* getSegmentArgTypes(unsigned char cmdIndex) noexcept {
-		static std::array<const char*, 128> lookupTable = [] {
-			std::array<const char*, 128> table{}; // Default initializes all to nullptr
-			table['A'] = table['a'] = "ccrffcc";  // ArcTo
-			table['C'] = table['c'] = "cccccc";   // CubicTo
-			table['H'] = table['h'] = "c";        // HLineTo
-			table['L'] = table['l'] = "cc";       // LineTo
-			table['M'] = table['m'] = "cc";       // MoveTo
-			table['Q'] = table['q'] = "cccc";     // QuadTo
-			table['S'] = table['s'] = "cccc";     // SmoothCubicTo
-			table['T'] = table['t'] = "cc";       // SmoothQuadTo
-			table['V'] = table['v'] = "c";        // VLineTo
-			table['Z'] = table['z'] = "";         // Close
-			return table;
-			}();
-
-		return cmdIndex < 128 ? lookupTable[cmdIndex] : nullptr;
-	}
 
 	//
 	// readNextSegmentCommand
@@ -119,7 +98,7 @@ namespace waavs {
 	// an SVG path.  The state is updated with the new command, and the numeric
 	// arguments to go with it.
 	//
-	static bool readNextSegmentCommand(SVGSegmentParseParams& params, SVGSegmentParseState& cmdState)
+	static bool readNextSegmentCommand(SVGSegmentParseParams& params, SVGSegmentParseState& cmdState, PathSegment &seg)
 	{
 		constexpr charset leadingChars("0123456789.+-");          // digits, symbols, and letters found at start of numbers
 		constexpr  charset pathWsp = chrWspChars + ',';
@@ -172,8 +151,10 @@ namespace waavs {
 				return false;
 			}
 
-			return true;
+			//return true;
 		}
+
+        seg = cmdState.seg;
 
 		return true;
 	}
@@ -193,10 +174,10 @@ namespace waavs {
 
 		bool next(PathSegment& seg) override
 		{
-			auto success = readNextSegmentCommand(fParams, fCmdState);
+			auto success = readNextSegmentCommand(fParams, fCmdState, seg);
 			if (!success)
 				return false;
-			seg = fCmdState.seg;
+			//seg = fCmdState.seg;
 
 			return true;
 		}

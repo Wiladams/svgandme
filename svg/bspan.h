@@ -1,4 +1,7 @@
-#pragma once
+#ifndef BSPAN_H_INCLUDED
+#define BSPAN_H_INCLUDED
+
+
 
 #include <cctype>
 #include <cmath>
@@ -1066,5 +1069,5 @@ namespace waavs {
 	}
 }
 
-
+#endif // BSPAN_H_INCLUDED
 

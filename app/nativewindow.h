@@ -247,8 +247,11 @@ namespace waavs
 
     public:
         User32WindowClass(const char* classOrAtom)
-            : fIsRegistered(false)
+            : fWndClass{}
+            , fIsRegistered(false)
             , fLastError(0)
+
+            , fClassName(nullptr)
             , fClassAtom(0)
         {
             // In this case, we're essentially doing a lookup
@@ -270,11 +273,12 @@ namespace waavs
         }
 
         User32WindowClass(const char* className, unsigned int classStyle, WNDPROC wndProc = nullptr)
-            :fLastError(0),
-            fClassAtom(0),
-            fClassName(nullptr),
-            fIsRegistered(false),
-            fWndClass{ 0 }
+            : fWndClass{}
+            , fIsRegistered(false)
+            ,fLastError(0)
+
+            , fClassName(nullptr)
+            ,fClassAtom(0)
         {
             if (className == nullptr) {
                 return;
@@ -321,13 +325,12 @@ namespace waavs
             // We want to pass that to the window creation routine
             auto pWin = new User32Window();
 
-            HMODULE hInst = fWndClass.hInstance;
+            //HMODULE hInst = fWndClass.hInstance;
 
             // Create the window handle
             int winxstyle = xstyle;
             int winstyle = style;
 
-            //HMODULE hInst = GetModuleHandleA(NULL);
             HWND winHandle = CreateWindowExA(
                 winxstyle,
                 fWndClass.lpszClassName,

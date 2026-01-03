@@ -83,7 +83,7 @@ namespace waavs {
         void name(const ByteSpan& aname) { fName = aname; }
         const ByteSpan& name() const { return fName; }
 
-        const bool visible() const { return fIsVisible; }
+        bool visible() const { return fIsVisible; }
         void visible(bool visible) { fIsVisible = visible; }
 
         virtual void fixupStyleAttributes(IRenderSVG* ctx, IAmGroot* groot) = 0;
@@ -334,7 +334,7 @@ namespace waavs {
         bool fIsStructural{ true };
 		XmlElement fSourceElement{};
         
-       virtual  std::shared_ptr<SVGVisualProperty> getVisualProperty(const ByteSpan& name) const = 0;
+       virtual  std::shared_ptr<SVGVisualProperty> getVisualProperty(const ByteSpan& name) = 0;
 
        bool isStructural() const { return fIsStructural; }
        void isStructural(bool aStructural) { fIsStructural = aStructural; }
@@ -498,7 +498,7 @@ namespace waavs {
 			fAttributes.addAttribute(key,value);
 		}
 
-        std::shared_ptr<SVGVisualProperty> getVisualProperty(const ByteSpan& name) const noexcept
+        std::shared_ptr<SVGVisualProperty> getVisualProperty(const ByteSpan& name) override
         {
             auto it = fVisualProperties.find(name);
             if (it != fVisualProperties.end())

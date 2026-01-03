@@ -1,4 +1,5 @@
-#pragma once
+#ifndef APPWINDOW_H_INCLUDED
+#define APPWINDOW_H_INCLUDED
 
 
 // This is an implementation of a Window that is run in its own thread.
@@ -12,6 +13,7 @@
 #include <thread>
 #include <objbase.h>
 #include <vector>
+#include <memory>
 
 #include "nativewindow.h"
 #include "pubsub.h"
@@ -1224,5 +1226,6 @@ namespace waavs {
 
 }
 
+#endif // APPWINDOW_H_INCLUDED
 
 

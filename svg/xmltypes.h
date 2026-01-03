@@ -1,4 +1,6 @@
-#pragma once
+#ifndef XMLTYPES_H_INCLUDED
+#define XMLTYPES_H_INCLUDED
+
 
 
 #include <cstdint>
@@ -305,7 +307,8 @@ namespace waavs {
         ByteSpan scanNameSpan(ByteSpan data)
         {
             ByteSpan s = data;
-            bool start = false, end = false;
+            //bool start = false;
+            //bool end = false;
 
             if (!s)
                 return {};
@@ -313,10 +316,10 @@ namespace waavs {
             if (*s == '/')
             {
                 s++;
-                end = true;
+                //end = true;
             }
             else {
-                start = true;
+                //start = true;
             }
 
             fNameSpan = s;
@@ -447,3 +450,6 @@ namespace waavs {
 
     };
 }
+
+
+#endif // XMLTYPES_H_INCLUDED

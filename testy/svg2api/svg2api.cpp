@@ -5,7 +5,9 @@
 #pragma comment(lib, "blend2d.lib") // Link with Blend2D static library, on Windows
 
 #include <iostream>
+#include <memory>
 
+#include "blend2d/geometry.h"
 #include "mappedfile.h"
 #include "xmlutil.h"
 
@@ -51,7 +53,8 @@ static void testFile(int argc, char **argv)
         return;
 
 
-    waavs::ByteSpan s(mapped->data(), mapped->size());
+    waavs::ByteSpan s;
+    s.resetFromSize(mapped->data(), mapped->size());
 
     printADoc(s);
 

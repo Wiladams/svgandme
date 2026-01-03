@@ -1552,8 +1552,6 @@ namespace waavs {
             if (nullptr == groot)
                 return false;
 
-            ByteSpan str = inChunk;
-
             fClipNode = groot->findNodeByUrl(inChunk);
 
             if (fClipNode == nullptr) {
