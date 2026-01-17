@@ -30,7 +30,8 @@ namespace waavs {
 			const std::filesystem::path filePath(name);
 			fFilename = filePath.filename().string();
 
-			fDocIcon.resetFromDocument(doc, fDocument->fontHandler());
+			//fDocIcon.resetFromDocument(doc, fDocument->fontHandler());
+			fDocIcon.resetFromDocument(doc, FontHandler::getFontHandler());
 
 			ViewNavigator nav;
 			BLRect bbox = doc->getBBox();

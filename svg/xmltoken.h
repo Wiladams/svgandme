@@ -1,4 +1,6 @@
-#pragma once
+#ifndef XMLTOKEN_H_INCLUDED
+#define XMLTOKEN_H_INCLUDED
+
 
 #include "bspan.h"
 
@@ -37,7 +39,7 @@ namespace waavs {
         ByteSpan input;
         bool inTag = false;
 
-        bool empty() const noexcept { return input.empty(); }   
+        //bool empty() const noexcept { return input.empty(); }   
     };
 
 
@@ -150,3 +152,4 @@ namespace waavs {
     }
 }
 
+#endif // XMLTOKEN_H_INCLUDED

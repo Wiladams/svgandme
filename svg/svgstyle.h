@@ -35,7 +35,7 @@ namespace waavs {
 
 		SVGStyleNode(IAmGroot* ) :SVGGraphicsElement()
 		{
-			isStructural(false);
+			setIsStructural(false);
 		}
 
 		void loadContentNode(const XmlElement& elem, IAmGroot* groot) override

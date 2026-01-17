@@ -51,7 +51,7 @@ namespace waavs {
 		SVGMaskElement(IAmGroot* groot)
 			: SVGGraphicsElement()
 		{
-			isStructural(false);
+			setIsStructural(false);
 			//fUseCacheIsolation = true;
 		}
 

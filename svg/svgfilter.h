@@ -84,7 +84,7 @@ namespace waavs {
 		SVGFilterElement(IAmGroot* )
 			: SVGGraphicsElement()
 		{
-			isStructural(false);
+			setIsStructural(false);
 		}
 
 		bool addImage(const std::string &name, BLImage &img)
@@ -162,7 +162,7 @@ namespace waavs {
 		SVGFeBlendElement(IAmGroot* )
 			: SVGGraphicsElement()
 		{
-			isStructural(true);
+			setIsStructural(true);
 		}
 	};
 	
@@ -197,7 +197,7 @@ namespace waavs {
 		SVGFeComponentTransferElement(IAmGroot* )
 			: SVGGraphicsElement()
 		{
-			isStructural(true);
+			setIsStructural(true);
 		}
 
 	};
@@ -235,7 +235,7 @@ namespace waavs {
 		SVGFeCompositeElement(IAmGroot* )
 			: SVGGraphicsElement()
 		{
-			isStructural(true);
+			setIsStructural(true);
 		}
 
 	};
@@ -271,7 +271,7 @@ namespace waavs {
 		SVGFeColorMatrixElement(IAmGroot* )
 			: SVGGraphicsElement()
 		{
-			isStructural(true);
+			setIsStructural(true);
 		}
 
 	};
@@ -306,7 +306,7 @@ namespace waavs {
 		SVGFeConvolveMatrixElement(IAmGroot* )
 			: SVGGraphicsElement()
 		{
-			isStructural(true);
+			setIsStructural(true);
 		}
 
 	};
@@ -342,7 +342,7 @@ namespace waavs {
 		SVGFeDiffuseLightingElement(IAmGroot* )
 			: SVGGraphicsElement()
 		{
-			isStructural(true);
+			setIsStructural(true);
 		}
 
 	};
@@ -378,7 +378,7 @@ namespace waavs {
 		SVGFeDisplacementMapElement(IAmGroot* )
 			: SVGGraphicsElement()
 		{
-			isStructural(true);
+			setIsStructural(true);
 		}
 
 	};
@@ -414,7 +414,7 @@ namespace waavs {
 		SVGFeDistantLightElement(IAmGroot* )
 			: SVGGraphicsElement()
 		{
-			isStructural(true);
+			setIsStructural(true);
 		}
 
 	};
@@ -452,7 +452,7 @@ namespace waavs {
 		SVGFeFloodElement(IAmGroot* )
 			: SVGGraphicsElement()
 		{
-			isStructural(true);
+			setIsStructural(true);
 		}
 	};
 
@@ -491,7 +491,7 @@ namespace waavs {
 		SVGFeGaussianBlurElement(IAmGroot* )
 			: SVGGraphicsElement()
 		{
-			isStructural(true);
+			setIsStructural(true);
 		}
 
 		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
@@ -532,7 +532,7 @@ namespace waavs {
 		SVGFeOffsetElement(IAmGroot* )
 			: SVGGraphicsElement()
 		{
-			isStructural(true);
+			setIsStructural(true);
 		}
 	};
 	
@@ -569,7 +569,7 @@ namespace waavs {
 		SVGFeTurbulenceElement(IAmGroot* )
 			: SVGGraphicsElement()
 		{
-			isStructural(true);
+			setIsStructural(true);
 		}
 	};
 }

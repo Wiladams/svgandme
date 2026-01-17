@@ -41,7 +41,7 @@ namespace waavs {
 
 		void setAspectAlign(const PreserveAspectRatio &preserve)
 		{
-			fPortal.preserveAspectRatio(preserve);
+			fPortal.setPreserveAspectRatio(preserve);
 		}
 		
 		void speedFactor(double newFac)
@@ -62,11 +62,21 @@ namespace waavs {
 		// Setting scene and surface frames
 		// setting and getting surface frame
 		void setFrame(const BLRect& fr) { fPortal.setViewportFrame(fr); }
-		const BLRect& frame() const { return fPortal.viewportFrame(); }
+		const BLRect frame() const 
+		{ 
+			BLRect vpFrame;
+			fPortal.getViewportFrame(vpFrame);
+			return vpFrame;
+		}
 
 		// setting and getting viewbox frame
-		void setBounds(const BLRect& fr) { fPortal.viewBoxFrame(fr); }
-		const BLRect& bounds() const { return fPortal.viewBoxFrame(); }
+		void setBounds(const BLRect& fr) { fPortal.setViewBoxFrame(fr); }
+		const BLRect bounds() const 
+		{ 
+			BLRect vbFrame;
+            fPortal.getViewBoxFrame(vbFrame);
+            return vbFrame;
+		}
 
 
 		BLPoint sceneToSurface(double x, double y) const
@@ -171,13 +181,18 @@ namespace waavs {
 		}
 		
 		// Horizontal mouse wheel, typpically on the side of the mouse
-		// Rotate around central point
+        // Rotate around the point under the currsor when the wheel is turned
 		void mouseHandleHWheel(float x, float y, float delta)
 		{
+            //BLPoint pivotVB = fPortal.mapViewportToViewBox(x, y);
+			BLPoint pivotVB = { x, y };
+
+            const double ang = waavs::radians(fBaseAngle * fSpeedFactor);
+
 			if (delta < 0)
-				rotateBy(waavs::radians(fBaseAngle*fSpeedFactor), x, y);
+				rotateBy(ang, pivotVB.x, pivotVB.y);
 			else
-				rotateBy(waavs::radians(-fBaseAngle * fSpeedFactor), x, y);
+				rotateBy(-ang, pivotVB.x, pivotVB.y);
 		}
 
 		void onMouseEvent(const MouseEvent& e)

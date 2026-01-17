@@ -19,10 +19,9 @@ using namespace waavs;
 std::shared_ptr<SVGDocument> gDoc{ nullptr };
 ViewNavigator gNavigator{};
 
-
 // Animation management
 bool gAnimate{ false };
-bool gPerformTransform{ false };
+bool gPerformTransform{ true };
 bool gAutoGrow{ false };
 
 double gRecordingStart{ 0 };
@@ -194,9 +193,9 @@ static void onFrameEvent(const FrameCountEvent& fe)
 	{
 		gDoc->update(gDoc.get());
 		draw();
+		refreshScreenNow();
 	}
 
-	refreshScreenNow();
 
 	getRecorder()->saveFrame();
 }

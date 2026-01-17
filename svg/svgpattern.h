@@ -91,7 +91,7 @@ namespace waavs {
 			fPatternTransform = BLMatrix2D::makeIdentity();
 			fContentTransform = BLMatrix2D::makeIdentity();
 
-			isStructural(false);
+			setIsStructural(false);
 		}
 
 

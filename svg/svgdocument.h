@@ -264,7 +264,7 @@ namespace waavs
 
             } while (iter.next());
 
-            needsBinding(true);
+            setNeedsBinding(true);
         }
 
  
@@ -308,7 +308,7 @@ namespace waavs
 
             this->bindSelfToContext(ctx, groot);
 
-            needsBinding(false);
+            setNeedsBinding(false);
         }
         
         // Bind to a context of a given size
@@ -341,7 +341,7 @@ namespace waavs
             
             ctx->pop();
 
-            needsBinding(false);
+            setNeedsBinding(false);
         }
         
         void drawSelf(IRenderSVG* ctx, IAmGroot*) override

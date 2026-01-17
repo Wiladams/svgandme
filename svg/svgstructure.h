@@ -27,7 +27,7 @@ namespace waavs {
 	// SVGSVGElement
 	// This is the root node of an entire SVG tree
 	//====================================================
-	struct SVGSVGElement : public SVGGraphicsElement // SVGContainer
+	struct SVGSVGElement : public SVGGraphicsElement
 	{
 		static void registerFactory()
 		{
@@ -42,13 +42,13 @@ namespace waavs {
 
 		}
 
-		SVGPortal fPortal;
+		SVGPortal fPortal;			// The coordinate system
 		bool fIsTopLevel{ false };	// Is this a top level svg element
 		
 		SVGSVGElement(IAmGroot* )
 			: SVGGraphicsElement()
 		{
-			needsBinding(true);
+			setNeedsBinding(true);
 		}
 
 		// setTopLevel
@@ -63,14 +63,18 @@ namespace waavs {
 		// to set the size of the node, but not the position.
 		// And svg node is NOT top level by default, and is explicitly set
 		// to be top level by the DOM constructor
-		void setTopLevel(bool isTopLevel) { fIsTopLevel = isTopLevel; }
+		void setTopLevel(bool isTop) 
+		{ 
+			fIsTopLevel = isTop; 
+		}
 		bool isTopLevel() const { return fIsTopLevel; }
 
 
 		BLRect frame() const override
 		{
-			return fPortal.viewportFrame();
-			//return fPortal.getBBox();
+			BLRect vpFrame{};
+			fPortal.getViewportFrame(vpFrame);
+			return vpFrame;
 		}
 
 		BLRect getBBox() const override
@@ -79,15 +83,54 @@ namespace waavs {
 		}
 
 		
-		void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*) override
+		void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot *groot) override
 		{
 			// printf("fixupSelfStyleAttributes\n");
-			fPortal.loadFromAttributes(fAttributes);
-
+			//fPortal.loadFromAttributes(fAttributes);
 		}
 
 		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{
+			// We primarily need to establish the coordinate system here
+			// It is a mix of intrinsic size, the canvas size, and the viewbox
+
+			BLRect intrinsicRect{};
+
+			double intrinsicW = 0;
+			double intrinsicH = 0;
+			double dpi = 96.0;
+
+			// Set canvas size and dpi from groot, if we have it
+			if (groot != nullptr)
+			{
+				intrinsicW = groot->canvasWidth();
+				intrinsicH = groot->canvasHeight();
+				dpi = groot->dpi();
+			}
+
+			// If the canvas size is not set, we use a default size
+			if (intrinsicW <= 0)
+				intrinsicW = 300;
+			if (intrinsicH <= 0)
+				intrinsicH = 150;
+
+			intrinsicRect = BLRect{ 0,0, intrinsicW, intrinsicH };
+
+
+			// 
+			// At this point, we know whether we're the top level svg element
+			// We need to figure out the viewport and viewbox settings
+			SVGVariableSize dimX; dimX.loadFromChunk(fAttributes.getAttribute("x"));
+			SVGVariableSize dimY;  dimY.loadFromChunk(fAttributes.getAttribute("y"));
+			SVGVariableSize dimWidth;  dimWidth.loadFromChunk(fAttributes.getAttribute("width"));
+			SVGVariableSize dimHeight; dimHeight.loadFromChunk(fAttributes.getAttribute("height"));
+
+			//fDimX.parseValue(srfFrame.x, ctx->getFont(), viewport.w, origin, dpi, SpaceUnitsKind::SVG_SPACE_USER);
+			//fDimY.parseValue(srfFrame.y, ctx->getFont(), viewport.h, origin, dpi, SpaceUnitsKind::SVG_SPACE_USER);
+			//fDimWidth.parseValue(srfFrame.w, ctx->getFont(), viewport.w, origin, dpi, SpaceUnitsKind::SVG_SPACE_USER);
+			//fDimHeight.parseValue(srfFrame.h, ctx->getFont(), viewport.h, origin, dpi, SpaceUnitsKind::SVG_SPACE_USER);
+
+			fPortal.loadFromAttributes(fAttributes);
 			fPortal.bindToContext(ctx, groot);
 		}
 
@@ -102,7 +145,6 @@ namespace waavs {
 			// We do an 'applyTransform' instead of 'setTransform'
 			// because there might already be a transform on the context
 			// and we want to build upon that, rather than replace it.
-			//ctx->setTransform(fViewport.sceneToSurfaceTransform());
 			ctx->applyTransform(fPortal.viewBoxToViewportTransform());
 			ctx->setViewport(getBBox());
 		}
@@ -342,7 +384,7 @@ namespace waavs {
 		SVGDefsNode(IAmGroot*)
 			: SVGGraphicsElement()
 		{
-			isStructural(false);
+			setIsStructural(false);
 			visible(false);
 		}
 
@@ -387,7 +429,7 @@ namespace waavs {
 		SVGDescNode(IAmGroot*)
 			: SVGGraphicsElement()
 		{
-			isStructural(false);
+			setIsStructural(false);
 			visible(false);
 		}
 

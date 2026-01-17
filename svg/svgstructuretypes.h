@@ -27,8 +27,7 @@
 
 namespace waavs 
 {
-    struct IAmGroot;        // forward declaration
-    struct IManageReferences;  // forward declaration
+    struct IAmGroot;            // forward declaration
 
     struct SVGObject
     {
@@ -51,11 +50,11 @@ namespace waavs
 
 
         const ByteSpan& id() const noexcept { return fId; }
-        void id(const ByteSpan& aid) noexcept { fId = aid; }
+        void setId(const ByteSpan& aid) noexcept { fId = aid; }
 
 
         bool needsBinding() const noexcept { return fNeedsBinding; }
-        void needsBinding(bool needsIt) noexcept { fNeedsBinding = needsIt; }
+        void setNeedsBinding(bool needsIt) noexcept { fNeedsBinding = needsIt; }
 
 
         virtual void bindToContext(IRenderSVG*, IAmGroot*) noexcept = 0;
@@ -70,6 +69,7 @@ namespace waavs
 
 
 namespace waavs {
+
     struct IViewable : public SVGObject
     {
         bool fIsVisible{ true };
@@ -114,7 +114,7 @@ namespace waavs {
         ByteSpan fRawValue;
 
 
-        SVGVisualProperty(IAmGroot*) :SVGObject(), fIsSet(false) { needsBinding(false); }
+        SVGVisualProperty(IAmGroot*) :SVGObject(), fIsSet(false) { setNeedsBinding(false); }
 
         SVGVisualProperty(const SVGVisualProperty& other) = delete;
         SVGVisualProperty& operator=(const SVGVisualProperty& rhs) = delete;
@@ -126,12 +126,12 @@ namespace waavs {
         void autoDraw(bool value) { fAutoDraw = value; }
         bool autoDraw() const { return fAutoDraw; }
 
+        void setRawValue(const ByteSpan& value) { fRawValue = value; }
         const ByteSpan& rawValue() const { return fRawValue; }
-		void setRawValue(const ByteSpan& value) { fRawValue = value; }
 
         virtual bool loadSelfFromChunk(const ByteSpan&)
         {
-            return true;
+            return false;
         }
 
         bool loadFromChunk(const ByteSpan& inChunk)
@@ -141,7 +141,7 @@ namespace waavs {
             if (!s)
                 return false;
 
-            fRawValue = s;
+            setRawValue(s);
 
             return this->loadSelfFromChunk(fRawValue);
         }
@@ -157,14 +157,15 @@ namespace waavs {
 
 		void bindToContext(IRenderSVG*, IAmGroot*) noexcept override
 		{
-            needsBinding(false);
-			// do nothing
+            // do nothing by default
+            setNeedsBinding(false);
+
 		}
 
-        
+        // Give an attribute a chance to update itself
         virtual void update(IAmGroot*) { ; }
 
-        // Apply propert to the context conditionally
+        // Apply property to the context
         virtual void drawSelf(IRenderSVG*, IAmGroot*) { ; }
 
         virtual void draw(IRenderSVG* ctx, IAmGroot* groot)
@@ -337,7 +338,7 @@ namespace waavs {
        virtual  std::shared_ptr<SVGVisualProperty> getVisualProperty(const ByteSpan& name) = 0;
 
        bool isStructural() const { return fIsStructural; }
-       void isStructural(bool aStructural) { fIsStructural = aStructural; }
+       void setIsStructural(bool aStructural) { fIsStructural = aStructural; }
        
     };
 }
@@ -413,11 +414,6 @@ namespace waavs {
     //================================================
     struct SVGGraphicsElement : public ISVGElement
     {
-        static constexpr int BUILD_STATE_INITIAL = 0;
-        static constexpr int BUILD_STATE_OPEN = 1;
-        static constexpr int BUILD_STATE_CLOSE = 2;
-
-        int buildState = BUILD_STATE_OPEN;
         BLVar fVar{};
 
         XmlAttributeCollection fPresentationAttributes{};
@@ -433,11 +429,9 @@ namespace waavs {
         std::vector<std::shared_ptr<IViewable>> fNodes{};
 
 
-
-
         SVGGraphicsElement()
         {
-            needsBinding(true);
+            setNeedsBinding(true);
         }
 
         const BLVar getVariant(IRenderSVG *ctx, IAmGroot *groot) noexcept override
@@ -627,7 +621,7 @@ namespace waavs {
             {
                 if (attrName == "id")
                 {
-                    id(attrValue);
+                    setId(attrValue);
                 }
                 else if (attrName == "style" && !attrValue.empty())
                 {
@@ -873,7 +867,7 @@ namespace waavs {
             // will need that when binding
             // ctx->setObjectFrame(getBBox());
 
-            needsBinding(false);
+            setNeedsBinding(false);
         }
 
         virtual void applyProperties(IRenderSVG* ctx, IAmGroot* groot)

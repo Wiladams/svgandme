@@ -53,7 +53,7 @@ namespace waavs {
 		SVGMarkerElement(IAmGroot* root)
 			: SVGGraphicsElement()
 		{
-			isStructural(false);
+			setIsStructural(false);
 		}
 
 		BLRect frame() const override

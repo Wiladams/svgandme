@@ -125,8 +125,8 @@ namespace waavs {
 			:SVGGraphicsElement()
 		{
 			fGradient.setExtendMode(BL_EXTEND_MODE_PAD);
-			isStructural(false);
-			needsBinding(true);
+			setIsStructural(false);
+			setNeedsBinding(true);
 		}
 		SVGGradient(const SVGGradient& other) = delete;
 
@@ -142,7 +142,7 @@ namespace waavs {
 		const BLVar getVariant(IRenderSVG *ctx, IAmGroot *groot) noexcept override
 		{
 			bindToContext(ctx, groot);
-			needsBinding(true);
+			setNeedsBinding(true);
 			BLVar tmpVar{};
 			tmpVar = fGradient;
 			return tmpVar;

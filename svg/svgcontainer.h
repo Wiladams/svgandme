@@ -25,7 +25,7 @@ namespace waavs {
         SVGContainer()
             : SVGGraphicsElement()
         {
-            needsBinding(true);
+            setNeedsBinding(true);
         }
 
         BLRect frame() const override

@@ -138,7 +138,7 @@ namespace waavs {
 		SVGImageElement(IAmGroot* root)
 			: SVGGraphicsElement() 
 		{
-			needsBinding(true);
+			setNeedsBinding(true);
 		}
 
 		BLRect frame() const override

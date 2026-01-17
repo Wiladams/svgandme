@@ -24,7 +24,10 @@ namespace waavs {
 
         BLRect getBBox() const
         {
-            return viewportFrame();
+            BLRect vpFrame{};
+            getViewportFrame(vpFrame);
+
+            return vpFrame;
         }
 
         
@@ -32,19 +35,25 @@ namespace waavs {
         //
         // Everything we need to establish the viewport should be in the attributes
         // so load it up, and establish the coordinate system
-		// x, y, width, height, viewBox, preserveAspectRatio
+		// x, y, 
+        // width, height, 
+        // viewBox, preserveAspectRatio
         //
 		// Load the non-bound attribute values here, for processing later
         // when we bind.
         bool loadFromAttributes(const XmlAttributeCollection& attrs)
         {
-            
+            PreserveAspectRatio aspect{};
+            getPreserveAspectRatio(aspect);
+
             // preserveAspectRatio
-            fPreserveAspectRatio.loadFromChunk(attrs.getAttribute("preserveAspectRatio"));
+            aspect.loadFromChunk(attrs.getAttribute("preserveAspectRatio"));
+            setPreserveAspectRatio(aspect);
 
 			// viewBox
-            fHasViewbox = parseViewBox(attrs.getAttribute("viewBox"), fViewBoxFrame);
-
+            BLRect vbFrame{};
+            fHasViewbox = parseViewBox(attrs.getAttribute("viewBox"), vbFrame);
+            setViewBoxFrame(vbFrame);
 
             // We can parse these here, but we can't resolve them 
             // until we bind to a context
@@ -87,8 +96,7 @@ namespace waavs {
             BLRect scnFrame = srfFrame;
 			if (!fHasViewbox)
 			{
-                fViewBoxFrame = srfFrame;
-                //viewBoxFrame(srfFrame);
+                setViewBoxFrame(srfFrame);
             }
             else {
                 //viewBoxFrame(fViewBoxFrame);

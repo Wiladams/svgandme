@@ -31,7 +31,7 @@ namespace waavs {
 
         SVGPatternExtendMode(IAmGroot* iMap) : SVGVisualProperty(iMap) 
         {
-            id("extendMode");
+            setId("extendMode");
             //autoDraw(false);
         }
 
@@ -41,7 +41,7 @@ namespace waavs {
         {   
             bool success = getEnumValue(SVGExtendMode, inChunk, fExtendMode);
             set(success);
-            needsBinding(false);
+            setNeedsBinding(false);
             
             return success;
         }
@@ -78,7 +78,7 @@ namespace waavs {
         double fValue{1};
         BLVar fOpacityVar;
         
-        SVGOpacity(IAmGroot* groot) :SVGVisualProperty(groot) { id("opacity"); }
+        SVGOpacity(IAmGroot* groot) :SVGVisualProperty(groot) { setId("opacity"); }
 
         const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override { return fOpacityVar; }
         
@@ -99,7 +99,7 @@ namespace waavs {
             fOpacityVar = fValue;
             
             set(true);
-			needsBinding(false);
+			setNeedsBinding(false);
             
             return true;
         }
@@ -118,7 +118,7 @@ namespace waavs {
             
         }
         
-        SVGFillOpacity(IAmGroot* iMap)  :SVGOpacity(iMap)  { id("fill-opacity");}
+        SVGFillOpacity(IAmGroot* iMap)  :SVGOpacity(iMap)  { setId("fill-opacity");}
         
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
@@ -138,7 +138,7 @@ namespace waavs {
 
         }
 
-        SVGStrokeOpacity(IAmGroot* iMap) :SVGOpacity(iMap) { id("stroke-opacity"); }
+        SVGStrokeOpacity(IAmGroot* iMap) :SVGOpacity(iMap) { setId("stroke-opacity"); }
 
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
@@ -165,7 +165,7 @@ namespace waavs {
         
         SVGPaintOrderAttribute(IAmGroot* iMap) :SVGVisualProperty(iMap) 
         {
-            id("paint-order");
+            setId("paint-order");
         }
 
         uint32_t instructions() const noexcept { return fInstruct; }
@@ -181,7 +181,7 @@ namespace waavs {
             fInstruct = createPaintOrderInstruction(inChunk);
 
             set(true);
-            needsBinding(false);
+            setNeedsBinding(false);
             
             return true;
         }
@@ -274,7 +274,7 @@ namespace waavs {
 
         SVGTextAnchorAttribute() :SVGVisualProperty(nullptr)
         {
-            id("text-anchor");
+            setId("text-anchor");
         }
 
         int value() const { return fValue; }
@@ -283,7 +283,7 @@ namespace waavs {
         {
             bool success = getEnumValue(SVGTextAnchor, inChunk, (uint32_t &)fValue);
             set(success);
-            needsBinding(false);
+            setNeedsBinding(false);
             
             return success;
         }
@@ -351,7 +351,7 @@ namespace waavs {
         SVGFontSize(IAmGroot* inMap) 
             : SVGVisualProperty(inMap) 
         {
-			id("font-size");
+			setId("font-size");
         }
 
         SVGFontSize& operator=(const SVGFontSize& rhs)
@@ -384,7 +384,7 @@ namespace waavs {
                 return false;
             
             set(true);
-            needsBinding(true);
+            setNeedsBinding(true);
             
             return true;
         }
@@ -400,7 +400,7 @@ namespace waavs {
                 fValue = dimValue.calculatePixels(ctx->getFont(), ctx->getFont().size(), 0, groot->dpi());
             }
 
-            needsBinding(false);
+            setNeedsBinding(false);
         }
         
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
@@ -429,7 +429,7 @@ namespace waavs {
 
         ByteSpan fValue{};
 
-        SVGFontFamily(IAmGroot* inMap) : SVGVisualProperty(inMap) { id("font-family"); }
+        SVGFontFamily(IAmGroot* inMap) : SVGVisualProperty(inMap) { setId("font-family"); }
 
         SVGFontFamily& operator=(const SVGFontFamily& rhs) = delete;
 
@@ -445,7 +445,7 @@ namespace waavs {
             
             fValue = inChunk;
             set(true);
-			needsBinding(false);
+			setNeedsBinding(false);
             
 			return true;
         }
@@ -475,7 +475,7 @@ namespace waavs {
 
         SVGFontStyleAttribute() :SVGVisualProperty(nullptr) 
         { 
-            id("font-style");  
+            setId("font-style");  
             
             set(false); 
         }
@@ -486,7 +486,7 @@ namespace waavs {
         {
             bool success = getEnumValue(SVGFontStyle, inChunk, (uint32_t &)fValue);
 			set(success);
-            needsBinding(false);
+            setNeedsBinding(false);
             
 			return success;
         }
@@ -509,7 +509,7 @@ namespace waavs {
         
         BLFontWeight fWeight{ BL_FONT_WEIGHT_NORMAL };
         
-        SVGFontWeightAttribute() :SVGVisualProperty(nullptr) { id("font-weight"); }
+        SVGFontWeightAttribute() :SVGVisualProperty(nullptr) { setId("font-weight"); }
 
 		BLFontWeight value() const { return fWeight; }
 
@@ -517,7 +517,7 @@ namespace waavs {
         {
 			bool success = getEnumValue(SVGFontWeight, inChunk, (uint32_t &)fWeight);
             set(success);
-            needsBinding(false);
+            setNeedsBinding(false);
             
 			return success;
 		}
@@ -540,7 +540,7 @@ namespace waavs {
         
         BLFontStretch fValue{ BL_FONT_STRETCH_NORMAL };
 
-        SVGFontStretchAttribute() :SVGVisualProperty(nullptr) { id("font-stretch"); }
+        SVGFontStretchAttribute() :SVGVisualProperty(nullptr) { setId("font-stretch"); }
 
         BLFontStretch value() const { return fValue; }
 
@@ -548,7 +548,7 @@ namespace waavs {
         {
 			bool success = getEnumValue(SVGFontStretch, inChunk, (uint32_t &)fValue);
 			set(success);
-            needsBinding(false);
+            setNeedsBinding(false);
             
             return success;
 
@@ -699,7 +699,7 @@ namespace waavs {
             {
                 fPaintReference = str;
 
-                needsBinding(true);
+                setNeedsBinding(true);
                 set(true);
                 
                 return true;
@@ -777,7 +777,7 @@ namespace waavs {
         {
             resolvePaint(ctx, groot);
 
-            needsBinding(false);
+            setNeedsBinding(false);
         }
         
         
@@ -796,7 +796,7 @@ namespace waavs {
         }
 
 
-        SVGColorPaint(IAmGroot* root) : SVGPaint(root) { id("color"); }
+        SVGColorPaint(IAmGroot* root) : SVGPaint(root) { setId("color"); }
 
 
         bool loadFromAttributes(const XmlAttributeCollection& attrs) override
@@ -831,7 +831,7 @@ namespace waavs {
         }
 
 
-        SVGFillPaint(IAmGroot* root) : SVGPaint(root) { id("fill"); }
+        SVGFillPaint(IAmGroot* root) : SVGPaint(root) { setId("fill"); }
 
         
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
@@ -858,13 +858,13 @@ namespace waavs {
 
         BLFillRule fValue{ BL_FILL_RULE_EVEN_ODD };
 
-        SVGFillRuleAttribute(IAmGroot* iMap) : SVGVisualProperty(iMap) { id("fill-rule"); }
+        SVGFillRuleAttribute(IAmGroot* iMap) : SVGVisualProperty(iMap) { setId("fill-rule"); }
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
 			bool success = getEnumValue(SVGFillRule, inChunk, (uint32_t &)fValue);
             set(success);
-            needsBinding(false);
+            setNeedsBinding(false);
             
             return success;
         }
@@ -893,9 +893,9 @@ namespace waavs {
         }
         
 
-        SVGStrokePaint(IAmGroot* root) : SVGPaint(root) { id("stroke"); }
+        SVGStrokePaint(IAmGroot* root) : SVGPaint(root) { setId("stroke"); }
 
-        virtual bool loadFromAttributes(const XmlAttributeCollection& attrs)
+        bool loadFromAttributes(const XmlAttributeCollection& attrs) override
         {
             // get the value of the 'stroke' attribute.
 			// if it == 'color', then we need to get the color from 
@@ -962,7 +962,7 @@ namespace waavs {
 
         double fWidth{ 1.0 };
 
-        SVGStrokeWidth(IAmGroot* iMap) : SVGVisualProperty(iMap) { id("stroke-width"); }
+        SVGStrokeWidth(IAmGroot* iMap) : SVGVisualProperty(iMap) { setId("stroke-width"); }
 
         SVGStrokeWidth(const SVGStrokeWidth& other) = delete;
         SVGStrokeWidth& operator=(const SVGStrokeWidth& rhs) = delete;
@@ -1000,7 +1000,7 @@ namespace waavs {
 
         double fMiterLimit{ 4.0 };
 
-        SVGStrokeMiterLimit(IAmGroot* iMap) : SVGVisualProperty(iMap) { id("stroke-miterlimit"); }
+        SVGStrokeMiterLimit(IAmGroot* iMap) : SVGVisualProperty(iMap) { setId("stroke-miterlimit"); }
 
         SVGStrokeMiterLimit(const SVGStrokeMiterLimit& other) = delete;
         SVGStrokeMiterLimit& operator=(const SVGStrokeMiterLimit& rhs) = delete;
@@ -1017,7 +1017,7 @@ namespace waavs {
             fMiterLimit = clamp(fMiterLimit, 1.0, 10.0);
 
             set(true);
-            needsBinding(false);
+            setNeedsBinding(false);
 
             return true;
         }
@@ -1049,7 +1049,7 @@ namespace waavs {
 
         SVGStrokeLineCap(IAmGroot* iMap, const ByteSpan& name) : SVGVisualProperty(iMap)
         {
-            id(name);
+            setId(name);
             
             if (name == "stroke-linecap")
                 fBothCaps = true;
@@ -1074,7 +1074,7 @@ namespace waavs {
         {
             bool success = getEnumValue(SVGLineCaps, inChunk, (uint32_t &)fLineCap);
             set(success);
-            needsBinding(false);
+            setNeedsBinding(false);
             
 			return success;
         }
@@ -1103,7 +1103,7 @@ namespace waavs {
 
         BLStrokeJoin fLineJoin{ BL_STROKE_JOIN_MITER_BEVEL };
 
-        SVGStrokeLineJoin(IAmGroot* iMap) : SVGVisualProperty(iMap) { id("stroke-linejoin"); }
+        SVGStrokeLineJoin(IAmGroot* iMap) : SVGVisualProperty(iMap) { setId("stroke-linejoin"); }
         SVGStrokeLineJoin(const SVGStrokeLineJoin& other) = delete;
         SVGStrokeLineJoin& operator=(const SVGStrokeLineJoin& rhs) = delete;
 
@@ -1114,7 +1114,7 @@ namespace waavs {
         {
             bool success = getEnumValue(SVGLineJoin, inChunk, (uint32_t &)fLineJoin);
             set(success);
-            needsBinding(false);
+            setNeedsBinding(false);
             
             return success;
         }
@@ -1145,7 +1145,7 @@ namespace waavs {
 
 		SVGTransform() : SVGVisualProperty(nullptr) 
         { 
-            id("transform"); 
+            setId("transform"); 
 			autoDraw(false);
         }
 		SVGTransform(const SVGTransform& other) = delete;
@@ -1160,7 +1160,7 @@ namespace waavs {
 			}
 
             set(true);
-            needsBinding(false);
+            setNeedsBinding(false);
             
 			return true;
 		}
@@ -1463,7 +1463,7 @@ namespace waavs {
         
         SVGMarkerAttribute(const ByteSpan& name) : SVGVisualProperty(nullptr) 
         { 
-            id(name); 
+            setId(name); 
         }
         
 		std::shared_ptr<IViewable> markerNode(IRenderSVG* ctx, IAmGroot* groot)
@@ -1488,14 +1488,14 @@ namespace waavs {
                     set(true);
                 }
             }
-            needsBinding(false);
+            setNeedsBinding(false);
         }
         
         bool loadSelfFromChunk(const ByteSpan& ) override
         {
 			autoDraw(false); // we mark it as invisible, because we don't want it drawing when attributes are drawn
 			// we only want it to draw when we're drawing during polyline/polygon drawing
-            needsBinding(true);
+            setNeedsBinding(true);
             
             return true;
         }
@@ -1534,7 +1534,7 @@ namespace waavs {
         BLVar fClipVar;
         
         
-        SVGClipPathAttribute(IAmGroot* groot) : SVGVisualProperty(groot) { id("clip-path"); }
+        SVGClipPathAttribute(IAmGroot* groot) : SVGVisualProperty(groot) { setId("clip-path"); }
 
         const BLVar getVariant(IRenderSVG*, IAmGroot*) noexcept override
         {
@@ -1585,12 +1585,12 @@ namespace waavs {
                 loadFromUrl(ctx, groot, str);
             }
 
-            needsBinding(false);
+            setNeedsBinding(false);
         }
         
         bool loadSelfFromChunk(const ByteSpan& ) override
         {
-            needsBinding(true);
+            setNeedsBinding(true);
             set(true);
             
             return true;
@@ -1609,13 +1609,13 @@ namespace waavs {
         VectorEffectKind fEffectKind{ VECTOR_EFFECT_NONE };
 
         
-        SVGVectorEffectAttribute(IAmGroot* groot) : SVGVisualProperty(groot) { id("vector-effect"); }
+        SVGVectorEffectAttribute(IAmGroot* groot) : SVGVisualProperty(groot) { setId("vector-effect"); }
         
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
 			bool success = getEnumValue(SVGVectorEffect, inChunk, (uint32_t &)fEffectKind);
             set(success);
-            needsBinding(false);
+            setNeedsBinding(false);
             
             return success;
         }

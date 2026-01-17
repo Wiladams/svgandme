@@ -44,7 +44,7 @@ namespace waavs {
 		SVGClipPathElement(IAmGroot* )
 			: SVGGraphicsElement()
 		{
-			isStructural(false);
+			setIsStructural(false);
 		}
 
 		// 

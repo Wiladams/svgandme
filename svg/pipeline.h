@@ -31,7 +31,7 @@ namespace waavs
         using OutputType = OutType; // For type inference in helpers
 
 		virtual ~IProduce() = default;
-		virtual bool next(OutType& out) = 0;
+		virtual bool next(OutType& out) { return false; }
 
 		// Don't do the following, as when you pass an object
 		// to a function that expects a function, it will make

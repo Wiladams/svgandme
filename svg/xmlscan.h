@@ -44,6 +44,8 @@ namespace waavs {
     static constexpr charset xmldigit("0123456789");
 }
 
+
+
 namespace waavs {
     // XML_ITERATOR_STATE
     // An enumeration that represents the control
@@ -695,7 +697,7 @@ namespace waavs {
     {
         elem.reset(XML_ELEMENT_TYPE_INVALID, {}, {});
 
-        if (iter.fState.empty())
+        if (iter.fState.input.empty())
             return false;
 
         XmlToken tok{};

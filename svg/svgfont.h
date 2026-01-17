@@ -61,7 +61,7 @@ namespace waavs {
 			, fHorizAdvX{ 0 }
 			, fHorizOriginX{0}
 		{
-			isStructural(false);
+			setIsStructural(false);
 		}
 
 
@@ -77,7 +77,7 @@ namespace waavs {
 			parseNumber(getAttribute("vert-origin-y"), fVertOriginY);
 
 
-			needsBinding(true);
+			setNeedsBinding(true);
 		}
 
 	};
@@ -221,7 +221,7 @@ namespace waavs {
 			if (parsePath(d, fPath))
 				fPath.shrink();
 
-			needsBinding(false);
+			setNeedsBinding(false);
 		}
 	};
 	

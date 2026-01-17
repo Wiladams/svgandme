@@ -1,4 +1,5 @@
-#pragma once
+#ifndef XMLTOKENGEN_H_INCLUDED
+#define XMLTOKENGEN_H_INCLUDED
 
 #include "xmltoken.h"
 #include "pipeline.h"
@@ -26,3 +27,4 @@ namespace waavs
     };
 }
 
+#endif // XMLTOKENGEN_H_INCLUDED

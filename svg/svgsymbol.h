@@ -37,7 +37,7 @@ namespace waavs {
 		SVGSymbolNode(IAmGroot* root)
 			: SVGGraphicsElement()
 		{
-			isStructural(false);
+			setIsStructural(false);
 		}
 
 		BLRect frame() const override

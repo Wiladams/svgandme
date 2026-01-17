@@ -21,7 +21,25 @@
 // routines to construct visual properties and structural components
 // These routines are meant to be fairly low level, independent, and fast
 //
-
+// Data types:
+//   SVGLength
+//   SVGDimension
+//   SVGVariableSize
+// 
+// Parsing routines:
+// parseViewBox
+// parseAngleUnits
+// parseAngle
+// parseDimensionUnits
+// calculateDistance
+// parseStyleAttribute
+//
+// hexSpanToRgba32
+// parseColorHex
+// parseColorHsl
+// parseColorRGB
+//
+// parseTransform
 
 
 namespace waavs {
@@ -283,7 +301,10 @@ namespace waavs
     //   larger
     // 
     // Length values
-    //   px, pt, pc, cm, mm, in, em, ex, ch, rem, vw, vh, vmin, vmax
+    //   (SVG 1.1)
+    //     px, pt, pc, cm, mm, in, em, ex, 
+    //   (SVG 2 CSS <length>)
+    //     ch, rem, vw, vh, vmin, vmax
     // 
     // Percentage values
     //   100%
@@ -313,24 +334,8 @@ namespace waavs
 
  
         SVGVariableSize() = default;
-        SVGVariableSize(const SVGDimension& other) = delete;
-/*
-        SVGVariableSize(double value, unsigned short units, bool setValue = true)
-            : fValue(value)
-            , fUnits(units)
-            , fHasValue(setValue)
-        {
-        }
+        SVGVariableSize(const SVGVariableSize& other) = delete;
 
-        SVGVariableSize& operator=(const SVGDimension& rhs)
-        {
-            fValue = rhs.fValue;
-            fUnits = rhs.fUnits;
-            fHasValue = rhs.fHasValue;
-
-            return *this;
-        }
-*/
         bool isSet() const { return fHasValue; }
         double value() const { return fValue; }
         unsigned short units() const { return fUnits; }
@@ -351,12 +356,9 @@ namespace waavs
             double fontSize = fm.size;
             float emHeight = (fm.ascent + fm.descent);
             
-
-            
             switch (fKindOfSize)
             {
 
-                
                 case SVG_SIZE_KIND_ABSOLUTE: {
                     if (!isSet())
                         return length;
@@ -754,7 +756,7 @@ namespace waavs {
         ByteSpan value = inChunk;;
 
         // figure out what kind of encoding we're dealing with
-        // value starts with: 'data:image/png;base64,<base64 encoded image>
+        // value starts with: 'data:imaxsge/png;base64,<base64 encoded image>
         //
         ByteSpan data = chunk_token(value, ":");
         auto mime = chunk_token(value, ";");
@@ -880,7 +882,7 @@ namespace waavs
         item.fEnd = s.fStart;
 
         // Create a chunk that will represent a specific number to be parsed.
-        ByteSpan numChunk{};
+        //ByteSpan numChunk{};
 
         // Move the source chunk cursor past the ')', so that whatever
         // needs to use it next is ready to go.

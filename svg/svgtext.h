@@ -173,7 +173,7 @@ namespace waavs {
 			, fText(txt)
 		{
 			name("textrun");
-			needsBinding(true);
+			setNeedsBinding(true);
 			
 			expandXmlEntities(fText, fText);
 		}
@@ -227,7 +227,7 @@ namespace waavs {
 		
 		SVGTSpanNode(IAmGroot* ) :SVGGraphicsElement() 
 		{
-			needsBinding(true);
+			setNeedsBinding(true);
 		}
 
 		

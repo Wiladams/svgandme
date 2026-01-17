@@ -1,6 +1,12 @@
-#include "xmliter.h"
+#include "xmlscan.h"
 
+#include "app/xmlutil.h"
 
+using namespace waavs;
+
+// Nothing useful in this file.
+// Just some potential experiments in filtering XML elements
+//
 static void testXmlIter(const ByteSpan& s)
 {
     XmlElementIterator iter(s);
@@ -14,9 +20,9 @@ static void testXmlIter(const ByteSpan& s)
             ByteSpan content = elem.data();
             content.skipWhile(chrWspChars);
             if (!content.empty())
-                printXmlElementInfo(elem);
+                printXmlElement(elem);
         } else
-            printXmlElementInfo(elem);
+            printXmlElement(elem);
 
     } while (iter.next());
 

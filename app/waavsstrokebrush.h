@@ -58,7 +58,7 @@ namespace waavs {
 		WaavsStrokeProfile()
 			:SVGGraphicsElement() 
 		{
-			isStructural(false);
+			setIsStructural(false);
 
 		}
 
