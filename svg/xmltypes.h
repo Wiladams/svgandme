@@ -7,6 +7,7 @@
 #include <unordered_map>
 
 #include "bspan.h"
+#include "nametable.h"
 
 enum XML_ELEMENT_TYPE {
     XML_ELEMENT_TYPE_INVALID = 0
@@ -26,50 +27,111 @@ enum XML_ELEMENT_TYPE {
 namespace waavs {
 
 
-    // XmlElementInfo
+    // XmlElement
     // 
     // This data structure contains the raw scanned information for an XML element.
     // The information is separated into three components
     // 1.  fElementKind - What kind of element is it?  start tag?  PI, TEXT, etc
-    // 2.  fNameSpan - The part of the element that indicates a name, if it's a tag
+    // 2.  fQName - The part of the element that indicates a name, if it's a tag
     // 3.  fData - If a tag, it's the span that includes the attributes.  For elements
     //     That have content (TEXT, CDATA, etc), it's the content between start and end tags
     // 
     // 
-    struct XmlElementInfo
+
+    static void splitQName(const ByteSpan& q, ByteSpan& prefix, ByteSpan& local) noexcept
+    {
+        prefix.reset();
+        local = q;
+        if (!q) return;
+
+        // find ':'; if found, split
+        const unsigned char* p =
+            static_cast<const unsigned char*>(std::memchr(q.fStart, ':', q.size()));
+        if (p) {
+            prefix = ByteSpan(q.fStart, p);
+            local = ByteSpan(p + 1, q.fEnd);
+        }
+    }
+
+    struct XmlElement
     {
         uint8_t fElementKind{ XML_ELEMENT_TYPE_INVALID };
-        ByteSpan fNameSpan{};
+
+        ByteSpan fQName{};          // original raw name (could be "svg:rect")
+        ByteSpan fLocalName{};      // local part ("rect")
+        ByteSpan fPrefix{};         // prefix part ("svg")
         ByteSpan fData{};
 
-        XmlElementInfo() = default;
-		XmlElementInfo(const XmlElementInfo& other) noexcept
-			: fElementKind(other.fElementKind)
-			, fNameSpan(other.fNameSpan)
-			, fData(other.fData)
-		{
-		}
+        const char* fQNameAtom{ nullptr };      // Atomized name for faster comparisons
+        const char* fLocalNameAtom{ nullptr };  // Atomized local name (without namespace)
+
+
+        XmlElement() = default;
+
+        // Copy
+        XmlElement(const XmlElement&) noexcept = default;
+        
+        // Move constructor
+        XmlElement(XmlElement&&) noexcept = default;
+
+        ~XmlElement() = default;
+
+
+        // copy assignment
+        XmlElement& operator = (const XmlElement&) noexcept = default;
+        // move assignment
+        XmlElement& operator=(XmlElement&&) noexcept = default;
+
+
 
 
         void reset()
         {
             fElementKind = XML_ELEMENT_TYPE_INVALID;
-            fNameSpan.reset();
             fData.reset();
+
+            fQName.reset();
+            fLocalName.reset();
+            fPrefix.reset();
+
+            fQNameAtom = nullptr;
+            fLocalNameAtom = nullptr;
         }
 
         void reset(int kind, const ByteSpan& data)
         {
-            fNameSpan = {};
             fElementKind = kind;
             fData = data;
+            fQName.reset();
+            fLocalName.reset();
+            fPrefix.reset();
+
+            //fNameSpan = {};
+            fQNameAtom = nullptr;
+            fLocalNameAtom = nullptr;
         }
 
-        void reset(int kind, const ByteSpan& data, const ByteSpan& name)
+        void reset(int kind, const ByteSpan& name, const ByteSpan& data)
         {
             fElementKind = kind;
-            fNameSpan = name;
+            //fNameSpan = name;
+            fQName = name;
             fData = data;
+
+            splitQName(fQName, fPrefix, fLocalName);
+
+            if (kind == XML_ELEMENT_TYPE_START_TAG ||
+                kind == XML_ELEMENT_TYPE_SELF_CLOSING ||
+                kind == XML_ELEMENT_TYPE_END_TAG)
+            {
+                fQNameAtom = !fQName.empty() ? PSNameTable::INTERN(fQName) : nullptr;
+                fLocalNameAtom = !fLocalName.empty() ? PSNameTable::INTERN(fLocalName) : nullptr;
+            }
+            else {
+                fQNameAtom = nullptr;
+                fLocalNameAtom = nullptr;
+            }
+
         }
 
         constexpr bool empty() const noexcept { return fElementKind == XML_ELEMENT_TYPE_INVALID; }
@@ -78,8 +140,15 @@ namespace waavs {
         uint32_t kind() const noexcept { return fElementKind; }
         void setKind(const uint32_t kind) { fElementKind = kind; }
 
-        ByteSpan nameSpan() const noexcept { return fNameSpan; }
         ByteSpan data() const noexcept { return fData; }
+
+        //ByteSpan nameSpan() const noexcept { return fNameSpan; }
+        ByteSpan qname() const noexcept { return fQName; }
+        ByteSpan name() const noexcept { return fLocalName; }
+        ByteSpan prefix() const noexcept { return fPrefix; }
+
+        const char* qNameAtom() const noexcept { return fQNameAtom; }
+        const char* nameAtom() const noexcept { return fLocalNameAtom; }
 
         // You can get the bytespan that represents a specific attribute value. 
         // If the attribute is not found, the function returns false
@@ -294,6 +363,34 @@ namespace waavs {
     };
 }
 
+/*
+ByteSpan scanNameSpan(ByteSpan data)
+{
+    ByteSpan s = data;
+    //bool start = false;
+    //bool end = false;
+
+    if (!s)
+        return {};
+
+    if (*s == '/')
+    {
+        s++;
+    }
+
+    fNameSpan = s;
+    // skip leading whitespace
+    while (s && !chrWspChars[*s])
+        s++;
+
+    fNameSpan.fEnd = s.fStart;
+    fXmlName.reset(fNameSpan);
+
+    return s;  // Instead of modifying `fData`, return the new position
+}
+*/
+
+/*
 namespace waavs {
 
     // Representation of an xml element
@@ -301,155 +398,25 @@ namespace waavs {
     struct XmlElement : public XmlElementInfo
     {
     private:
-        XmlName fXmlName{};
+        //XmlName fXmlName{};
 
 
-        ByteSpan scanNameSpan(ByteSpan data)
-        {
-            ByteSpan s = data;
-            //bool start = false;
-            //bool end = false;
 
-            if (!s)
-                return {};
-
-            if (*s == '/')
-            {
-                s++;
-                //end = true;
-            }
-            else {
-                //start = true;
-            }
-
-            fNameSpan = s;
-            // skip leading whitespace
-            while (s && !chrWspChars[*s])
-                s++;
-
-            fNameSpan.fEnd = s.fStart;
-            fXmlName.reset(fNameSpan);
-
-            return s;  // Instead of modifying `fData`, return the new position
-        }
-
-        // Clear this element to a default state
-        void clear()
-        {
-            fElementKind = XML_ELEMENT_TYPE_INVALID;
-            fXmlName.reset({});
-            fData.reset();
-        }
 
 
     public:
         XmlElement() = default;
+        XmlElement(const XmlElement& other) = default;
+        XmlElement(XmlElement&&) noexcept = default;
+        
+        ~XmlElement() = default;
 
-        XmlElement(const XmlElement& other)
-			: XmlElementInfo(other)
-            , fXmlName(other.fXmlName)
-        {
-        }
+        XmlElement& operator=(const XmlElement&) noexcept = default;
+        XmlElement& operator=(XmlElement&&) noexcept = default;
 
-        XmlElement(XmlElement&& other) noexcept
-            :XmlElementInfo(other)
-            ,fXmlName(std::move(other.fXmlName))
-        {
-            other.clear();
-        }
-
-		XmlElement(const XmlElementInfo& info)
-			:XmlElementInfo(info)
-		{
-			//reset(info);
-		}
-
-        //XmlElement(int kind, const ByteSpan& data)
-		//	:XmlElementInfo()
-        //{
-        //    reset(kind, data);
-        //}
-
-        // Returning information about the element
-        XmlName xmlName() const { return fXmlName; }
-        ByteSpan tagName() const { return fXmlName.name(); }
-        ByteSpan tagNamespace() const { return fXmlName.ns(); }
-        ByteSpan name() const { return fXmlName.name(); }
-
-
-		XmlElement& reset(const XmlElementInfo& info)
-		{
-            clear();
-
-			fElementKind = info.kind();
-            fData = info.data();
-            fNameSpan = info.nameSpan();
-			fXmlName.reset(fNameSpan);
-			return *this;
-		}
-
-        XmlElement & reset(int kind, const ByteSpan &tagName, const ByteSpan& data)
-        {
-            clear();
-            fElementKind = kind;
-            fData = data;
-            fNameSpan = tagName;
-            fXmlName.reset(fNameSpan);
-
-
-            switch (kind)
-            {
-			    case XML_ELEMENT_TYPE_START_TAG:
-			    case XML_ELEMENT_TYPE_SELF_CLOSING:
-			    case XML_ELEMENT_TYPE_END_TAG:
-				    scanNameSpan(fNameSpan);
-				break;
-
-                case XML_ELEMENT_TYPE_XMLDECL:
-                case XML_ELEMENT_TYPE_COMMENT:
-				case XML_ELEMENT_TYPE_CDATA:
-				case XML_ELEMENT_TYPE_CONTENT:
-				case XML_ELEMENT_TYPE_DOCTYPE:
-				case XML_ELEMENT_TYPE_ENTITY:
-				case XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION:
-				case XML_ELEMENT_TYPE_EMPTY_TAG:
-				default:
-					break;
-
-            }
-
-
-            return *this;
-        }
-
-        // Move assignment
-        XmlElement& operator=(XmlElement&& other) noexcept
-        {
-            if (this != &other)
-            {
-                fElementKind = other.fElementKind;
-                fNameSpan = other.fNameSpan;
-                fXmlName = std::move(other.fXmlName);
-                fData = other.fData;
-                other.clear();
-            }
-            return *this;
-        }
-
-        XmlElement& operator=(const XmlElement& other)
-        {
-            if (this != &other)
-            {
-                fElementKind = other.fElementKind;
-                fNameSpan = other.fNameSpan;
-                fData = other.fData;
-                fXmlName.reset(other.fXmlName.fqname());  // Use reset()
-            }
-            return *this;
-        }
 
     };
 }
-
+*/
 
 #endif // XMLTYPES_H_INCLUDED

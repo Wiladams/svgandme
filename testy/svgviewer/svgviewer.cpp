@@ -309,7 +309,7 @@ void setup()
     dropFiles();
 	
 	// set app window size and title
-	createAppWindow(1280, 1024, "SVGViewer");
+	createAppWindow(2560, 1440, "SVGViewer");
 	
 	getRecorder()->reset(&getAppFrameBuffer()->getBlend2dImage(), "frame", 15, 0);
 	

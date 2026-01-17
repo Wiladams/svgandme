@@ -193,8 +193,8 @@ namespace waavs {
 			fViewportFrame = viewportFr;
 			fViewBoxFrame = viewBoxFr;
 
-            clampFrame(fViewportFrame);
-            clampFrame(fViewBoxFrame);
+            //clampFrame(fViewportFrame);
+            //clampFrame(fViewBoxFrame);
 
 			fRotRad = 0.0;
 			fRotCenter = BLPoint{};
@@ -208,7 +208,7 @@ namespace waavs {
 
         void setViewportFrame(const BLRect& fr) { 
 			fViewportFrame = fr; 
-            clampFrame(fViewportFrame);
+            //clampFrame(fViewportFrame);
 		}
         bool getViewportFrame(BLRect& outFr) const
 			{
@@ -221,7 +221,7 @@ namespace waavs {
         void setViewBoxFrame(const BLRect& fr) 
 		{ 
 			fViewBoxFrame = fr; 
-            clampFrame(fViewBoxFrame);
+            //clampFrame(fViewBoxFrame);
 		}
 		bool getViewBoxFrame(BLRect& outFr) const
 		{
@@ -315,12 +315,6 @@ namespace waavs {
 			return *this;
 		}
 		
-		//
-		//static void clampFrame(BLRect &fr)
-		//{
-		//	if (fr.w < 0) fr.w = 0;
-		//	if (fr.h < 0) fr.h = 0;
-		//}
 		
 		ViewportTransformer(const BLRect& aSurfaceFrame, const BLRect& aSceneFrame)
 

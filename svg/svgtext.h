@@ -251,7 +251,7 @@ namespace waavs {
 		
 		void loadSelfClosingNode(const XmlElement& elem, IAmGroot* groot) override
 		{
-			if (elem.tagName() == "tspan")
+			if (elem.name() == "tspan")
 			{
 				auto node = std::make_shared<SVGTSpanNode>(groot);
 				node->loadFromXmlElement(elem, groot);
@@ -263,7 +263,7 @@ namespace waavs {
 		{
 			// Most likely a <tspan>
 			//auto& elem = *iter;
-			if ((*iter).tagName() == "tspan")
+			if ((*iter).name() == "tspan")
 			{
 				auto node = std::make_shared<SVGTSpanNode>(groot);
 

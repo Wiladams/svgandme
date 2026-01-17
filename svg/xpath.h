@@ -280,7 +280,7 @@ namespace waavs {
                     break;
 
                 case XPathTokenKind::CHILD:
-                    if (!step.nodeName.empty() && current->xmlName() != step.nodeName)
+                    if (!step.nodeName.empty() && current->name() != step.nodeName)
                         return false;
                     break;
 
@@ -290,7 +290,7 @@ namespace waavs {
                     bool found = false;
                     for (const XmlElement* ancestor : ancestors)
                     {
-                        if (ancestor->xmlName() == step.nodeName)
+                        if (ancestor->name() == step.nodeName)
                         {
                             found = true;
                             break;

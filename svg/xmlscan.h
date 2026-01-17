@@ -692,10 +692,11 @@ namespace waavs {
     // By putting the necessary parsing in here, we can use both std
     // c++ iteration idioms, as well as a more straight forward C++ style
     // which does not require all the C++ iteration boilerplate
-//    static bool nextXmlElement(const XmlIteratorParams& params, XmlIteratorState& st, XmlElement& elem)
+    //    static bool nextXmlElement(const XmlIteratorParams& params, XmlIteratorState& st, XmlElement& elem)
     static bool nextXmlElement(XmlIterator& iter, XmlElement& elem)
     {
-        elem.reset(XML_ELEMENT_TYPE_INVALID, {}, {});
+        //elem.reset(XML_ELEMENT_TYPE_INVALID, {}, {});
+        elem.reset();
 
         if (iter.fState.input.empty())
             return false;
@@ -750,80 +751,4 @@ namespace waavs {
         }
     }
 }
-
-
-
-/*
-namespace waavs
-{
-    // Efficiently reads the next key-value attribute pair from `src`
-// Attributes are separated by '=' and values are enclosed in '"' or '\''
-    static bool readNextKeyAttribute(ByteSpan& src, ByteSpan& key, ByteSpan& value) noexcept
-    {
-        key.reset();
-        value.reset();
-
-        // Trim leading whitespace
-        src.skipWhile(chrWspChars);
-
-        if (!src)
-            return false;
-
-        // Handle end tag scenario (e.g., `/>`)
-        if (*src == '/')
-            return false;
-
-        // Capture attribute name up to '='
-        const uint8_t* keyStart = src.fStart;
-        const uint8_t* keyEnd = keyStart; // track last non-whitespace char seen
-        while (src.fStart < src.fEnd && *src.fStart != '=')
-        {
-            if (!chrWspChars(*src.fStart))
-            {
-                keyEnd = src.fStart + 1; // past the last non-space character
-            }
-            ++src.fStart;
-        }
-
-        // If no '=' found, return false
-        if (src.empty())
-            return false;
-
-        // Assign key — trimmed to exclude any trailing whitespace
-        key = ByteSpan(keyStart, keyEnd);
-
-        // Move past '='
-        ++src.fStart;
-
-        // Skip any whitespace
-        src.skipWhile(chrWspChars);
-
-        if (src.empty())
-            return false;
-
-        // Ensure we have a quoted value
-        uint8_t quoteChar = *src;
-        if (quoteChar != '"' && quoteChar != '\'')
-            return false;
-
-        // Move past the opening quote
-        src++;
-
-        // Locate the closing quote using `memchr`
-        const uint8_t* endQuote = static_cast<const uint8_t*>(std::memchr(src.fStart, quoteChar, src.size()));
-
-        if (!endQuote)
-            return false; // No closing quote found
-
-        // Assign the attribute value (excluding quotes)
-        value = { src.fStart, endQuote };
-
-        // Move past the closing quote
-        src.fStart = endQuote + 1;
-
-        return true;
-    }
-
-}
-*/
 

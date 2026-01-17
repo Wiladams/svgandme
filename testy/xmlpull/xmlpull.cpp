@@ -42,17 +42,17 @@ static const WSEnum XML_TOKEN_TYPE_WSEnum =
 };
 
 
-static void printXmlElementInfo(const XmlElementInfo& elem)
+static void printXmlElementInfo(const XmlElement& elem)
 {
     ByteSpan kindname{};
     getEnumKey(XML_ELEMENT_TYPE_WSEnum, elem.kind(), kindname);
     
     printf("[[");
     writeChunk(kindname);
-    if (elem.nameSpan())
+    if (elem.name())
     {
         printf(" - ");
-        writeChunk(elem.nameSpan());
+        writeChunk(elem.name());
     }
     printf(" ]]\n");
     

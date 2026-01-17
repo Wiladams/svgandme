@@ -301,11 +301,16 @@ namespace waavs {
 
 			BLRect objectBoundingBox = ctx->getObjectFrame();
 			BLRect viewport = ctx->viewport();
-			
-			fDimX.parseValue(fBoundingBox.x, ctx->getFont(), objectBoundingBox.w, 0, dpi);
-			fDimY.parseValue(fBoundingBox.y, ctx->getFont(), objectBoundingBox.h, 0, dpi);
-			fDimWidth.parseValue(fBoundingBox.w, ctx->getFont(), objectBoundingBox.w, 0, dpi);
-			fDimHeight.parseValue(fBoundingBox.h, ctx->getFont(), objectBoundingBox.h, 0, dpi);
+			BLRect cartFrame{};
+
+			cartFrame = objectBoundingBox;
+			if ((cartFrame.w <= 0) || (cartFrame.h <=0))
+                cartFrame = viewport;
+
+			fDimX.parseValue(fBoundingBox.x, ctx->getFont(), cartFrame.w, 0, dpi);
+			fDimY.parseValue(fBoundingBox.y, ctx->getFont(), cartFrame.h, 0, dpi);
+			fDimWidth.parseValue(fBoundingBox.w, ctx->getFont(), cartFrame.w, 0, dpi);
+			fDimHeight.parseValue(fBoundingBox.h, ctx->getFont(), cartFrame.h, 0, dpi);
 			
 
 

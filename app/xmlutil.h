@@ -105,22 +105,21 @@ namespace waavs {
 
 
         case XML_ELEMENT_TYPE_START_TAG:
-            printf("START_TAG: ");
-            printChunk(elem.nameSpan());
+            printf("START_TAG: '%s'\n", elem.qNameAtom());
             if (elem.data())
                 printXmlAttributes(elem);
             break;
 
         case XML_ELEMENT_TYPE_SELF_CLOSING:
-            printf("SELF_CLOSING: ");
-            printChunk(elem.nameSpan());
+            printf("SELF_CLOSING: '%s'\n", elem.qNameAtom());
+            //printChunk(elem.qname());
             if (elem.data())
                 printXmlAttributes(elem);
             break;
 
         case XML_ELEMENT_TYPE_END_TAG:
-            printf("END_TAG: ");
-            printChunk(elem.nameSpan());
+            printf("END_TAG: '%s'\n", elem.qNameAtom());
+            //printChunk(elem.qname());
             break;
 
         default:
