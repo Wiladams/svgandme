@@ -80,6 +80,8 @@ namespace waavs {
         {
         }
     };
+
+
 }
 
 
@@ -93,10 +95,10 @@ namespace waavs {
 
 
     inline bool isAllXmlWhitespace(const ByteSpan& span) noexcept;
-    static bool skipAttributes(XmlIterator& iter, ByteSpan& attrSpan);
 
     static bool parsePIFromTokens(XmlIterator& st, XmlElement& elem) noexcept;
     static bool parseEndTagFromTokens(XmlIterator& st, XmlElement& elem) noexcept;
+    static bool scanToTagEnd(XmlIterator& iter, ByteSpan& attrSpan, bool& selfClosing) noexcept;
     static bool parseStartOrSelfClosingFromTokens(XmlIterator& iter, XmlElement& elem, const XmlToken& firstNameToken);
     static bool parseBangConstructFromTokens(XmlIterator& st, XmlElement& elem) noexcept;
 
@@ -118,64 +120,7 @@ namespace waavs
 
 
 namespace waavs {
-    /*
-    // readPI()
-    // 
-    // Read Processing Instruction
-    // '<?' PITarget (S (Char* - (Char* '?>' Char*)))? '?>'
-    static bool readPI(ByteSpan& src, ByteSpan& target, ByteSpan &rest)
-    {
-        if (src.empty() || src[0]!='?')
-            return false;
 
-        // move past '?'
-        //src.remove_prefix(1);
-
-        // read PITarget
-        ByteSpan tempTarget;
-        if (!readXsdName(src, tempTarget))
-            return false;
-
-        target = tempTarget;
-
-        // trim whitespace
-        src.skipWhile(chrWspChars);
-
-        // Mark content start
-        rest = src;
-
-        // Find the closing '?>' sequence
-        const unsigned char* srcPtr = src.fStart;
-        const unsigned char* endPtr = src.fEnd;
-
-        //while (!src.empty())
-        //{
-            // Use memchr to quickly locate the '?' character
-            const unsigned char* closingBracket = static_cast<const unsigned char*>(std::memchr(srcPtr, '?', endPtr - srcPtr-1));
-
-            // If no '?' is found, return false
-            if (!closingBracket)
-                return false;
-
-            // If the '?' was found, then check if next character
-            // is '>'.  If it is, we've found our closing.
-            if (closingBracket[1] != '>')
-            {
-                return false;
-            }
-        //}
-
-            rest.fEnd = closingBracket;
-
-        // move past closing '?>'
-        closingBracket += 2;
-        
-        // increment the source stream
-        src.fStart = closingBracket;
-
-        return true;
-    }
-    */
 
     //============================================================
     // readCData()
@@ -390,10 +335,6 @@ namespace waavs {
 }
 
 
-// 
-// The XmlElementIterator is a 'pull model' scanner of in-memory xml data.
-// It will return the next xml info in the chunk.
-//
 namespace waavs {
 
     // parsePIFromTokens()
@@ -521,61 +462,7 @@ namespace waavs {
         }
     }
 
-    /*
-    // use the token stream to skip over the attributes, while retaining
-    // a byteSpan that represents those attributes.
-    // The attrSpan returns the beginning and ending of the attributes
-    // return 'false' if any error
-    // Note: assume we're already inside a tag, and have just consumed
-    // the tag name.
-    static bool skipAttributes(XmlIterator &iter, ByteSpan &attrSpan, XmlToken &endtok)
-    {
-        const unsigned char* attrStart = iter.fState.input.fStart;
-        
-        XmlToken tok{};
-        
-        // Scan until '>' (or '/>')
-        for (;;) 
-        {
-            const unsigned char* beforeToken = iter.fState.input.fStart;    // where the token starts
 
-            if (!nextXmlToken(iter.fState, tok))
-                return false;   // EOF or error inside tag
-
-            if (tok.type == XML_TOKEN_GT) {
-                // before points at '>'
-                attrSpan.fStart = attrStart;
-                attrSpan.fEnd = beforeToken;
-                endtok.reset(XML_TOKEN_GT, {}, true);
-
-                return true;
-            }
-
-            if (tok.type == XML_TOKEN_SLASH) 
-            {
-                // possible self-closing tag "/>"
-                const unsigned char* slashPos = beforeToken; // position of the '/'
-                const unsigned char* before2ndToken = iter.fState.input.fStart;
-
-                if (!nextXmlToken(iter.fState, tok))
-                    return false;   // EOF or error inside tag
-
-                if (tok.type != XML_TOKEN_GT) {
-                    // malformed
-                    return false;
-                }
-
-                // attributes exclude the '/'
-                attrSpan = { attrStart, slashPos };
-                endtok.reset(XML_TOKEN_SELF_CLOSE, {}, true);
-                return true;
-            }
-            // else: NAME / EQ / STRING / etc -> continue scanning attributes
-        }
-
-        return false;
-    }
-    */
 
     // scanToTagEnd()
     // 
@@ -833,3 +720,38 @@ namespace waavs {
     }
 }
 
+namespace waavs {
+    // A simple pull model forward XML element iterator
+    struct XmlPull
+    {
+        XmlIterator fIter{};
+        XmlElement fCurrentElement{};
+
+        explicit XmlPull(const ByteSpan& s, bool autoAttrs = false)
+            : fIter{ s }
+        {
+            fIter.fParams.fAutoScanAttributes = autoAttrs;
+        }
+
+        // Convenience methods for dealing with current element
+        const XmlElement& operator*() const { return fCurrentElement; }
+        const XmlElement* operator->() const { return &fCurrentElement; }
+
+        bool next()
+        {
+            const unsigned char* before = fIter.fState.input.fStart;
+
+            bool success = nextXmlElement(fIter, fCurrentElement);
+            const unsigned char* after = fIter.fState.input.fStart;
+
+            if (success && (before == after))
+            {
+                // We made no progress; to avoid infinite loop, we must fail
+                fCurrentElement.reset();
+                return false;
+            }
+
+            return success;
+        }
+    };
+}

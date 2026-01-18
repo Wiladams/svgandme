@@ -204,6 +204,47 @@ namespace waavs
         {
         }
 
+        void loadFromXmlPull(XmlPull& iter, IAmGroot* groot)
+        {
+            while (iter.next())
+            {
+                const XmlElement& elem = iter.fCurrentElement;
+
+                switch (elem.kind())
+                {
+                case XML_ELEMENT_TYPE_START_TAG:                    // <tag>
+                    this->loadStartTag(iter, groot);
+                    break;
+                case XML_ELEMENT_TYPE_END_TAG:                      // </tag>
+                    this->loadEndTag(elem, groot);
+                    return;
+                case XML_ELEMENT_TYPE_SELF_CLOSING:                 // <tag/>
+                    this->loadSelfClosingNode(elem, groot);
+                    break;
+                case XML_ELEMENT_TYPE_CONTENT:                      // <tag>content</tag>
+                    this->loadContentNode(elem, groot);
+                    break;
+                case XML_ELEMENT_TYPE_COMMENT:                      // <!-- comment -->
+                    this->loadComment(elem, groot);
+                    break;
+                case XML_ELEMENT_TYPE_CDATA:                        // <![CDATA[<greeting>Hello, world!</greeting>]]>
+                    this->loadCDataNode(elem, groot);
+                    break;
+                case XML_ELEMENT_TYPE_DOCTYPE:                      // <!DOCTYPE greeting SYSTEM "hello.dtd">
+                case XML_ELEMENT_TYPE_ENTITY:                       // <!ENTITY hello "Hello">
+                case XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION:       // <?target data?>
+                case XML_ELEMENT_TYPE_XMLDECL:                      // <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                case XML_ELEMENT_TYPE_EMPTY_TAG:                    // <br>
+                default:
+                {
+                    // Ignore anything else
+                }
+                break;
+                }
+            }
+        }
+
+        /*
         void loadFromXmlIterator(XmlElementIterator& iter, IAmGroot* groot) override
         {
             // By the time we get here, the iterator is already positioned on a ready
@@ -266,7 +307,7 @@ namespace waavs
 
             setNeedsBinding(true);
         }
-
+        */
  
         
         
@@ -286,11 +327,11 @@ namespace waavs
             //size_t sz = expandXmlEntities(srcChunk, fSourceMem.span());
 
 			// Create the XML Iterator we're going to use to parse the document
-            XmlElementIterator iter(fSourceMem.span(), true);
+            //XmlElementIterator iter(fSourceMem.span(), true);
+            //loadFromXmlIterator(iter, this);
 
-            // The first pass builds the DOM
-            loadFromXmlIterator(iter, this);
-
+            XmlPull iter(fSourceMem.span(), true);
+            loadFromXmlPull(iter, this);
             
             return true;
         }
@@ -391,8 +432,7 @@ namespace waavs
 
         static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, FontHandler* fh, const double w = 64, const double h = 64, const double ppi = 96)
         {
-            // this MUST be done, or node registrations will not happen
-            //auto sFactory = getFactory();
+
             auto doc = std::make_shared<SVGDocument>(fh, w, h, ppi);
             if (!doc->loadFromChunk(srcChunk, fh))
             {

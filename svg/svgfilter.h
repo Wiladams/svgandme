@@ -61,9 +61,9 @@ namespace waavs {
 		
 		static void registerFactory()
 		{
-			getSVGContainerCreationMap()["filter"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+			getSVGContainerCreationMap()["filter"] = [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFilterElement>(groot);
-				node->loadFromXmlIterator(iter, groot);
+				node->loadFromXmlPull(iter, groot);
 				
 				return node;
 			};
@@ -146,9 +146,9 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			getSVGContainerCreationMap()["feBlend"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+			getSVGContainerCreationMap()["feBlend"] = [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFeBlendElement>(groot);
-				node->loadFromXmlIterator(iter, groot);
+				node->loadFromXmlPull(iter, groot);
 				node->visible(false);
 				
 				return node;
@@ -183,9 +183,9 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			getSVGContainerCreationMap()["feComponentTransfer"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+			getSVGContainerCreationMap()["feComponentTransfer"] = [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFeComponentTransferElement>(groot);
-				node->loadFromXmlIterator(iter, groot);
+				node->loadFromXmlPull(iter, groot);
 				return node;
 				};
 
@@ -220,9 +220,9 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			getSVGContainerCreationMap()["feComposite"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+			getSVGContainerCreationMap()["feComposite"] = [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFeCompositeElement>(groot);
-				node->loadFromXmlIterator(iter, groot);
+				node->loadFromXmlPull(iter, groot);
 				
 				return node;
 			};
@@ -257,9 +257,9 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			getSVGContainerCreationMap()["feColorMatrix"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+			getSVGContainerCreationMap()["feColorMatrix"] = [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFeColorMatrixElement>(groot);
-				node->loadFromXmlIterator(iter, groot);
+				node->loadFromXmlPull(iter, groot);
 				
 				return node;
 			};
@@ -293,9 +293,9 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			getSVGContainerCreationMap()["feConvolveMatrix"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+			getSVGContainerCreationMap()["feConvolveMatrix"] = [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFeConvolveMatrixElement>(groot);
-				node->loadFromXmlIterator(iter, groot);
+				node->loadFromXmlPull(iter, groot);
 				return node;
 				};
 
@@ -329,9 +329,9 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			getSVGContainerCreationMap()["feDiffuseLighting"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+			getSVGContainerCreationMap()["feDiffuseLighting"] = [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFeDiffuseLightingElement>(groot);
-				node->loadFromXmlIterator(iter, groot);
+				node->loadFromXmlPull(iter, groot);
 				return node;
 				};
 
@@ -365,9 +365,9 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			getSVGContainerCreationMap()["feDisplacementMap"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+			getSVGContainerCreationMap()["feDisplacementMap"] = [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFeDisplacementMapElement>(groot);
-				node->loadFromXmlIterator(iter, groot);
+				node->loadFromXmlPull(iter, groot);
 				return node;
 				};
 
@@ -400,9 +400,9 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			getSVGContainerCreationMap()["feDistantLight"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+			getSVGContainerCreationMap()["feDistantLight"] = [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFeDistantLightElement>(groot);
-				node->loadFromXmlIterator(iter, groot);
+				node->loadFromXmlPull(iter, groot);
 				
 				return node;
 				};
@@ -436,9 +436,9 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			getSVGContainerCreationMap()["feFlood"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+			getSVGContainerCreationMap()["feFlood"] = [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFeFloodElement>(groot);
-				node->loadFromXmlIterator(iter, groot);
+				node->loadFromXmlPull(iter, groot);
 				node->visible(false);
 				
 				return node;
@@ -474,9 +474,9 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			getSVGContainerCreationMap()["feGaussianBlur"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+			getSVGContainerCreationMap()["feGaussianBlur"] = [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFeGaussianBlurElement>(groot);
-				node->loadFromXmlIterator(iter, groot);
+				node->loadFromXmlPull(iter, groot);
 				node->visible(false);
 				
 				return node;
@@ -517,9 +517,9 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			getSVGContainerCreationMap()["feOffset"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+			getSVGContainerCreationMap()["feOffset"] = [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFeOffsetElement>(groot);
-				node->loadFromXmlIterator(iter, groot);
+				node->loadFromXmlPull(iter, groot);
 				node->visible(false);
 				
 				return node;
@@ -554,9 +554,9 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			getSVGContainerCreationMap()["feTurbulence"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+			getSVGContainerCreationMap()["feTurbulence"] = [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFeTurbulenceElement>(groot);
-				node->loadFromXmlIterator(iter, groot);
+				node->loadFromXmlPull(iter, groot);
 				
 				return node;
 			};

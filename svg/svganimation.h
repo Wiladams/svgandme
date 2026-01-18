@@ -96,9 +96,9 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			getSVGContainerCreationMap()["animate"] = [](IAmGroot* groot, XmlElementIterator& iter) {
+			getSVGContainerCreationMap()["animate"] = [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGAnimateElement>(groot);
-				node->loadFromXmlIterator(iter, groot);
+				node->loadFromXmlPull(iter, groot);
 				node->visible(false);
 
 				return node;

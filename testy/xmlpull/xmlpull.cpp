@@ -8,6 +8,7 @@
 #include "wsenum.h"
 #include "xmltokengen.h"
 #include "xmlelementgen.h"
+#include "xmlscan.h"
 
 
 using namespace waavs;
@@ -125,27 +126,18 @@ static void testTokenGenerator(const ByteSpan& src)
     }
 }
 
-static void testXmlElementGenerator(const ByteSpan& src)
-{
-    XmlElementGenerator gen(src);
-    XmlElement elem;
-    while (gen.next(elem))
-    {
-        waavs::printXmlElement(elem);
-    }
-}
+
 
 
 static void testXmlElementScan(const ByteSpan& s)
 {
-	XmlIterator iter{ s};
-	iter.fParams.fAutoScanAttributes = false;
-    iter.fParams.fSkipWhitespace = true;
+	XmlPull iter( s);
+	//iter.fParams.fAutoScanAttributes = false;
+    //iter.fParams.fSkipWhitespace = true;
 
-	XmlElement elem;
-	while (nextXmlElement(iter, elem))
+	while (iter.next())
 	{
-		waavs::printXmlElement(elem);
+		waavs::printXmlElement(*iter);
 	}
 }
 
@@ -195,8 +187,8 @@ int main(int argc, char** argv)
     //testTokenizer(s);
 	//testTokenGenerator(s);
 
-    //testXmlElementScan(s);
-    testXmlElementGenerator(s);
+    testXmlElementScan(s);
+    //testXmlElementGenerator(s);
 
     //testXmlIter(s);
 	//testElementContainer(s);

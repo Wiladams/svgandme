@@ -2,6 +2,9 @@
 
 #include "xmlscan.h"
 
+// NOTE: Use XmlPull structure for most uses
+// this one is a bit experimental, and adds more overhead
+// than is necessary for simple uses.
 namespace waavs
 {
     // Objectified XML token generator

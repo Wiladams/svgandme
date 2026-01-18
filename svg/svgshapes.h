@@ -521,9 +521,9 @@ namespace waavs {
 		
 		static void registerFactory() {
 			registerContainerNode("rect",
-				[](IAmGroot* groot, XmlElementIterator& iter) {
+				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGRectElement>(groot);
-					node->loadFromXmlIterator(iter, groot);
+					node->loadFromXmlPull(iter, groot);
 
 					return node;
 				});
@@ -644,9 +644,9 @@ namespace waavs {
 
 		static void registerFactory() {
 			registerContainerNode("circle",
-				[](IAmGroot* groot, XmlElementIterator& iter) {
+				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGCircleElement>(groot);
-					node->loadFromXmlIterator(iter, groot);
+					node->loadFromXmlPull(iter, groot);
 
 					return node;
 				});
@@ -837,9 +837,9 @@ namespace waavs {
 
 		static void registerFactory() {
 			registerContainerNode("polygon",
-				[](IAmGroot* groot, XmlElementIterator& iter) {
+				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGPolygonElement>(groot);
-					node->loadFromXmlIterator(iter, groot);
+					node->loadFromXmlPull(iter, groot);
 
 					return node;
 				});
@@ -879,9 +879,9 @@ namespace waavs {
 		static void registerFactory()
 		{
 			registerContainerNode("path",
-				[](IAmGroot* groot, XmlElementIterator& iter) {
+				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGPathElement>(groot);
-					node->loadFromXmlIterator(iter, groot);
+					node->loadFromXmlPull(iter, groot);
 
 					return node;
 				});

@@ -33,9 +33,9 @@ namespace waavs {
 		static void registerFactory()
 		{
 			registerContainerNode("a",
-				[](IAmGroot* groot, XmlElementIterator& iter) {
+				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGAElement>(groot);
-					node->loadFromXmlIterator(iter, groot);
+					node->loadFromXmlPull(iter, groot);
 
 					return node;
 				});

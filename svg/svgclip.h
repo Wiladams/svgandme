@@ -29,9 +29,9 @@ namespace waavs {
 		// Static constructor to register factory method in map
 		static void registerFactory()
 		{
-			registerContainerNode("clipPath", [](IAmGroot * groot, XmlElementIterator & iter) {
+			registerContainerNode("clipPath", [](IAmGroot * groot, XmlPull & iter) {
 				auto node = std::make_shared<SVGClipPathElement>(groot);
-				node->loadFromXmlIterator(iter, groot);
+				node->loadFromXmlPull(iter, groot);
 
 				return node;
 			});

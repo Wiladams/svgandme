@@ -24,9 +24,9 @@ namespace waavs {
 		static void registerFactory()
 		{
 			registerContainerNode("style",
-				[](IAmGroot* groot, XmlElementIterator& iter) {
+				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGStyleNode>(groot);
-					node->loadFromXmlIterator(iter, groot);
+					node->loadFromXmlPull(iter, groot);
 					return node;
 				});
 			

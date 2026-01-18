@@ -40,9 +40,9 @@ namespace waavs {
 		static void registerFactory()
 		{
 			registerContainerNode("strokeProfile",
-				[](IAmGroot* groot, XmlElementIterator& iter) {
+				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<WaavsStrokeProfile>();
-					node->loadFromXmlIterator(iter, groot);
+					node->loadFromXmlPull(iter, groot);
 
 					return node;
 				});

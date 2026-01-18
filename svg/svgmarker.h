@@ -22,9 +22,9 @@ namespace waavs {
 		static void registerFactory()
 		{
 			registerContainerNode("marker",
-				[](IAmGroot* groot, XmlElementIterator& iter) {
+				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGMarkerElement>(groot);
-					node->loadFromXmlIterator(iter, groot);
+					node->loadFromXmlPull(iter, groot);
 
 					return node;
 				});

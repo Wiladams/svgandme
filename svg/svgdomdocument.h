@@ -167,7 +167,7 @@ namespace waavs {
         }
 
 
-        virtual void loadSelfClosingNode(XmlElementIterator& iter, IAmDocument& doc)
+        virtual void loadSelfClosingNode(XmlPull& iter, IAmDocument& doc)
         {
             //printf("SVGNode::loadSelfClosingNode()[%s]\n", iter->name().c_str());
             printXmlElement(*iter);
@@ -201,30 +201,30 @@ namespace waavs {
             printXmlElement(*iter);
         }
         
-        virtual void loadEndTag(XmlElementIterator& iter, IAmDocument& doc)
+        virtual void loadEndTag(XmlPull& iter, IAmDocument& doc)
         {
             //printf("SVGNode::loadEndTag()[/%s]\n", iter->name().c_str());
 			printXmlElement(*iter);
             
         }
         
-        void loadProcessingInstruction(XmlElementIterator& iter, IAmDocument& doc)
+        void loadProcessingInstruction(XmlPull& iter, IAmDocument& doc)
         {
             //printf("loadProcessingInstruction()\n");
             printXmlElement(*iter);
         }
         
-        virtual  void loadStartTag(XmlElementIterator& iter, IAmDocument& doc)
+        virtual  void loadStartTag(XmlPull& iter, IAmDocument& doc)
         {
 			//printf("SVGNode::loadCompoundNode()[%s]\n", iter->name().c_str());
             printXmlElement(*iter);
             
             auto anode = std::make_shared<SVGNode>();
-            anode->loadFromXmlIterator(iter, doc);
+            anode->loadFromXmlPull(iter, doc);
             addNode(anode, doc);
         }
 
-        virtual void loadXmlDecl(XmlElementIterator& iter, IAmDocument& doc)
+        virtual void loadXmlDecl(XmlPull& iter, IAmDocument& doc)
         {
             //printf("SVGNode::loadXmlDecl()[%s]\n", toString(iter->name()).c_str());
             //printXmlElement(*iter);
@@ -245,7 +245,7 @@ namespace waavs {
             addAttributes(elem.data());
         }
         
-        virtual void loadFromXmlIterator(XmlElementIterator& iter, IAmDocument &doc)
+        virtual void loadFromXmlPull(XmlPull& iter, IAmDocument &doc)
         {
             loadFromXmlElement(*iter, doc);
 
@@ -414,7 +414,7 @@ namespace waavs {
         
 
         // Overrides of node construction
-        void loadXmlDecl(XmlElementIterator& iter, IAmDocument& doc) override
+        void loadXmlDecl(XmlPull& iter, IAmDocument& doc) override
         {
             printf("SVGDOMDocument::loadXmlDecl()[%s]\n", (iter->name());
             printXmlElement(*iter);
@@ -430,10 +430,10 @@ namespace waavs {
             fDocMem.initFromSpan(srcSpan);
 
             // create an xmliterator on the fDocMem span
-			XmlElementIterator iter(fDocMem.span());
+			XmlPull iter(fDocMem.span());
 
 			// Load the document
-			loadFromXmlIterator(iter, *this);
+			loadFromXmlPull(iter, *this);
 
             return true;
         }

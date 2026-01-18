@@ -53,7 +53,7 @@ namespace waavs {
 
         // return 'true' if the node we're currently sitting on is valid
         // return 'false' if otherwise
-        explicit operator bool() { return !fCurrentElement.empty(); }
+        explicit operator bool() const noexcept { return !fCurrentElement.empty(); }
 
         // STL-compliant equality comparison
         bool operator==(const XmlElementIterator& other) const noexcept
@@ -84,8 +84,20 @@ namespace waavs {
         //const XmlElement & next(XmlElement& elem)
         bool next()
         {
-            bool validElement = nextXmlElement(iter, fCurrentElement);
-            return validElement;
+            const unsigned char* before = iter.fState.input.fStart;
+
+            bool success = nextXmlElement(iter, fCurrentElement);
+            const unsigned char* after = iter.fState.input.fStart;
+
+            if (success &&  before == after)
+            {
+                // We made no progress; to avoid infinite loop, we must fail
+                fCurrentElement.reset();
+                return false;
+            }
+            
+            
+            return success;
         }
     };
 

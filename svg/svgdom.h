@@ -175,10 +175,11 @@ namespace waavs
             return true;
         }
 
-        static std::shared_ptr<SVGNode> createContainerNode(XmlElementIterator& iter)
+        static std::shared_ptr<SVGNode> createContainerNode(XmlPull& iter)
         {
             ByteSpan aname = iter->name();
-            auto anode = std::make_shared<SVGNode>(iter.currentElement());
+            auto anode = std::make_shared<SVGNode>(*iter);
+
             return anode;
         }
 
@@ -197,7 +198,7 @@ namespace waavs
         }
 
 
-        virtual  void loadStartTag(XmlElementIterator& iter)
+        virtual  void loadStartTag(XmlPull& iter)
         {
             // Add a child, and call loadIterator
             // If the name of the element is found in the map,
@@ -250,9 +251,9 @@ namespace waavs
         // Parsing up the whole document from an XML Iterator
         void loadFromCache()
         {
-            XmlIteratorState state{ fSourceMem.span() };
-            XmlIteratorParams params{};
-            params.fAutoScanAttributes = false;
+            XmlPull iter( fSourceMem.span() );
+            //XmlIteratorParams params{};
+            //params.fAutoScanAttributes = false;
 
             XmlElement elem{};
 
@@ -261,7 +262,7 @@ namespace waavs
             // to use element
             // Do something with that information if we need to
             // before continuing onto other nodes
-            while(nextXmlElement(params, state, elem))
+            while(nextXmlElement(iter, elem))
             {
                 // BUGBUG - debug
                 //printXmlElement(*iter);

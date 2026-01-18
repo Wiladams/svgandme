@@ -32,9 +32,9 @@ namespace waavs {
 		static void registerFactory()
 		{
 			registerContainerNode("svg",
-				[](IAmGroot* groot, XmlElementIterator& iter) {
+				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGSVGElement>(groot);
-					node->loadFromXmlIterator(iter, groot);
+					node->loadFromXmlPull(iter, groot);
 
 					return node;
 				});
@@ -170,9 +170,9 @@ namespace waavs {
 		static void registerFactory()
 		{
 			registerContainerNode("g",
-				[](IAmGroot* groot, XmlElementIterator& iter) {
+				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGGElement>(groot);
-					node->loadFromXmlIterator(iter, groot);
+					node->loadFromXmlPull(iter, groot);
 
 					return node;
 				});
@@ -216,9 +216,9 @@ namespace waavs {
 		static void registerFactory()
 		{
 			registerContainerNode("use",
-				[](IAmGroot* groot, XmlElementIterator& iter) {
+				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGUseElement>(groot);
-					node->loadFromXmlIterator(iter, groot);
+					node->loadFromXmlPull(iter, groot);
 					return node;
 				});
 			
@@ -373,9 +373,9 @@ namespace waavs {
 		static void registerFactory()
 		{
 			registerContainerNode("defs",
-				[](IAmGroot* groot, XmlElementIterator& iter) {
+				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGDefsNode>(groot);
-					node->loadFromXmlIterator(iter, groot);
+					node->loadFromXmlPull(iter, groot);
 					//node->visible(false);
 
 					return node;
@@ -417,9 +417,9 @@ namespace waavs {
 		static void registerFactory()
 		{
 			registerContainerNode("desc",
-				[](IAmGroot* groot, XmlElementIterator& iter) {
+				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGDescNode>(groot);
-					node->loadFromXmlIterator(iter, groot);
+					node->loadFromXmlPull(iter, groot);
 
 					return node;
 				});
@@ -471,9 +471,9 @@ namespace waavs {
 		static void registerFactory()
 		{
 			registerContainerNode("title",
-				[](IAmGroot* groot, XmlElementIterator& iter) {
+				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGTitleNode>(groot);
-					node->loadFromXmlIterator(iter, groot);
+					node->loadFromXmlPull(iter, groot);
 					node->visible(false);
 
 					return node;

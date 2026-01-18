@@ -1,4 +1,3 @@
-#pragma once
 
 #ifndef SVGSTRUCTURETYPES_H
 #define SVGSTRUCTURETYPES_H
@@ -12,17 +11,13 @@
 
 #include "maths.h"
 
-#include "xmlelementgen.h"
-#include "xmliter.h"
-#include "xmlutil.h"
+#include "xmlscan.h"
 
 #include "svgdatatypes.h"
 #include "svgcss.h"
 #include "irendersvg.h"
 #include "uievent.h"
 #include "collections.h"
-
-
 
 
 namespace waavs 
@@ -349,7 +344,8 @@ namespace waavs {
     using ShapeCreationMap = std::unordered_map<ByteSpan, std::function<std::shared_ptr<ISVGElement>(IAmGroot* root, const XmlElement& elem)>, ByteSpanHash, ByteSpanEquivalent>;
 
     // compound node creation dispatch - 'g', 'symbol', 'pattern', 'linearGradient', 'radialGradient', 'conicGradient', 'image', 'style', 'text', 'tspan', 'use'
-    using SVGContainerCreationMap = std::unordered_map<ByteSpan, std::function<std::shared_ptr<ISVGElement>(IAmGroot* aroot, XmlElementIterator& iter)>, ByteSpanHash, ByteSpanEquivalent>;
+    //using SVGContainerCreationMap = std::unordered_map<ByteSpan, std::function<std::shared_ptr<ISVGElement>(IAmGroot* aroot, XmlElementIterator& iter)>, ByteSpanHash, ByteSpanEquivalent>;
+    using SVGContainerCreationMap = std::unordered_map<ByteSpan, std::function<std::shared_ptr<ISVGElement>(IAmGroot* aroot, XmlPull& iter)>, ByteSpanHash, ByteSpanEquivalent>;
 
 
     static ShapeCreationMap& getSVGSingularCreationMap()
@@ -373,7 +369,7 @@ namespace waavs {
         getSVGSingularCreationMap()[name] = func;
     }
 
-    static void registerContainerNode(const ByteSpan& name, std::function<std::shared_ptr<ISVGElement>(IAmGroot* aroot, XmlElementIterator& iter)> creator)
+    static void registerContainerNode(const ByteSpan& name, std::function<std::shared_ptr<ISVGElement>(IAmGroot* aroot, XmlPull& iter)> creator)
     {
         getSVGContainerCreationMap()[name] = creator;
     }
@@ -392,7 +388,7 @@ namespace waavs {
         return nullptr;
     }
 
-    static std::shared_ptr<ISVGElement> createContainerNode(XmlElementIterator& iter, IAmGroot* root)
+    static std::shared_ptr<ISVGElement> createContainerNode(XmlPull& iter, IAmGroot* root)
     {
         ByteSpan aname = iter->name();
         auto it = getSVGContainerCreationMap().find(aname);
@@ -558,7 +554,7 @@ namespace waavs {
         }
 
 
-        virtual  void loadStartTag(XmlElementIterator& iter, IAmGroot* groot)
+        virtual  void loadStartTag(XmlPull& iter, IAmGroot* groot)
         {
             // Add a child, and call loadIterator
             // If the name of the element is found in the map,
@@ -638,7 +634,48 @@ namespace waavs {
 
         }
         
+        virtual void loadFromXmlPull(XmlPull& iter, IAmGroot* groot)
+        {
+            this->loadFromXmlElement(*iter, groot);
 
+            while (iter.next())
+            {
+                const XmlElement& elem = *iter;
+                switch (elem.kind())
+                {
+                    case XML_ELEMENT_TYPE_START_TAG:                    // <tag>
+                        this->loadStartTag(iter, groot);
+                        break;
+                    case XML_ELEMENT_TYPE_END_TAG:                      // </tag>
+                        this->loadEndTag(elem, groot);
+                        return;
+                    case XML_ELEMENT_TYPE_SELF_CLOSING:                 // <tag/>
+                        this->loadSelfClosingNode(elem, groot);
+                        break;
+                    case XML_ELEMENT_TYPE_CONTENT:                      // <tag>content</tag>
+                        this->loadContentNode(elem, groot);
+                        break;
+                    case XML_ELEMENT_TYPE_COMMENT:                      // <!-- comment -->
+                        this->loadComment(elem, groot);
+                        break;
+                    case XML_ELEMENT_TYPE_CDATA:                        // <![CDATA[<greeting>Hello, world!</greeting>]]>
+                        this->loadCDataNode(elem, groot);
+                        break;
+                    case XML_ELEMENT_TYPE_DOCTYPE:                      // <!DOCTYPE greeting SYSTEM "hello.dtd">
+                    case XML_ELEMENT_TYPE_ENTITY:                       // <!ENTITY hello "Hello">
+                    case XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION:       // <?target data?>
+                    case XML_ELEMENT_TYPE_XMLDECL:                      // <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                    case XML_ELEMENT_TYPE_EMPTY_TAG:                    // <br>
+                    default:
+                    {
+                        // Ignore anything else
+                    }		
+                    break;
+                }
+            }
+        }
+
+        /*
         virtual void loadFromXmlIterator(XmlElementIterator& iter, IAmGroot* groot)
         {
             // By the time we get here, the iterator is already positioned on a ready
@@ -701,7 +738,7 @@ namespace waavs {
 
             } 
         }
-
+        */
 
 
 

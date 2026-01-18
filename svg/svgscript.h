@@ -20,9 +20,9 @@ namespace waavs {
         static void registerFactory()
         {
             registerContainerNode("script",
-                [](IAmGroot* groot, XmlElementIterator& iter) {
+                [](IAmGroot* groot, XmlPull& iter) {
                     auto node = std::make_shared<SVGScriptElement>(groot);
-                    node->loadFromXmlIterator(iter, groot);
+                    node->loadFromXmlPull(iter, groot);
                     return node;
                 });
             
@@ -32,7 +32,7 @@ namespace waavs {
 
         SVGScriptElement(IAmGroot* groot) : SVGGraphicsElement(groot)
         {
-            isStructural(false);
+            setIsStructural(false);
         }
 
         // When content is not wrapped in CDATA
