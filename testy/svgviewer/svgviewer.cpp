@@ -266,7 +266,7 @@ static void setupFonts()
 {
 	//loadDefaultFonts();
 	loadFontDirectory("c:\\windows\\fonts");
-	loadFontDirectory("x:\\Fonts\\Fonts");
+	//loadFontDirectory("x:\\Fonts\\Fonts");
 
 	//loadFontDirectory("x:\\Fonts\\commonfonts");
 	//loadFontDirectory("..\\resources");

@@ -85,7 +85,7 @@ namespace waavs {
 
 // Forward declaration of some functions
 namespace waavs {
-    static bool readPI(ByteSpan& src, ByteSpan& target, ByteSpan& rest);
+    //static bool readPI(ByteSpan& src, ByteSpan& target, ByteSpan& rest);
     static bool readComment(ByteSpan& src, ByteSpan& dataChunk) noexcept;
     static bool readCData(ByteSpan& src, ByteSpan& dataChunk) noexcept;
     static bool readEntityDeclaration(ByteSpan& src, ByteSpan& dataChunk) noexcept;
@@ -118,7 +118,7 @@ namespace waavs
 
 
 namespace waavs {
-
+    /*
     // readPI()
     // 
     // Read Processing Instruction
@@ -129,7 +129,7 @@ namespace waavs {
             return false;
 
         // move past '?'
-        src.remove_prefix(1);
+        //src.remove_prefix(1);
 
         // read PITarget
         ByteSpan tempTarget;
@@ -175,6 +175,7 @@ namespace waavs {
 
         return true;
     }
+    */
 
     //============================================================
     // readCData()
@@ -398,9 +399,10 @@ namespace waavs {
     // parsePIFromTokens()
     //
     // Preconditions:
-    //   - We've just consumed a '<' token.
-    //   - The last token we saw was XML_TOKEN_QMARK (i.e. we just consumed '?').
-    //   - st.fState.input.fStart now points to the first byte *after* '?'.
+    // - '<' already consumed
+    // - current token was '?' (XML_TOKEN_QMARK) already consumed
+    // - st.fState.inTag == true
+    // - st.fState.input.fStart is positioned just after '?'
     //
     // Behavior:
     //   - Use readPI() to parse:
@@ -413,29 +415,57 @@ namespace waavs {
     //
     static bool parsePIFromTokens(XmlIterator& st, XmlElement& elem) noexcept
     {
-        // Rebuild a ByteSpan that *includes* the '?' we just tokenized.
-        ByteSpan src;
-        src.fStart = st.fState.input.fStart - 1;   // points to '?'
-        src.fEnd = st.fState.input.fEnd;
+        XmlToken tok{};
 
-        ByteSpan target{};
-        ByteSpan content{};
+        // 1) Read PITarget as NAME via tokenizer
+        if (!nextXmlToken(st.fState, tok))
+            return false; // some error after '<?'
 
-        if (!readPI(src, target, content))
+        if (tok.type != XML_TOKEN_NAME) {
+            // Malformed PI: no target name after '<?'
             return false;
+        }
 
-        // Sync the token state's input with where readPI() left off
-        st.fState.input.fStart = src.fStart;
-        // We've consumed the entire '<?...?>', so we're now outside the tag.
-        st.fState.inTag = false;
+        ByteSpan target = tok.value;
 
-        int kind = XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION;
-        if (target == "xml")
-            kind = XML_ELEMENT_TYPE_XMLDECL;
+        // 2) Now st.fState.input.fStart points to the first byte after target.
+        //    Skip whitespace manually.  
+        //    The tokenizer would also skip whitespace, but we're about to do 
+        //    a raw scan to find the closing '?>', so we might as well just do it here.
+        st.fState.input.skipWhile(chrWspChars);
 
-        elem.reset(kind, target, content);
+        const unsigned char* contentStart = st.fState.input.fStart;
+        const unsigned char* p = contentStart;
+        const unsigned char* end = st.fState.input.fEnd;
 
-        return true;
+        // 3) Scan for '?>'
+        for (;;)
+        {
+            const unsigned char* q = static_cast<const unsigned char*>(std::memchr(p, '?', size_t(end - p)));
+
+            if (!q)
+                return false; // no closing '?>'
+
+            if (q + 1 < end && q[1] == '>') 
+            {
+                ByteSpan content{ contentStart, q };
+
+                // Advance past '?>'
+                st.fState.input.fStart = q + 2;
+                st.fState.inTag = false;
+
+                int kind = XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION;
+                if (target == "xml")
+                    kind = XML_ELEMENT_TYPE_XMLDECL;
+                elem.reset(kind, target, content);
+                return true;
+            }
+
+            // Not '?>', keep scanning
+            p = q + 1;
+            if (p >= end)
+                return false; // no closing '?>'
+        }
     }
 
 
@@ -491,6 +521,7 @@ namespace waavs {
         }
     }
 
+    /*
     // use the token stream to skip over the attributes, while retaining
     // a byteSpan that represents those attributes.
     // The attrSpan returns the beginning and ending of the attributes
@@ -500,40 +531,119 @@ namespace waavs {
     static bool skipAttributes(XmlIterator &iter, ByteSpan &attrSpan, XmlToken &endtok)
     {
         const unsigned char* attrStart = iter.fState.input.fStart;
+        
         XmlToken tok{};
+        
         // Scan until '>' (or '/>')
-        for (;;) {
+        for (;;) 
+        {
+            const unsigned char* beforeToken = iter.fState.input.fStart;    // where the token starts
+
             if (!nextXmlToken(iter.fState, tok))
-                return false;   // EOF
+                return false;   // EOF or error inside tag
 
             if (tok.type == XML_TOKEN_GT) {
-                // normal end of tag
+                // before points at '>'
                 attrSpan.fStart = attrStart;
-                attrSpan.fEnd = tok.value.fStart - 1; // exclude '>'
-                endtok = tok;
+                attrSpan.fEnd = beforeToken;
+                endtok.reset(XML_TOKEN_GT, {}, true);
 
                 return true;
             }
-            else if (tok.type == XML_TOKEN_SLASH) {
-                // possible self-closing tag
+
+            if (tok.type == XML_TOKEN_SLASH) 
+            {
+                // possible self-closing tag "/>"
+                const unsigned char* slashPos = beforeToken; // position of the '/'
+                const unsigned char* before2ndToken = iter.fState.input.fStart;
+
                 if (!nextXmlToken(iter.fState, tok))
-                    return false;   // EOF
-                if (tok.type == XML_TOKEN_GT) {
-                    // self-closing tag
-                    attrSpan.fStart = attrStart;
-                    attrSpan.fEnd = tok.value.fStart - 2; // exclude '/>'
-                    return true;
-                }
-                else {
+                    return false;   // EOF or error inside tag
+
+                if (tok.type != XML_TOKEN_GT) {
                     // malformed
                     return false;
                 }
+
+                // attributes exclude the '/'
+                attrSpan = { attrStart, slashPos };
+                endtok.reset(XML_TOKEN_SELF_CLOSE, {}, true);
+                return true;
             }
-            // else, continue scanning attributes
+            // else: NAME / EQ / STRING / etc -> continue scanning attributes
         }
 
         return false;
+    }
+    */
 
+    // scanToTagEnd()
+    // 
+    // Skip past the attributes to the end of the tag '>' or '/>' as quickly as possible.
+    // 
+    // Preconditions:
+    // - iter.fState.inTag == true
+    // - iter.fState.input.fStart is positioned right after the tag name
+    //   (i.e. at the beginning of attributes / whitespace)
+    //
+    static bool scanToTagEnd(XmlIterator& iter, ByteSpan& attrSpan, bool& selfClosing) noexcept
+    {
+
+        const unsigned char* p = iter.fState.input.fStart;
+        const unsigned char* end = iter.fState.input.fEnd;
+
+        const unsigned char* attrStart = p;
+
+        selfClosing = false;
+        unsigned char quote = 0;
+
+        while (p < end)
+        {
+            unsigned char c = *p++;
+
+            if (quote)
+            {
+                if (c == quote)
+                    quote = 0;
+                continue;
+            }
+
+            if (c == '"' || c == '\'')
+            {
+                quote = c;
+                continue;
+            }
+
+            if (c == '>')
+            {
+                // Tag ends at p-1 (the '>')
+                const unsigned char* gt = p - 1;
+
+                // Self-close if immediately preceded by '/' (ignoring trailing whitespace).
+                // This matches XML behavior like: <tag ... />
+                const unsigned char* q = gt;
+                while (q > attrStart && chrWspChars(*(q - 1)))
+                    --q;
+
+                if (q > attrStart && *(q - 1) == '/')
+                {
+                    selfClosing = true;
+                    // Exclude that '/' from the attribute span (also exclude any whitespace before '>' if you want).
+                    attrSpan = { attrStart, q - 1 };
+                }
+                else
+                {
+                    attrSpan = { attrStart, gt };
+                }
+
+                // Advance iterator past '>'
+                iter.fState.input.fStart = p;
+                iter.fState.inTag = false;
+                return true;
+            }
+        }
+
+        return false; // EOF before closing '>'
     }
 
     // parseStartOrSelfClosingFromTokens()
@@ -546,43 +656,14 @@ namespace waavs {
     static bool parseStartOrSelfClosingFromTokens(XmlIterator& iter, XmlElement& elem, const XmlToken& firstNameToken)
     {
         ByteSpan tagName = firstNameToken.value;
-        const unsigned char* attrStart = iter.fState.input.fStart; // start of attributes-ish area
+
+        ByteSpan attrs{};
         bool selfClosing = false;
 
-
-        // Scan until '>' (or '/>')
-        // we don't want to use the tokenizer here, because it will parse attributes
-        // which we don't want right now.  We just want to find the closing '>' or '/>'
-
-        // Use memchr to quickly locate the '>' character
-        //iter.fState.input.skipWhile(chrWspChars);
-
-        const unsigned char* srcPtr = iter.fState.input.begin();
-        const unsigned char* endPtr = iter.fState.input.end();
-
-        const unsigned char* closingBracket = static_cast<const unsigned char*>(std::memchr(srcPtr, '>', endPtr - srcPtr));
-
-        // If no '>' is found, malformed, so return false
-        if (!closingBracket)
+        if (!scanToTagEnd(iter, attrs, selfClosing))
             return false;
 
-        // if the character before '>' is '/', then it's self-closing
-        if (closingBracket > srcPtr && closingBracket[-1] == '/') {
-            selfClosing = true;
-            // Move back one to exclude the '/' from the attributes span
-            closingBracket--;
-        }
-        ByteSpan rest(srcPtr, closingBracket);
-
-        // Move the source past '>', so scanning can continue afterward
-        if (selfClosing)
-            iter.fState.input.fStart = closingBracket + 2; // skip '/>'
-        else
-            iter.fState.input.fStart = closingBracket + 1;
-        // either way, we're now outside the tag
-        iter.fState.inTag = false;
-
-        elem.reset(selfClosing ? XML_ELEMENT_TYPE_SELF_CLOSING : XML_ELEMENT_TYPE_START_TAG, tagName, rest);
+        elem.reset(selfClosing ? XML_ELEMENT_TYPE_SELF_CLOSING : XML_ELEMENT_TYPE_START_TAG, tagName, attrs);
 
         return true;
     }
