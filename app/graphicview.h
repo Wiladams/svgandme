@@ -136,7 +136,6 @@ namespace waavs {
 			fCachedImage.reset();
 			fCachedImage.create(static_cast<int>(arect.w), static_cast<int>(arect.h), BL_FORMAT_PRGB32);
 			fCacheContext.attach(fCachedImage);
-			//fCacheContext.fontFamily("Arial");
 			fCacheContext.setViewport(arect);
 			
 			setNeedsRedraw(true);

@@ -18,8 +18,9 @@
 
 using namespace waavs;
 
-constexpr int APP_WIDTH = 1920;
-constexpr int APP_HEIGHT = 1024;
+
+constexpr int APP_WIDTH = 2560;
+constexpr int APP_HEIGHT = 1440;
 constexpr int APP_HMARGIN = 10;
 constexpr int APP_VMARGIN = 10;
 constexpr int APP_TOOL_MARGIN = 64;

@@ -30,23 +30,19 @@ namespace waavs {
 			const std::filesystem::path filePath(name);
 			fFilename = filePath.filename().string();
 
-			//fDocIcon.resetFromDocument(doc, fDocument->fontHandler());
 			fDocIcon.resetFromDocument(doc, FontHandler::getFontHandler());
 
+            // default alignment is 'xMidYMid meet'
 			ViewNavigator nav;
-			BLRect bbox = doc->getBBox();
-			double cx = (bbox.x + bbox.w) / 2.0;
-			double cy = (bbox.y + bbox.h) / 2.0;
+
 			
+			BLRect bbox = doc->getBBox();
 			nav.setFrame(BLRect(2, 1, iconSize, iconSize));
 			nav.setBounds(bbox);
 
-			// center the icon in the frame
-			nav.lookAt(cx, cy);
-
-
+			// set the scene to surface transform
+			// on the doc icon so it will have the alignment we want
 			fDocIcon.setSceneToSurfaceTransform(nav.sceneToSurfaceTransform());
-
 		}
 
 		const std::string& fileName() const { return fFilename; }

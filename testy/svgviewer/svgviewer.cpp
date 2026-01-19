@@ -288,6 +288,8 @@ static void setupFonts()
 
 }
 
+static constexpr int canvasWidth = 2560;
+static constexpr int canvasHeight = 1440;
 
 // called once before main loop is running
 void setup()
@@ -309,7 +311,7 @@ void setup()
     dropFiles();
 	
 	// set app window size and title
-	createAppWindow(2560, 1440, "SVGViewer");
+	createAppWindow(canvasWidth, canvasHeight, "SVGViewer");
 	
 	getRecorder()->reset(&getAppFrameBuffer()->getBlend2dImage(), "frame", 15, 0);
 	

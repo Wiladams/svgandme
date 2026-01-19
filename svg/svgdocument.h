@@ -31,7 +31,8 @@
 
 #include "maths.h"
 
-#include "xmlutil.h"
+//#include "xmlutil.h"
+#include "xmlscan.h"
 
 #include "fonthandler.h"
 #include "svgcss.h"
@@ -242,72 +243,10 @@ namespace waavs
                 break;
                 }
             }
-        }
-
-        /*
-        void loadFromXmlIterator(XmlElementIterator& iter, IAmGroot* groot) override
-        {
-            // By the time we get here, the iterator is already positioned on a ready
-            // to use element
-            // Do something with that information if we need to
-            // before continuing onto other nodes
-            do
-            {
-                // BUGBUG - debug
-                //printXmlElement(*iter);
-
-                const XmlElement& elem = *iter;
-
-                switch (elem.kind())
-                {
-                case XML_ELEMENT_TYPE_START_TAG:                    // <tag>
-                    this->loadStartTag(iter, groot);
-                    break;
-
-                case XML_ELEMENT_TYPE_END_TAG:                      // </tag>
-                    this->loadEndTag(elem, groot);
-                    return;
-
-                case XML_ELEMENT_TYPE_SELF_CLOSING:                 // <tag/>
-                    this->loadSelfClosingNode(elem, groot);
-                    break;
-
-                case XML_ELEMENT_TYPE_CONTENT:                      // <tag>content</tag>
-                    this->loadContentNode(elem, groot);
-                    break;
-
-                case XML_ELEMENT_TYPE_COMMENT:                      // <!-- comment -->
-                    this->loadComment(elem, groot);
-                    break;
-
-                case XML_ELEMENT_TYPE_CDATA:                        // <![CDATA[<greeting>Hello, world!</greeting>]]>
-                    this->loadCDataNode(elem, groot);
-                    break;
-
-                case XML_ELEMENT_TYPE_DOCTYPE:                      // <!DOCTYPE greeting SYSTEM "hello.dtd">
-                case XML_ELEMENT_TYPE_ENTITY:                       // <!ENTITY hello "Hello">
-                case XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION:       // <?target data?>
-                case XML_ELEMENT_TYPE_XMLDECL:                      // <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-                case XML_ELEMENT_TYPE_EMPTY_TAG:                    // <br>
-                default:
-                {
-                    // Ignore anything else
-                    //printf("SVGGraphicsElement::loadFromXmlIterator ==> IGNORING kind(%d) name:", elem.kind());
-                    //printChunk(elem.nameSpan());
-                    //printChunk(elem.data());
-
-                    //printf("SVGGraphicsElement::loadFromXmlIterator ==> IGNORING: %s\n", elem.name().c_str());
-                    //printXmlElement(elem);
-                }
-                break;
-                }
-
-
-            } while (iter.next());
 
             setNeedsBinding(true);
+
         }
-        */
  
         
         
@@ -327,9 +266,6 @@ namespace waavs
             //size_t sz = expandXmlEntities(srcChunk, fSourceMem.span());
 
 			// Create the XML Iterator we're going to use to parse the document
-            //XmlElementIterator iter(fSourceMem.span(), true);
-            //loadFromXmlIterator(iter, this);
-
             XmlPull iter(fSourceMem.span(), true);
             loadFromXmlPull(iter, this);
             

@@ -36,6 +36,7 @@ namespace waavs
 
         void initState()
         {
+            fStateStack.reset();
 			fCurrentDrawingState = fStateStack.currentState();
             setDrawingState(fCurrentDrawingState);
 

@@ -7,7 +7,6 @@
 
 #include "wsenum.h"
 #include "xmltokengen.h"
-#include "xmlelementgen.h"
 #include "xmlscan.h"
 
 
@@ -127,8 +126,6 @@ static void testTokenGenerator(const ByteSpan& src)
 }
 
 
-
-
 static void testXmlElementScan(const ByteSpan& s)
 {
 	XmlPull iter( s);
@@ -140,11 +137,6 @@ static void testXmlElementScan(const ByteSpan& s)
 		waavs::printXmlElement(*iter);
 	}
 }
-
-
-
-
-
 
 
 static void printModuleName()

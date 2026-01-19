@@ -37,7 +37,10 @@ namespace waavs
             return pool[currentIndex++].get();
         }
 
-        void reset() { currentIndex = 0; }
+        void reset() 
+        { 
+            currentIndex = 0; 
+        }
     };
 
     // SVGStateStack
