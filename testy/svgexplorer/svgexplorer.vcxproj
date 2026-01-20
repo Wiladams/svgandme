@@ -217,7 +217,6 @@
     <ClInclude Include="..\..\app\nativewindow.h" />
     <ClInclude Include="..\..\app\svgcacheddocument.h" />
     <ClInclude Include="..\..\app\svgdocumentbrowser.h" />
-    <ClInclude Include="..\..\app\threadedwindow.h" />
     <ClInclude Include="..\..\svg\svg.h" />
     <ClInclude Include="..\..\svg\svgfactory.h" />
     <ClInclude Include="..\..\svg\svgstructuretypes.h" />

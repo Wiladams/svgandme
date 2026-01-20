@@ -98,7 +98,7 @@ namespace waavs {
 	// an SVG path.  The state is updated with the new command, and the numeric
 	// arguments to go with it.
 	//
-	static bool readNextSegmentCommand(SVGSegmentParseParams& params, SVGSegmentParseState& cmdState, PathSegment &seg)
+	static bool readNextSegmentCommand(SVGSegmentParseParams& params, SVGSegmentParseState& cmdState) //, PathSegment &seg)
 	{
 		constexpr charset leadingChars("0123456789.+-");          // digits, symbols, and letters found at start of numbers
 		constexpr  charset pathWsp = chrWspChars + ',';
@@ -108,33 +108,37 @@ namespace waavs {
 
 		if (cmdState.remains.empty())
 			return false;
+		
+		// put in a progress guard to ensure we don't
+		// cause an infinite loop
+		const unsigned char* before = cmdState.remains.fStart;
 
 		// if the next character is not numeric, then 
 		// it must be a command
-		if (!leadingChars(*cmdState.remains)) {
+		if (!leadingChars(*cmdState.remains)) 
+		{
 			// If we're in here, there must be a command
 			// if there isn't it's an error
 			const char* argTypes = getSegmentArgTypes(*cmdState.remains);
-			if (argTypes != nullptr)
-			{
-				// start with iteration == 0 to indicate this is
-				// the first instance of the segment
-				//cmdState.fSegmentKind = *cmdState.remains;
-				//cmdState.iteration = 0;
-				//cmdState.fArgTypes = argTypes;
-				//cmdState.fArgCount = strlen(argTypes);
-				cmdState.seg.reset(nullptr, strlen(argTypes), argTypes, 
-					static_cast<SVGPathCommand>(*cmdState.remains),0);
-				cmdState.remains++;
-
-			}
-			else {
-				// Invalid command
-				cmdState.fError = -1;	// Indicate parsing error
+		
+			if (!argTypes) {
+                cmdState.fError = -1;	// Indicate parsing error
 				return false;
 			}
+
+			cmdState.seg.reset(nullptr, strlen(argTypes), argTypes, static_cast<SVGPathCommand>(*cmdState.remains), 0);
+			cmdState.remains++;
 		}
 		else {
+			// Do implicit repetition for those commands that expect
+			// to have arguments
+			if (cmdState.seg.fArgCount == 0)
+			{
+				// Strict: error out
+				cmdState.fError = -1;
+				return false;
+			}
+
 			// If we are here, the next token is numeric
 			// so, we assume we're in the next iteration of the same
 			// command, so increment the iteration count
@@ -142,7 +146,6 @@ namespace waavs {
 		}
 
 		// Now, we need to read the numeric arguments
-		//if ((cmdState.fArgTypes != nullptr) && (cmdState.seg.fArgCount > 0))
 		if (cmdState.seg.fArgCount > 0)
 		{
 			if (cmdState.seg.fArgCount != readFloatArguments(cmdState.remains, cmdState.seg.fArgTypes, cmdState.seg.fArgs))
@@ -151,10 +154,7 @@ namespace waavs {
 				return false;
 			}
 
-			//return true;
 		}
-
-        seg = cmdState.seg;
 
 		return true;
 	}
@@ -174,10 +174,13 @@ namespace waavs {
 
 		bool next(PathSegment& seg) override
 		{
-			auto success = readNextSegmentCommand(fParams, fCmdState, seg);
+			auto success = readNextSegmentCommand(fParams, fCmdState);
 			if (!success)
+			{
 				return false;
-			//seg = fCmdState.seg;
+			}
+
+			seg = fCmdState.seg;
 
 			return true;
 		}

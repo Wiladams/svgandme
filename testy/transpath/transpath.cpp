@@ -25,9 +25,9 @@ namespace waavs {
 			SVGSegmentParseState cmdState(inSpan);
             PathSegment seg{};
 
-			while (readNextSegmentCommand(params, cmdState, seg))
+			while (readNextSegmentCommand(params, cmdState))
 			{
-				publish(seg);
+				publish(cmdState.seg);
 			}
 
 			return true;

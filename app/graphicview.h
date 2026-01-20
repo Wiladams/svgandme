@@ -27,8 +27,9 @@ namespace waavs {
 		BLMatrix2D fSceneToSurfaceTransform{};
 		BLMatrix2D fSurfaceToSceneTransform{};
 
-		BLRect fFrame{};
-		BLRect fBounds{};
+        PortalView fPortalView{};
+		//BLRect fFrame{};
+		//BLRect fBounds{};
 
 	public:
 		GraphicView()
@@ -36,9 +37,10 @@ namespace waavs {
 		}
 
 		GraphicView(const BLRect& aframe)
-			: fFrame(aframe)
-			, fBounds{ 0,0,aframe.w, aframe.h }
 		{
+            fPortalView.setViewportFrame(aframe);
+            fPortalView.setViewBoxFrame({ 0,0,aframe.w, aframe.h });
+
 			fSceneToSurfaceTransform.reset();
 			fSurfaceToSceneTransform.reset();
 		}
@@ -48,15 +50,26 @@ namespace waavs {
 		void setSceneToSurfaceTransform(const BLMatrix2D& tform) { fSceneToSurfaceTransform = tform; }
 
 
-		const BLRect & frame() const { return fFrame; }
+		const BLRect frame() const 
+		{ 
+			BLRect vpFrame{};
+            fPortalView.getViewportFrame(vpFrame);
+
+			return vpFrame; 
+		}
 		virtual void setFrame(const BLRect& arect) 
 		{ 
-			fFrame = arect;  
+            fPortalView.setViewportFrame(arect);
 		}
 
 
-		const BLRect & bounds() const { return fBounds; }
-		virtual void setBounds(const BLRect& arect) { fBounds = arect;  }
+		const BLRect bounds() const 
+		{ 
+			BLRect vbFrame{};
+            fPortalView.getViewBoxFrame(vbFrame);
+			return vbFrame; 
+		}
+		virtual void setBounds(const BLRect& arect) { fPortalView.setViewBoxFrame(arect); }
 
 		virtual bool contains(double x, double y) {
 			const auto & fr = frame();

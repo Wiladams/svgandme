@@ -62,6 +62,7 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 
 static void drawBackground()
 {
+    // We need to clear the context first
 	getDrawingContext()->renew();
 }
 
@@ -71,7 +72,7 @@ static void drawForeground()
 
 static void drawDocument()
 {
-	// setup any transform
+    // First apply the transform as tracked by the navigator
 	if (gPerformTransform)
 	{
 		const BLMatrix2D & m = gNavigator.sceneToSurfaceTransform();

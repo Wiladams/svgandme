@@ -53,9 +53,6 @@
     <ClInclude Include="..\..\app\nativewindow.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\app\threadedwindow.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\app\graphicview.h">
       <Filter>Header Files</Filter>
     </ClInclude>
