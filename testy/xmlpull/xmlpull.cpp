@@ -155,6 +155,21 @@ static void printCommandLine()
 	printf("\n");
 }
 
+static double round_half_up(double x) { return floor(x + 0.49999999999999994); }
+
+void test_round()
+{
+    double t1 = round_half_up(2.5); // 3
+    double t2 = round_half_up(2.4); // 2
+    double t3 = round_half_up(-2.5); // -2
+    double t4 = round_half_up(-2.6); // -3
+
+    printf("round_half_up(2.5) = %f\n", t1);
+    printf("round_half_up(2.4) = %f\n", t2);
+    printf("round_half_up(-2.5) = %f\n", t3);
+    printf("round_half_up(-2.6) = %f\n", t4);
+}
+
 int main(int argc, char** argv)
 {
 	printModuleName();
@@ -165,6 +180,7 @@ int main(int argc, char** argv)
         printf("Usage: xmlpull <xml file>  [output file]\n");
         return 1;
     }
+
 
     // create an mmap for the specified file
     const char* filename = argv[1];

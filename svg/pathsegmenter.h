@@ -51,7 +51,8 @@ namespace waavs
 
 	struct SVGSegmentParseState
 	{
-		PathSegment seg;
+        PathSegment seg;	// we need segment in here because we retain last command and iteration for implicit commands
+							// maybe we could just store the command and iteration count separately?
 		ByteSpan remains{};
 		int fError{ 0 };
 
@@ -66,16 +67,6 @@ namespace waavs
 			return static_cast<unsigned char>(seg.fSegmentKind);
 		}
 
-		// Does the command use relative coordinates?
-		bool isRelative() const {
-			return (static_cast<unsigned char>(seg.fSegmentKind) >= 'a' && static_cast<unsigned char>(seg.fSegmentKind) <= 'z');
-		}
-
-		// Does the command use absolute coordinates?
-		bool isAbsolute() const {
-			return (static_cast<unsigned char>(seg.fSegmentKind) >= 'A' && static_cast<unsigned char>(seg.fSegmentKind) <= 'Z');
-		}
-
 		bool hasMore() const {
 			return !remains.empty();
 		}
@@ -83,7 +74,12 @@ namespace waavs
 
 	struct SVGSegmentIterator {
         SVGSegmentParseParams fParams{};
-        SVGSegmentParseState fState;
+		SVGSegmentParseState fState{};
+
+		SVGSegmentIterator(const ByteSpan& pathSpan)
+			: fState(pathSpan)
+		{
+        }
 	 };
 }
 
@@ -111,7 +107,7 @@ namespace waavs {
 		
 		// put in a progress guard to ensure we don't
 		// cause an infinite loop
-		const unsigned char* before = cmdState.remains.fStart;
+		//const unsigned char* before = cmdState.remains.fStart;
 
 		// if the next character is not numeric, then 
 		// it must be a command
@@ -164,23 +160,24 @@ namespace waavs {
 namespace waavs {
 	struct SVGPathSegmentGenerator : public IProduce<PathSegment>
 	{
-		SVGSegmentParseParams fParams{};
-		SVGSegmentParseState fCmdState;
+		//SVGSegmentParseParams fParams{};
+		//SVGSegmentParseState fCmdState;
+        SVGSegmentIterator fIter;
 
 		SVGPathSegmentGenerator(const ByteSpan& pathSpan)
-			: fCmdState(pathSpan)
+			: fIter(pathSpan)
 		{
 		}
 
 		bool next(PathSegment& seg) override
 		{
-			auto success = readNextSegmentCommand(fParams, fCmdState);
+			auto success = readNextSegmentCommand(fIter.fParams, fIter.fState);
 			if (!success)
 			{
 				return false;
 			}
 
-			seg = fCmdState.seg;
+			seg = fIter.fState.seg;
 
 			return true;
 		}

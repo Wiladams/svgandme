@@ -39,13 +39,13 @@ namespace waavs {
 	{
 		static void registerFactory()
 		{
-			getSVGContainerCreationMap()["font"] = [](IAmGroot* groot, XmlPull& iter) {
+			registerContainerNode("font", [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFontNode>(groot);
 				node->loadFromXmlPull(iter, groot);
 				node->visible(false);
 
 				return node;
-				};
+				});
 		}
 
 		// id
@@ -90,24 +90,24 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			getSVGSingularCreationMap()["font-face"] = [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNode("font-face", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGFontFaceNode>(groot);
 				node->loadFromXmlElement(elem, groot);
 				node->visible(false);
 
 				return node;
-			};
+			});
 		}
 
 		static void registerFactory()
 		{
-			getSVGContainerCreationMap()["font-face"] = [](IAmGroot* groot, XmlPull& iter) {
+			registerContainerNode("font-face", [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFontFaceNode>(groot);
 				node->loadFromXmlPull(iter, groot);
 				node->visible(false);
 
 				return node;
-			};
+			});
 
 			registerSingularNode();
 		}
@@ -175,22 +175,22 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			getSVGSingularCreationMap()["missing-glyph"] = [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNode("missing-glyph", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGMissingGlyphNode>(groot);
 				node->loadFromXmlElement(elem, groot);
 
 				return node;
-			};
+			});
 		}
 
 		static void registerFactory()
 		{
-			getSVGContainerCreationMap()["missing-glyph"] = [](IAmGroot* groot, XmlPull& iter) {
+			registerContainerNode("missing-glyph", [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGMissingGlyphNode>(groot);
 				node->loadFromXmlPull(iter, groot);
 
 				return node;
-			};
+			});
 			
 			registerSingularNode();
 		}
@@ -232,12 +232,12 @@ namespace waavs {
 	struct SVGGlyphNode : public SVGPathBasedGeometry
 	{
 		static void registerFactory() {
-			getSVGSingularCreationMap()["glyph"] = [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNode("glyph", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGGlyphNode>(groot);
 				node->loadFromXmlElement(elem, groot);
 				
 				return node;
-			};
+			});
 		}
 
 		uint64_t fUnicode{ 0 };
@@ -286,22 +286,22 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			getSVGSingularCreationMap()["font-face-src"] = [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNode("font-face-src", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGFontFaceSrcNode>(groot);
 				node->loadFromXmlElement(elem, groot);
 
 				return node;
-			};
+			});
 		}
 
 		static void registerFactory()
 		{
-			getSVGContainerCreationMap()["font-face-src"] = [](IAmGroot* groot, XmlPull& iter) {
+			registerContainerNode("font-face-src", [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFontFaceSrcNode>(groot);
 				node->loadFromXmlPull(iter, groot);
 
 				return node;
-			};
+			});
 
 			registerSingularNode();
 		}
@@ -317,11 +317,11 @@ namespace waavs {
 	struct SVGFontFaceNameNode : public SVGGraphicsElement
 	{
 		static void registerFactory() {
-			getSVGSingularCreationMap()["font-face-name"] = [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNode("font-face-name", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGFontFaceNameNode>(groot);
 				node->loadFromXmlElement(elem, groot);
 				return node;
-			};
+			});
 		}
 
 		ByteSpan fFaceName{};

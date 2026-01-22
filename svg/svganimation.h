@@ -86,23 +86,23 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			getSVGSingularCreationMap()["animate"] = [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNode("animate", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGAnimateElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 
 				return node;
-				};
+				});
 		}
 
 		static void registerFactory()
 		{
-			getSVGContainerCreationMap()["animate"] = [](IAmGroot* groot, XmlPull& iter) {
+			registerContainerNode("animate", [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGAnimateElement>(groot);
 				node->loadFromXmlPull(iter, groot);
 				node->visible(false);
 
 				return node;
-				};
+				});
 
 			registerSingularNode();
 		}

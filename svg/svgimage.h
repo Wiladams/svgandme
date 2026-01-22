@@ -101,12 +101,12 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			getSVGSingularCreationMap()["image"] = [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNode("image", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGImageElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 
 				return node;
-				};
+				});
 		}
 
 		static void registerFactory()

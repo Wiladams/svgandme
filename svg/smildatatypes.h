@@ -159,7 +159,8 @@ namespace waavs {
 		}
 		else {
 			uint64_t myint{ 0 };
-			if (!read_u64(s, myint))
+            size_t digitsRead{ 0 };
+			if (!read_u64(s, myint, digitsRead))
 				return false;
 			value = myint;
 		}

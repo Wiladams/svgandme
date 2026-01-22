@@ -15,9 +15,15 @@
 #include "maths.h"
 
 // Forward declarations
+static INLINE bool read_required_digits(waavs::ByteSpan& s, uint64_t& v, size_t requiredDigits) noexcept;
+
 static INLINE uint8_t  hexToDec(const uint8_t vIn) ;
 static INLINE int toBoolInt(const waavs::ByteSpan& inChunk);
 
+static inline bool readNextNumber(waavs::ByteSpan& s, double& outNumber) noexcept;
+static inline bool readNextFlag(waavs::ByteSpan& s, int& outNumber) noexcept;
+static int readFloatArguments(waavs::ByteSpan& s, const char* argTypes, float* outArgs) noexcept;
+static int readNumericArguments(waavs::ByteSpan& s, const char* argTypes, double* outArgs) noexcept;
 
 
 
@@ -128,19 +134,26 @@ namespace waavs {
     //
     // Read a 64-bit unsigned integer from the input span
     // advance the span 
-    static INLINE bool read_u64(ByteSpan& s, uint64_t& v) noexcept
+    static INLINE bool read_u64(ByteSpan& s, uint64_t& v, size_t digitsRead) noexcept
     {
-        if (!s)
-            return false;
-
-        v = 0;
         const unsigned char* sStart = s.fStart;
         const unsigned char* sEnd = s.fEnd;
+
+        digitsRead = 0;
+
+        // if the input is empty, or the first byte is not a digit
+        // then return false
+        if ((sStart >= sEnd) || !is_digit(*sStart))
+            return false;
+
+
+        v = 0;
 
         while ((sStart < sEnd) && is_digit(*sStart))
         {
             v = (v * 10) + (uint64_t)(*sStart - '0');
-            sStart++;
+            ++sStart;
+            ++digitsRead;
         }
 
         s.fStart = sStart;
@@ -157,7 +170,7 @@ namespace waavs {
     {
         ByteSpan s = inChunk;
         
-        if (!s)
+        if (s.empty())
             return false;
 
         const unsigned char* sStart = s.fStart;
@@ -165,25 +178,19 @@ namespace waavs {
 
         // Check for a sign if it's there
         int sign = 1;
-        if (*sStart == '-') {
-            sign = -1;
-            sStart++;
-        }
-        else if (*sStart == '+') {
-            sStart++;
+        if (sStart < sEnd && (*sStart == '-' || *sStart == '+'))
+        {
+            sign = (*sStart == '-') ? -1 : 1;
+            ++sStart;
         }
 
+        s.fStart = sStart;
         uint64_t uvalue{ 0 };
-        if (!read_u64(s, uvalue))
+        size_t digitsRead{ 0 };
+        if (!read_u64(s, uvalue, digitsRead))
             return false;
 
-        //if (!parse64u(s, uvalue))
-        //    return false;
-
-        if (sign < 0)
-            v = -(int64_t)uvalue;
-        else
-            v = (int64_t)uvalue;
+        v = (sign < 0) ? -(int64_t)uvalue : (int64_t)uvalue;
 
         return true;
     }
@@ -208,15 +215,17 @@ namespace waavs {
 			// return false, because we've exhausted
             // the input, without reaching the required
             // number of digits
-            if (!s)
-				return false;
+            // We shoud not need this test, as we already
+            // checked the size above
+            //if (!s)
+			//	return false;
 
             // get the current byte, and try to convert
             // to a digit.  
             // If not digit, return false, because we still
             // haven't satisfied the constraint of having a
             // required number of digits
-            int abyte = s[0]-'0';
+            unsigned char abyte = *s-'0';
 
 			// if the byte is not a digit, return false
             // leave the cursor where we failed in case
@@ -224,14 +233,15 @@ namespace waavs {
             if (abyte < 0 || abyte>9)
                 return false;
 
-            s++;
+            ++s;
 
             // We've got a valid digit, so 
             // multiply the return value by 10
             // and add the current byte value
             v = (v * 10) + abyte;
 
-            i++;
+            // increment count of digits processed
+            ++i;
         }
 
         // if we've gotten to here, we have satisfied
@@ -273,11 +283,13 @@ namespace waavs {
     // has already occured.
     static bool INLINE readNumber(ByteSpan& s, double& value) noexcept
     {
+        if (s.empty())
+            return false;
+
         const unsigned char* startAt = s.fStart;
         const unsigned char* endAt = s.fEnd;
 
         bool isNegative = false;
-        //double sign = 1.0;
         double res = 0.0;
 
         // integer part
@@ -291,42 +303,51 @@ namespace waavs {
         bool hasIntPart = false;
         bool hasFracPart = false;
 
+
+
         // Parse optional sign
-        if (*startAt == '+') {
+        if (*startAt == '+' || *startAt == '-')
+        {
+            isNegative = (*startAt == '-');
             startAt++;
-        }
-        else if (*startAt == '-') {
-            //sign = -1;
-            isNegative = true;
-            startAt++;
+            if (startAt >= endAt) return false;
+
         }
 
         // Parse integer part
+        size_t digitsRead = 0;
 		unsigned char c = *startAt;
         if (is_digit(c))
         {
             hasIntPart = true;
             s.fStart = startAt;
-            read_u64(s, intPart);
+            read_u64(s, intPart, digitsRead);
             startAt = s.fStart;
             res = static_cast<double>(intPart);
         }
 
         // Parse fractional part.
+        bool fracHasDigits = false;
         if ((startAt < endAt) && (*startAt == '.'))
         {
-            hasFracPart = true;
             startAt++; // Skip '.'
 
             fracBase = 1;
 
             // Add the fraction portion without calling out to powd
-            while ((startAt < endAt) && is_digit(*startAt)) {
+            while ((startAt < endAt) && is_digit(*startAt)) 
+            {
+                fracHasDigits = true;
                 fracPart = fracPart * 10 + static_cast<uint64_t>(*startAt - '0');
                 fracBase *= 10;
                 startAt++;
             }
-            res += (static_cast<double>(fracPart) / static_cast<double>(fracBase));
+
+            if (fracHasDigits) 
+            {
+                hasFracPart = true;
+                res += (static_cast<double>(fracPart) / static_cast<double>(fracBase));
+            }
 
         }
 
@@ -358,7 +379,7 @@ namespace waavs {
 
             if (is_digit(*startAt)) {
                 s.fStart = startAt;
-                read_u64(s, expPart);
+                read_u64(s, expPart, digitsRead);
                 startAt = s.fStart;
                 res = res * std::pow(10, double(expSign * double(expPart)));
             }
@@ -376,7 +397,7 @@ namespace waavs {
         return readNumber(s, value);
     }
 
-    // readNextNumber()
+    // readNextFloat()
     // 
     // Consume the next number off the front of the chunk
     // modifying the input chunk to advance past the  removed number
@@ -386,7 +407,8 @@ namespace waavs {
     {
         // typical whitespace found in lists of numbers, 
         // like on paths and polylines
-        static const charset nextNumWsp = chrWspChars + ",+"; // (",+\t\n\f\r ");
+        //static const charset nextNumWsp = chrWspChars + ",+"; // (",+\t\n\f\r ");
+        static const charset nextNumWsp = chrWspChars + ","; // (",+\t\n\f\r ");
 
         s.skipWhile(nextNumWsp);
 
@@ -408,7 +430,8 @@ namespace waavs {
     {
         // typical whitespace found in lists of numbers, 
         // like on paths and polylines
-        static const charset nextNumWsp = chrWspChars + ",+"; // (",+\t\n\r ");
+        //static const charset nextNumWsp = chrWspChars + ",+"; // (",+\t\n\r ");
+        static const charset nextNumWsp = chrWspChars + ","; // (",+\t\n\r ");
 
 		s.skipWhile(nextNumWsp);
 
@@ -426,6 +449,9 @@ namespace waavs {
         // clear up leading whitespace, including ','
         s.skipWhile(wspChars);
 
+        if (s.empty())
+            return false;
+
         if (*s == '0' || *s == '1') {
             outNumber = (int)(*s - '0');
             s++;
@@ -436,25 +462,7 @@ namespace waavs {
 
     }
 
-    /*
-    static inline bool readNextFlag(ByteSpan& s, double& outNumber) noexcept
-    {
-        // typical whitespace found in lists of numbers, like on paths and polylines
-        static charset wspChars = chrWspChars + ",";
 
-        // clear up leading whitespace, including ','
-		s.skipWhile(wspChars);
-
-		if (*s == '0' || *s == '1') {
-			outNumber = (double)(*s - '0');
-			s++;
-			return true;
-		}
-        
-		return false;
-
-    }
-    */
     
     // readNumericArguments()
     //

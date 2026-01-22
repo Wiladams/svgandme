@@ -23,12 +23,12 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			getSVGSingularCreationMap()["mask"] = [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNode("mask", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGMaskElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 
 				return node;
-				};
+				});
 		}
 
 		// Static constructor to register factory method in map

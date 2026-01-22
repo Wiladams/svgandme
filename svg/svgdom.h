@@ -175,7 +175,7 @@ namespace waavs
             return true;
         }
 
-        static std::shared_ptr<SVGNode> createContainerNode(XmlPull& iter)
+        static std::shared_ptr<SVGNode> createGroupNode(XmlPull& iter)
         {
             ByteSpan aname = iter->name();
             auto anode = std::make_shared<SVGNode>(*iter);
@@ -186,7 +186,7 @@ namespace waavs
         virtual void loadSelfClosingNode(const XmlElement& elem)
         {
             //printf("SVGGraphicsElement::loadSelfClosingNode: \n");
-
+            /*
             auto anode = createSingularNode(elem);
             if (anode != nullptr) {
                 this->addNode(anode);
@@ -195,6 +195,7 @@ namespace waavs
                 //printf("SVGGraphicsElement::loadSelfClosingNode UNKNOWN[%s]\n", toString(elem.name()).c_str());
                 //printXmlElement(elem);
             }
+            */
         }
 
 
@@ -204,18 +205,19 @@ namespace waavs
             // If the name of the element is found in the map,
             // then create a new node of that type and add it
             // to the list of nodes.
-            auto node = createContainerNode(iter);
+            auto node = createGroupNode(iter);
             if (node != nullptr) {
                 this->addNode(node);
             }
             else {
+                //node = createContainerNode(iter, groot);
                 // BUGBUG
                 // This isn't strictly needed as we're not actually
-                // adding the node to anything.
-                auto& mapper = getSVGContainerCreationMap();
-                auto& mapperfunc = mapper["g"];
-                if (mapperfunc)
-                    node = mapperfunc(groot, iter);
+                // adding the node to anything, but we need to consume the node
+               // auto& mapper = getSVGContainerCreationMap();
+                //auto& mapperfunc = mapper["g"];
+                //if (mapperfunc)
+                //    node = mapperfunc(groot, iter);
             }
 
         }

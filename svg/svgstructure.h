@@ -158,12 +158,12 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			getSVGSingularCreationMap()["g"] = [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNode("g", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGGElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 
 				return node;
-				};
+				});
 		}
 
 		// Static constructor to register factory method in map
@@ -206,11 +206,11 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			getSVGSingularCreationMap()["use"] = [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNode("use", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGUseElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 				return node;
-				};
+				});
 		}
 
 		static void registerFactory()
@@ -360,13 +360,13 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			getSVGSingularCreationMap()["defs"] = [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNode("defs",  [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGDefsNode>(groot);
 				node->loadFromXmlElement(elem, groot);
 				//node->visible(false);
 
 				return node;
-				};
+				});
 		}
 
 		// Static constructor to register factory method in map
@@ -405,12 +405,12 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			getSVGSingularCreationMap()["desc"] = [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNode("desc", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGDescNode>(groot);
 				node->loadFromXmlElement(elem, groot);
 
 				return node;
-				};
+				});
 		}
 
 		// Static constructor to register factory method in map
@@ -458,13 +458,13 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			getSVGSingularCreationMap()["title"] = [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNode("title", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGTitleNode>(groot);
 				node->loadFromXmlElement(elem, groot);
 				node->visible(false);
 
 				return node;
-				};
+				});
 		}
 
 		// Static constructor to register factory method in map

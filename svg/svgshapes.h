@@ -433,11 +433,11 @@ namespace waavs {
 	struct SVGLineElement : public SVGPathBasedGeometry
 	{
 		static void registerFactory() {
-			getSVGSingularCreationMap()["line"] = [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNode("line", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGLineElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 				return node;
-			};
+			});
 		}
 
 
@@ -512,11 +512,11 @@ namespace waavs {
 	struct SVGRectElement : public SVGPathBasedGeometry
 	{
 		static void registerSingular() {
-			getSVGSingularCreationMap()["rect"] = [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNode("rect", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGRectElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 				return node;
-			};
+			});
 		}
 		
 		static void registerFactory() {
@@ -635,11 +635,11 @@ namespace waavs {
 	struct SVGCircleElement : public SVGPathBasedGeometry
 	{
 		static void registerSingular() {
-			getSVGSingularCreationMap()["circle"] = [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNode("circle", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGCircleElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 				return node;
-				};
+				});
 		}
 
 		static void registerFactory() {
@@ -774,12 +774,12 @@ namespace waavs {
 	struct SVGPolylineElement : public SVGPathBasedGeometry
 	{
 		static void registerFactory() {
-			getSVGSingularCreationMap()["polyline"] = [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNode("polyline", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGPolylineElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 				
 				return node;
-			};
+			});
 		}
 
 		
@@ -828,11 +828,11 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			getSVGSingularCreationMap()["polygon"] = [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNode("polygon", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGPolygonElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 				return node;
-				};
+				});
 		}
 
 		static void registerFactory() {
@@ -868,12 +868,12 @@ namespace waavs {
 	struct SVGPathElement : public SVGPathBasedGeometry
 	{
 		static void registerSingularNode() {
-			getSVGSingularCreationMap()["path"] = [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNode("path", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGPathElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 				
 				return node;
-			};
+			});
 		}
 
 		static void registerFactory()

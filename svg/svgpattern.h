@@ -26,11 +26,11 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			getSVGSingularCreationMap()["pattern"] = [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNode("pattern", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGPatternElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 				return node;
-				};
+				});
 		}
 
 
