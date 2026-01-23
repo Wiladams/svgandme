@@ -11,8 +11,6 @@
 #include <string>
 
 
-
-
 #include "blend2d.h"
 #include "maths.h"
 #include "bspan.h"
@@ -38,6 +36,9 @@ namespace waavs {
         {
             fFontManager.create();
         }
+
+        const std::vector<std::string>& familyNames() const { return fFamilyNames; }
+
 
         /*
             setDpiUnits makes it possible to let the FontHandler to
@@ -73,7 +74,6 @@ namespace waavs {
             fUnitsPerInch = unitsPerInch;
         }
 
-        const std::vector<std::string>& familyNames() const { return fFamilyNames; }
 
 
 

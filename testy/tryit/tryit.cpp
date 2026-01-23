@@ -16,7 +16,7 @@ using namespace waavs;
 SVGB2DDriver ctx;
 
 
-static bool builder(BLPath& path, IPipelineSource<CurveSegment>& input, size_t segCount = 20) 
+static bool builder(BLPath& path, IProduce<CurveSegment>& input, size_t segCount = 20) 
 {
 	CurveSegment seg;
 	bool started = false;

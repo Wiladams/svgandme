@@ -264,7 +264,6 @@ namespace waavs {
             return this->getElementById(id);
         }
         
-        //virtual std::shared_ptr<SVGViewable> findNodeByUrl(const ByteSpan& inChunk) = 0;
         // Load a URL reference, including the 'url(' function indicator
         virtual std::shared_ptr<IViewable> findNodeByUrl(const ByteSpan& inChunk)
         {
@@ -339,13 +338,42 @@ namespace waavs {
 }
 
 namespace waavs {
-    // Geometry node creation dispatch
-    // Creating from a singular element
-    using ShapeCreationMap = std::unordered_map<ByteSpan, std::function<std::shared_ptr<ISVGElement>(IAmGroot* root, const XmlElement& elem)>, ByteSpanHash, ByteSpanEquivalent>;
+    using InternedKey = const char*;
 
-    // compound node creation dispatch - 'g', 'symbol', 'pattern', 'linearGradient', 'radialGradient', 'conicGradient', 'image', 'style', 'text', 'tspan', 'use'
-    //using SVGContainerCreationMap = std::unordered_map<ByteSpan, std::function<std::shared_ptr<ISVGElement>(IAmGroot* aroot, XmlElementIterator& iter)>, ByteSpanHash, ByteSpanEquivalent>;
-    using SVGContainerCreationMap = std::unordered_map<ByteSpan, std::function<std::shared_ptr<ISVGElement>(IAmGroot* aroot, XmlPull& iter)>, ByteSpanHash, ByteSpanEquivalent>;
+    struct InternedKeyHash {
+        size_t operator()(InternedKey p) const noexcept {
+            return std::hash<const void*>{}(p);
+        }
+    };
+
+    struct InternedKeyEquivalent {
+        bool operator()(InternedKey a, InternedKey b) const noexcept {
+            return a == b;
+        }
+    };
+
+    // node creation dispatch
+    // Creating from a singular element, typically a self-closing tag
+    using ShapeCreationMap =
+        std::unordered_map<InternedKey,
+        std::function<std::shared_ptr<ISVGElement>(IAmGroot*, const XmlElement&)>,
+        InternedKeyHash, InternedKeyEquivalent>;
+
+    // compound node creation dispatch - 
+    // 'g', 'symbol', 'pattern', 'linearGradient', 'radialGradient', 'conicGradient', 
+    // 'image', 
+    // 'style', 
+    // 'text', 
+    // 'tspan', 
+    // 'use'
+    //
+    // And probably some others.  Basically, anything that has a start tag should 
+    // register a routine here.
+    using SVGContainerCreationMap =
+        std::unordered_map<InternedKey,
+        std::function<std::shared_ptr<ISVGElement>(IAmGroot*, XmlPull&)>,
+        InternedKeyHash, InternedKeyEquivalent>;
+
 
 
     static ShapeCreationMap& getSVGSingularCreationMap()
@@ -364,14 +392,18 @@ namespace waavs {
 
 
     // Register named creation routines
-    static void registerSVGSingularNode(const ByteSpan& name, std::function<std::shared_ptr<ISVGElement>(IAmGroot* root, const XmlElement& elem)> func)
+    static void registerSVGSingularNode(const char* name,
+        std::function<std::shared_ptr<ISVGElement>(IAmGroot*, const XmlElement&)> func)
     {
-        getSVGSingularCreationMap()[name] = func;
+        InternedKey k = PSNameTable::INTERN(name);
+        getSVGSingularCreationMap()[k] = std::move(func);
     }
 
-    static void registerContainerNode(const ByteSpan& name, std::function<std::shared_ptr<ISVGElement>(IAmGroot* aroot, XmlPull& iter)> creator)
+    static void registerContainerNode(const char* name,
+        std::function<std::shared_ptr<ISVGElement>(IAmGroot*, XmlPull&)> creator)
     {
-        getSVGContainerCreationMap()[name] = creator;
+        InternedKey k = PSNameTable::INTERN(name);
+        getSVGContainerCreationMap()[k] = std::move(creator);
     }
 
 
@@ -379,23 +411,30 @@ namespace waavs {
     // Convenience way to create an element
     static std::shared_ptr<ISVGElement> createSingularNode(const XmlElement& elem, IAmGroot* root)
     {
-        ByteSpan aname = elem.name();
-        auto it = getSVGSingularCreationMap().find(aname);
-        if (it != getSVGSingularCreationMap().end())
-        {
+        //InternedKey k = PSNameTable::INTERN(elem.name()); // ByteSpan -> interned const char*
+        InternedKey k = elem.nameAtom(); // nameAtom -> interned const char*
+        if (!k)
+            return nullptr;
+
+        auto& m = getSVGSingularCreationMap();
+        auto it = m.find(k);
+        if (it != m.end())
             return it->second(root, elem);
-        }
         return nullptr;
     }
 
+
     static std::shared_ptr<ISVGElement> createContainerNode(XmlPull& iter, IAmGroot* root)
     {
-        ByteSpan aname = iter->name();
-        auto it = getSVGContainerCreationMap().find(aname);
-        if (it != getSVGContainerCreationMap().end())
-        {
+        //InternedKey k = PSNameTable::INTERN(iter->name()); // ByteSpan -> interned const char*
+        InternedKey k = iter->nameAtom();
+        if (!k)
+            return nullptr;
+        
+        auto& m = getSVGContainerCreationMap();
+        auto it = m.find(k);
+        if (it != m.end())
             return it->second(root, iter);
-        }
         return nullptr;
     }
 }
@@ -565,13 +604,24 @@ namespace waavs {
                 this->addNode(node, groot);
             }
             else {
-                // BUGBUG
-                // This isn't strictly needed as we're not actually
-                // adding the node to anything.
-                auto & mapper = getSVGContainerCreationMap();
-                auto & mapperfunc = mapper["g"];
-                if (mapperfunc)
-                    node = mapperfunc(groot, iter);
+                // If we're here, we've run across a start tag that does
+                // not have a registered factory method.
+                // so, we just consume its content as if it were a 'g' element
+                // and throw it away.
+                // BUGBUG - we should use a faster 'skipSubtree' method here
+                static InternedKey gk = PSNameTable::INTERN("g");
+
+                auto& m = getSVGContainerCreationMap();
+                auto it = m.find(gk);
+                if (it != m.end() && it->second) {
+                    (void)it->second(groot, iter);
+                }
+                else {
+                    // if 'g' isn't registered, we should fallback to skippint
+                    // the subtree entirely.
+                    // Really, skipping the subtree is the right thing to do anyway
+                    // and using the 'g' element is just a temporary workaround
+                }
             }
 
         }

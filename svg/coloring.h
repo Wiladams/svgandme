@@ -40,16 +40,20 @@ typedef struct  // WAAVS_ALIGN16
 // the component values are NOT pre-multiplied
 // This type is mostly an intermediary.
 // ColorPRGBA should be used for most operations
+// 
 // linear RGB, straight alpha (unpremultiplied) 
 typedef struct // WAAVS_ALIGN16 
 {
     float r, g, b, a; // 0..1 
 } ColorLinear;
 
+// ColorPRGBA
 // This structure is in the linear address space, and pre-multiplies
-// the alpha against the color components.
+// the alpha against the color components.  This is what is compatible
+// with blend2d PRGBA pixels.
+// 
 // linear RGB premultiplied by alpha (r,g,b <= a) 
-typedef struct // WAAVS_ALIGN16 
+typedef struct 
 {
     float r, g, b, a; // 0..1 
 } ColorPRGBA;

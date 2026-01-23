@@ -13,11 +13,12 @@
 namespace waavs {
 	//============================================================
 	//	SVGStyleNode
-	// Content node is a CDATA section that contains a style sheet
-	// Or it is just the plain content of the node
+	// 
+	// The content can be either a CDATA section that contains a style sheet
+    // Or the style sheet can be in the element text itself.
+	// 
 	// This node exists to load the stylesheet into the root document
-	// object.  It should not become a part of the document tree
-	// itself.
+	// object.  It should not become a part of the document tree itself.
 	//============================================================
 	struct SVGStyleNode :public SVGGraphicsElement
 	{
@@ -29,7 +30,6 @@ namespace waavs {
 					node->loadFromXmlPull(iter, groot);
 					return node;
 				});
-			
 		}
 
 
