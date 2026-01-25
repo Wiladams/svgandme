@@ -106,8 +106,8 @@ namespace waavs {
 		{
 			fPortal.loadFromAttributes(fAttributes);
 			
-			fDimRefX.loadFromChunk(getAttribute("refX"));
-			fDimRefY.loadFromChunk(getAttribute("refY"));
+			fDimRefX.loadFromChunk(getAttributeByName("refX"));
+			fDimRefY.loadFromChunk(getAttributeByName("refY"));
 		}
 
 		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override

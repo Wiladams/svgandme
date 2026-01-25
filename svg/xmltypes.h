@@ -288,11 +288,14 @@ namespace waavs {
     // XmlAttributeCollection
     // A collection of the attibutes found on an XmlElement
     //============================================================
-    using BSpanDictionary = std::unordered_map<ByteSpan, ByteSpan, ByteSpanHash, ByteSpanEquivalent>;
+    using AttrKey = InternedKey;
+    using AttrDictionary = std::unordered_map<AttrKey, ByteSpan, InternedKeyHash, InternedKeyEquivalent>;
+
+    //using BSpanDictionary = std::unordered_map<ByteSpan, ByteSpan, ByteSpanHash, ByteSpanEquivalent>;
 
     struct XmlAttributeCollection
     {
-        BSpanDictionary fAttributes{};
+        AttrDictionary fAttributes{};
 
         XmlAttributeCollection() = default;
         XmlAttributeCollection(const XmlAttributeCollection& other) noexcept
@@ -302,15 +305,21 @@ namespace waavs {
 
 
         // Return a const attribute collection
-        const BSpanDictionary& attributes() const noexcept { return fAttributes; }
+        const AttrDictionary& attributes() const noexcept { return fAttributes; }
 
         size_t size() const noexcept { return fAttributes.size(); }
 
         void clear() noexcept { fAttributes.clear(); }
 
-        bool hasAttribute(const ByteSpan& inName) const noexcept
+        bool hasAttribute(AttrKey key) const noexcept
         {
-            return fAttributes.find(inName) != fAttributes.end();
+            return key && (fAttributes.find(key) != fAttributes.end());
+        }
+
+        bool hasAttribute(const ByteSpan &name) const noexcept
+        {
+            AttrKey key = PSNameTable::INTERN(name);
+            return hasAttribute(key);
         }
 
 
@@ -319,13 +328,18 @@ namespace waavs {
         // with the new value
         void addAttribute(const ByteSpan& name, const ByteSpan& valueChunk) noexcept
         {
-            fAttributes[name] = valueChunk;
+            AttrKey key = PSNameTable::INTERN(name);
+            fAttributes[key] = valueChunk;
         }
 
-        // get an attribute from the collection, if it exists
-        bool getAttribute(const ByteSpan& name, ByteSpan& value) const noexcept
+        bool getAttributeInterned(AttrKey key, ByteSpan& value) const noexcept
         {
-            auto it = fAttributes.find(name);
+            if (!key)
+            {
+                value.reset();
+                return false;
+            }
+            auto it = fAttributes.find(key);
             if (it != fAttributes.end()) {
                 value = it->second;
                 return true;
@@ -334,14 +348,20 @@ namespace waavs {
             return false;
         }
 
+        bool getAttribute(const ByteSpan& name, ByteSpan& value) const noexcept = delete;
 
-
-        ByteSpan getAttribute(const ByteSpan& name) const noexcept
+        // get an attribute from the collection, based on a bytespan name
+        bool getAttributeBySpan(const ByteSpan& name, ByteSpan& value) const noexcept
         {
-            auto it = fAttributes.find(name);
-            if (it != fAttributes.end())
-                return it->second;
-            return {};
+            AttrKey key = PSNameTable::INTERN(name);
+            return getAttributeInterned(key, value);
+        }
+
+        // Find an attribute based on a c-string name which is not interned
+        bool getAttribute(const char* name, ByteSpan& value) const noexcept
+        {
+            AttrKey key = PSNameTable::INTERN(name);
+            return getAttributeInterned(key, value);
         }
 
 
@@ -352,9 +372,10 @@ namespace waavs {
         {
             for (const auto& attr : other.fAttributes)
             {
+                fAttributes[attr.first] = attr.second;
                 // Optimize update: Remove old value first, then emplace new one
-                fAttributes.erase(attr.first);
-                fAttributes.emplace(attr.first, attr.second);
+                //fAttributes.erase(attr.first);
+                //fAttributes.emplace(attr.first, attr.second);
             }
             return *this;
         }
@@ -387,35 +408,6 @@ ByteSpan scanNameSpan(ByteSpan data)
     fXmlName.reset(fNameSpan);
 
     return s;  // Instead of modifying `fData`, return the new position
-}
-*/
-
-/*
-namespace waavs {
-
-    // Representation of an xml element
-    // The xml scanner will generate these
-    struct XmlElement : public XmlElementInfo
-    {
-    private:
-        //XmlName fXmlName{};
-
-
-
-
-
-    public:
-        XmlElement() = default;
-        XmlElement(const XmlElement& other) = default;
-        XmlElement(XmlElement&&) noexcept = default;
-        
-        ~XmlElement() = default;
-
-        XmlElement& operator=(const XmlElement&) noexcept = default;
-        XmlElement& operator=(XmlElement&&) noexcept = default;
-
-
-    };
 }
 */
 

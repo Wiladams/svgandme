@@ -189,14 +189,14 @@ namespace waavs {
 			SVGDimension fDimWidth{};
 			SVGDimension fDimHeight{};
 			
-			fDimX.loadFromChunk(getAttribute("x"));
-			fDimY.loadFromChunk(getAttribute("y"));
-			fDimWidth.loadFromChunk(getAttribute("width"));
-			fDimHeight.loadFromChunk(getAttribute("height"));
+			fDimX.loadFromChunk(getAttributeByName("x"));
+			fDimY.loadFromChunk(getAttributeByName("y"));
+			fDimWidth.loadFromChunk(getAttributeByName("width"));
+			fDimHeight.loadFromChunk(getAttributeByName("height"));
 
-			fImageRef = getAttribute("href");
+			fImageRef = getAttributeByName("href");
 			if (!fImageRef)
-				fImageRef = getAttribute("xlink:href");
+				fImageRef = getAttributeByName("xlink:href");
 
 			
 			// Parse the image so we can get its dimensions

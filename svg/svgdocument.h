@@ -62,9 +62,7 @@ namespace waavs
     struct SVGDocument : public  SVGGraphicsElement, public IAmGroot 
     {
         MemBuff fSourceMem{};
-        
-		FontHandler* fFontHandler = nullptr;
-        
+                
         // BUGBUG - this should go away
         // Although there can be multiple <svg> elements in a document
 		// we track only the first one
@@ -95,7 +93,6 @@ namespace waavs
         SVGDocument(FontHandler *fh, const double w=0, const double h=0, const double ppi = 96)
             :SVGGraphicsElement()
             , fDpi(ppi)
-            , fFontHandler(fh)
             , fCanvasWidth(w)
             , fCanvasHeight(h)
         {
@@ -106,36 +103,31 @@ namespace waavs
         SVGDocument(const ByteSpan& srcChunk, const double w = 64, const double h = 64, const double ppi = 96, FontHandler* fh=nullptr)
             :SVGGraphicsElement()
             , fDpi(ppi)
-            , fFontHandler(fh)
             , fCanvasWidth(w)
             , fCanvasHeight(h)
         {
-            resetFromSpan(srcChunk, fh, w, h, ppi);
+            resetFromSpan(srcChunk, w, h, ppi);
         }
         
         ~SVGDocument() = default;
 
 
-        void resetFromSpan(const ByteSpan& srcChunk, FontHandler* fh, const double w, const double h, const double ppi=96)
+        void resetFromSpan(const ByteSpan& srcChunk, const double w, const double h, const double ppi=96)
         {
             // clear out the old document
             //clear();
-            fontHandler(fh);
-            dpi(ppi);
+
+            setDpi(ppi);
             canvasSize(w, h);
             fStyleSheet = std::make_shared<CSSStyleSheet>();
 
             // load the new document
-            loadFromChunk(srcChunk, fh);
+            loadFromChunk(srcChunk);
         }
         
         
-		// Properties
-		FontHandler* fontHandler() const override { return fFontHandler; }
-        void fontHandler(FontHandler* fh) { fFontHandler = fh; }
-        
         double dpi() const override { return fDpi; }
-		void dpi(const double d) override { fDpi = d; }
+		void setDpi(const double d) override { fDpi = d; }
         
 		double canvasWidth() const override { return fCanvasWidth; }
 		double canvasHeight() const override { return fCanvasHeight; }
@@ -251,7 +243,7 @@ namespace waavs
         
         
 		// Assuming we've already got a file mapped into memory, load the document
-        bool loadFromChunk(const ByteSpan &srcChunk, FontHandler* fh)
+        bool loadFromChunk(const ByteSpan &srcChunk)
         {
             // create a memBuff from srcChunk
             // since we use memory references, we need
@@ -366,11 +358,11 @@ namespace waavs
             ctx->pop();
         }
 
-        static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, FontHandler* fh, const double w = 64, const double h = 64, const double ppi = 96)
+        static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, const double w = 64, const double h = 64, const double ppi = 96)
         {
 
-            auto doc = std::make_shared<SVGDocument>(fh, w, h, ppi);
-            if (!doc->loadFromChunk(srcChunk, fh))
+            auto doc = std::make_shared<SVGDocument>(nullptr, w, h, ppi);
+            if (!doc->loadFromChunk(srcChunk))
             {
                 printf("SVGFactory::CreateFromChunk() failed to load\n");
                 return nullptr;

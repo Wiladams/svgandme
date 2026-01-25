@@ -47,21 +47,35 @@ namespace waavs {
             getPreserveAspectRatio(aspect);
 
             // preserveAspectRatio
-            aspect.loadFromChunk(attrs.getAttribute("preserveAspectRatio"));
+            ByteSpan aspectAttr{};
+            if (attrs.getAttribute("preserveAspectRatio", aspectAttr))
+            {
+                aspect.loadFromChunk(aspectAttr);
+            }
             setPreserveAspectRatio(aspect);
 
 			// viewBox
             BLRect vbFrame{};
-            fHasViewbox = parseViewBox(attrs.getAttribute("viewBox"), vbFrame);
+            ByteSpan viewBoxAttr{};
+            if (attrs.getAttribute("viewBox", viewBoxAttr))
+            {
+                fHasViewbox = parseViewBox(viewBoxAttr, vbFrame);
+            }
             setViewBoxFrame(vbFrame);
 
             // We can parse these here, but we can't resolve them 
             // until we bind to a context
             // x, y, width, height
-            fDimX.loadFromChunk(attrs.getAttribute("x"));
-            fDimY.loadFromChunk(attrs.getAttribute("y"));
-            fDimWidth.loadFromChunk(attrs.getAttribute("width"));
-            fDimHeight.loadFromChunk(attrs.getAttribute("height"));
+            ByteSpan xAttr{}, yAttr{}, wAttr{}, hAttr{};
+            attrs.getAttribute("x", xAttr);
+            attrs.getAttribute("y", yAttr);
+            attrs.getAttribute("width", wAttr);
+            attrs.getAttribute("height", hAttr);
+
+            fDimX.loadFromChunk(xAttr);
+            fDimY.loadFromChunk(yAttr);
+            fDimWidth.loadFromChunk(wAttr);
+            fDimHeight.loadFromChunk(hAttr);
 
             
             return true;

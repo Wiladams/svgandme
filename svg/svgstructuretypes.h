@@ -18,7 +18,7 @@
 #include "irendersvg.h"
 #include "uievent.h"
 #include "collections.h"
-
+#include "svgatoms.h"
 
 namespace waavs 
 {
@@ -143,8 +143,9 @@ namespace waavs {
 
         virtual bool loadFromAttributes(const XmlAttributeCollection& attrs)
         {
-            auto attr = attrs.getAttribute(id());
-            if (!attr)
+            ByteSpan attr{};
+
+            if (!attrs.getAttributeBySpan(id(), attr))
                 return false;
             
             return loadFromChunk(attr);
@@ -181,8 +182,8 @@ namespace waavs {
     // Handling attribute conversion to properties
     // 
     // Collection of property constructors
-    using SVGAttributeToPropertyConverter = std::function<std::shared_ptr<SVGVisualProperty>(const XmlAttributeCollection& attrs)>;
-    using SVGPropertyConstructorMap = std::unordered_map<ByteSpan, SVGAttributeToPropertyConverter, ByteSpanHash, ByteSpanEquivalent>;
+    using SVGAttributeToPropertyConverter = std::function<std::shared_ptr<SVGVisualProperty>(const XmlAttributeCollection& attrs)>;    
+    using SVGPropertyConstructorMap = std::unordered_map<InternedKey, SVGAttributeToPropertyConverter, InternedKeyHash, InternedKeyEquivalent>;
 
 
     static SVGPropertyConstructorMap & getPropertyConstructionMap()
@@ -192,22 +193,40 @@ namespace waavs {
         return gSVGAttributeCreation;
     }
 
-    // Convenient function to register property constructors
-    static void registerSVGAttribute(const ByteSpan& name, SVGAttributeToPropertyConverter func)
+    static bool registerSVGAttribute(InternedKey key, SVGAttributeToPropertyConverter func)
     {
-        SVGPropertyConstructorMap& pmap = getPropertyConstructionMap();
-        pmap[name] = func;
+        if (!key)
+            return false;
+
+        auto& pmap = getPropertyConstructionMap();
+        pmap[key] = std::move(func);
+
+        return true;
+    }
+    
+
+    static bool registerSVGAttributeByName(const char* name, SVGAttributeToPropertyConverter func)
+    {
+        InternedKey k = PSNameTable::INTERN(name);
+        
+        if (!k)
+            return false;
+
+        auto& pmap = getPropertyConstructionMap();
+        pmap[k] = std::move(func);
+
+        return true;
     }
 
-    static SVGAttributeToPropertyConverter getAttributeConverter(const ByteSpan &name)
+    static SVGAttributeToPropertyConverter getAttributeConverter(InternedKey k)
     {
-        // Next, see if there is a property registered for the attribute
-        auto & mapper = getPropertyConstructionMap();
-        auto it = mapper.find(name);
+        if (!k) 
+            return nullptr;
+
+        auto& mapper = getPropertyConstructionMap();
+        auto it = mapper.find(k);
         if (it != mapper.end())
-        {
             return it->second;
-        }
 
         return nullptr;
     }
@@ -305,7 +324,7 @@ namespace waavs {
         }
 
         // IAmGroot
-        virtual FontHandler* fontHandler() const = 0;
+        //virtual FontHandler* fontHandler() const = 0;
 
         virtual std::shared_ptr<CSSStyleSheet> styleSheet() = 0;
         virtual void styleSheet(std::shared_ptr<CSSStyleSheet> sheet) = 0;
@@ -318,7 +337,7 @@ namespace waavs {
         virtual double canvasHeight() const = 0;
         
         virtual double dpi() const = 0;
-        virtual void dpi(const double d) = 0;
+        virtual void setDpi(const double d) = 0;
     };
 
 }
@@ -329,7 +348,12 @@ namespace waavs {
         bool fIsStructural{ true };
 		XmlElement fSourceElement{};
         
-       virtual  std::shared_ptr<SVGVisualProperty> getVisualProperty(const ByteSpan& name) = 0;
+       virtual  std::shared_ptr<SVGVisualProperty> getVisualProperty(InternedKey key) = 0;
+        virtual  std::shared_ptr<SVGVisualProperty> getVisualPropertyByName(const char * name)
+        {
+            InternedKey k = PSNameTable::INTERN(name);
+            return getVisualProperty(k);
+        }
 
        bool isStructural() const { return fIsStructural; }
        void setIsStructural(bool aStructural) { fIsStructural = aStructural; }
@@ -338,19 +362,7 @@ namespace waavs {
 }
 
 namespace waavs {
-    using InternedKey = const char*;
 
-    struct InternedKeyHash {
-        size_t operator()(InternedKey p) const noexcept {
-            return std::hash<const void*>{}(p);
-        }
-    };
-
-    struct InternedKeyEquivalent {
-        bool operator()(InternedKey a, InternedKey b) const noexcept {
-            return a == b;
-        }
-    };
 
     // node creation dispatch
     // Creating from a singular element, typically a self-closing tag
@@ -459,8 +471,8 @@ namespace waavs {
         ByteSpan fClassAttribute{};
 
         
-        std::unordered_map<ByteSpan, std::shared_ptr<SVGVisualProperty>, ByteSpanHash, ByteSpanEquivalent> fVisualProperties{};
-        
+        std::unordered_map<InternedKey, std::shared_ptr<SVGVisualProperty>, InternedKeyHash, InternedKeyEquivalent> fVisualProperties{};
+
         std::vector<std::shared_ptr<IViewable>> fNodes{};
 
 
@@ -517,19 +529,36 @@ namespace waavs {
 
         bool hasAttribute(const ByteSpan& key) const noexcept { return fAttributes.hasAttribute(key); }
 
-        ByteSpan getAttribute(const ByteSpan& key) const noexcept
+        ByteSpan getAttribute(InternedKey key) const noexcept
         {
-            return fAttributes.getAttribute(key);
+            ByteSpan value{};
+            fAttributes.getAttributeInterned(key, value);
+            return value;
         }
-        
-		void setAttribute(const ByteSpan& key, const ByteSpan& value) noexcept
+
+        ByteSpan getAttributeByName(const char * name) const noexcept
+        {
+            return getAttribute(PSNameTable::INTERN(name));
+        }
+
+        ByteSpan getAttribute(const ByteSpan& key) const noexcept = delete;
+
+
+        void setAttribute(const ByteSpan& key, const ByteSpan& value) noexcept
 		{
 			fAttributes.addAttribute(key,value);
 		}
 
-        std::shared_ptr<SVGVisualProperty> getVisualProperty(const ByteSpan& name) override
+
+        // Property management
+        void addVisualProperty(InternedKey key, std::shared_ptr<SVGVisualProperty> prop)
         {
-            auto it = fVisualProperties.find(name);
+            fVisualProperties[key] = prop;
+        }
+
+        std::shared_ptr<SVGVisualProperty> getVisualProperty(InternedKey key) override
+        {
+            auto it = fVisualProperties.find(key);
             if (it != fVisualProperties.end())
                 return it->second;
 
@@ -537,6 +566,7 @@ namespace waavs {
         }
 
         
+        // Adding nodes to our tree
         virtual bool addNode(std::shared_ptr < ISVGElement > node, IAmGroot* groot)
         {
             if (node == nullptr || groot == nullptr)
@@ -853,12 +883,12 @@ namespace waavs {
             this->fixupSelfStyleAttributes(ctx, groot);
 
             // Use up some of the attributes
-            ByteSpan display = fAttributes.getAttribute("display");
-            if (display)
+            ByteSpan displayAttr{};
+            if (fAttributes.getAttribute(svgattr::display(), displayAttr))
             {
-                display = chunk_trim(display, chrWspChars);
+                displayAttr = chunk_trim(displayAttr, chrWspChars);
 
-                if (display == "none")
+                if (displayAttr == "none")
                     visible(false);
             }
 
@@ -922,7 +952,7 @@ namespace waavs {
                 {
                     auto prop = propertyMapper(fAttributes);
                     if (prop != nullptr)
-                        fVisualProperties[attr.first] = prop;
+                        addVisualProperty(attr.first, prop);
                 }
             }
         }
@@ -962,14 +992,14 @@ namespace waavs {
             // BUGBUG - need to apply transform appropriately here
             //if (fHasTransform)  //fTransform.type() != BL_MATRIX2D_TYPE_IDENTITY)
             //    ctx->applyTransform(fTransform);
-			auto tform = getVisualProperty("transform");
+			auto tform = getVisualPropertyByName("transform");
 			if (tform)
 				tform->draw(ctx, groot);
 
             for (auto& prop : fVisualProperties) {
                 // We've already applied the transform, so skip
                 // applying it again.
-                if (prop.first == "transform")
+                if (prop.first == svgattr::transform())
                     continue;
 
                 if (prop.second->autoDraw() && prop.second->isSet())

@@ -24,13 +24,13 @@ namespace waavs {
 			: GraphicView(rect)
 			, fFullPath(name)
 			, fDocument(doc)
-			, fDocIcon(BLRect(0,0, iconSize, iconSize), nullptr)
+			, fDocIcon(BLRect(0,0, iconSize, iconSize))
 			, fIconSize(iconSize)
 		{
 			const std::filesystem::path filePath(name);
 			fFilename = filePath.filename().string();
 
-			fDocIcon.resetFromDocument(doc, FontHandler::getFontHandler());
+			fDocIcon.resetFromDocument(doc);
 
             // default alignment is 'xMidYMid meet'
 			ViewNavigator nav;

@@ -38,30 +38,36 @@ namespace waavs {
 			XmlAttributeCollection attrs{};
             scanAttributes(attrs, attrSpan);
 			
+            ByteSpan styleAttr{}, offsetAttr{}, stopColorAttr{}, stopOpacityAttr{};
+
+
 			// If there's a style attribute, then add those to the collection
-			auto style = attrs.getAttribute("style");
-			if (style)
+			if (attrs.getAttribute("style", styleAttr))
 			{
 				// If we have a style attribute, assume both the stop-color
 				// and the stop-opacity are in there
-				parseStyleAttribute(style, attrs);
+				parseStyleAttribute(styleAttr, attrs);
 			}
 
 			// Get the offset
 			SVGDimension dim{};
-			dim.loadFromChunk(attrs.getAttribute("offset"));
-			if (dim.isSet())
+			if (attrs.getAttribute("offset", offsetAttr))
 			{
-				fOffset = dim.calculatePixels(1);
+				dim.loadFromChunk(offsetAttr);
+				if (dim.isSet())
+				{
+					fOffset = dim.calculatePixels(1);
+				}
 			}
+
 
 			SVGDimension dimOpacity{};
 			SVGPaint paint(groot);
 
 			// Get the stop color
-			if (attrs.getAttribute("stop-color"))
+			if (attrs.getAttribute("stop-color", stopColorAttr))
 			{
-				paint.loadFromChunk(attrs.getAttribute("stop-color"));
+				paint.loadFromChunk(stopColorAttr);
 			}
 			else
 			{
@@ -69,9 +75,9 @@ namespace waavs {
 				paint.loadFromChunk("black");
 			}
 			
-			if (attrs.getAttribute("stop-opacity"))
+			if (attrs.getAttribute("stop-opacity", stopOpacityAttr))
 			{
-				dimOpacity.loadFromChunk(attrs.getAttribute("stop-opacity"));
+				dimOpacity.loadFromChunk(stopOpacityAttr);
 			}
 			else
 			{
@@ -296,10 +302,10 @@ namespace waavs {
 		void fixupSelfStyleAttributes(IRenderSVG *ctx, IAmGroot *groot) override
 		{
 			// See if we have a template reference
-			if (getAttribute("href"))
-				fTemplateReference = getAttribute("href");
-			else if (getAttribute("xlink:href"))
-				fTemplateReference = getAttribute("xlink:href");
+			if (getAttributeByName("href"))
+				fTemplateReference = getAttributeByName("href");
+			else if (getAttributeByName("xlink:href"))
+				fTemplateReference = getAttributeByName("xlink:href");
 
 			resolveReference(ctx, groot);
 		}
@@ -352,28 +358,28 @@ namespace waavs {
 				return;
 
 			
-			if (!getAttribute("x1"))
+			if (!getAttributeByName("x1"))
 			{
-				if (elem->getAttribute("x1"))
-					setAttribute("x1", elem->getAttribute("x1"));
+				if (elem->getAttributeByName("x1"))
+					setAttribute("x1", elem->getAttributeByName("x1"));
 			}
 
-			if (!getAttribute("y1"))
+			if (!getAttributeByName("y1"))
 			{
-				if (elem->getAttribute("y1"))
-					setAttribute("y1", elem->getAttribute("y1"));
+				if (elem->getAttributeByName("y1"))
+					setAttribute("y1", elem->getAttributeByName("y1"));
 			}
 			
-			if (!getAttribute("x2"))
+			if (!getAttributeByName("x2"))
 			{
-				if (elem->getAttribute("x2"))
-					setAttribute("x2", elem->getAttribute("x2"));
+				if (elem->getAttributeByName("x2"))
+					setAttribute("x2", elem->getAttributeByName("x2"));
 			}
 
-			if (!getAttribute("y2"))
+			if (!getAttributeByName("y2"))
 			{
-				if (elem->getAttribute("y2"))
-					setAttribute("y2", elem->getAttribute("y2"));
+				if (elem->getAttributeByName("y2"))
+					setAttribute("y2", elem->getAttributeByName("y2"));
 			}
 			
 		}
@@ -397,10 +403,10 @@ namespace waavs {
 			SVGDimension fX2; //{ 100, SVG_LENGTHTYPE_PERCENTAGE };
 			SVGDimension fY2; //{ 0, SVG_LENGTHTYPE_PERCENTAGE };
 			
-			fX1.loadFromChunk(getAttribute("x1"));
-			fY1.loadFromChunk(getAttribute("y1"));
-			fX2.loadFromChunk(getAttribute("x2"));
-			fY2.loadFromChunk(getAttribute("y2"));
+			fX1.loadFromChunk(getAttributeByName("x1"));
+			fY1.loadFromChunk(getAttributeByName("y1"));
+			fX2.loadFromChunk(getAttributeByName("x2"));
+			fY2.loadFromChunk(getAttributeByName("y2"));
 
 			
 			// Before we go any further, get our current gradientUnits
@@ -408,14 +414,14 @@ namespace waavs {
 			// if there is NOT a gradientUnits attribute, then we'll either
 			// be using the one that came from a template (if there was one)
 			// or we'll just be sticking with the default value
-			if (getEnumValue(SVGSpreadMethod, getAttribute("spreadMethod"), (uint32_t&)fSpreadMethod))
+			if (getEnumValue(SVGSpreadMethod, getAttributeByName("spreadMethod"), (uint32_t&)fSpreadMethod))
 			{
 				fGradient.setExtendMode((BLExtendMode)fSpreadMethod);
 			}
 
-			getEnumValue(SVGSpaceUnits, getAttribute("gradientUnits"), (uint32_t&)fGradientUnits);
+			getEnumValue(SVGSpaceUnits, getAttributeByName("gradientUnits"), (uint32_t&)fGradientUnits);
 
-			fHasGradientTransform = parseTransform(getAttribute("gradientTransform"), fGradientTransform);
+			fHasGradientTransform = parseTransform(getAttributeByName("gradientTransform"), fGradientTransform);
 
 
 
@@ -560,34 +566,34 @@ namespace waavs {
 			if (!elem)
 				return;
 			
-			if (!getAttribute("cx"))
+			if (!getAttributeByName("cx"))
 			{
-				if (elem->getAttribute("cx"))
-					setAttribute("cx", elem->getAttribute("cx"));
+				if (elem->getAttributeByName("cx"))
+					setAttribute("cx", elem->getAttributeByName("cx"));
 			}
 
-			if (!getAttribute("cy"))
+			if (!getAttributeByName("cy"))
 			{
-				if (elem->getAttribute("cy"))
-					setAttribute("cy", elem->getAttribute("cy"));
+				if (elem->getAttributeByName("cy"))
+					setAttribute("cy", elem->getAttributeByName("cy"));
 			}
 
-			if (!getAttribute("r"))
+			if (!getAttributeByName("r"))
 			{
-				if (elem->getAttribute("r"))
-					setAttribute("r", elem->getAttribute("r"));
+				if (elem->getAttributeByName("r"))
+					setAttribute("r", elem->getAttributeByName("r"));
 			}
 
-			if (!getAttribute("fx"))
+			if (!getAttributeByName("fx"))
 			{
-				if (elem->getAttribute("fx"))
-					setAttribute("fx", elem->getAttribute("fx"));
+				if (elem->getAttributeByName("fx"))
+					setAttribute("fx", elem->getAttributeByName("fx"));
 			}
 
-			if (!getAttribute("fy"))
+			if (!getAttributeByName("fy"))
 			{
-				if (elem->getAttribute("fy"))
-					setAttribute("fy", elem->getAttribute("fy"));
+				if (elem->getAttributeByName("fy"))
+					setAttribute("fy", elem->getAttributeByName("fy"));
 			}
 		}
 
@@ -610,11 +616,11 @@ namespace waavs {
 			SVGDimension fFx;	// { 50, SVG_LENGTHTYPE_PERCENTAGE, false };
 			SVGDimension fFy;	// { 50, SVG_LENGTHTYPE_PERCENTAGE, false };
 			
-			fCx.loadFromChunk(getAttribute("cx"));
-			fCy.loadFromChunk(getAttribute("cy"));
-			fR.loadFromChunk(getAttribute("r"));
-			fFx.loadFromChunk(getAttribute("fx"));
-			fFy.loadFromChunk(getAttribute("fy"));
+			fCx.loadFromChunk(getAttributeByName("cx"));
+			fCy.loadFromChunk(getAttributeByName("cy"));
+			fR.loadFromChunk(getAttributeByName("r"));
+			fFx.loadFromChunk(getAttributeByName("fx"));
+			fFy.loadFromChunk(getAttributeByName("fy"));
 			
 
 			// Before we go any further, get our current gradientUnits
@@ -622,14 +628,14 @@ namespace waavs {
 			// if there is NOT a gradientUnits attribute, then we'll either
 			// be using the one that came from a template (if there was one)
 			// or we'll just be sticking with the default value
-			if (getEnumValue(SVGSpreadMethod, getAttribute("spreadMethod"), (uint32_t&)fSpreadMethod))
+			if (getEnumValue(SVGSpreadMethod, getAttributeByName("spreadMethod"), (uint32_t&)fSpreadMethod))
 			{
 				fGradient.setExtendMode((BLExtendMode)fSpreadMethod);
 			}
 
-			getEnumValue(SVGSpaceUnits, getAttribute("gradientUnits"), (uint32_t&)fGradientUnits);
+			getEnumValue(SVGSpaceUnits, getAttributeByName("gradientUnits"), (uint32_t&)fGradientUnits);
 
-			fHasGradientTransform = parseTransform(getAttribute("gradientTransform"), fGradientTransform);
+			fHasGradientTransform = parseTransform(getAttributeByName("gradientTransform"), fGradientTransform);
 
 			
 			if (fGradientUnits == SVG_SPACE_OBJECT)
@@ -806,28 +812,28 @@ namespace waavs {
 			if (!elem)
 				return;
 
-			if (!getAttribute("x1"))
+			if (!getAttributeByName("x1"))
 			{
-				if (elem->getAttribute("x1"))
-					setAttribute("x1", elem->getAttribute("x1"));
+				if (elem->getAttributeByName("x1"))
+					setAttribute("x1", elem->getAttributeByName("x1"));
 			}
 
-			if (!getAttribute("y1"))
+			if (!getAttributeByName("y1"))
 			{
-				if (elem->getAttribute("y1"))
-					setAttribute("y1", elem->getAttribute("y1"));
+				if (elem->getAttributeByName("y1"))
+					setAttribute("y1", elem->getAttributeByName("y1"));
 			}
 
-			if (!getAttribute("angle"))
+			if (!getAttributeByName("angle"))
 			{
-				if (elem->getAttribute("angle"))
-					setAttribute("angle", elem->getAttribute("angle"));
+				if (elem->getAttributeByName("angle"))
+					setAttribute("angle", elem->getAttributeByName("angle"));
 			}
 		
-			if (!getAttribute("repeat"))
+			if (!getAttributeByName("repeat"))
 			{
-				if (elem->getAttribute("repeat"))
-					setAttribute("repeat", elem->getAttribute("repeat"));
+				if (elem->getAttributeByName("repeat"))
+					setAttribute("repeat", elem->getAttributeByName("repeat"));
 			}
 		}
 		
@@ -854,18 +860,18 @@ namespace waavs {
 			SVGDimension repeat{};
 			
 			if (hasAttribute("x1")) {
-				x0.loadFromChunk(getAttribute("x1"));
+				x0.loadFromChunk(getAttributeByName("x1"));
 				values.x0 = x0.calculatePixels(w, 0, dpi);
 			}
 
 			if (hasAttribute("y1")) {
-				y0.loadFromChunk(getAttribute("y1"));
+				y0.loadFromChunk(getAttributeByName("y1"));
 				values.y0 = y0.calculatePixels(h, 0, dpi);
 			}
 
 			if (hasAttribute("angle")) {
 				// treat the angle as an angle type
-				ByteSpan angAttr = getAttribute("angle");
+				ByteSpan angAttr = getAttributeByName("angle");
 				if (angAttr)
 				{
 					SVGAngleUnits units;
@@ -874,13 +880,13 @@ namespace waavs {
 			}
 
 			if (hasAttribute("repeat")) {
-				repeat.loadFromChunk(getAttribute("repeat"));
+				repeat.loadFromChunk(getAttributeByName("repeat"));
 				values.repeat = repeat.calculatePixels(1.0, 0, dpi);
 			}
 			else if (values.repeat == 0)
 				values.repeat = 1.0;
 			
-			fHasGradientTransform = parseTransform(getAttribute("gradientTransform"), fGradientTransform);
+			fHasGradientTransform = parseTransform(getAttributeByName("gradientTransform"), fGradientTransform);
 
 			fGradient.setValues(values);
 			if (fHasGradientTransform) {
@@ -923,9 +929,9 @@ namespace waavs {
 
 		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-			fPaint.loadFromChunk(getAttribute("solid-color"));
+			fPaint.loadFromChunk(getAttributeByName("solid-color"));
 
-			auto solidopa = getAttribute("solid-opacity");
+			auto solidopa = getAttributeByName("solid-opacity");
 
 			double opa{ 0 };
 			if (readNumber(solidopa, opa))

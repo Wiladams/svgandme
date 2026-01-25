@@ -21,7 +21,8 @@ namespace waavs {
 		SVGBrowsingView(const BLRect &aframe)
 			:SVGCachedDocument(aframe)
 		{
-			checkerboardDoc.resetFromSpan(getIconSpan("checkerboard"), nullptr, aframe.w, aframe.h, 96);
+            auto checkerspan = getIconSpan("checkerboard");
+			checkerboardDoc.resetFromSpan(checkerspan, aframe.w, aframe.h, 96);
 
 			fNavigator.setFrame(BLRect(0, 0, aframe.w, aframe.h));
 			fNavigator.setBounds(BLRect(0, 0, aframe.w, aframe.h));

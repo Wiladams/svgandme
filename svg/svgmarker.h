@@ -97,9 +97,9 @@ namespace waavs {
 			SVGDimension fDimHeight{};
 
 			// If these are not specified, then we use default values of '3'
-			fDimWidth.loadFromChunk(getAttribute("markerWidth"));
-			fDimHeight.loadFromChunk(getAttribute("markerHeight"));
-			bool haveViewbox = parseViewBox(getAttribute("viewBox"), fViewbox);
+			fDimWidth.loadFromChunk(getAttributeByName("markerWidth"));
+			fDimHeight.loadFromChunk(getAttributeByName("markerHeight"));
+			bool haveViewbox = parseViewBox(getAttributeByName("viewBox"), fViewbox);
 			fPortal.loadFromAttributes(fAttributes);
 			
 			double sWidth = ctx->getStrokeWidth();
@@ -167,12 +167,12 @@ namespace waavs {
 		virtual void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*)
 		{
 			// printf("fixupSelfStyleAttributes\n");
-			getEnumValue(MarkerUnitEnum, getAttribute("markerUnits"), (uint32_t&)fMarkerUnits);
+			getEnumValue(MarkerUnitEnum, getAttributeByName("markerUnits"), (uint32_t&)fMarkerUnits);
 			//getEnumValue(SVGAspectRatioEnum, getAttribute("preserveAspectRatio"), (uint32_t&)fPreserveAspectRatio);
 
-			fDimRefX.loadFromChunk(getAttribute("refX"));
-			fDimRefY.loadFromChunk(getAttribute("refY"));
-			fOrientation.loadFromChunk(getAttribute("orient"));
+			fDimRefX.loadFromChunk(getAttributeByName("refX"));
+			fDimRefY.loadFromChunk(getAttributeByName("refY"));
+			fOrientation.loadFromChunk(getAttributeByName("orient"));
 
 		}
 

@@ -14,6 +14,9 @@
 #include "svgenums.h"
 #include "maths.h"
 #include "viewport.h"
+#include "svgatoms.h"
+#include "svgunits.h"
+
 
 //
 // Parsing routines for the core SVG data types
@@ -40,6 +43,7 @@
 // parseColorRGB
 //
 // parseTransform
+
 
 
 namespace waavs {
@@ -107,21 +111,20 @@ namespace waavs
         SVG_ANGLETYPE_TURN = 5,
 	};
     
-    static SVGAngleUnits parseAngleUnits(const ByteSpan& units)
+
+
+    static SVGAngleUnits parseAngleUnits(InternedKey u)
     {
-        if (!units)
-			return SVG_ANGLETYPE_UNSPECIFIED;
-        
-		if (units == "deg")
-			return SVG_ANGLETYPE_DEG;
-		else if (units == "rad")
-			return SVG_ANGLETYPE_RAD;
-		else if (units == "grad")
-			return SVG_ANGLETYPE_GRAD;
-		else if (units == "turn")
-			return SVG_ANGLETYPE_TURN;
-		else
-			return SVG_ANGLETYPE_UNKNOWN;
+        if (!u)
+            return SVG_ANGLETYPE_UNSPECIFIED;
+
+                
+		if (u == waavs::svgunits::deg()) return SVG_ANGLETYPE_DEG;
+		if (u == waavs::svgunits::rad()) return SVG_ANGLETYPE_RAD;
+		if (u == waavs::svgunits::grad()) return SVG_ANGLETYPE_GRAD;
+		if (u == waavs::svgunits::turn()) return SVG_ANGLETYPE_TURN;
+
+        return SVG_ANGLETYPE_UNKNOWN;
     }
     
     // parseAngle()
@@ -129,15 +132,25 @@ namespace waavs
     // returns in radians
     static bool parseAngle(ByteSpan &s, double& value, SVGAngleUnits& units)
     {
-        s = chunk_ltrim(s, xmlwsp);
+        static charset chrNotAlpha = ~chrAlphaChars;
+
+        s = chunk_ltrim(s, chrWspChars);
         
-        if (!s)
+        if (s.empty())
             return false;
 
 		if (!readNumber(s, value))
 			return false;
         
-        units = parseAngleUnits(s);
+        // After readNumber, s points to the suffix 
+        // (could be unit, whitespace, comma, ')', etc.)
+        s = chunk_ltrim(s, chrWspChars);
+
+        // Capture unit identifier (deg, rad, grad, turn) if present
+        ByteSpan unitSpan = chunk_token(s, chrNotAlpha);
+
+        InternedKey ukey = unitSpan ? waavs::svgunits::internUnit(unitSpan) : InternedKey{};
+        units = parseAngleUnits(ukey);
 
 
         switch (units)
@@ -150,6 +163,7 @@ namespace waavs
             
 			// If radians, do nothing, already in radians
             case SVG_ANGLETYPE_RAD:
+                // already radians
             break;
             
 			// If gradians specified, convert to radians
@@ -158,7 +172,7 @@ namespace waavs
             break;
             
 			case SVG_ANGLETYPE_TURN:
-				value = value * 2.0 * 3.14159265358979323846;
+				value = value * (2.0 * 3.14159265358979323846);
 			break;
                 
             default:
@@ -177,21 +191,38 @@ namespace waavs
     // SVGDimension
     // used for length, time, frequency, resolution, location
     //==============================================================================
-    /*
-		static const unsigned short SVG_LENGTHTYPE_NUMBER = 1;
-    */
     
     // Turn a units indicator into an enum
+    // Instead of using WSEnum for this, we just do a direct comparison
+    static INLINE uint32_t lengthUnitToEnum(InternedKey u) noexcept
+    {
+        if (!u || u == svgunits::none()) return SVG_LENGTHTYPE_NUMBER;
+
+        if (u == svgunits::px())  return SVG_LENGTHTYPE_PX;
+        if (u == svgunits::pt())  return SVG_LENGTHTYPE_PT;
+        if (u == svgunits::pc())  return SVG_LENGTHTYPE_PC;
+        if (u == svgunits::mm())  return SVG_LENGTHTYPE_MM;
+        if (u == svgunits::cm())  return SVG_LENGTHTYPE_CM;
+        if (u == svgunits::in_()) return SVG_LENGTHTYPE_IN;
+        if (u == svgunits::pct()) return SVG_LENGTHTYPE_PERCENTAGE;
+        if (u == svgunits::em())  return SVG_LENGTHTYPE_EMS;
+        if (u == svgunits::ex())  return SVG_LENGTHTYPE_EXS;
+
+        return SVG_LENGTHTYPE_UNKNOWN;
+    }
+
     static bool parseDimensionUnits(const ByteSpan& inChunk, uint32_t &units)
     {
-
-        if (getEnumValue(SVGDimensionEnum, inChunk, units))
+        if (inChunk.empty())
+        {
+            units = SVG_LENGTHTYPE_NUMBER;
             return true;
+        }
 
-        
-			units = SVG_LENGTHTYPE_UNKNOWN;
-        
-        return false;
+        InternedKey ukey = waavs::svgunits::internUnit(inChunk);
+        units = lengthUnitToEnum(ukey);
+
+        return units != SVG_LENGTHTYPE_UNKNOWN;
     }
     
     //
@@ -274,6 +305,7 @@ namespace waavs
             if (!readNumber(s, fValue))
                 return false;
             
+
             fHasValue = parseDimensionUnits(s, fUnits);
             
             return fHasValue;

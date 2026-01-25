@@ -270,6 +270,7 @@
     <ClInclude Include="..\..\svg\pubsub.h" />
     <ClInclude Include="..\..\svg\smildatatypes.h" />
     <ClInclude Include="..\..\svg\svg.h" />
+    <ClInclude Include="..\..\svg\svgatoms.h" />
     <ClInclude Include="..\..\svg\svgattributes.h" />
     <ClInclude Include="..\..\svg\svgb2ddriver.h" />
     <ClInclude Include="..\..\svg\svgclip.h" />
@@ -301,6 +302,7 @@
     <ClInclude Include="..\..\svg\svgsymbol.h" />
     <ClInclude Include="..\..\svg\svgtext.h" />
     <ClInclude Include="..\..\svg\svgportal.h" />
+    <ClInclude Include="..\..\svg\svgunits.h" />
     <ClInclude Include="..\..\svg\utf8.h" />
     <ClInclude Include="..\..\svg\viewport.h" />
     <ClInclude Include="..\..\svg\wsenum.h" />

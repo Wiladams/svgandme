@@ -125,59 +125,59 @@ namespace waavs {
 			// inherit: 
 			// x, y, width, height, patternUnits, patternContentUnits, patternTransform
 			// viewBox, preserveAspectRatio
-			if (!getAttribute("x"))
+			if (!getAttributeByName("x"))
 			{
-				if (elem->getAttribute("x"))
-					setAttribute("x", elem->getAttribute("x"));
+				if (elem->getAttributeByName("x"))
+					setAttribute("x", elem->getAttributeByName("x"));
 			}
 
-			if (!getAttribute("y"))
+			if (!getAttributeByName("y"))
 			{
-				if (elem->getAttribute("y"))
-					setAttribute("y", elem->getAttribute("y"));
+				if (elem->getAttributeByName("y"))
+					setAttribute("y", elem->getAttributeByName("y"));
 			}
 			
-			if (!getAttribute("width"))
+			if (!getAttributeByName("width"))
 			{
-				if (elem->getAttribute("width"))
-					setAttribute("width", elem->getAttribute("width"));
+				if (elem->getAttributeByName("width"))
+					setAttribute("width", elem->getAttributeByName("width"));
 
 			}
 
-			if (!getAttribute("height"))
+			if (!getAttributeByName("height"))
 			{
-				if (elem->getAttribute("height"))
-					setAttribute("height", elem->getAttribute("height"));
+				if (elem->getAttributeByName("height"))
+					setAttribute("height", elem->getAttributeByName("height"));
 			}
 			
-			if (!getAttribute("patternUnits"))
+			if (!getAttributeByName("patternUnits"))
 			{
-				if (elem->getAttribute("patternUnits"))
-					setAttribute("patternUnits", elem->getAttribute("patternUnits"));
+				if (elem->getAttributeByName("patternUnits"))
+					setAttribute("patternUnits", elem->getAttributeByName("patternUnits"));
 			}
 			
-			if (!getAttribute("patternContentUnits"))
+			if (!getAttributeByName("patternContentUnits"))
 			{
-				if (elem->getAttribute("patternContentUnits"))
-					setAttribute("patternContentUnits", elem->getAttribute("patternContentUnits"));
+				if (elem->getAttributeByName("patternContentUnits"))
+					setAttribute("patternContentUnits", elem->getAttributeByName("patternContentUnits"));
 			}
 
-			if (!getAttribute("patternTransform"))
+			if (!getAttributeByName("patternTransform"))
 			{
-				if (elem->getAttribute("patternTransform"))
-					setAttribute("patternTransform", elem->getAttribute("patternTransform"));
+				if (elem->getAttributeByName("patternTransform"))
+					setAttribute("patternTransform", elem->getAttributeByName("patternTransform"));
 			}
 
-			if (!getAttribute("viewBox"))
+			if (!getAttributeByName("viewBox"))
 			{
-				if (elem->getAttribute("viewBox"))
-					setAttribute("viewBox", elem->getAttribute("viewBox"));
+				if (elem->getAttributeByName("viewBox"))
+					setAttribute("viewBox", elem->getAttributeByName("viewBox"));
 			}
 
-			if (!getAttribute("preserveAspectRatio"))
+			if (!getAttributeByName("preserveAspectRatio"))
 			{
-				if (elem->getAttribute("preserveAspectRatio"))
-					setAttribute("preserveAspectRatio", elem->getAttribute("preserveAspectRatio"));
+				if (elem->getAttributeByName("preserveAspectRatio"))
+					setAttribute("preserveAspectRatio", elem->getAttributeByName("preserveAspectRatio"));
 			}
 		}
 
@@ -234,24 +234,24 @@ namespace waavs {
 		void fixupSelfStyleAttributes(IRenderSVG *ctx, IAmGroot *groot) override
 		{
 			// See if we have a template reference
-			if (getAttribute("href"))
-				fTemplateReference = getAttribute("href");
-			else if (getAttribute("xlink:href"))
-				fTemplateReference = getAttribute("xlink:href");
+			if (getAttributeByName("href"))
+				fTemplateReference = getAttributeByName("href");
+			else if (getAttributeByName("xlink:href"))
+				fTemplateReference = getAttributeByName("xlink:href");
 
 			resolveReference(ctx, groot);
 			
 			// Get the aspect ratio, and spacial units
 			//getEnumValue(SVGAspectRatioEnum, getAttribute("preserveAspectRatio"), (uint32_t&)fPreserveAspectRatio);
-			getEnumValue(SVGSpaceUnits, getAttribute("patternUnits"), (uint32_t&)fPatternUnits);
-			getEnumValue(SVGSpaceUnits, getAttribute("patternContentUnits"), (uint32_t&)fPatternContentUnits);
+			getEnumValue(SVGSpaceUnits, getAttributeByName("patternUnits"), (uint32_t&)fPatternUnits);
+			getEnumValue(SVGSpaceUnits, getAttributeByName("patternContentUnits"), (uint32_t&)fPatternContentUnits);
 
 
-			haveViewbox = parseViewBox(getAttribute("viewBox"), viewboxRect);
+			haveViewbox = parseViewBox(getAttributeByName("viewBox"), viewboxRect);
 
-			fHasPatternTransform = parseTransform(getAttribute("patternTransform"), fPatternTransform);
+			fHasPatternTransform = parseTransform(getAttributeByName("patternTransform"), fPatternTransform);
 
-			getEnumValue(SVGExtendMode, getAttribute("extendMode"), (uint32_t&)fExtendMode);
+			getEnumValue(SVGExtendMode, getAttributeByName("extendMode"), (uint32_t&)fExtendMode);
 		}
 		
 		//
@@ -281,10 +281,10 @@ namespace waavs {
 			SVGVariableSize fDimHeight{};
 
 
-			fDimX.loadFromChunk(getAttribute("x"));
-			fDimY.loadFromChunk(getAttribute("y"));
-			fDimWidth.loadFromChunk(getAttribute("width"));
-			fDimHeight.loadFromChunk(getAttribute("height"));
+			fDimX.loadFromChunk(getAttributeByName("x"));
+			fDimY.loadFromChunk(getAttributeByName("y"));
+			fDimWidth.loadFromChunk(getAttributeByName("width"));
+			fDimHeight.loadFromChunk(getAttributeByName("height"));
 
 			// We need to calculate the fPatternBoundingBox
 			// this is based on the patternUnits

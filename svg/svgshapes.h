@@ -82,10 +82,10 @@ namespace waavs {
 		bool checkForMarkers()
 		{
 			// figure out if we have any markers set
-			auto mStart = getAttribute("marker-start");
-			auto mMid = getAttribute("marker-mid");
-			auto mEnd = getAttribute("marker-end");
-			auto m = getAttribute("marker");
+			auto mStart = getAttributeByName("marker-start");
+			auto mMid = getAttributeByName("marker-mid");
+			auto mEnd = getAttributeByName("marker-end");
+			auto m = getAttributeByName("marker");
 			
 			if ((mStart&& mStart!="none") || (mMid&& mMid!="none") || (mEnd&&mEnd!="none") || (m&& m!="none")) 
 			{
@@ -107,14 +107,14 @@ namespace waavs {
 		// propname - specifies the kind of marker
 		// pos - specifies the position of the marker
 
-		bool drawMarker(IRenderSVG* ctx, IAmGroot* groot, const ByteSpan propname, MarkerPosition pos, const BLPoint& p1, const BLPoint& p2, const BLPoint& p3)
+		bool drawMarker(IRenderSVG* ctx, IAmGroot* groot, const char * propname, MarkerPosition pos, const BLPoint& p1, const BLPoint& p2, const BLPoint& p3)
 		{
-			std::shared_ptr<SVGVisualProperty> prop = getVisualProperty(propname);
+			std::shared_ptr<SVGVisualProperty> prop = getVisualPropertyByName(propname);
 			
 			// Look for the default marker if the specified one is not found
 			if (nullptr == prop)
 			{
-				prop = getVisualProperty("marker");
+				prop = getVisualPropertyByName("marker");
 				if (nullptr == prop)
 					return false;
 			}
@@ -484,10 +484,10 @@ namespace waavs {
 			SVGDimension fDimX2{};
 			SVGDimension fDimY2{};
 			
-			fDimX1.loadFromChunk(getAttribute("x1"));
-			fDimY1.loadFromChunk(getAttribute("y1"));
-			fDimX2.loadFromChunk(getAttribute("x2"));
-			fDimY2.loadFromChunk(getAttribute("y2"));
+			fDimX1.loadFromChunk(getAttributeByName("x1"));
+			fDimY1.loadFromChunk(getAttributeByName("y1"));
+			fDimX2.loadFromChunk(getAttributeByName("x2"));
+			fDimY2.loadFromChunk(getAttributeByName("y2"));
 
 			
 			if (fDimX1.isSet())
@@ -568,13 +568,13 @@ namespace waavs {
 			SVGDimension fRx{};
 			SVGDimension fRy{};
 
-			fX.loadFromChunk(getAttribute("x"));
-			fY.loadFromChunk(getAttribute("y"));
-			fWidth.loadFromChunk(getAttribute("width"));
-			fHeight.loadFromChunk(getAttribute("height"));
+			fX.loadFromChunk(getAttributeByName("x"));
+			fY.loadFromChunk(getAttributeByName("y"));
+			fWidth.loadFromChunk(getAttributeByName("width"));
+			fHeight.loadFromChunk(getAttributeByName("height"));
 
-			fRx.loadFromChunk(getAttribute("rx"));
-			fRy.loadFromChunk(getAttribute("ry"));
+			fRx.loadFromChunk(getAttributeByName("rx"));
+			fRy.loadFromChunk(getAttributeByName("ry"));
 
 
 			// If height or width <= 0, they are invalid
@@ -683,9 +683,9 @@ namespace waavs {
 			SVGDimension fCy{};
 			SVGDimension fR{};
 			
-			fCx.loadFromChunk(getAttribute("cx"));
-			fCy.loadFromChunk(getAttribute("cy"));
-			fR.loadFromChunk(getAttribute("r"));
+			fCx.loadFromChunk(getAttributeByName("cx"));
+			fCy.loadFromChunk(getAttributeByName("cy"));
+			fR.loadFromChunk(getAttributeByName("r"));
 			
 			geom.cx = fCx.calculatePixels(w, 0, dpi);
 			geom.cy = fCy.calculatePixels(h, 0, dpi);
@@ -748,10 +748,10 @@ namespace waavs {
 			SVGDimension fRx{};
 			SVGDimension fRy{};
 			
-			fCx.loadFromChunk(getAttribute("cx"));
-			fCy.loadFromChunk(getAttribute("cy"));
-			fRx.loadFromChunk(getAttribute("rx"));
-			fRy.loadFromChunk(getAttribute("ry"));
+			fCx.loadFromChunk(getAttributeByName("cx"));
+			fCy.loadFromChunk(getAttributeByName("cy"));
+			fRx.loadFromChunk(getAttributeByName("rx"));
+			fRy.loadFromChunk(getAttributeByName("ry"));
 			
 			
 			geom.cx = fCx.calculatePixels(w, 0, dpi);
@@ -813,7 +813,7 @@ namespace waavs {
 		{
 			fPath.clear();
 
-			loadPoints(getAttribute("points"));
+			loadPoints(getAttributeByName("points"));
 			fPath.shrink();
 		}
 	};
@@ -899,7 +899,7 @@ namespace waavs {
 		{
 			fPath.clear();
 
-			auto d = getAttribute("d");
+			auto d = getAttributeByName("d");
 			if (d) {
 				parsePath(d, fPath);
 				fPath.shrink();

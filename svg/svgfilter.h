@@ -121,10 +121,10 @@ namespace waavs {
 
 		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-			fX.loadFromChunk(getAttribute("x"));
-			fY.loadFromChunk(getAttribute("y"));
-			fWidth.loadFromChunk(getAttribute("width"));
-			fHeight.loadFromChunk(getAttribute("height"));
+			fX.loadFromChunk(getAttributeByName("x"));
+			fY.loadFromChunk(getAttributeByName("y"));
+			fWidth.loadFromChunk(getAttributeByName("width"));
+			fHeight.loadFromChunk(getAttributeByName("height"));
 
 		}
 		
@@ -497,7 +497,7 @@ namespace waavs {
 
 		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-			fStdDeviation.loadFromChunk(getAttribute("stdDeviation"));
+			fStdDeviation.loadFromChunk(getAttributeByName("stdDeviation"));
 		}
 	};
 

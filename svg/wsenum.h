@@ -6,7 +6,7 @@
 namespace waavs {
 	using WSEnum = std::unordered_map<ByteSpan, uint32_t, ByteSpanHash, ByteSpanEquivalent>;
 
-	static INLINE bool getEnumValue(WSEnum enumMap, const ByteSpan& key, uint32_t& value) noexcept
+	static INLINE bool getEnumValue(const WSEnum &enumMap, const ByteSpan& key, uint32_t& value) noexcept
 	{
 		auto it = enumMap.find(key);
 		if (it == enumMap.end())
@@ -16,7 +16,7 @@ namespace waavs {
 	}
 
 	// Return the key that corresponds to the specified value
-	static INLINE bool getEnumKey(WSEnum enumMap, uint32_t value, ByteSpan& key) noexcept
+	static INLINE bool getEnumKey(const WSEnum &enumMap, uint32_t value, ByteSpan& key) noexcept
 	{
 		for (auto it = enumMap.begin(); it != enumMap.end(); ++it)
 		{

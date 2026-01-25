@@ -15,7 +15,7 @@ namespace waavs {
 		SVGDocumentHandle fDocument{nullptr};
 
 
-		SVGCachedDocument(const BLRect& aframe, FontHandler *fh=nullptr)
+		SVGCachedDocument(const BLRect& aframe)
 			:SVGCachedView(aframe)
 		{
 		}
@@ -45,7 +45,7 @@ namespace waavs {
 			// clear background
 		}
 		
-		virtual void resetFromDocument(SVGDocumentHandle doc, FontHandler* fh = nullptr) noexcept
+		virtual void resetFromDocument(SVGDocumentHandle doc) noexcept
 		{
 			// clear context
 			fCacheContext.clear();

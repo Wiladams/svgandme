@@ -296,16 +296,16 @@ namespace waavs {
 
 
 
-			fDimX.loadFromChunk(getAttribute("x"));
-			fDimY.loadFromChunk(getAttribute("y"));
-			fDimDy.loadFromChunk(getAttribute("dy"));
-			fDimDx.loadFromChunk(getAttribute("dx"));
+			fDimX.loadFromChunk(getAttributeByName("x"));
+			fDimY.loadFromChunk(getAttributeByName("y"));
+			fDimDy.loadFromChunk(getAttributeByName("dy"));
+			fDimDx.loadFromChunk(getAttributeByName("dx"));
 
 
-			getEnumValue(SVGTextAnchor, getAttribute("text-anchor"), (uint32_t &)fTextHAlignment);
-			getEnumValue(SVGTextAlign, getAttribute("text-align"), (uint32_t &)fTextVAlignment);
-			getEnumValue(SVGDominantBaseline, getAttribute("dominant-baseline"), (uint32_t &)fDominantBaseline);
-			getEnumValue(SVGDominantBaseline, getAttribute("alignment-baseline"), (uint32_t&)fDominantBaseline);
+			getEnumValue(SVGTextAnchor, getAttributeByName("text-anchor"), (uint32_t &)fTextHAlignment);
+			getEnumValue(SVGTextAlign, getAttributeByName("text-align"), (uint32_t &)fTextVAlignment);
+			getEnumValue(SVGDominantBaseline, getAttributeByName("dominant-baseline"), (uint32_t &)fDominantBaseline);
+			getEnumValue(SVGDominantBaseline, getAttributeByName("alignment-baseline"), (uint32_t&)fDominantBaseline);
 
 		}
 

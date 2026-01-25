@@ -666,16 +666,20 @@ namespace waavs
 		const uint8_t* start = a.fStart;
 		const uint8_t* end = a.fEnd;
 		const uint8_t* tokenEnd = start;
+
+        // skip forward until we see a delimiting character
 		while (tokenEnd < end && !delims(*tokenEnd))
 			++tokenEnd;
 
-		if (delims(*tokenEnd))
+        // If we stopped because we saw a delimiting character
+		// advance past that.
+		if (tokenEnd < end && delims(*tokenEnd))
 		{
 			a.fStart = tokenEnd + 1;
 		}
 		else {
 			a.fStart = tokenEnd;
-		}
+        }
 
 		return { start, tokenEnd };
 	}

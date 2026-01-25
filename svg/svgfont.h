@@ -69,12 +69,12 @@ namespace waavs {
 		{
 
 
-			parseNumber(getAttribute("horiz-adv-x"), fHorizAdvX);
-			parseNumber(getAttribute("horiz-origin-x"), fHorizOriginX);
-			parseNumber(getAttribute("horiz-origin-y"), fHorizOriginY);
-			parseNumber(getAttribute("vert-adv-y"), fVertAdvY);
-			parseNumber(getAttribute("vert-origin-x"), fVertOriginX);
-			parseNumber(getAttribute("vert-origin-y"), fVertOriginY);
+			parseNumber(getAttributeByName("horiz-adv-x"), fHorizAdvX);
+			parseNumber(getAttributeByName("horiz-origin-x"), fHorizOriginX);
+			parseNumber(getAttributeByName("horiz-origin-y"), fHorizOriginY);
+			parseNumber(getAttributeByName("vert-adv-y"), fVertAdvY);
+			parseNumber(getAttributeByName("vert-origin-x"), fVertOriginX);
+			parseNumber(getAttributeByName("vert-origin-y"), fVertOriginY);
 
 
 			setNeedsBinding(true);
@@ -153,14 +153,14 @@ namespace waavs {
 		{
 
 
-			auto fontFamily = getAttribute("font-family");
-			auto fontStyle = getAttribute("font-style");
-			auto fontVariant = getAttribute("font-variant");
-			auto fontWeight = getAttribute("font-weight");
-			auto fontStretch = getAttribute("font-stretch");
-			auto fontSize = getAttribute("font-size");
-			auto unicodeRange = getAttribute("unicode-range");
-			auto unitsPerEm = getAttribute("units-per-em");
+			auto fontFamily = getAttributeByName("font-family");
+			auto fontStyle = getAttributeByName("font-style");
+			auto fontVariant = getAttributeByName("font-variant");
+			auto fontWeight = getAttributeByName("font-weight");
+			auto fontStretch = getAttributeByName("font-stretch");
+			auto fontSize = getAttributeByName("font-size");
+			auto unicodeRange = getAttributeByName("unicode-range");
+			auto unitsPerEm = getAttributeByName("units-per-em");
 		}
 	};
 
@@ -208,13 +208,13 @@ namespace waavs {
 
 		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{	
-			parseNumber(getAttribute("horiz-adv-x"), fHorizAdvX);
-			parseNumber(getAttribute("vert-adv-y"), fVertAdvY);
-			parseNumber(getAttribute("vert-origin-x"), fVertOriginX);
-			parseNumber(getAttribute("vert-origin-y"), fVertOriginY);
+			parseNumber(getAttributeByName("horiz-adv-x"), fHorizAdvX);
+			parseNumber(getAttributeByName("vert-adv-y"), fVertAdvY);
+			parseNumber(getAttributeByName("vert-origin-x"), fVertOriginX);
+			parseNumber(getAttributeByName("vert-origin-y"), fVertOriginY);
 			
 			
-			auto d = getAttribute("d");
+			auto d = getAttributeByName("d");
 			if (!d)
 				return;
 
@@ -260,15 +260,15 @@ namespace waavs {
 			// load unicode property
 			// just store the raw ByteSpan
 			// and let the caller parse it
-			auto uni = getAttribute("unicode");
+			auto uni = getAttributeByName("unicode");
 			
-			parseNumber(getAttribute("horiz-adv-x"), fHorizAdvX);
-			parseNumber(getAttribute("vert-adv-y"), fVertAdvY);
-			parseNumber(getAttribute("vert-origin-x"), fVertOriginX);
-			parseNumber(getAttribute("vert-origin-y"), fVertOriginY);
+			parseNumber(getAttributeByName("horiz-adv-x"), fHorizAdvX);
+			parseNumber(getAttributeByName("vert-adv-y"), fVertAdvY);
+			parseNumber(getAttributeByName("vert-origin-x"), fVertOriginX);
+			parseNumber(getAttributeByName("vert-origin-y"), fVertOriginY);
 			
 			
-			auto d = getAttribute("d");
+			auto d = getAttributeByName("d");
 			if (!d)
 				return;
 
@@ -334,7 +334,7 @@ namespace waavs {
 		
 		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* ) override
 		{
-			fFaceName = getAttribute("name");
+			fFaceName = getAttributeByName("name");
 		}
 
 

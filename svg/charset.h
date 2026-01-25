@@ -136,9 +136,10 @@ namespace waavs {
 
 
 		// get an inverse of the set
-		charset& operator~() noexcept
+		constexpr charset operator~() const noexcept
 		{
-			return invert();
+            charset copy(*this);
+            return copy.invert();
 		}
 
 		charset& invert() noexcept

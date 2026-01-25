@@ -20,7 +20,7 @@ namespace waavs {
 	struct SVGPatternExtendMode : public SVGVisualProperty 
     {
         static void registerFactory() {
-            registerSVGAttribute("extendMode", [](const XmlAttributeCollection& attrs) {
+            registerSVGAttributeByName("extendMode", [](const XmlAttributeCollection& attrs) {
                 auto node = std::make_shared<SVGPatternExtendMode>(nullptr);
                 node->loadFromAttributes(attrs);
                 return node;
@@ -68,7 +68,7 @@ namespace waavs {
     struct SVGOpacity : public SVGVisualProperty
     {
         static void registerFactory() {
-			registerSVGAttribute("opacity", [](const XmlAttributeCollection& attrs) {
+			registerSVGAttributeByName("opacity", [](const XmlAttributeCollection& attrs) {
 				auto node = std::make_shared<SVGOpacity>(nullptr);
 			node->loadFromAttributes(attrs);
 			return node;
@@ -110,7 +110,7 @@ namespace waavs {
     struct SVGFillOpacity : public SVGOpacity
     {
         static void registerFactory() {
-            registerSVGAttribute("fill-opacity", [](const XmlAttributeCollection& attrs) {
+            registerSVGAttribute(svgattr::fill_opacity(), [](const XmlAttributeCollection& attrs) {
                 auto node = std::make_shared<SVGFillOpacity>(nullptr); 
                 node->loadFromAttributes(attrs);
                 return node;
@@ -130,7 +130,7 @@ namespace waavs {
     struct SVGStrokeOpacity : public SVGOpacity
     {
         static void registerFactory() {
-            registerSVGAttribute("stroke-opacity", [](const XmlAttributeCollection& attrs) {
+            registerSVGAttribute(svgattr::stroke_opacity(), [](const XmlAttributeCollection& attrs) {
                 auto node = std::make_shared<SVGStrokeOpacity>(nullptr); 
                 node->loadFromAttributes(attrs);
                 return node; 
@@ -153,7 +153,7 @@ namespace waavs {
     struct SVGPaintOrderAttribute : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute("paint-order", [](const XmlAttributeCollection& attrs) {
+            registerSVGAttributeByName("paint-order", [](const XmlAttributeCollection& attrs) {
                 auto node = std::make_shared<SVGPaintOrderAttribute>(nullptr); 
                 node->loadFromAttributes(attrs);
                 return node; 
@@ -262,7 +262,7 @@ namespace waavs {
     struct SVGTextAnchorAttribute : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute("text-anchor", [](const XmlAttributeCollection& attrs) {
+            registerSVGAttributeByName("text-anchor", [](const XmlAttributeCollection& attrs) {
                 auto node = std::make_shared<SVGTextAnchorAttribute>();
                 node->loadFromAttributes(attrs);
                 return node;
@@ -337,7 +337,7 @@ namespace waavs {
     struct SVGFontSize : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute("font-size", [](const XmlAttributeCollection& attrs) {
+            registerSVGAttributeByName("font-size", [](const XmlAttributeCollection& attrs) {
                 auto node = std::make_shared<SVGFontSize>(nullptr); 
                 node->loadFromAttributes(attrs);
                 return node; 
@@ -418,7 +418,7 @@ namespace waavs {
     struct SVGFontFamily : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute("font-family", [](const XmlAttributeCollection& attrs) {
+            registerSVGAttributeByName("font-family", [](const XmlAttributeCollection& attrs) {
                 auto node = std::make_shared<SVGFontFamily>(nullptr); 
                 node->loadFromAttributes(attrs);
                 return node; 
@@ -463,7 +463,7 @@ namespace waavs {
     struct SVGFontStyleAttribute : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute("font-style", [](const XmlAttributeCollection& attrs) {
+            registerSVGAttributeByName("font-style", [](const XmlAttributeCollection& attrs) {
                 auto node = std::make_shared<SVGFontStyleAttribute>();
                 node->loadFromAttributes(attrs);
                 return node;
@@ -500,7 +500,7 @@ namespace waavs {
     struct SVGFontWeightAttribute : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute("font-weight", [](const XmlAttributeCollection& attrs) {
+            registerSVGAttributeByName("font-weight", [](const XmlAttributeCollection& attrs) {
                 auto node = std::make_shared<SVGFontWeightAttribute>();
                 node->loadFromAttributes(attrs);
                 return node;
@@ -531,7 +531,7 @@ namespace waavs {
     struct SVGFontStretchAttribute : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute("font-stretch", [](const XmlAttributeCollection& attrs) {
+            registerSVGAttributeByName("font-stretch", [](const XmlAttributeCollection& attrs) {
                 auto node = std::make_shared<SVGFontStretchAttribute>();
                 node->loadFromAttributes(attrs);
                 return node;
@@ -645,12 +645,6 @@ namespace waavs {
             }
         }
 
-
-
-
-
-
-
         void setOpacity(double opacity)
         {
             uint32_t outValue;
@@ -731,7 +725,7 @@ namespace waavs {
                 set(true);
             }
             else {
-                if (str == "none") {
+                if (str == svgval::none()) {
                     fPaintVar = BLVar::null();
                     set(true);
                 }
@@ -788,7 +782,7 @@ namespace waavs {
     struct SVGColorPaint : public SVGPaint
     {
         static void registerFactory() {
-            registerSVGAttribute("color", [](const XmlAttributeCollection& attrs) {
+            registerSVGAttributeByName("color", [](const XmlAttributeCollection& attrs) {
                 auto node = std::make_shared<SVGColorPaint>(nullptr);
                 node->loadFromAttributes(attrs);
                 return node;
@@ -823,7 +817,7 @@ namespace waavs {
     struct SVGFillPaint : public SVGPaint
     {
         static void registerFactory() {
-            registerSVGAttribute("fill", [](const XmlAttributeCollection& attrs) {
+            registerSVGAttributeByName("fill", [](const XmlAttributeCollection& attrs) {
                 auto node = std::make_shared<SVGFillPaint>(nullptr);
                 node->loadFromAttributes(attrs);
                 return node;
@@ -848,7 +842,7 @@ namespace waavs {
     struct SVGFillRuleAttribute : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute("fill-rule", [](const XmlAttributeCollection& attrs) {
+            registerSVGAttributeByName("fill-rule", [](const XmlAttributeCollection& attrs) {
                 auto node = std::make_shared<SVGFillRuleAttribute>(nullptr);
                 node->loadFromAttributes(attrs);
                 return node;
@@ -885,7 +879,7 @@ namespace waavs {
     struct SVGStrokePaint : public SVGPaint
     {
         static void registerFactory() {
-            registerSVGAttribute("stroke", [](const XmlAttributeCollection& attrs) {
+            registerSVGAttributeByName("stroke", [](const XmlAttributeCollection& attrs) {
                 auto node = std::make_shared<SVGStrokePaint>(nullptr); 
                 node->loadFromAttributes(attrs);
                 return node; 
@@ -900,9 +894,9 @@ namespace waavs {
             // get the value of the 'stroke' attribute.
 			// if it == 'color', then we need to get the color from 
             // other attributes
-			auto strokeAttr = attrs.getAttribute("stroke");
+            ByteSpan strokeAttr{};
 
-            if (strokeAttr.empty())
+            if (!attrs.getAttribute("stroke", strokeAttr))
                 return false;
 
             // There are a couple of cases when using 'currentColor' as the
@@ -918,8 +912,8 @@ namespace waavs {
 			{
                 // get the value of the 'color' attribute, if it exists
                 // and use that as the color
-				auto colorAttr = attrs.getAttribute("color");
-                if (!colorAttr.empty())
+                ByteSpan colorAttr{};
+                if (!attrs.getAttribute("color",colorAttr))
                 {
 					return loadFromChunk(colorAttr);
                 }
@@ -953,7 +947,7 @@ namespace waavs {
     struct SVGStrokeWidth : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute("stroke-width", [](const XmlAttributeCollection& attrs) {
+            registerSVGAttributeByName("stroke-width", [](const XmlAttributeCollection& attrs) {
                 auto node = std::make_shared<SVGStrokeWidth>(nullptr); 
                 node->loadFromAttributes(attrs);  
                 return node; 
@@ -994,7 +988,7 @@ namespace waavs {
     struct SVGStrokeMiterLimit : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute("stroke-miterlimit", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGStrokeMiterLimit>(nullptr); node->loadFromAttributes(attrs);  return node; });
+            registerSVGAttributeByName("stroke-miterlimit", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGStrokeMiterLimit>(nullptr); node->loadFromAttributes(attrs);  return node; });
         }
 
 
@@ -1037,9 +1031,9 @@ namespace waavs {
     {
         static void registerFactory()
         {
-            registerSVGAttribute("stroke-linecap", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGStrokeLineCap>(nullptr, "stroke-linecap"); node->loadFromAttributes(attrs);  return node; });
-            registerSVGAttribute("stroke-linecap-start", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGStrokeLineCap>(nullptr, "stroke-linecap-start"); node->loadFromAttributes(attrs);  return node; });
-            registerSVGAttribute("stroke-linecap-end", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGStrokeLineCap>(nullptr, "stroke-linecap-end"); node->loadFromAttributes(attrs);  return node; });
+            registerSVGAttributeByName("stroke-linecap", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGStrokeLineCap>(nullptr, "stroke-linecap"); node->loadFromAttributes(attrs);  return node; });
+            registerSVGAttributeByName("stroke-linecap-start", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGStrokeLineCap>(nullptr, "stroke-linecap-start"); node->loadFromAttributes(attrs);  return node; });
+            registerSVGAttributeByName("stroke-linecap-end", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGStrokeLineCap>(nullptr, "stroke-linecap-end"); node->loadFromAttributes(attrs);  return node; });
         }
 
 
@@ -1098,7 +1092,7 @@ namespace waavs {
     struct SVGStrokeLineJoin : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute("stroke-linejoin", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGStrokeLineJoin>(nullptr); node->loadFromAttributes(attrs);  return node; });
+            registerSVGAttributeByName("stroke-linejoin", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGStrokeLineJoin>(nullptr); node->loadFromAttributes(attrs);  return node; });
         }
 
         BLStrokeJoin fLineJoin{ BL_STROKE_JOIN_MITER_BEVEL };
@@ -1137,7 +1131,7 @@ namespace waavs {
     struct SVGTransform : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute("transform", [](const XmlAttributeCollection& attrs) 
+            registerSVGAttributeByName("transform", [](const XmlAttributeCollection& attrs) 
                 {auto node = std::make_shared<SVGTransform>(); node->loadFromAttributes(attrs);  return node; });
         }
 
@@ -1179,7 +1173,7 @@ namespace waavs {
     struct SVGViewbox : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute("viewBox", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGViewbox>(nullptr); node->loadFromAttributes(attrs);  return node; });
+            registerSVGAttributeByName("viewBox", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGViewbox>(nullptr); node->loadFromAttributes(attrs);  return node; });
 
         }
 
@@ -1452,10 +1446,10 @@ namespace waavs {
     {
         
         static void registerMarkerFactory() {
-            registerSVGAttribute("marker", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGMarkerAttribute>("marker"); node->loadFromAttributes(attrs);  return node; });
-            registerSVGAttribute("marker-start", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGMarkerAttribute>("marker-start"); node->loadFromAttributes(attrs);  return node; });
-            registerSVGAttribute("marker-mid", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGMarkerAttribute>("marker-mid"); node->loadFromAttributes(attrs);  return node; });
-            registerSVGAttribute("marker-end", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGMarkerAttribute>("marker-end"); node->loadFromAttributes(attrs);  return node; });
+            registerSVGAttributeByName("marker", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGMarkerAttribute>("marker"); node->loadFromAttributes(attrs);  return node; });
+            registerSVGAttributeByName("marker-start", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGMarkerAttribute>("marker-start"); node->loadFromAttributes(attrs);  return node; });
+            registerSVGAttributeByName("marker-mid", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGMarkerAttribute>("marker-mid"); node->loadFromAttributes(attrs);  return node; });
+            registerSVGAttributeByName("marker-end", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGMarkerAttribute>("marker-end"); node->loadFromAttributes(attrs);  return node; });
         }
 
         std::shared_ptr<IViewable> fWrappedNode = nullptr;
@@ -1520,7 +1514,7 @@ namespace waavs {
     {
         static void registerFactory()
         {
-            registerSVGAttribute("clip-path", [](const XmlAttributeCollection& attrs) {
+            registerSVGAttributeByName("clip-path", [](const XmlAttributeCollection& attrs) {
                 auto node = std::make_shared<SVGClipPathAttribute>(nullptr);
                 node->loadFromAttributes(attrs);
 
@@ -1603,7 +1597,7 @@ namespace waavs {
     struct SVGVectorEffectAttribute : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute("vector-effect", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGVectorEffectAttribute>(nullptr); node->loadFromAttributes(attrs);  return node; });
+            registerSVGAttributeByName("vector-effect", [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGVectorEffectAttribute>(nullptr); node->loadFromAttributes(attrs);  return node; });
         }
 
         VectorEffectKind fEffectKind{ VECTOR_EFFECT_NONE };

@@ -73,12 +73,12 @@ namespace waavs {
 
 		void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*) override
 		{
-			fSrcSpan = getAttribute("src");
+			fSrcSpan = getAttributeByName("src");
 
-			parse64i(getAttribute("capX"), fCapX);
-			parse64i(getAttribute("capY"), fCapY);
-			parse64i(getAttribute("capWidth"), fCapWidth);
-			parse64i(getAttribute("capHeight"), fCapHeight);
+			parse64i(getAttributeByName("capX"), fCapX);
+			parse64i(getAttributeByName("capY"), fCapY);
+			parse64i(getAttributeByName("capWidth"), fCapWidth);
+			parse64i(getAttributeByName("capHeight"), fCapHeight);
 		}
 
 		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
@@ -103,10 +103,10 @@ namespace waavs {
 			h = cFrame.h;
 
 
-			fDimX.loadFromChunk(getAttribute("x"));
-			fDimY.loadFromChunk(getAttribute("y"));
-			fDimWidth.loadFromChunk(getAttribute("width"));
-			fDimHeight.loadFromChunk(getAttribute("height"));
+			fDimX.loadFromChunk(getAttributeByName("x"));
+			fDimY.loadFromChunk(getAttributeByName("y"));
+			fDimWidth.loadFromChunk(getAttributeByName("width"));
+			fDimHeight.loadFromChunk(getAttributeByName("height"));
 
 
 			// BUGBUG - need to get the dpi and canvas size to calculate these properly

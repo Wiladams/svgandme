@@ -4,8 +4,28 @@
 #include <string>
 #include <string_view>
 #include <memory>
+#include <unordered_map>
 
 #include "bspan.h"
+
+
+namespace waavs {
+    //  Structure for using interned strings as keys in hash maps
+    using InternedKey = const char*;
+
+    struct InternedKeyHash {
+        size_t operator()(InternedKey p) const noexcept {
+            return std::hash<const void*>{}(p);
+        }
+    };
+
+    struct InternedKeyEquivalent {
+        bool operator()(InternedKey a, InternedKey b) const noexcept {
+            return a == b;
+        }
+    };
+}
+
 
 namespace waavs {
 
@@ -40,6 +60,7 @@ namespace waavs {
         static const char* INTERN(const ByteSpan& span) { return getSingletonTable()->intern(span); }
         static const char* INTERN(const char* cstr) { return getSingletonTable()->intern(cstr); }
     };
+
 
 
 }

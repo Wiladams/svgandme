@@ -129,13 +129,13 @@ namespace waavs {
         // to be resolved, particularly relative sizing, and fonts
         // But, tree visitors can be used to turn the DOM into something useful, like 
         // a graphics rendering tree.
-        std::shared_ptr<SVGDocument> createDOMInternal(const ByteSpan& srcChunk, FontHandler* fh)
+        std::shared_ptr<SVGDocument> createDOMInternal(const ByteSpan& srcChunk)
         {
             // this MUST be done, or node registrations will not happen
             //auto sFactory = getFactory();
 
-            auto doc = std::make_shared<SVGDocument>(fh, 640, 480, 96);
-            if (!doc->loadFromChunk(srcChunk, fh))
+            auto doc = std::make_shared<SVGDocument>(nullptr, 640, 480, 96);
+            if (!doc->loadFromChunk(srcChunk))
                 return {};
 
             return doc;
@@ -143,11 +143,11 @@ namespace waavs {
 
         // A convenience to construct the document from a chunk, and return
         // a shared pointer to the document
-        static std::shared_ptr<SVGDocument> createFromChunkInternal(const ByteSpan& srcChunk, FontHandler* fh, const double w, const double h, const double ppi)
+        static std::shared_ptr<SVGDocument> createFromChunkInternal(const ByteSpan& srcChunk, const double w, const double h, const double ppi)
         {
             // this MUST be done, or node registrations will not happen
             //auto sFactory = getFactory();
-            auto doc = SVGDocument::createFromChunk(srcChunk, fh, w, h, ppi);
+            auto doc = SVGDocument::createFromChunk(srcChunk, w, h, ppi);
 
             if (doc == nullptr)
             {
@@ -177,14 +177,14 @@ namespace waavs {
         static std::shared_ptr<SVGDocument> createDOM(const ByteSpan& srcChunk, FontHandler* fh)
         {
             // this MUST be done, or node registrations will not happen
-            return getSingleton()->createDOMInternal(srcChunk, fh);
+            return getSingleton()->createDOMInternal(srcChunk);
         }
         
         // A convenience to construct the document from a chunk, and return
         // a shared pointer to the document
         static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, FontHandler* fh, const double w, const double h, const double ppi)
         {
-            return getSingleton()->createFromChunkInternal(srcChunk, fh, w, h, ppi);
+            return getSingleton()->createFromChunkInternal(srcChunk, w, h, ppi);
         }
     };
 }

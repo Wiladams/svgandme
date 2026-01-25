@@ -120,10 +120,17 @@ namespace waavs {
 			// 
 			// At this point, we know whether we're the top level svg element
 			// We need to figure out the viewport and viewbox settings
-			SVGVariableSize dimX; dimX.loadFromChunk(fAttributes.getAttribute("x"));
-			SVGVariableSize dimY;  dimY.loadFromChunk(fAttributes.getAttribute("y"));
-			SVGVariableSize dimWidth;  dimWidth.loadFromChunk(fAttributes.getAttribute("width"));
-			SVGVariableSize dimHeight; dimHeight.loadFromChunk(fAttributes.getAttribute("height"));
+            ByteSpan xAttr{}, yAttr{}, wAttr{}, hAttr{};
+
+            fAttributes.getAttribute("x", xAttr);
+            fAttributes.getAttribute("y", yAttr);
+            fAttributes.getAttribute("width", wAttr);
+            fAttributes.getAttribute("height", hAttr);
+
+			SVGVariableSize dimX; dimX.loadFromChunk(xAttr);
+			SVGVariableSize dimY;  dimY.loadFromChunk(yAttr);
+			SVGVariableSize dimWidth;  dimWidth.loadFromChunk(wAttr);
+			SVGVariableSize dimHeight; dimHeight.loadFromChunk(hAttr);
 
 			//fDimX.parseValue(srfFrame.x, ctx->getFont(), viewport.w, origin, dpi, SpaceUnitsKind::SVG_SPACE_USER);
 			//fDimY.parseValue(srfFrame.y, ctx->getFont(), viewport.h, origin, dpi, SpaceUnitsKind::SVG_SPACE_USER);
@@ -273,16 +280,16 @@ namespace waavs {
 
 		virtual void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*)
 		{
-			fDimX.loadFromChunk(getAttribute("x"));
-			fDimY.loadFromChunk(getAttribute("y"));
-			fDimWidth.loadFromChunk(getAttribute("width"));
-			fDimHeight.loadFromChunk(getAttribute("height"));
+			fDimX.loadFromChunk(getAttributeByName("x"));
+			fDimY.loadFromChunk(getAttributeByName("y"));
+			fDimWidth.loadFromChunk(getAttributeByName("width"));
+			fDimHeight.loadFromChunk(getAttributeByName("height"));
 
 			// look for the href, or xlink:href attribute
-			auto href = getAttribute("xlink:href");
+			auto href = getAttributeByName("xlink:href");
 			if (href.empty())
 			{
-				href = getAttribute("href");
+				href = getAttributeByName("href");
 			}
 
 			fWrappedID = chunk_trim(href, chrWspChars);
