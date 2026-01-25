@@ -643,12 +643,12 @@ namespace waavs {
     static bool scanAttributes(XmlAttributeCollection& attrs, const ByteSpan& inChunk) noexcept
     {
         ByteSpan src = inChunk;
-        ByteSpan key;
+        ByteSpan name;
         ByteSpan value;
 
-        while (readNextKeyAttribute(src, key, value))
+        while (readNextKeyAttribute(src, name, value))
         {
-            attrs.addAttribute(key, value);
+            attrs.addValueBySpan(name, value);
         }
 
         return true;
@@ -663,7 +663,6 @@ namespace waavs {
     //    static bool nextXmlElement(const XmlIteratorParams& params, XmlIteratorState& st, XmlElement& elem)
     static bool nextXmlElement(XmlIterator& iter, XmlElement& elem)
     {
-        //elem.reset(XML_ELEMENT_TYPE_INVALID, {}, {});
         elem.reset();
 
         if (iter.fState.input.empty())

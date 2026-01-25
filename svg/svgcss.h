@@ -120,9 +120,7 @@ namespace waavs
             auto value = chunk_token(s, charset(';'));
             value = chunk_trim(value, chrWspChars);
 
-            // add the attribute to the map
-			//auto name = std::string(prop.begin(), prop.end());
-            attributes.addAttribute(prop, value);
+            attributes.addValueBySpan(prop, value);
         }
 
         return true;

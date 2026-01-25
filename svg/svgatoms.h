@@ -58,6 +58,8 @@ namespace waavs::svgattr
     inline InternedKey transform() { static InternedKey k = PSNameTable::INTERN("transform");     return k; }
 
     // Paint & stroke
+    inline InternedKey color() { static InternedKey k = PSNameTable::INTERN("color");    return k; }
+
     inline InternedKey fill() { static InternedKey k = PSNameTable::INTERN("fill");          return k; }
     inline InternedKey fill_opacity() { static InternedKey k = PSNameTable::INTERN("fill-opacity");  return k; }
     inline InternedKey fill_rule() { static InternedKey k = PSNameTable::INTERN("fill-rule");     return k; }
@@ -66,27 +68,18 @@ namespace waavs::svgattr
     inline InternedKey stroke_width() { static InternedKey k = PSNameTable::INTERN("stroke-width");  return k; }
     inline InternedKey stroke_opacity() { static InternedKey k = PSNameTable::INTERN("stroke-opacity"); return k; }
     inline InternedKey stroke_linecap() { static InternedKey k = PSNameTable::INTERN("stroke-linecap"); return k; }
-    inline InternedKey stroke_linejoin()
-    {
-        static InternedKey k = PSNameTable::INTERN("stroke-linejoin"); return k;
-    }
-    inline InternedKey stroke_miterlimit()
-    {
-        static InternedKey k = PSNameTable::INTERN("stroke-miterlimit"); return k;
-    }
-    inline InternedKey stroke_dasharray()
-    {
-        static InternedKey k = PSNameTable::INTERN("stroke-dasharray"); return k;
-    }
-    inline InternedKey stroke_dashoffset()
-    {
-        static InternedKey k = PSNameTable::INTERN("stroke-dashoffset"); return k;
-    }
+    inline InternedKey stroke_linecap_start() { static InternedKey k = PSNameTable::INTERN("stroke-linecap-start"); return k; }
+    inline InternedKey stroke_linecap_end() { static InternedKey k = PSNameTable::INTERN("stroke-linecap-end"); return k; }
+    inline InternedKey stroke_linejoin(){static InternedKey k = PSNameTable::INTERN("stroke-linejoin"); return k;}
+    inline InternedKey stroke_miterlimit(){static InternedKey k = PSNameTable::INTERN("stroke-miterlimit"); return k;}
+    inline InternedKey stroke_dasharray(){static InternedKey k = PSNameTable::INTERN("stroke-dasharray"); return k;}
+    inline InternedKey stroke_dashoffset(){static InternedKey k = PSNameTable::INTERN("stroke-dashoffset"); return k;}
 
     // Text
     inline InternedKey font_family() { static InternedKey k = PSNameTable::INTERN("font-family");   return k; }
     inline InternedKey font_size() { static InternedKey k = PSNameTable::INTERN("font-size");     return k; }
     inline InternedKey font_weight() { static InternedKey k = PSNameTable::INTERN("font-weight");   return k; }
+    inline InternedKey font_stretch() { static InternedKey k = PSNameTable::INTERN("font_stretch"); return k; }
     inline InternedKey font_style() { static InternedKey k = PSNameTable::INTERN("font-style");    return k; }
     inline InternedKey text_anchor() { static InternedKey k = PSNameTable::INTERN("text-anchor");   return k; }
     inline InternedKey dominant_baseline()
@@ -110,20 +103,21 @@ namespace waavs::svgattr
     inline InternedKey filter() { static InternedKey k = PSNameTable::INTERN("filter");        return k; }
 
     // Gradients / patterns
-    inline InternedKey gradientUnits() { static InternedKey k = PSNameTable::INTERN("gradientUnits"); return k; }
-    inline InternedKey gradientTransform()
-    {
-        static InternedKey k = PSNameTable::INTERN("gradientTransform"); return k;
-    }
-    inline InternedKey spreadMethod() { static InternedKey k = PSNameTable::INTERN("spreadMethod");  return k; }
+    inline InternedKey stop_color() { static InternedKey k = PSNameTable::INTERN("stop-color");    return k; }
+    inline InternedKey stop_opacity() { static InternedKey k = PSNameTable::INTERN("stop-opacity");  return k; }
+    inline InternedKey offset() { static InternedKey k = PSNameTable::INTERN("offset");         return k; }
 
+    inline InternedKey gradientUnits() { static InternedKey k = PSNameTable::INTERN("gradientUnits"); return k; }
+    inline InternedKey gradientTransform(){static InternedKey k = PSNameTable::INTERN("gradientTransform"); return k;}
+    inline InternedKey spreadMethod() { static InternedKey k = PSNameTable::INTERN("spreadMethod");  return k; }
+    inline InternedKey extendMode() { static InternedKey k = PSNameTable::INTERN("extendMode");    return k; }
+
+    // Pattern attributes
     inline InternedKey patternUnits() { static InternedKey k = PSNameTable::INTERN("patternUnits");  return k; }
-    inline InternedKey patternTransform()
-    {
-        static InternedKey k = PSNameTable::INTERN("patternTransform"); return k;
-    }
+    inline InternedKey patternTransform(){static InternedKey k = PSNameTable::INTERN("patternTransform"); return k;}
 
     // Markers
+    inline InternedKey marker() { static InternedKey k = PSNameTable::INTERN("marker");  return k; }
     inline InternedKey marker_start() { static InternedKey k = PSNameTable::INTERN("marker-start");  return k; }
     inline InternedKey marker_mid() { static InternedKey k = PSNameTable::INTERN("marker-mid");    return k; }
     inline InternedKey marker_end() { static InternedKey k = PSNameTable::INTERN("marker-end");    return k; }

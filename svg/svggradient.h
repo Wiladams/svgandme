@@ -42,7 +42,7 @@ namespace waavs {
 
 
 			// If there's a style attribute, then add those to the collection
-			if (attrs.getAttribute("style", styleAttr))
+			if (attrs.getValue(svgattr::style(), styleAttr))
 			{
 				// If we have a style attribute, assume both the stop-color
 				// and the stop-opacity are in there
@@ -51,7 +51,7 @@ namespace waavs {
 
 			// Get the offset
 			SVGDimension dim{};
-			if (attrs.getAttribute("offset", offsetAttr))
+			if (attrs.getValue(svgattr::offset(), offsetAttr))
 			{
 				dim.loadFromChunk(offsetAttr);
 				if (dim.isSet())
@@ -65,7 +65,7 @@ namespace waavs {
 			SVGPaint paint(groot);
 
 			// Get the stop color
-			if (attrs.getAttribute("stop-color", stopColorAttr))
+			if (attrs.getValue(svgattr::stop_color(), stopColorAttr))
 			{
 				paint.loadFromChunk(stopColorAttr);
 			}
@@ -75,7 +75,7 @@ namespace waavs {
 				paint.loadFromChunk("black");
 			}
 			
-			if (attrs.getAttribute("stop-opacity", stopOpacityAttr))
+			if (attrs.getValue(svgattr::stop_opacity(), stopOpacityAttr))
 			{
 				dimOpacity.loadFromChunk(stopOpacityAttr);
 			}

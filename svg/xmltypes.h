@@ -291,8 +291,6 @@ namespace waavs {
     using AttrKey = InternedKey;
     using AttrDictionary = std::unordered_map<AttrKey, ByteSpan, InternedKeyHash, InternedKeyEquivalent>;
 
-    //using BSpanDictionary = std::unordered_map<ByteSpan, ByteSpan, ByteSpanHash, ByteSpanEquivalent>;
-
     struct XmlAttributeCollection
     {
         AttrDictionary fAttributes{};
@@ -305,37 +303,34 @@ namespace waavs {
 
 
         // Return a const attribute collection
-        const AttrDictionary& attributes() const noexcept { return fAttributes; }
+        const AttrDictionary& values() const noexcept { return fAttributes; }
 
         size_t size() const noexcept { return fAttributes.size(); }
 
         void clear() noexcept { fAttributes.clear(); }
 
-        bool hasAttribute(AttrKey key) const noexcept
+        bool hasValue(AttrKey key) const noexcept
         {
             return key && (fAttributes.find(key) != fAttributes.end());
-        }
-
-        bool hasAttribute(const ByteSpan &name) const noexcept
-        {
-            AttrKey key = PSNameTable::INTERN(name);
-            return hasAttribute(key);
         }
 
 
         // Add a single attribute to our collection of attributes
         // if the attribute already exists, replace its value
         // with the new value
-        void addAttribute(const ByteSpan& name, const ByteSpan& valueChunk) noexcept
+        void addValueBySpan(const ByteSpan& name, const ByteSpan& valueChunk) noexcept
         {
             AttrKey key = PSNameTable::INTERN(name);
             fAttributes[key] = valueChunk;
         }
 
-        bool getAttributeInterned(AttrKey key, ByteSpan& value) const noexcept
+        bool getAttributeInterned(AttrKey key, ByteSpan& value) const noexcept = delete;
+
+        bool getValue(AttrKey key, ByteSpan& value) const noexcept
         {
             if (!key)
             {
+                printf("XmlAttributeCollection::getValue(), invalid key\n");
                 value.reset();
                 return false;
             }
@@ -344,7 +339,9 @@ namespace waavs {
                 value = it->second;
                 return true;
             }
-            value.reset(); // Explicitly clear value if attribute doesn't exist
+
+            // Explicitly clear value if attribute doesn't exist
+            value.reset(); 
             return false;
         }
 
@@ -354,14 +351,7 @@ namespace waavs {
         bool getAttributeBySpan(const ByteSpan& name, ByteSpan& value) const noexcept
         {
             AttrKey key = PSNameTable::INTERN(name);
-            return getAttributeInterned(key, value);
-        }
-
-        // Find an attribute based on a c-string name which is not interned
-        bool getAttribute(const char* name, ByteSpan& value) const noexcept
-        {
-            AttrKey key = PSNameTable::INTERN(name);
-            return getAttributeInterned(key, value);
+            return getValue(key, value);
         }
 
 
@@ -373,9 +363,6 @@ namespace waavs {
             for (const auto& attr : other.fAttributes)
             {
                 fAttributes[attr.first] = attr.second;
-                // Optimize update: Remove old value first, then emplace new one
-                //fAttributes.erase(attr.first);
-                //fAttributes.emplace(attr.first, attr.second);
             }
             return *this;
         }
@@ -384,31 +371,5 @@ namespace waavs {
     };
 }
 
-/*
-ByteSpan scanNameSpan(ByteSpan data)
-{
-    ByteSpan s = data;
-    //bool start = false;
-    //bool end = false;
-
-    if (!s)
-        return {};
-
-    if (*s == '/')
-    {
-        s++;
-    }
-
-    fNameSpan = s;
-    // skip leading whitespace
-    while (s && !chrWspChars[*s])
-        s++;
-
-    fNameSpan.fEnd = s.fStart;
-    fXmlName.reset(fNameSpan);
-
-    return s;  // Instead of modifying `fData`, return the new position
-}
-*/
 
 #endif // XMLTYPES_H_INCLUDED

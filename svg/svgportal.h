@@ -48,7 +48,7 @@ namespace waavs {
 
             // preserveAspectRatio
             ByteSpan aspectAttr{};
-            if (attrs.getAttribute("preserveAspectRatio", aspectAttr))
+            if (attrs.getValue(svgattr::preserveAspectRatio(), aspectAttr))
             {
                 aspect.loadFromChunk(aspectAttr);
             }
@@ -57,7 +57,7 @@ namespace waavs {
 			// viewBox
             BLRect vbFrame{};
             ByteSpan viewBoxAttr{};
-            if (attrs.getAttribute("viewBox", viewBoxAttr))
+            if (attrs.getValue(svgattr::viewBox(), viewBoxAttr))
             {
                 fHasViewbox = parseViewBox(viewBoxAttr, vbFrame);
             }
@@ -67,10 +67,10 @@ namespace waavs {
             // until we bind to a context
             // x, y, width, height
             ByteSpan xAttr{}, yAttr{}, wAttr{}, hAttr{};
-            attrs.getAttribute("x", xAttr);
-            attrs.getAttribute("y", yAttr);
-            attrs.getAttribute("width", wAttr);
-            attrs.getAttribute("height", hAttr);
+            attrs.getValue(svgattr::x(), xAttr);
+            attrs.getValue(svgattr::y(), yAttr);
+            attrs.getValue(svgattr::width(), wAttr);
+            attrs.getValue(svgattr::height(), hAttr);
 
             fDimX.loadFromChunk(xAttr);
             fDimY.loadFromChunk(yAttr);

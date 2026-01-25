@@ -27,8 +27,6 @@ namespace waavs
     struct SVGObject
     {
     protected:
-        ByteSpan fId{};      // The id of the element
-
         bool fNeedsBinding{ false };
 
     public:
@@ -44,8 +42,6 @@ namespace waavs
         virtual ~SVGObject() = default;
 
 
-        const ByteSpan& id() const noexcept { return fId; }
-        void setId(const ByteSpan& aid) noexcept { fId = aid; }
 
 
         bool needsBinding() const noexcept { return fNeedsBinding; }
@@ -69,7 +65,11 @@ namespace waavs {
     {
         bool fIsVisible{ true };
         ByteSpan fName{};
+        ByteSpan fId{};      // The id of the element
 
+        
+        const ByteSpan& id() const noexcept { return fId; }
+        void setId(const ByteSpan& aid) noexcept { fId = aid; }
 
         virtual BLRect frame() const = 0;
         virtual BLRect getBBox() const = 0;
@@ -104,6 +104,9 @@ namespace waavs {
     //
     struct SVGVisualProperty : public SVGObject
     {
+        InternedKey fName{};    // The type name of the property
+                                // used to lookup type converter
+
         bool fAutoDraw{ true };
         bool fIsSet{ false };
         ByteSpan fRawValue;
@@ -114,6 +117,8 @@ namespace waavs {
         SVGVisualProperty(const SVGVisualProperty& other) = delete;
         SVGVisualProperty& operator=(const SVGVisualProperty& rhs) = delete;
 
+        const InternedKey& name() const { return fName; }
+        void setName(const InternedKey name) { fName = name; }
 
         bool set(const bool value) { fIsSet = value; return value; }
         bool isSet() const { return fIsSet; }
@@ -145,7 +150,7 @@ namespace waavs {
         {
             ByteSpan attr{};
 
-            if (!attrs.getAttributeBySpan(id(), attr))
+            if (!attrs.getValue(name(), attr))
                 return false;
             
             return loadFromChunk(attr);
@@ -208,14 +213,7 @@ namespace waavs {
     static bool registerSVGAttributeByName(const char* name, SVGAttributeToPropertyConverter func)
     {
         InternedKey k = PSNameTable::INTERN(name);
-        
-        if (!k)
-            return false;
-
-        auto& pmap = getPropertyConstructionMap();
-        pmap[k] = std::move(func);
-
-        return true;
+        return registerSVGAttribute(k, std::move(func));
     }
 
     static SVGAttributeToPropertyConverter getAttributeConverter(InternedKey k)
@@ -294,14 +292,14 @@ namespace waavs {
             // and then find the closing ')'
             // and then we have the id
             auto url = chunk_token(str, "(");
-            auto id = chunk_trim(chunk_token(str, ")"), chrWspChars);
+            auto nodeId = chunk_trim(chunk_token(str, ")"), chrWspChars);
 
             // sometimes the id is quoted
             // so trim that as well
-            id = chunk_trim(id, "\"");
-            id = chunk_trim(id, "'");
+            nodeId = chunk_trim(nodeId, "\"");
+            nodeId = chunk_trim(nodeId, "'");
 
-            return this->findNodeByHref(id);
+            return this->findNodeByHref(nodeId);
         }
         
 
@@ -324,8 +322,6 @@ namespace waavs {
         }
 
         // IAmGroot
-        //virtual FontHandler* fontHandler() const = 0;
-
         virtual std::shared_ptr<CSSStyleSheet> styleSheet() = 0;
         virtual void styleSheet(std::shared_ptr<CSSStyleSheet> sheet) = 0;
 
@@ -527,12 +523,16 @@ namespace waavs {
 
 
 
-        bool hasAttribute(const ByteSpan& key) const noexcept { return fAttributes.hasAttribute(key); }
+        bool hasAttribute(const ByteSpan& name) const noexcept 
+        { 
+            InternedKey key = PSNameTable::INTERN(name);
+            return fAttributes.hasValue(key); 
+        }
 
         ByteSpan getAttribute(InternedKey key) const noexcept
         {
             ByteSpan value{};
-            fAttributes.getAttributeInterned(key, value);
+            fAttributes.getValue(key, value);
             return value;
         }
 
@@ -544,9 +544,9 @@ namespace waavs {
         ByteSpan getAttribute(const ByteSpan& key) const noexcept = delete;
 
 
-        void setAttribute(const ByteSpan& key, const ByteSpan& value) noexcept
+        void setAttribute(const ByteSpan& name, const ByteSpan& value) noexcept
 		{
-			fAttributes.addAttribute(key,value);
+			fAttributes.addValueBySpan(name,value);
 		}
 
 
@@ -572,8 +572,10 @@ namespace waavs {
             if (node == nullptr || groot == nullptr)
                 return false;
 
-            if (!node->id().empty())
-                groot->addElementReference(node->id(), node);
+            // Get an attribute 'id' if it exists
+            ByteSpan nodeId = node->id();
+            if (!nodeId.empty())
+                groot->addElementReference(nodeId, node);
 
             if (node->isStructural()) {
                 fNodes.push_back(node);
@@ -695,20 +697,22 @@ namespace waavs {
             // and presentation attributes into their own collection
             while (readNextKeyAttribute(src, attrName, attrValue))
             {
-                if (attrName == "id")
+                InternedKey attrKey = PSNameTable::INTERN(attrName);
+
+                if (attrKey == svgattr::id())
                 {
                     setId(attrValue);
                 }
-                else if (attrName == "style" && !attrValue.empty())
+                else if (attrKey == svgattr::style() && !attrValue.empty())
                 {
                     fStyleAttribute = attrValue;
                 }
-                else if (attrName == "class")
+                else if (attrKey == svgattr::klass())
                 {
                     fClassAttribute = attrValue;
                 }
                 else {
-                    fPresentationAttributes.addAttribute(attrName, attrValue);
+                    fPresentationAttributes.addValueBySpan(attrName, attrValue);
                 }
             }
 
@@ -884,7 +888,7 @@ namespace waavs {
 
             // Use up some of the attributes
             ByteSpan displayAttr{};
-            if (fAttributes.getAttribute(svgattr::display(), displayAttr))
+            if (fAttributes.getValue(svgattr::display(), displayAttr))
             {
                 displayAttr = chunk_trim(displayAttr, chrWspChars);
 
@@ -944,7 +948,7 @@ namespace waavs {
         void convertAttributesToProperties(IRenderSVG* ctx, IAmGroot* groot)
         {
             //
-            for (auto& attr : fAttributes.attributes())
+            for (auto& attr : fAttributes.values())
             {
                 // Find an attribute to property converter, if it exists
                 auto propertyMapper = getAttributeConverter(attr.first);

@@ -510,11 +510,11 @@ namespace waavs {
 			return false;
 
 
-        ByteSpan key{};
+        ByteSpan name{};
         ByteSpan value{};
-        while (readNextCSSKeyValue(styleChunk, key, value))
+        while (readNextCSSKeyValue(styleChunk, name, value))
         {
-            styleAttributes.addAttribute(key, value);
+            styleAttributes.addValueBySpan(name, value);
         }
 
 

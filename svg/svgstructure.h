@@ -122,10 +122,10 @@ namespace waavs {
 			// We need to figure out the viewport and viewbox settings
             ByteSpan xAttr{}, yAttr{}, wAttr{}, hAttr{};
 
-            fAttributes.getAttribute("x", xAttr);
-            fAttributes.getAttribute("y", yAttr);
-            fAttributes.getAttribute("width", wAttr);
-            fAttributes.getAttribute("height", hAttr);
+            fAttributes.getValue(svgattr::x(), xAttr);
+            fAttributes.getValue(svgattr::y(), yAttr);
+            fAttributes.getValue(svgattr::width(), wAttr);
+            fAttributes.getValue(svgattr::height(), hAttr);
 
 			SVGVariableSize dimX; dimX.loadFromChunk(xAttr);
 			SVGVariableSize dimY;  dimY.loadFromChunk(yAttr);
@@ -349,8 +349,10 @@ namespace waavs {
 			ctx->translate(fBoundingBox.x, fBoundingBox.y);
 			
 			// Draw the wrapped graphic
-			ctx->setObjectFrame(fBoundingBox);
-			ctx->setViewport(BLRect{0,0,fBoundingBox.w, fBoundingBox.h});
+			if (fBoundingBox.w > 0 && fBoundingBox.h > 0) {
+				ctx->setObjectFrame(fBoundingBox);
+				ctx->setViewport(BLRect{ 0,0,fBoundingBox.w, fBoundingBox.h });
+			}
 
 			fWrappedNode->draw(ctx, groot);
 
