@@ -77,7 +77,7 @@ static SVGDocumentHandle createDocument(const char *filename)
 
 	ByteSpan mappedSpan;
 	mappedSpan.resetFromSize(mapped->data(), mapped->size());
-	auto doc = SVGFactory::createFromChunk(mappedSpan, FontHandler::getFontHandler(), CAN_WIDTH, CAN_HEIGHT, 96.0);
+	auto doc = SVGFactory::createFromChunk(mappedSpan, CAN_WIDTH, CAN_HEIGHT, 96.0);
 
 	return doc;
 }
@@ -127,7 +127,7 @@ static void renderImage(SVGDocumentHandle gDoc, const char* outfilename)
 	// You don't have to go this route.  You can simply calculate the scaling
 	// and apply that to the context.
 	ViewportTransformer vp{};
-	vp.viewBoxFrame(sceneFrame);		// The part of the scene we want to display
+	vp.getViewBoxFrame(sceneFrame);		// The part of the scene we want to display
 	vp.setViewportFrame(surfaceFrame);		// The surface we want to fit to 
 
 	// apply the viewport's sceneToSurface transform to the context

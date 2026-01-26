@@ -51,16 +51,13 @@ namespace waavs {
 		// Construct with a known size
 		MemBuff(const size_t sz) noexcept
 		{
-			fSize = sz;
-			fData = new uint8_t[sz];
+            resetFromSize(sz);
 		}
 
 		// Construct from a ByteSpan
 		MemBuff(const ByteSpan& chunk) noexcept
 		{
-			fSize = chunk.size();
-			fData = new uint8_t[fSize];
-			memcpy(fData, chunk.data(), fSize);
+            resetFromSpan(chunk);
 		}
 
 
@@ -74,15 +71,42 @@ namespace waavs {
 		}
 
 
-		MemBuff& reset() {
+		void reset() 
+		{
 			if (fData != nullptr)
 				delete[] fData;
 			fData = nullptr;
 			fSize = 0;
-			
-			return *this;
 		}
 		
+		bool resetFromSize(const size_t sz) noexcept
+		{
+			reset();
+			fSize = sz;
+			if (fSize > 0) {
+				fData = new uint8_t[fSize];
+			}
+			return true;
+        }
+
+		// resetFromSpan
+		// 
+		// copy the data from the input span into the memory buffer
+		//
+		bool resetFromSpan(const ByteSpan& srcSpan) noexcept
+		{
+			reset();
+
+			fSize = srcSpan.size();
+
+			if (fSize > 0) {
+				fData = new uint8_t[fSize];
+				memcpy(fData, srcSpan.fStart, fSize);
+			}
+
+			return true;
+		}
+
 		// Operators
 		
 		// Copy Assignment operator (deep copy)
@@ -133,23 +157,7 @@ namespace waavs {
 		constexpr size_t size() const noexcept { return fSize; }
 
 
-		// initFromSpan
-		// copy the data from the input span into the memory buffer
-		//
 
-		bool initFromSpan(const ByteSpan& srcSpan) noexcept
-		{
-			reset();
-
-			fSize = srcSpan.size();
-
-			if (fSize > 0) {
-				fData = new uint8_t[fSize];
-				memcpy(fData, srcSpan.fStart, fSize);
-			}
-
-			return true;
-		}
 
 
 		// span()

@@ -31,8 +31,9 @@
 
 #include "maths.h"
 
-//#include "xmlutil.h"
+
 #include "xmlscan.h"
+#include "xmlentity.h"
 
 #include "fonthandler.h"
 #include "svgcss.h"
@@ -57,7 +58,27 @@
 
 namespace waavs 
 {
-
+    // SVGDocument
+    // 
+    // This is the structure that represents an entire SVG file/document
+    // Each document may contain several top level <svg> elements
+    // But, you typically have only one root <svg> element.
+    // 
+    // This is not a generic DOM structure, but rather a structure
+    // meant for rendering SVG content.  A separate DOM structure
+    // can be created if what you want is to just traverse the XML tree.
+    // An SVGDocument is meant to be rendered to a canvas, so it is constructed
+    // with items such as the canvas size, dpi, etc.
+    // 
+    // The primary method to create an SVGDocument is to use the static
+    // createFromChunk(const ByteSpan& srcChunk, const double w, const double h, const double ppi)
+    // 
+    // Which will return a shared_ptr to an SVGDocument, or nullptr if there was
+    // any error.
+    // 
+    // As the core document makes use of ByteSpan references into memory,
+    // the initial source memory is copied into a MemBuff that is held
+    // onto for the life of the document.
     //
     struct SVGDocument : public  SVGGraphicsElement, public IAmGroot 
     {
@@ -86,11 +107,11 @@ namespace waavs
         
         
         //==========================================
-        // Implementation
+        // Construction / Destruction
 		//==========================================
-        SVGDocument() = delete;
+        SVGDocument() = default;
         
-        SVGDocument(FontHandler *fh, const double w=0, const double h=0, const double ppi = 96)
+        SVGDocument(const double w, const double h, const double ppi)
             :SVGGraphicsElement()
             , fDpi(ppi)
             , fCanvasWidth(w)
@@ -100,18 +121,9 @@ namespace waavs
 			fStyleSheet = std::make_shared<CSSStyleSheet>();
         }
 
-        SVGDocument(const ByteSpan& srcChunk, const double w = 64, const double h = 64, const double ppi = 96, FontHandler* fh=nullptr)
-            :SVGGraphicsElement()
-            , fDpi(ppi)
-            , fCanvasWidth(w)
-            , fCanvasHeight(h)
-        {
-            resetFromSpan(srcChunk, w, h, ppi);
-        }
-        
         ~SVGDocument() = default;
 
-
+        
         void resetFromSpan(const ByteSpan& srcChunk, const double w, const double h, const double ppi=96)
         {
             // clear out the old document
@@ -174,16 +186,14 @@ namespace waavs
 			if (!SVGGraphicsElement::addNode(node, groot))
                 return false;
 
-            
-            if (node->name() == "svg")
+            if (!fTopLevelNode && node->name() == "svg")
             {
                 fTopLevelNode = std::dynamic_pointer_cast<SVGSVGElement>(node);
-
+                
                 if (fTopLevelNode != nullptr)
                 {
-					fTopLevelNode->setTopLevel(true);
+                    fTopLevelNode->setTopLevel(true);
                 }
-
             }
             
             return true;
@@ -192,12 +202,12 @@ namespace waavs
         // We override this here, because we don't want to do anything with the information
         // in any of the top level xml elements
         // Maybe we should hold onto the XMLDECL if it's seen, 
-        // so we can know some version information
+        // so we can know some version and encoding info?
         void loadFromXmlElement(const XmlElement& elem, IAmGroot* groot) override
         {
         }
 
-        void loadFromXmlPull(XmlPull& iter, IAmGroot* groot)
+        void loadFromXmlPull(XmlPull& iter, IAmGroot* groot) override
         {
             while (iter.next())
             {
@@ -241,21 +251,31 @@ namespace waavs
         }
  
         
-        
-		// Assuming we've already got a file mapped into memory, load the document
+        // loadFromChunk
+        // 
+		// Assuming we've already got a document mapped into memory
+        // construct the SVGDocument from the given memory chunk
         bool loadFromChunk(const ByteSpan &srcChunk)
         {
             // create a memBuff from srcChunk
             // since we use memory references, we need
             // to keep the memory around for the duration of the 
             // document's life
-            // BUGBUG - ideally, we should take this opportunity to expand
-            // basic entities, and eliminate whitespace, if that's what we're doing
-            // It will cause some performance slow down here, but simplify later
-            // processing.
+            
 
-            fSourceMem.initFromSpan(srcChunk);
-            //size_t sz = expandXmlEntities(srcChunk, fSourceMem.span());
+            fSourceMem.resetFromSpan(srcChunk);
+            
+            // BUGBUG - It would be nice to take this opportunity to convert basic XML
+            // entities such as &amp; &lt; &gt; &quot; &#39; into their
+            // byte values.  It could simplify later processing.
+            // But... When to convert the entities is dependent on context
+            // So, it might be ok to do it early here, except, when doing XML 
+            // processing, having the entities converted will cause problems for the scanner.
+            // Although it seems like this would be a great place to do this, it's probably 
+            // better to either do it only when it matters, or at the scanner level.
+            //fSourceMem.resetFromSize(srcChunk.size());
+            //ByteSpan dstSpan = fSourceMem.span();
+            //size_t sz = expandXmlEntities(srcChunk, dstSpan);
 
 			// Create the XML Iterator we're going to use to parse the document
             XmlPull iter(fSourceMem.span(), true);
@@ -324,8 +344,8 @@ namespace waavs
         {            
             ctx->push();
 
-            //if (needsBinding())
-            //    this->bindToContext(ctx, groot);
+            if (needsBinding())
+                this->bindToContext(ctx, groot);
             
             // Should have valid bounding box by now
             // so set objectFrame on the context
@@ -358,10 +378,10 @@ namespace waavs
             ctx->pop();
         }
 
-        static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, const double w = 64, const double h = 64, const double ppi = 96)
+        static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, const double w, const double h, const double ppi)
         {
 
-            auto doc = std::make_shared<SVGDocument>(nullptr, w, h, ppi);
+            auto doc = std::make_shared<SVGDocument>(w, h, ppi);
             if (!doc->loadFromChunk(srcChunk))
             {
                 printf("SVGFactory::CreateFromChunk() failed to load\n");

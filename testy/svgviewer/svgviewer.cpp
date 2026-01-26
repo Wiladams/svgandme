@@ -53,7 +53,7 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 	
 	ByteSpan aspan;
 	aspan.resetFromSize(mapped->data(), mapped->size());
-	std::shared_ptr<SVGDocument> aDoc = SVGFactory::createFromChunk(aspan, FontHandler::getFontHandler(), appFrameWidth, appFrameHeight, physicalDpi);
+	std::shared_ptr<SVGDocument> aDoc = SVGFactory::createFromChunk(aspan, appFrameWidth, appFrameHeight, physicalDpi);
 	
 	return aDoc;
 }

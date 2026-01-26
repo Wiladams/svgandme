@@ -859,5 +859,7 @@ namespace waavs {
 		// so we can convert from world space to object space
 		invtform = tform;
 		invtform.invert();
+
+        return true;
 	}
 }

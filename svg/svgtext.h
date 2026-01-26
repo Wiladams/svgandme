@@ -262,7 +262,6 @@ namespace waavs {
 		void loadStartTag(XmlPull& iter, IAmGroot* groot) override
 		{
 			// Most likely a <tspan>
-			//auto& elem = *iter;
 			if ((*iter).name() == "tspan")
 			{
 				auto node = std::make_shared<SVGTSpanNode>(groot);

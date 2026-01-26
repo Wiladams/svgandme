@@ -295,7 +295,7 @@ namespace waavs
         // This is a general shape drawing.
         // It can handle the order of drawing, as well
         // as do isolated drawing (stroke, or fill only)
-        virtual void onDrawShape(const BLPath& aPath)
+        void onDrawShape(const BLPath& aPath) override
         {
             // Get the paint order from the context
             uint32_t porder = getPaintOrder();

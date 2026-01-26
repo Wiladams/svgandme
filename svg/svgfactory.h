@@ -123,7 +123,8 @@ namespace waavs {
         }
 
     private:
-        // createDOM
+        // createDOMInternal
+        // 
         // Create a new SVGDocument object
         // This document is not bound to a drawing context, so a lot of things are not going
         // to be resolved, particularly relative sizing, and fonts
@@ -131,10 +132,7 @@ namespace waavs {
         // a graphics rendering tree.
         std::shared_ptr<SVGDocument> createDOMInternal(const ByteSpan& srcChunk)
         {
-            // this MUST be done, or node registrations will not happen
-            //auto sFactory = getFactory();
-
-            auto doc = std::make_shared<SVGDocument>(nullptr, 640, 480, 96);
+            auto doc = std::make_shared<SVGDocument>(640, 480, 96);
             if (!doc->loadFromChunk(srcChunk))
                 return {};
 
@@ -146,7 +144,6 @@ namespace waavs {
         static std::shared_ptr<SVGDocument> createFromChunkInternal(const ByteSpan& srcChunk, const double w, const double h, const double ppi)
         {
             // this MUST be done, or node registrations will not happen
-            //auto sFactory = getFactory();
             auto doc = SVGDocument::createFromChunk(srcChunk, w, h, ppi);
 
             if (doc == nullptr)
@@ -182,7 +179,7 @@ namespace waavs {
         
         // A convenience to construct the document from a chunk, and return
         // a shared pointer to the document
-        static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, FontHandler* fh, const double w, const double h, const double ppi)
+        static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, double w, double h, double ppi)
         {
             return getSingleton()->createFromChunkInternal(srcChunk, w, h, ppi);
         }

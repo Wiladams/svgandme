@@ -42,8 +42,6 @@ namespace waavs
         virtual ~SVGObject() = default;
 
 
-
-
         bool needsBinding() const noexcept { return fNeedsBinding; }
         void setNeedsBinding(bool needsIt) noexcept { fNeedsBinding = needsIt; }
 
@@ -419,7 +417,6 @@ namespace waavs {
     // Convenience way to create an element
     static std::shared_ptr<ISVGElement> createSingularNode(const XmlElement& elem, IAmGroot* root)
     {
-        //InternedKey k = PSNameTable::INTERN(elem.name()); // ByteSpan -> interned const char*
         InternedKey k = elem.nameAtom(); // nameAtom -> interned const char*
         if (!k)
             return nullptr;
@@ -434,7 +431,6 @@ namespace waavs {
 
     static std::shared_ptr<ISVGElement> createContainerNode(XmlPull& iter, IAmGroot* root)
     {
-        //InternedKey k = PSNameTable::INTERN(iter->name()); // ByteSpan -> interned const char*
         InternedKey k = iter->nameAtom();
         if (!k)
             return nullptr;
@@ -541,9 +537,6 @@ namespace waavs {
             return getAttribute(PSNameTable::INTERN(name));
         }
 
-        ByteSpan getAttribute(const ByteSpan& key) const noexcept = delete;
-
-
         void setAttribute(const ByteSpan& name, const ByteSpan& value) noexcept
 		{
 			fAttributes.addValueBySpan(name,value);
@@ -624,6 +617,40 @@ namespace waavs {
             // Do something with comments
         }
 
+        // Sometimes we come across a element tag name that we 
+        // don't know anything about.  We want to just skip over 
+        // those nodes without trying to do any processing.
+        void skipSubtree(XmlPull& iter)
+        {
+            int depth = 1;
+            while (depth > 0 && iter.next())
+            {
+                const XmlElement& elem = *iter;
+                switch (elem.kind())
+                {
+                    case XML_ELEMENT_TYPE_START_TAG:                    // <tag>
+                        depth++;
+                        break;
+                    case XML_ELEMENT_TYPE_END_TAG:                      // </tag>
+                        depth--;
+                        break;
+                    case XML_ELEMENT_TYPE_SELF_CLOSING:                 // <tag/>
+                    case XML_ELEMENT_TYPE_CONTENT:                      // <tag>content</tag>
+                    case XML_ELEMENT_TYPE_COMMENT:                      // <!-- comment -->
+                    case XML_ELEMENT_TYPE_CDATA:                        // <![CDATA[<greeting>Hello, world!</greeting>]]>
+                        // do nothing
+                        break;
+                    case XML_ELEMENT_TYPE_DOCTYPE:                      // <!DOCTYPE greeting SYSTEM "hello.dtd">
+                    case XML_ELEMENT_TYPE_ENTITY:                       // <!ENTITY hello "Hello">
+                    case XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION:       // <?target data?>
+                    case XML_ELEMENT_TYPE_XMLDECL:                      // <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                    case XML_ELEMENT_TYPE_EMPTY_TAG:                    // <br>
+                    default:
+                        // Ignore anything else
+                        break;
+                }
+            }
+        }
 
         virtual  void loadStartTag(XmlPull& iter, IAmGroot* groot)
         {
@@ -638,8 +665,10 @@ namespace waavs {
             else {
                 // If we're here, we've run across a start tag that does
                 // not have a registered factory method.
-                // so, we just consume its content as if it were a 'g' element
+                // so, we just consume its content until we find the matching end tag
                 // and throw it away.
+                //skipSubtree(iter);
+                ///*
                 // BUGBUG - we should use a faster 'skipSubtree' method here
                 static InternedKey gk = PSNameTable::INTERN("g");
 
@@ -648,12 +677,13 @@ namespace waavs {
                 if (it != m.end() && it->second) {
                     (void)it->second(groot, iter);
                 }
-                else {
+                //else {
                     // if 'g' isn't registered, we should fallback to skippint
                     // the subtree entirely.
                     // Really, skipping the subtree is the right thing to do anyway
                     // and using the 'g' element is just a temporary workaround
-                }
+                //}
+                //*/
             }
 
         }
@@ -712,7 +742,7 @@ namespace waavs {
                     fClassAttribute = attrValue;
                 }
                 else {
-                    fPresentationAttributes.addValueBySpan(attrName, attrValue);
+                    fPresentationAttributes.addValue(attrKey, attrValue);
                 }
             }
 

@@ -38,7 +38,7 @@ namespace waavs {
             return fPortal.getBBox();
         }
 
-        virtual void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*)
+        void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*) override
         {
             // printf("fixupSelfStyleAttributes\n");
             fPortal.loadFromAttributes(fAttributes);
@@ -54,7 +54,7 @@ namespace waavs {
         //    fViewport.loadFromAttributes(fAttributes);
         //}
 
-        virtual void bindSelfToContext(IRenderSVG *ctx, IAmGroot *groot) 
+        void bindSelfToContext(IRenderSVG *ctx, IAmGroot *groot) override
         {
             fPortal.bindToContext(ctx, groot);
         }

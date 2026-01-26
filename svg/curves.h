@@ -8,7 +8,7 @@
 #include <memory>
 
 #include "pathsegmenter.h"
-
+#include "generator.h"
 
 
 namespace waavs

@@ -164,7 +164,7 @@ namespace waavs {
 			fPortal.setViewportFrame(fMarkerBoundingBox);
 		}
 		
-		virtual void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*)
+		void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*) override
 		{
 			// printf("fixupSelfStyleAttributes\n");
 			getEnumValue(MarkerUnitEnum, getAttributeByName("markerUnits"), (uint32_t&)fMarkerUnits);

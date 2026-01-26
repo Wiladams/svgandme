@@ -278,7 +278,7 @@ namespace waavs {
 			fWrappedNode->update(groot);
 		}
 
-		virtual void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*)
+		void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*) override 
 		{
 			fDimX.loadFromChunk(getAttributeByName("x"));
 			fDimY.loadFromChunk(getAttributeByName("y"));

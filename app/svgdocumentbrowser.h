@@ -12,7 +12,7 @@ namespace waavs {
 	{
 		ViewNavigator fNavigator{};
 
-		SVGDocument checkerboardDoc{ nullptr };
+		SVGDocument checkerboardDoc{};
 		
 		bool fAnimate{ false };
 		bool fPerformTransform{ true };

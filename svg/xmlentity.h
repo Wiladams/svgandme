@@ -4,7 +4,17 @@
 #include "utf8.h"
 
 
-namespace waavs {
+namespace waavs 
+{
+    // expandXmlEntities
+	//
+    // This function scans the input ByteSpan for XML character entities
+    // such as 
+	//	&lt; &gt; &amp; &apos; &quot; 
+	//	&#nnn; &#xhhh;
+    // and expands them into their corresponding byte values.
+    // It will handle both standard entities and numeric entities (decimal and hex).
+    // The output ByteSpan must be large enough to hold the expanded content.
 
 	static size_t expandXmlEntities(const ByteSpan& inSpan, ByteSpan& outSpan) noexcept
 	{

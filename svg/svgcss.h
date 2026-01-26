@@ -370,11 +370,11 @@ namespace waavs
             reset();
         }
 
-        CSSStyleSheet(const waavs::ByteSpan& inSpan)
-        {
-            reset();
-            loadFromSpan(inSpan);
-        }
+        //CSSStyleSheet(const waavs::ByteSpan& inSpan)
+        //{
+        //    reset();
+        //    loadFromSpan(inSpan);
+        //}
         
 
         void reset()

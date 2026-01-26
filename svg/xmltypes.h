@@ -106,7 +106,6 @@ namespace waavs {
             fLocalName.reset();
             fPrefix.reset();
 
-            //fNameSpan = {};
             fQNameAtom = nullptr;
             fLocalNameAtom = nullptr;
         }
@@ -114,7 +113,6 @@ namespace waavs {
         void reset(int kind, const ByteSpan& name, const ByteSpan& data)
         {
             fElementKind = kind;
-            //fNameSpan = name;
             fQName = name;
             fData = data;
 
@@ -142,7 +140,6 @@ namespace waavs {
 
         ByteSpan data() const noexcept { return fData; }
 
-        //ByteSpan nameSpan() const noexcept { return fNameSpan; }
         ByteSpan qname() const noexcept { return fQName; }
         ByteSpan name() const noexcept { return fLocalName; }
         ByteSpan prefix() const noexcept { return fPrefix; }
@@ -185,6 +182,7 @@ namespace waavs {
     };
 }
 
+/*
 namespace waavs {
 
 struct XmlName {
@@ -282,6 +280,8 @@ struct XmlName {
         ByteSpan ns() const noexcept { return fNamespace; }      // The namespace
     };
 }
+*/
+
 
 namespace waavs {
     //============================================================
@@ -306,22 +306,27 @@ namespace waavs {
         const AttrDictionary& values() const noexcept { return fAttributes; }
 
         size_t size() const noexcept { return fAttributes.size(); }
-
         void clear() noexcept { fAttributes.clear(); }
 
-        bool hasValue(AttrKey key) const noexcept
-        {
-            return key && (fAttributes.find(key) != fAttributes.end());
-        }
+        bool hasValue(AttrKey key) const noexcept {return key && (fAttributes.find(key) != fAttributes.end());}
 
 
         // Add a single attribute to our collection of attributes
         // if the attribute already exists, replace its value
         // with the new value
+        void addValue(AttrKey key, const ByteSpan& valueChunk) noexcept
+        {
+            if (!key)
+            {
+                return;
+            }
+            fAttributes[key] = valueChunk;
+        }
+
         void addValueBySpan(const ByteSpan& name, const ByteSpan& valueChunk) noexcept
         {
             AttrKey key = PSNameTable::INTERN(name);
-            fAttributes[key] = valueChunk;
+            return addValue(key, valueChunk);
         }
 
         bool getAttributeInterned(AttrKey key, ByteSpan& value) const noexcept = delete;

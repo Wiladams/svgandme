@@ -3,6 +3,7 @@
 #include <string>
 #include <filesystem>
 
+#include "apphost.h"
 #include "svgcacheddocument.h"
 #include "viewnavigator.h"
 #include "svgicons.h"
@@ -220,7 +221,7 @@ namespace waavs {
 
 			ByteSpan aspan;
 			aspan.resetFromSize(mapped->data(), mapped->size());
-			auto doc = SVGFactory::createFromChunk(aspan, FontHandler::getFontHandler(), appFrameWidth, appFrameHeight, physicalDpi);
+			auto doc = SVGFactory::createFromChunk(aspan, appFrameWidth, appFrameHeight, physicalDpi);
 
 			int nFiles = fFileList.size();
 			//auto anItem = FileIconSmall::create(filename, doc, BLRect(3,nFiles*(sCellHeight),250,24));

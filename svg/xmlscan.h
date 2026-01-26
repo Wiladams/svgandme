@@ -214,8 +214,8 @@ namespace waavs {
     static bool readDoctype(ByteSpan& src, ByteSpan& dataChunk) noexcept
     {
         // skip past the !DOCTYPE to the first whitespace character
-        src += 8;
-
+        //src += 8;
+        src.advance(8);
 
         // Skip past the whitespace
         // to get to the beginning of things

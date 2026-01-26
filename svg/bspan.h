@@ -185,7 +185,7 @@ namespace waavs
 
 		// advance the start pointer the specified number of entries
 		// constrain to end 
-		constexpr ByteSpan& remove_prefix(size_t n) noexcept
+		constexpr ByteSpan& advance(size_t n) noexcept
 		{
 			fStart = (fStart + n <= fEnd) ? fStart + n : fEnd; 
 			return *this;
