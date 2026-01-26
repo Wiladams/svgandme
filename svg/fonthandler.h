@@ -83,22 +83,23 @@ namespace waavs {
         // return it to the user
         uint32_t loadFontFace(const char* filename, BLFontFace &ff)
         {
-            //printf("FontHandler.loadFontFace(%s) \n", filename);
+            //printf("FontHandler.loadFontFace(%-40s) ", filename);
 
             //BLResult err = ff.createFromFile(filename, BL_FILE_READ_MMAP_AVOID_SMALL);
-            BLResult err = ff.createFromFile(filename);
+            BLResult err = ff.createFromFile(filename, BL_FILE_READ_MMAP_ENABLED);
 
             if (err == BL_SUCCESS)
             {
-                //printf("FontHandler.loadFont() adding: %s\n", ff.familyName().data());
+                //printf("adding: '%-25s'  LastResort: %d\n", ff.familyName().data(), ff.isLastResortFont());
 
                 fFontManager.addFace(ff);
                 std::string familyName = std::string(ff.familyName().data());
                 fFamilyNames.push_back(familyName);
 
                 return BL_SUCCESS;
-            } else  {
-                //printf("FontHandler.loadFontFace() ERROR loading: %s, 0x%x\n", filename, err);
+            }
+            else  {
+                //printf(" ERROR loading: %s, 0x%x\n", filename, err);
             }
 
             return err;
@@ -113,10 +114,11 @@ namespace waavs {
             {
                 BLFontFace ff{};
                 uint32_t err = loadFontFace(filename, ff);
+
+                // If we fail loading a single font, move on to the next one
                 if (err != BL_SUCCESS)
 				{
-                    printf("FontHandler::loadFonts Error: %s (0x%x)\n", filename, err);
-
+                    //printf("FontHandler::loadFonts Error: %s (0x%x)\n", filename, err);
                     //printf("loadFonts: %s, 0x%x\n", face.familyName().data(), face.isValid());
 					continue;
 				}
@@ -154,6 +156,8 @@ namespace waavs {
             qprops.weight = weight;
             
             // nammes are quoted, or separated by commas
+            // BUGBUG - restructure this so that actual name
+            // is looked up first
             while (!s.empty())
             {
                 s = chunk_ltrim(s, fontWsp);
@@ -165,6 +169,9 @@ namespace waavs {
 
                 BLStringView familyNameView{};
                 bool success{ false };
+
+                //familyNameView.reset((char*)name.fStart, name.size());
+                //success = (BL_SUCCESS == fFontManager.queryFace(familyNameView, qprops, face));
 
                 if ((name == "Sans") ||
                     (name == "sans") ||
@@ -257,6 +264,8 @@ namespace waavs {
         }
 
         // Get a singleton font handler
+        // We use a singleton for the entire app, so we don't
+        // have to load fonts multiple times
 		static FontHandler* getFontHandler()
 		{
             static std::unique_ptr<FontHandler> sFontHandler = std::make_unique<FontHandler>();

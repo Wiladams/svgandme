@@ -34,15 +34,11 @@ namespace waavs {
 
 		// Return bounding rectangle for shape
 		// This does not include the stroke width
-		BLRect frame() const override
+		BLRect viewPort() const override
 		{
 			// get bounding box, then apply transform
-			// BLRect fr = getBBox();
-
-			BLBox bbox{};
-			fPath.getBoundingBox(&bbox);
-
-			return BLRect(bbox.x0, bbox.y0, bbox.x1 - bbox.x0, bbox.y1 - bbox.y0);
+			BLRect bbox = getBBox();
+			return bbox;
 		}
 
 		BLRect getBBox() const override

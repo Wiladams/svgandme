@@ -70,7 +70,7 @@ namespace waavs {
 		bool isTopLevel() const { return fIsTopLevel; }
 
 
-		BLRect frame() const override
+		BLRect viewPort() const override
 		{
 			BLRect vpFrame{};
 			fPortal.getViewportFrame(vpFrame);
@@ -254,13 +254,13 @@ namespace waavs {
 		SVGUseElement(IAmGroot* ) 
 			: SVGGraphicsElement() {}
 
-		BLRect frame() const override
+		BLRect viewPort() const override
 		{
 			// BUGBUG: This is not correct
 			// Needs to be adjusted for the x/y
 			// and the transform
 			if (fWrappedNode != nullptr)
-				return fWrappedNode->getBBox();
+				return fWrappedNode->viewPort();
 
 			return BLRect{ };
 		}

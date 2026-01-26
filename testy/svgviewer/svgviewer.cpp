@@ -82,7 +82,10 @@ static void drawDocument()
 
 	// draw the document into the ctx
 	if (gDoc != nullptr)
-		gDoc->draw(getDrawingContext(), gDoc.get(), appFrameWidth, appFrameHeight);
+	{
+		//gDoc->draw(getDrawingContext(), gDoc.get(), appFrameWidth, appFrameHeight);
+		gDoc->draw(getDrawingContext(), gDoc.get());
+	}
 
 	getDrawingContext()->flush();
 }
@@ -150,29 +153,30 @@ static void onFileDrop(const FileDropEvent& fde)
 	{
 		// Create a new SVGDocument for each file
 		// And create a window to display each document
-		//double startTime = seconds();
-        // BUGBUG - may need to explicityly unload previous document
+		double startTime = seconds();
+        
+		// BUGBUG - may need to explicityly unload previous document
 		gDoc = docFromFilename(fde.filenames[i].c_str());
 
 
-		//double endTime = seconds();
+		double endTime = seconds();
 		//printf("== fileDrop: SVGDocument::createFromFilename took %f seconds\n", endTime - startTime);
 
 		if (gDoc != nullptr)
 		{
-			// We have loaded the un-processed document
-			// Draw into an empty context at least once to resolve references
-			// and fix sizes.
-			//IRenderSVG ctx(FontHandler::getFontHandler());
-			//ctx.setContainerFrame(BLRect(0, 0, canvasWidth, canvasHeight));
-			//gDoc->draw(&ctx, gDoc.get());
-			
-			BLRect objFr = gDoc->getBBox();
-			//auto objFr = gDoc->frame();
-            BLRect viewFr{ 0,0, (double)appFrameWidth, (double)appFrameHeight };
+			BLRect viewFr = gDoc->viewPort();
+            BLRect docFr = viewFr;
+
+			// If there is a documentElement, we can use its viewport
+			// for the object frame
+            auto rootElem = gDoc->documentElement();
+			if (rootElem != nullptr)
+			{
+				docFr = rootElem->viewPort();
+            }
 
 			// Set the initial viewport
-			resetView(objFr, viewFr);
+			resetView(docFr, viewFr);
 			
 			handleChange(true);
 
@@ -266,19 +270,29 @@ static void onKeyboardEvent(const KeyboardEvent& ke)
 static void setupFonts()
 {
 	//loadDefaultFonts();
+	
 	loadFontDirectory("c:\\windows\\fonts");
+	loadFontDirectory("x:\\Fonts\\commonfonts");
 	//loadFontDirectory("x:\\Fonts\\Fonts");
 
-	//loadFontDirectory("x:\\Fonts\\commonfonts");
+
+
 	//loadFontDirectory("..\\resources");
 
 	/*
 	// stragglers
 	// Load in some fonts to start
 	std::vector<const char*> fontNames{
-		"x:\\Fonts\\Fonts\\Walkway Black.ttf",
-		"x:\\Fonts\\Fonts\\Walkway Bold.ttf",
-		"x:\\Fonts\\Fonts\\Walkway.ttf",
+		"x:\\Fonts\\NotoColorEmoji-Regular.ttf",
+		"x:\\Fonts\\NotoEmoji-Regular.ttf",
+		"x:\\Fonts\\NotoMono-Regular.ttf",
+		"x:\\Fonts\\NotoSansBengaliUI-Regular.ttf",
+		"x:\\Fonts\\NotoSans-Black.ttf",
+		"x:\\Fonts\\NotoSans-Bold.ttf",
+		"x:\\Fonts\\NotoSans-Regular.ttf",
+		"x:\\Fonts\\NotoSansDevanagari-Regular.ttf",
+		//"x:\\Fonts\\Fonts\\Walkway Bold.ttf",
+		//"x:\\Fonts\\Fonts\\Walkway.ttf",
 	};
 
 	auto fh = FontHandler::getFontHandler();

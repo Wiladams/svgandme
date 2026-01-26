@@ -52,8 +52,8 @@ namespace waavs {
 
 			fDocument = doc;
 
-			auto sFrame = fDocument->frame();
-			//auto sFrame = fDocument->getBBox();
+			auto sFrame = fDocument->topLevelViewPort();
+
 			setBounds(sFrame);
 			setNeedsRedraw(true);
 			onDocumentLoad();

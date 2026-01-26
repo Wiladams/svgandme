@@ -141,7 +141,7 @@ namespace waavs {
 			setNeedsBinding(true);
 		}
 
-		BLRect frame() const override
+		BLRect viewPort() const override
 		{
 			//if (fHasTransform) {
 			//	auto leftTop = fTransform.mapPoint(fX, fY);

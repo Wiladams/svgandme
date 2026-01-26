@@ -497,13 +497,6 @@ namespace waavs {
 					values.y1 = fY2.calculatePixels(h, 0, dpi);
 			}
 
-
-			
-
-
-			
-
-
 			
 			fGradient.setValues(values);
 			if (fHasGradientTransform) {
@@ -513,7 +506,6 @@ namespace waavs {
 			fGradientVar = fGradient;
 
 		}
-
 
 	};
 

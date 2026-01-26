@@ -56,7 +56,7 @@ namespace waavs {
 				return fVar;
 
 			// get our frame() extent
-			BLRect extent = frame();
+			BLRect extent = viewPort();
 
 			// create a surface of that size
 			// if it's valid

@@ -145,10 +145,30 @@ namespace waavs
 		double canvasHeight() const override { return fCanvasHeight; }
         void canvasSize(const double w, const double h) { fCanvasWidth = w; fCanvasHeight = h; }
         
-		BLRect frame() const override { 
-            return BLRect(0, 0, fCanvasWidth, fCanvasHeight); 
+        BLRect viewPort() const override
+        {
+            if (fCanvasWidth <= 0 || fCanvasHeight <= 0)
+                return BLRect{};
+
+            BLRect outFr(0, 0, fCanvasWidth, fCanvasHeight);
+            return outFr;
         }
-        
+
+        BLRect topLevelViewPort() const
+        {
+            if (fTopLevelNode != nullptr)
+            {
+                return fTopLevelNode->viewPort();
+            }
+            return viewPort();
+        }
+
+        BLRect getBBox() const override
+        {
+            return topLevelViewPort();
+        }
+
+        /*
         // This should be size of document elements
         BLRect getBBox() const override 
         {   
@@ -172,7 +192,7 @@ namespace waavs
             return extent;
             
         }
-        
+        */
         std::shared_ptr<CSSStyleSheet> styleSheet() override { return fStyleSheet; }
         void styleSheet(std::shared_ptr<CSSStyleSheet> sheet) override { fStyleSheet = sheet; }
         
@@ -284,21 +304,7 @@ namespace waavs
             return true;
         }
 
-        // For compound nodes (which have children) we want to 
-        // do the base stuff (binding properties) then bind the children
-        // If you sub-class this, you should call this first
-        // then do your own thing.  We don't want to call a 'bindSelfToGroot'
-        // here, because that complicates the interactions and sequences of things
-        // so just override bindToGroot
-        void bindToContext(IRenderSVG* ctx, IAmGroot* groot) noexcept override
-        {
-            this->fixupStyleAttributes(ctx, groot);
-            convertAttributesToProperties(ctx, groot);
 
-            this->bindSelfToContext(ctx, groot);
-
-            setNeedsBinding(false);
-        }
         
         // Bind to a context of a given size
         // we are meant to do this once, per canvas size
@@ -314,25 +320,23 @@ namespace waavs
             }
         }
         
-        virtual void bindToContext(IRenderSVG* ctx, IAmGroot* groot, double cWidth, double cHeight) noexcept
+        // Binding to a context gives the document tree a chance to fixup
+        // relative sizing, as well as object references
+        // 
+        void bindToContext(IRenderSVG* ctx, IAmGroot* groot) noexcept override
         {
-            // Start by setting the size of the canvas
-			// that we intend to be drawing into
-            ctx->setViewport(BLRect(0,0,cWidth,cHeight));
+            BLRect vpFrame(0, 0, fCanvasWidth, fCanvasHeight);
 
-            ctx->push();
-            
-            this->fixupStyleAttributes(ctx, groot);
-            convertAttributesToProperties(ctx, groot);
+            ctx->setViewport(vpFrame);
+            ctx->setObjectFrame(vpFrame);
 
             this->bindSelfToContext(ctx, groot);
             this->bindChildrenToContext(ctx, groot);
-            
-            ctx->pop();
 
             setNeedsBinding(false);
         }
-        
+
+
         void drawSelf(IRenderSVG* ctx, IAmGroot*) override
         {
             // draw horizontal blue line at 10,10 for 300
@@ -341,46 +345,30 @@ namespace waavs
         }
         
         void draw(IRenderSVG* ctx, IAmGroot* groot) override
-        {            
-            ctx->push();
-
+        {        
             if (needsBinding())
                 this->bindToContext(ctx, groot);
-            
-            // Should have valid bounding box by now
-            // so set objectFrame on the context
-            ctx->setObjectFrame(getBBox());
 
-            this->applyProperties(ctx, groot);
-            this->drawSelf(ctx, groot);
-
-            this->drawChildren(ctx, groot);
-
-            ctx->pop();
-        }
-        
-
-        virtual void draw(IRenderSVG* ctx, IAmGroot* groot, double cWidth, double cHeight)
-        {
-            canvasSize(cWidth, cHeight);
-            
-            if (needsBinding())
-                this->bindToContext(ctx, groot, cWidth, cHeight);
+            BLRect vpFrame = viewPort();
+            //BLRect bbox = getBBox();
 
             ctx->push();
-            ctx->setObjectFrame(getBBox());
 
-            this->applyProperties(ctx, groot);
+            // To start, we need to set the viewport and object frame
+            // on the context, so binding can get the right sizes to start
+
+            ctx->setViewport(vpFrame);
+            ctx->setObjectFrame(vpFrame);
+
             this->drawSelf(ctx, groot);
-
             this->drawChildren(ctx, groot);
 
             ctx->pop();
         }
+
 
         static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, const double w, const double h, const double ppi)
         {
-
             auto doc = std::make_shared<SVGDocument>(w, h, ppi);
             if (!doc->loadFromChunk(srcChunk))
             {

@@ -262,7 +262,7 @@ namespace waavs {
     struct SVGTextAnchorAttribute : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttributeByName("text-anchor", [](const XmlAttributeCollection& attrs) {
+            registerSVGAttribute(svgattr::text_anchor(), [](const XmlAttributeCollection& attrs) {
                 auto node = std::make_shared<SVGTextAnchorAttribute>();
                 node->loadFromAttributes(attrs);
                 return node;
@@ -337,7 +337,7 @@ namespace waavs {
     struct SVGFontSize : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttributeByName("font-size", [](const XmlAttributeCollection& attrs) {
+            registerSVGAttribute(svgattr::font_size(), [](const XmlAttributeCollection& attrs) {
                 auto node = std::make_shared<SVGFontSize>(nullptr); 
                 node->loadFromAttributes(attrs);
                 return node; 
@@ -418,7 +418,7 @@ namespace waavs {
     struct SVGFontFamily : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttributeByName("font-family", [](const XmlAttributeCollection& attrs) {
+            registerSVGAttribute(svgattr::font_family(), [](const XmlAttributeCollection& attrs) {
                 auto node = std::make_shared<SVGFontFamily>(nullptr); 
                 node->loadFromAttributes(attrs);
                 return node; 
@@ -463,7 +463,7 @@ namespace waavs {
     struct SVGFontStyleAttribute : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttributeByName("font-style", [](const XmlAttributeCollection& attrs) {
+            registerSVGAttribute(svgattr::font_style(), [](const XmlAttributeCollection& attrs) {
                 auto node = std::make_shared<SVGFontStyleAttribute>();
                 node->loadFromAttributes(attrs);
                 return node;

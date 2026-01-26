@@ -69,7 +69,7 @@ namespace waavs {
         const ByteSpan& id() const noexcept { return fId; }
         void setId(const ByteSpan& aid) noexcept { fId = aid; }
 
-        virtual BLRect frame() const = 0;
+        virtual BLRect viewPort() const = 0;
         virtual BLRect getBBox() const = 0;
         virtual bool contains(double x, double y) { return false; }
         
@@ -494,21 +494,23 @@ namespace waavs {
             return fVar;
         }
 
-        BLRect frame() const override
+        // The viewport is what the graphics report as their extent
+        // This is NOT the viewBox, which determines their internal coordinate system
+        BLRect viewPort() const override
         {
             BLRect extent{};
             bool firstOne = true;
 
             // traverse the graphics
-            // expand bounding box to include their frames, without alternation
+            // expand viewport to include their frames, without alteration
             for (auto& g : fNodes)	// std::shared_ptr<IGraphic> g
             {
                 if (firstOne) {
-                    extent = g->frame();
+                    extent = g->viewPort();
                     firstOne = false;
                 }
                 else {
-                    expandRect(extent, g->frame());
+                    expandRect(extent, g->viewPort());
                 }
             }
 
@@ -789,71 +791,6 @@ namespace waavs {
             }
         }
 
-        /*
-        virtual void loadFromXmlIterator(XmlElementIterator& iter, IAmGroot* groot)
-        {
-            // By the time we get here, the iterator is already positioned on a ready
-            // to use element
-            // Do something with that information if we need to
-            // before continuing onto other nodes
-            // Load basic attributes from the elementInfo
-            this->loadFromXmlElement(*iter, groot);
-
-            while (iter.next())
-            {
-                // BUGBUG - debug
-                //printXmlElement(*iter);
-                
-                const XmlElement& elem = *iter;
-
-                switch (elem.kind())
-                {
-                    case XML_ELEMENT_TYPE_START_TAG:                    // <tag>
-                        this->loadStartTag(iter, groot);
-                        break;
-
-                    case XML_ELEMENT_TYPE_END_TAG:                      // </tag>
-                        this->loadEndTag(elem, groot);
-                        return;
-
-                    case XML_ELEMENT_TYPE_SELF_CLOSING:                 // <tag/>
-                        this->loadSelfClosingNode(elem, groot);
-                        break;
-
-                    case XML_ELEMENT_TYPE_CONTENT:                      // <tag>content</tag>
-                        this->loadContentNode(elem, groot);
-                        break;
-
-                    case XML_ELEMENT_TYPE_COMMENT:                      // <!-- comment -->
-                        this->loadComment(elem, groot);
-                        break;
-
-                    case XML_ELEMENT_TYPE_CDATA:                        // <![CDATA[<greeting>Hello, world!</greeting>]]>
-                        this->loadCDataNode(elem, groot);
-                        break;
-
-                    case XML_ELEMENT_TYPE_DOCTYPE:                      // <!DOCTYPE greeting SYSTEM "hello.dtd">
-                    case XML_ELEMENT_TYPE_ENTITY:                       // <!ENTITY hello "Hello">
-                    case XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION:       // <?target data?>
-                    case XML_ELEMENT_TYPE_XMLDECL:                      // <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-                    case XML_ELEMENT_TYPE_EMPTY_TAG:                    // <br>
-                    default:
-                    {
-                        // Ignore anything else
-                        //printf("SVGGraphicsElement::loadFromXmlIterator ==> IGNORING kind(%d) name:", elem.kind());
-                        //printChunk(elem.nameSpan());
-                        //printChunk(elem.data());
-
-                        //printf("SVGGraphicsElement::loadFromXmlIterator ==> IGNORING: %s\n", elem.name().c_str());
-                        //printXmlElement(elem);
-                    }		
-                    break;
-                }
-
-            } 
-        }
-        */
-
 
 
         virtual void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*) 
@@ -1067,7 +1004,9 @@ namespace waavs {
 
             // Should have valid bounding box by now
             // so set objectFrame on the context
-            ctx->setObjectFrame(getBBox());
+            BLRect bbox = getBBox();
+            if (bbox.w && bbox.h)
+                ctx->setObjectFrame(getBBox());
 
             if (needsBinding())
                 this->bindToContext(ctx, groot);
