@@ -196,7 +196,7 @@ namespace waavs {
 	{
 		static void registerFactory()
 		{
-			registerContainerNode("tspan",
+			registerContainerNodeByName("tspan",
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGTSpanNode>(groot);
 					node->loadFromXmlPull(iter, groot);
@@ -415,7 +415,7 @@ namespace waavs {
 	{
 		static void registerFactory()
 		{
-			registerContainerNode("text",
+			registerContainerNodeByName("text",
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGTextNode>(groot);
 					node->loadFromXmlPull(iter, groot);

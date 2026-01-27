@@ -32,7 +32,7 @@ namespace waavs {
 		// Static constructor to register factory method in map
 		static void registerFactory()
 		{
-			registerContainerNode("a",
+			registerContainerNodeByName("a",
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGAElement>(groot);
 					node->loadFromXmlPull(iter, groot);

@@ -39,7 +39,7 @@ namespace waavs {
 	{
 		static void registerFactory()
 		{
-			registerContainerNode("font", [](IAmGroot* groot, XmlPull& iter) {
+			registerContainerNodeByName("font", [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFontNode>(groot);
 				node->loadFromXmlPull(iter, groot);
 				node->visible(false);
@@ -101,7 +101,7 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			registerContainerNode("font-face", [](IAmGroot* groot, XmlPull& iter) {
+			registerContainerNodeByName("font-face", [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFontFaceNode>(groot);
 				node->loadFromXmlPull(iter, groot);
 				node->visible(false);
@@ -185,7 +185,7 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			registerContainerNode("missing-glyph", [](IAmGroot* groot, XmlPull& iter) {
+			registerContainerNodeByName("missing-glyph", [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGMissingGlyphNode>(groot);
 				node->loadFromXmlPull(iter, groot);
 
@@ -296,7 +296,7 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			registerContainerNode("font-face-src", [](IAmGroot* groot, XmlPull& iter) {
+			registerContainerNodeByName("font-face-src", [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFontFaceSrcNode>(groot);
 				node->loadFromXmlPull(iter, groot);
 

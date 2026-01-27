@@ -31,7 +31,7 @@ namespace waavs {
 	{
 		static void registerFactory()
 		{
-			registerContainerNode("svg",
+			registerContainerNodeByName("svg",
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGSVGElement>(groot);
 					node->loadFromXmlPull(iter, groot);
@@ -176,7 +176,7 @@ namespace waavs {
 		// Static constructor to register factory method in map
 		static void registerFactory()
 		{
-			registerContainerNode("g",
+			registerContainerNodeByName("g",
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGGElement>(groot);
 					node->loadFromXmlPull(iter, groot);
@@ -222,7 +222,7 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			registerContainerNode("use",
+			registerContainerNodeByName("use",
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGUseElement>(groot);
 					node->loadFromXmlPull(iter, groot);
@@ -306,13 +306,13 @@ namespace waavs {
 				dpi = groot->dpi();
 			}
 
-			BLRect objectBoundingBox = ctx->getObjectFrame();
-			BLRect viewport = ctx->viewport();
+			BLRect objFrame = ctx->getObjectFrame();
+			BLRect vpFrame = ctx->viewport();
 			BLRect cartFrame{};
 
-			cartFrame = objectBoundingBox;
+			cartFrame = objFrame;
 			if ((cartFrame.w <= 0) || (cartFrame.h <=0))
-                cartFrame = viewport;
+                cartFrame = vpFrame;
 
 			fDimX.parseValue(fBoundingBox.x, ctx->getFont(), cartFrame.w, 0, dpi);
 			fDimY.parseValue(fBoundingBox.y, ctx->getFont(), cartFrame.h, 0, dpi);
@@ -321,7 +321,7 @@ namespace waavs {
 			
 
 
-			if (fWrappedID) {
+			if (fWrappedID && groot) {
 				fWrappedNode = groot->findNodeByHref(fWrappedID);
 			}
 		}
@@ -381,7 +381,7 @@ namespace waavs {
 		// Static constructor to register factory method in map
 		static void registerFactory()
 		{
-			registerContainerNode("defs",
+			registerContainerNodeByName("defs",
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGDefsNode>(groot);
 					node->loadFromXmlPull(iter, groot);
@@ -425,7 +425,7 @@ namespace waavs {
 		// Static constructor to register factory method in map
 		static void registerFactory()
 		{
-			registerContainerNode("desc",
+			registerContainerNodeByName("desc",
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGDescNode>(groot);
 					node->loadFromXmlPull(iter, groot);
@@ -479,7 +479,7 @@ namespace waavs {
 		// Static constructor to register factory method in map
 		static void registerFactory()
 		{
-			registerContainerNode("title",
+			registerContainerNodeByName("title",
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGTitleNode>(groot);
 					node->loadFromXmlPull(iter, groot);

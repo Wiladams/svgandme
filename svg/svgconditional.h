@@ -20,7 +20,7 @@ namespace waavs {
 	{
 		static void registerFactory()
 		{
-			registerContainerNode("switch",
+			registerContainerNodeByName("switch",
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGSwitchElement>(groot);
 					node->loadFromXmlPull(iter, groot);

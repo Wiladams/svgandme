@@ -34,7 +34,7 @@ namespace waavs {
 		// Static constructor to register factory method in map
 		static void registerFactory()
 		{
-			registerContainerNode("mask",
+			registerContainerNodeByName("mask",
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGMaskElement>(groot);
 					node->loadFromXmlPull(iter, groot);

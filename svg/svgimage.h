@@ -111,7 +111,7 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			registerContainerNode("image",
+			registerContainerNodeByName("image",
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGImageElement>(groot);
 					node->loadFromXmlPull(iter, groot);
@@ -127,6 +127,14 @@ namespace waavs {
 		ByteSpan fImageRef{};
 		BLVar fImageVar{};
 
+
+        // Attribute values before calculation
+		SVGDimension fDimX{};
+		SVGDimension fDimY{};
+		SVGDimension fDimWidth{};
+		SVGDimension fDimHeight{};
+
+        // Calculated values
 		double fX{ 0 };
 		double fY{ 0 };
 		double fWidth{ 0 };
@@ -167,21 +175,15 @@ namespace waavs {
 			return fImageVar;
 		}
 
-		void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*groot) override
+		void fixupSelfStyleAttributes(IRenderSVG *ctx, IAmGroot*groot) override
 		{
 			double dpi = 96;
-			double w = 1.0;
-			double h = 1.0;
 
 			if (nullptr != groot)
 			{
 				dpi = groot->dpi();
 			}
 
-			SVGDimension fDimX{};
-			SVGDimension fDimY{};
-			SVGDimension fDimWidth{};
-			SVGDimension fDimHeight{};
 
 			fDimX.loadFromChunk(getAttributeByName("x"));
 			fDimY.loadFromChunk(getAttributeByName("y"));
@@ -215,6 +217,16 @@ namespace waavs {
 			fWidth = fImage.size().w;
 			fHeight = fImage.size().h;
 
+			/*
+			if (fDimX.isSet())
+				fX = fDimX.calculatePixels(w, 0, dpi);
+			if (fDimY.isSet())
+				fY = fDimY.calculatePixels(h, 0, dpi);
+			if (fDimWidth.isSet())
+				fWidth = fDimWidth.calculatePixels(w, 0, dpi);
+			if (fDimHeight.isSet())
+				fHeight = fDimHeight.calculatePixels(h, 0, dpi);
+			*/
 
 			fImageVar = fImage;
 
@@ -237,48 +249,7 @@ namespace waavs {
 			w = cFrame.w;	// groot->canvasWidth();
 			h = cFrame.h;	// groot->canvasHeight();
 
-			/*
-			//SVGDimension fDimX{};
-			//SVGDimension fDimY{};
-			//SVGDimension fDimWidth{};
-			//SVGDimension fDimHeight{};
 			
-			//fDimX.loadFromChunk(getAttributeByName("x"));
-			//fDimY.loadFromChunk(getAttributeByName("y"));
-			//fDimWidth.loadFromChunk(getAttributeByName("width"));
-			//fDimHeight.loadFromChunk(getAttributeByName("height"));
-
-			//fImageRef = getAttributeByName("href");
-			//if (!fImageRef)
-			//	fImageRef = getAttributeByName("xlink:href");
-
-			
-			// Parse the image so we can get its dimensions
-			if (fImageRef)
-			{
-				// First, see if it's embedded data
-				if (chunk_starts_with_cstr(fImageRef, "data:"))
-				{
-					bool success = parseImage(fImageRef, fImage);
-				}
-				else {
-					// Otherwise, assume it's a file reference
-					auto path = toString(fImageRef);
-					if (path.size() > 0)
-					{
-						fImage.readFromFile(path.c_str());
-					}
-				}
-			}
-
-
-			fX = 0;
-			fY = 0;
-			fWidth = fImage.size().w;
-			fHeight = fImage.size().h;
-			*/
-
-			/*
 			if (fDimX.isSet())
 				fX = fDimX.calculatePixels(w, 0, dpi);
 			if (fDimY.isSet())
@@ -287,9 +258,7 @@ namespace waavs {
 				fWidth = fDimWidth.calculatePixels(w, 0, dpi);
 			if (fDimHeight.isSet())
 				fHeight = fDimHeight.calculatePixels(h, 0, dpi);
-			*/
 
-			//fImageVar = fImage;
 		}
 
 

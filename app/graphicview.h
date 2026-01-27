@@ -129,11 +129,12 @@ namespace waavs {
 	{
 		BLImage fCachedImage{};
 		SVGB2DDriver fCacheContext;
-
+        int fDrawingThreads{ 0 };
 		bool fNeedsRedraw{ true };
 
-		SVGCachedView(const BLRect& aframe)
+		SVGCachedView(const BLRect& aframe, int drawingThreads=0)
 			:GraphicView(aframe)
+            , fDrawingThreads(drawingThreads)
 		{
 			setFrame(aframe);
 		}
@@ -148,7 +149,10 @@ namespace waavs {
 			GraphicView::setFrame(arect);
 			fCachedImage.reset();
 			fCachedImage.create(static_cast<int>(arect.w), static_cast<int>(arect.h), BL_FORMAT_PRGB32);
-			fCacheContext.attach(fCachedImage);
+			
+			BLContextCreateInfo ctxInfo{};
+			ctxInfo.threadCount = fDrawingThreads;
+			fCacheContext.attach(fCachedImage, &ctxInfo);
 			fCacheContext.setViewport(arect);
 			
 			setNeedsRedraw(true);
@@ -185,6 +189,10 @@ namespace waavs {
 
 				//ctx->noClip();
 
+                // Make sure to flush the drawing operations
+				// or the bitmap won't be updated
+                // this is particularly acute when using multiple threads
+                fCacheContext.flush();
 
 
 				setNeedsRedraw(false);

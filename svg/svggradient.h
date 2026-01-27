@@ -330,7 +330,7 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			registerContainerNode("linearGradient",
+			registerContainerNodeByName("linearGradient",
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGLinearGradient>(groot);
 					node->loadFromXmlPull(iter, groot);
@@ -530,7 +530,7 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			registerContainerNode("radialGradient",
+			registerContainerNodeByName("radialGradient",
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGRadialGradient>(groot);
 					node->loadFromXmlPull(iter, groot);
@@ -775,7 +775,7 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			registerContainerNode("conicGradient",
+			registerContainerNodeByName("conicGradient",
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGConicGradient>(groot);
 					node->loadFromXmlPull(iter, groot);

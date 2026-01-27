@@ -405,7 +405,13 @@ namespace waavs {
         getSVGSingularCreationMap()[k] = std::move(func);
     }
 
-    static void registerContainerNode(const char* name,
+    static void registerContainerNode(const char* name, std::function<std::shared_ptr<ISVGElement>(IAmGroot*, XmlPull&)> creator) = delete;
+    //{
+    //    InternedKey k = PSNameTable::INTERN(name);
+    //    getSVGContainerCreationMap()[k] = std::move(creator);
+    //}
+
+    static void registerContainerNodeByName(const char* name,
         std::function<std::shared_ptr<ISVGElement>(IAmGroot*, XmlPull&)> creator)
     {
         InternedKey k = PSNameTable::INTERN(name);

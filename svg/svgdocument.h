@@ -168,31 +168,6 @@ namespace waavs
             return topLevelViewPort();
         }
 
-        /*
-        // This should be size of document elements
-        BLRect getBBox() const override 
-        {   
-            BLRect extent{};
-            bool firstOne = true;
-
-            // traverse the graphics
-            // expand bounding box to include their frames, without alternation
-            for (auto& g : fNodes)
-            {
-                if (firstOne) {
-                    extent = g->getBBox();
-                    firstOne = false;
-                }
-                else {
-					//expandRect(extent, g->getBBox());
-                    //expandRect(extent, g->frame());
-                }
-            }
-
-            return extent;
-            
-        }
-        */
         std::shared_ptr<CSSStyleSheet> styleSheet() override { return fStyleSheet; }
         void styleSheet(std::shared_ptr<CSSStyleSheet> sheet) override { fStyleSheet = sheet; }
         

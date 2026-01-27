@@ -10,6 +10,9 @@ namespace waavs {
 
 	struct SVGBrowsingView : public SVGCachedDocument, public Topic<bool>
 	{
+        // The default number of threads to use for drawing
+        static constexpr int gNumThreads = 4;
+
 		ViewNavigator fNavigator{};
 
 		SVGDocument checkerboardDoc{};
@@ -19,7 +22,7 @@ namespace waavs {
 		bool fUseCheckerBackground{ true };
 		
 		SVGBrowsingView(const BLRect &aframe)
-			:SVGCachedDocument(aframe)
+			:SVGCachedDocument(aframe, gNumThreads)
 		{
             auto checkerspan = getIconSpan("checkerboard");
 			checkerboardDoc.resetFromSpan(checkerspan, aframe.w, aframe.h, 96);
@@ -40,7 +43,6 @@ namespace waavs {
 
 			auto dbox = fDocument->getBBox();
 			fNavigator.setBounds(dbox);
-			//setBounds(fDocument->getBBox());
 			
 			const BLMatrix2D & tform = fNavigator.sceneToSurfaceTransform();
 			setSceneToSurfaceTransform(tform);

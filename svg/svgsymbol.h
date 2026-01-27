@@ -16,7 +16,7 @@ namespace waavs {
 	{
 		static void registerFactory()
 		{
-			registerContainerNode("symbol",
+			registerContainerNodeByName("symbol",
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGSymbolNode>(groot);
 					node->loadFromXmlPull(iter, groot);

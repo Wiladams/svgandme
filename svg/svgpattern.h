@@ -36,7 +36,7 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			registerContainerNode("pattern",
+			registerContainerNodeByName("pattern",
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGPatternElement>(groot);
 					node->loadFromXmlPull(iter, groot);

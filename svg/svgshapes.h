@@ -516,7 +516,7 @@ namespace waavs {
 		}
 		
 		static void registerFactory() {
-			registerContainerNode("rect",
+			registerContainerNodeByName("rect",
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGRectElement>(groot);
 					node->loadFromXmlPull(iter, groot);
@@ -639,7 +639,7 @@ namespace waavs {
 		}
 
 		static void registerFactory() {
-			registerContainerNode("circle",
+			registerContainerNodeByName("circle",
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGCircleElement>(groot);
 					node->loadFromXmlPull(iter, groot);
@@ -832,7 +832,7 @@ namespace waavs {
 		}
 
 		static void registerFactory() {
-			registerContainerNode("polygon",
+			registerContainerNodeByName("polygon",
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGPolygonElement>(groot);
 					node->loadFromXmlPull(iter, groot);
@@ -874,7 +874,7 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			registerContainerNode("path",
+			registerContainerNodeByName("path",
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGPathElement>(groot);
 					node->loadFromXmlPull(iter, groot);

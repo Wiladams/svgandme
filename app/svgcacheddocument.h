@@ -15,8 +15,8 @@ namespace waavs {
 		SVGDocumentHandle fDocument{nullptr};
 
 
-		SVGCachedDocument(const BLRect& aframe)
-			:SVGCachedView(aframe)
+		SVGCachedDocument(const BLRect& aframe, int drawingThreads=0)
+			:SVGCachedView(aframe, drawingThreads)
 		{
 		}
 		
