@@ -286,6 +286,7 @@
     <ClInclude Include="..\..\svg\svgextensibility.h" />
     <ClInclude Include="..\..\svg\svgfactory.h" />
     <ClInclude Include="..\..\svg\svgfilter.h" />
+    <ClInclude Include="..\..\svg\svgflowroot.h" />
     <ClInclude Include="..\..\svg\svgfont.h" />
     <ClInclude Include="..\..\svg\svggradient.h" />
     <ClInclude Include="..\..\svg\svghyperlink.h" />

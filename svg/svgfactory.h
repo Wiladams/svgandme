@@ -117,12 +117,13 @@ namespace waavs {
             // Miscellaneous
             SVGDescNode::registerFactory();             // 'desc'
             SVGTitleNode::registerFactory();            // 'title'
-
+            SVGFlowRoot::registerFactory();          // 'flowRoot'
 
 
         }
 
     private:
+        /*
         // createDOMInternal
         // 
         // Create a new SVGDocument object
@@ -138,6 +139,7 @@ namespace waavs {
 
             return doc;
         }
+        */
 
         // A convenience to construct the document from a chunk, and return
         // a shared pointer to the document
@@ -152,12 +154,7 @@ namespace waavs {
                 return nullptr;
             }
 
-            // BUGBUG - render into a dummy context so that we can
-            // get the sizing.
-            IRenderSVG actx; // (fh);
-            actx.setViewport(BLRect(0, 0, w, h));
-            doc->draw(&actx, doc.get());
-            //printf("SVGFactory::CreateFromChunk(), END\n");
+
 
             return doc;
         }
@@ -170,18 +167,30 @@ namespace waavs {
 
             return sFactory.get();
         }
-
+        /*
         static std::shared_ptr<SVGDocument> createDOM(const ByteSpan& srcChunk, FontHandler* fh)
         {
             // this MUST be done, or node registrations will not happen
             return getSingleton()->createDOMInternal(srcChunk);
         }
-        
+        */
         // A convenience to construct the document from a chunk, and return
         // a shared pointer to the document
         static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, double w, double h, double ppi)
         {
-            return getSingleton()->createFromChunkInternal(srcChunk, w, h, ppi);
+            auto doc = getSingleton()->createFromChunkInternal(srcChunk, w, h, ppi);
+
+            if (!doc)
+                return nullptr;
+
+            // BUGBUG - render into a dummy context so that we can
+// get the sizing.
+            IRenderSVG actx; // (fh);
+            actx.setViewport(BLRect(0, 0, w, h));
+            doc->draw(&actx, doc.get());
+            //printf("SVGFactory::CreateFromChunk(), END\n");
+
+            return doc;
         }
     };
 }

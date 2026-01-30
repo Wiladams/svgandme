@@ -47,6 +47,11 @@ namespace waavs
             fill(BLRgba32(0, 0, 0));
             noStroke();
             strokeWidth(1.0);
+
+            // BUGBUG - Need to set font for those who are getting default
+            // font information from the context
+            //setFontFamily("sans-serif");
+            resetFont();
         }
         
         virtual void onAttach(BLImageCore& image, const BLContextCreateInfo* createInfo)
@@ -104,9 +109,14 @@ namespace waavs
         void pop()
         {
             //printf("IRenderSVG.pop()\n");
+            const BLPoint tCursor = textCursor();
 
             fStateStack.pop();
 			setDrawingState(fStateStack.currentState());
+
+            
+            // Restore progressed cursor (do NOT rewind)
+            setTextCursor(tCursor);
 
             //applyToContext(fDrawingContext.get());
             onPop();

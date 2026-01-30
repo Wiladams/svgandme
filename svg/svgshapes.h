@@ -103,14 +103,14 @@ namespace waavs {
 		// propname - specifies the kind of marker
 		// pos - specifies the position of the marker
 
-		bool drawMarker(IRenderSVG* ctx, IAmGroot* groot, const char * propname, MarkerPosition pos, const BLPoint& p1, const BLPoint& p2, const BLPoint& p3)
+		bool drawMarker(IRenderSVG* ctx, IAmGroot* groot, InternedKey propKey, MarkerPosition pos, const BLPoint& p1, const BLPoint& p2, const BLPoint& p3)
 		{
-			std::shared_ptr<SVGVisualProperty> prop = getVisualPropertyByName(propname);
+			std::shared_ptr<SVGVisualProperty> prop = getVisualProperty(propKey);
 			
 			// Look for the default marker if the specified one is not found
 			if (nullptr == prop)
 			{
-				prop = getVisualPropertyByName("marker");
+				prop = getVisualProperty(svgattr::marker());
 				if (nullptr == prop)
 					return false;
 			}
@@ -248,7 +248,7 @@ namespace waavs {
 						}
 					}
 
-					drawMarker(ctx, groot, "marker-start", MarkerPosition::MARKER_POSITION_START, vecpts[0], vecpts[1], vecpts[2]);
+					drawMarker(ctx, groot, svgattr::marker_start(), MarkerPosition::MARKER_POSITION_START, vecpts[0], vecpts[1], vecpts[2]);
 
 					lastCmd = BL_PATH_CMD_MOVE;
 				}
@@ -273,26 +273,26 @@ namespace waavs {
 						case BL_PATH_CMD_ON:
 						case BL_PATH_CMD_CUBIC:
 							vecpts[2] = verts[vertOffset + nVerts];
-							drawMarker(ctx, groot, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, vecpts[0], vecpts[1], vecpts[2]);
+							drawMarker(ctx, groot, svgattr::marker_mid(), MarkerPosition::MARKER_POSITION_MIDDLE, vecpts[0], vecpts[1], vecpts[2]);
 							lastOnPoint = vecpts[1];
 							break;
 
 						case BL_PATH_CMD_CLOSE:
 							vecpts[2] = lastMoveTo;
-							drawMarker(ctx, groot, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, vecpts[0], vecpts[1], vecpts[2]);
+							drawMarker(ctx, groot, svgattr::marker_mid(), MarkerPosition::MARKER_POSITION_MIDDLE, vecpts[0], vecpts[1], vecpts[2]);
 							lastOnPoint = vecpts[1];
 							break;
 
 						case BL_PATH_CMD_MOVE:
 						default:
 							vecpts[2] = vecpts[1];
-							drawMarker(ctx, groot, "marker-end", MarkerPosition::MARKER_POSITION_END, verts[vertOffset - 1], verts[vertOffset], verts[vertOffset]);
+							drawMarker(ctx, groot, svgattr::marker_end(), MarkerPosition::MARKER_POSITION_END, verts[vertOffset - 1], verts[vertOffset], verts[vertOffset]);
 							lastOnPoint = vecpts[1];
 						}
 					}
 					else {
 						// If there is no next command, then this is an 'end', so we should use the end marker if it exists
-						drawMarker(ctx, groot, "marker-end", MarkerPosition::MARKER_POSITION_END, vecpts[0], vecpts[1], vecpts[2]);
+						drawMarker(ctx, groot, svgattr::marker_end(), MarkerPosition::MARKER_POSITION_END, vecpts[0], vecpts[1], vecpts[2]);
 					}
 
 					lastCmd = BL_PATH_CMD_ON;
@@ -307,7 +307,7 @@ namespace waavs {
 
 				case BL_PATH_CMD_CONIC:
 					//! Cubic-to control point (always used as a pair of commands).
-					printf("BL_PATH_CMD_CONIC\n");
+					//printf("BL_PATH_CMD_CONIC\n");
 					break;
 
 				case BL_PATH_CMD_CUBIC: {
@@ -323,23 +323,23 @@ namespace waavs {
 						case BL_PATH_CMD_ON:
 						case BL_PATH_CMD_CUBIC:
 							vecpts[2] = verts[vertOffset + nVerts];
-							drawMarker(ctx, groot, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, vecpts[0], vecpts[1], vecpts[2]);
+							drawMarker(ctx, groot, svgattr::marker_mid(), MarkerPosition::MARKER_POSITION_MIDDLE, vecpts[0], vecpts[1], vecpts[2]);
 							break;
 
 						case BL_PATH_CMD_CLOSE:
 							vecpts[2] = lastMoveTo;
-							drawMarker(ctx, groot, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, vecpts[0], vecpts[1], vecpts[2]);
+							drawMarker(ctx, groot, svgattr::marker_mid(), MarkerPosition::MARKER_POSITION_MIDDLE, vecpts[0], vecpts[1], vecpts[2]);
 							break;
 
 						case BL_PATH_CMD_MOVE:
 						default:
 							vecpts[2] = vecpts[1];
-							drawMarker(ctx, groot, "marker-end", MarkerPosition::MARKER_POSITION_END, vecpts[0], vecpts[1], vecpts[2]);
+							drawMarker(ctx, groot, svgattr::marker_end(), MarkerPosition::MARKER_POSITION_END, vecpts[0], vecpts[1], vecpts[2]);
 						}
 					}
 					else {
 						// If there is no next command, then this is an 'end', so we should use the end marker if it exists
-						drawMarker(ctx, groot, "marker-end", MarkerPosition::MARKER_POSITION_END, vecpts[0], vecpts[1], vecpts[2]);
+						drawMarker(ctx, groot, svgattr::marker_end(), MarkerPosition::MARKER_POSITION_END, vecpts[0], vecpts[1], vecpts[2]);
 					}
 
 					lastCmd = BL_PATH_CMD_CUBIC;
@@ -357,7 +357,7 @@ namespace waavs {
 
 					nVerts = 1;
 
-					drawMarker(ctx, groot, "marker-end", MarkerPosition::MARKER_POSITION_END, vecpts[0], vecpts[1], vecpts[2]);
+					drawMarker(ctx, groot, svgattr::marker_end(), MarkerPosition::MARKER_POSITION_END, vecpts[0], vecpts[1], vecpts[2]);
 
 					lastCmd = BL_PATH_CMD_CLOSE;
 					lastOnPoint = vecpts[1];

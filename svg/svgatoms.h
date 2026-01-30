@@ -26,6 +26,7 @@ namespace waavs::svgattr
     inline InternedKey style() { static InternedKey k = PSNameTable::INTERN("style");         return k; }
     inline InternedKey display() { static InternedKey k = PSNameTable::INTERN("display");       return k; }
     inline InternedKey visibility() { static InternedKey k = PSNameTable::INTERN("visibility");    return k; }
+    inline InternedKey systemLanguage() { static InternedKey k = PSNameTable::INTERN("systemLanguage"); return k; }
     inline InternedKey opacity() { static InternedKey k = PSNameTable::INTERN("opacity");       return k; }
 
     // Geometry / positioning
@@ -70,6 +71,7 @@ namespace waavs::svgattr
     inline InternedKey stroke_linecap() { static InternedKey k = PSNameTable::INTERN("stroke-linecap"); return k; }
     inline InternedKey stroke_linecap_start() { static InternedKey k = PSNameTable::INTERN("stroke-linecap-start"); return k; }
     inline InternedKey stroke_linecap_end() { static InternedKey k = PSNameTable::INTERN("stroke-linecap-end"); return k; }
+
     inline InternedKey stroke_linejoin(){static InternedKey k = PSNameTable::INTERN("stroke-linejoin"); return k;}
     inline InternedKey stroke_miterlimit(){static InternedKey k = PSNameTable::INTERN("stroke-miterlimit"); return k;}
     inline InternedKey stroke_dasharray(){static InternedKey k = PSNameTable::INTERN("stroke-dasharray"); return k;}
@@ -221,6 +223,11 @@ namespace waavs::svgval
     inline InternedKey dx() { static InternedKey k = PSNameTable::INTERN("dx"); return k; }
     inline InternedKey dy() { static InternedKey k = PSNameTable::INTERN("dy"); return k; }
 
+    // Text align
+    inline InternedKey center() { static InternedKey k = PSNameTable::INTERN("center");         return k; }
+    inline InternedKey right() { static InternedKey k = PSNameTable::INTERN("right");          return k; }
+    inline InternedKey left() { static InternedKey k = PSNameTable::INTERN("left");           return k; }
+
     // Text anchor
     inline InternedKey start() { static InternedKey k = PSNameTable::INTERN("start");           return k; }
     inline InternedKey middle() { static InternedKey k = PSNameTable::INTERN("middle");          return k; }
@@ -299,33 +306,15 @@ namespace waavs::svgval_legacy
     inline InternedKey auto_baseline() { static InternedKey k = PSNameTable::INTERN("auto");             return k; }
     inline InternedKey baseline() { static InternedKey k = PSNameTable::INTERN("baseline");        return k; }
     inline InternedKey before_edge() { static InternedKey k = PSNameTable::INTERN("before-edge");     return k; }
-    inline InternedKey text_before_edge()
-    {
-        static InternedKey k = PSNameTable::INTERN("text-before-edge"); return k;
-    }
+    inline InternedKey text_before_edge(){static InternedKey k = PSNameTable::INTERN("text-before-edge"); return k;}
     inline InternedKey middle_baseline() { static InternedKey k = PSNameTable::INTERN("middle");          return k; }
     inline InternedKey central() { static InternedKey k = PSNameTable::INTERN("central");         return k; }
     inline InternedKey after_edge() { static InternedKey k = PSNameTable::INTERN("after-edge");      return k; }
-    inline InternedKey text_after_edge()
-    {
-        static InternedKey k = PSNameTable::INTERN("text-after-edge"); return k;
-    }
-    inline InternedKey ideographic_baseline()
-    {
-        static InternedKey k = PSNameTable::INTERN("ideographic");     return k;
-    }
-    inline InternedKey alphabetic_baseline()
-    {
-        static InternedKey k = PSNameTable::INTERN("alphabetic");      return k;
-    }
-    inline InternedKey hanging_baseline()
-    {
-        static InternedKey k = PSNameTable::INTERN("hanging");         return k;
-    }
-    inline InternedKey mathematical_baseline()
-    {
-        static InternedKey k = PSNameTable::INTERN("mathematical");    return k;
-    }
+    inline InternedKey text_after_edge(){static InternedKey k = PSNameTable::INTERN("text-after-edge"); return k;}
+    inline InternedKey ideographic_baseline(){static InternedKey k = PSNameTable::INTERN("ideographic");     return k;}
+    inline InternedKey alphabetic_baseline(){static InternedKey k = PSNameTable::INTERN("alphabetic");      return k;}
+    inline InternedKey hanging_baseline(){static InternedKey k = PSNameTable::INTERN("hanging");         return k;}
+    inline InternedKey mathematical_baseline(){static InternedKey k = PSNameTable::INTERN("mathematical");    return k;}
 
     // Writing mode legacy
     inline InternedKey lr_tb() { static InternedKey k = PSNameTable::INTERN("lr-tb");            return k; }

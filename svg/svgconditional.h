@@ -69,7 +69,7 @@ namespace waavs {
 		bool addNode(std::shared_ptr<ISVGElement> node, IAmGroot* groot) override
 		{
 			// If the node has a language attribute, add it to the language map
-			auto lang = node->getVisualPropertyByName("systemLanguage");
+			auto lang = node->getVisualProperty(svgattr::systemLanguage());
 			if (lang) {
 				fLanguageNodes[lang->rawValue()] = node;
 			}

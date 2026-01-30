@@ -629,7 +629,8 @@ namespace waavs {
 
 			fHasGradientTransform = parseTransform(getAttributeByName("gradientTransform"), fGradientTransform);
 
-			
+			// If the gradientUnits are ObjectBoundingBox, then 
+			// the parameters are relative to the size of that box
 			if (fGradientUnits == SVG_SPACE_OBJECT)
 			{
 				BLRect oFrame = ctx->getObjectFrame();

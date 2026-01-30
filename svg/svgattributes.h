@@ -1041,18 +1041,18 @@ namespace waavs {
         BLStrokeCapPosition fLineCapPosition{};
         bool fBothCaps{ true };
 
-        SVGStrokeLineCap(IAmGroot* iMap, InternedKey name) : SVGVisualProperty(iMap)
+        SVGStrokeLineCap(IAmGroot* iMap, InternedKey key) : SVGVisualProperty(iMap)
         {
-            setName(name);
+            setName(key);
             
-            if (name == svgattr::stroke_linecap())
+            if (key == svgattr::stroke_linecap())
                 fBothCaps = true;
-            else if (name == svgattr::stroke_linecap_start())
+            else if (key == svgattr::stroke_linecap_start())
             {
                 fBothCaps = false;
                 fLineCapPosition = BL_STROKE_CAP_POSITION_START;
             }
-            else if (name == svgattr::stroke_linecap_end())
+            else if (key == svgattr::stroke_linecap_end())
             {
                 fBothCaps = false;
                 fLineCapPosition = BL_STROKE_CAP_POSITION_END;

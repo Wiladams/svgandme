@@ -52,7 +52,7 @@
 #include "svgfont.h"
 #include "svgfilter.h"
 #include "svghyperlink.h"
-
+#include "svgflowroot.h"
 
 
 

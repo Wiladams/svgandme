@@ -8,6 +8,8 @@
 
 namespace waavs {
 	struct Fontography {
+
+        // Measure how big a piece of text will be with a given font
 		static BLPoint textMeasure(const BLFont& font, const ByteSpan& txt) noexcept
 		{
 			BLTextMetrics tm;
@@ -18,10 +20,14 @@ namespace waavs {
 			font.shape(gb);
 			font.getTextMetrics(gb, tm);
 
-			float cx = (float)(tm.boundingBox.x1 - tm.boundingBox.x0);
+
+			// if we're hit testing, use the following
+			//float cx = (float)(tm.boundingBox.x1 - tm.boundingBox.x0);
+            // when we're trying to know the extent of the text, use the advance
+			float advanceX = tm.advance.x;
 			float cy = fm.ascent + fm.descent;
 
-			return BLPoint(cx, cy);
+			return BLPoint(advanceX, cy);
 		}
 
 		static double ascent(const BLFont& font) noexcept
@@ -144,18 +150,13 @@ namespace waavs {
 //  - 'tspan', while it can be a container (containing more tspans), it can 
 //    not appear outside a 'text' container
 //  - When style is applied in a 'tspan', it remains local to that tspan, and will not
-//    affect sibling tspans
+//    affect sibling tspans, although it will affect child tspans.
 //  - 'x' and 'y' positions, 'text' element, default to '0', while 'tspan' default to the 
 //    whereever the text cursor sits after the last text rendering
 //	  action.
 //
-namespace waavs {
-	// SVGTextRun
-	// This takes care of all the details of rendering a run of text
-	// It contains the text itself
-	// positioning information
-	// style information
-
+namespace waavs 
+{
 	//
 	// SVGTextRun
 	//
@@ -196,7 +197,7 @@ namespace waavs {
 	{
 		static void registerFactory()
 		{
-			registerContainerNodeByName("tspan",
+			registerContainerNode(svgtag::tag_tspan(),
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGTSpanNode>(groot);
 					node->loadFromXmlPull(iter, groot);
@@ -405,17 +406,23 @@ namespace waavs {
 
 	//=====================================================
 	// SVGTextNode
-	// There is a reasonable temptation to make this a sub-class
+	// 
+	// Note: There is a reasonable temptation to make this a sub-class
 	// of tspan, as most of their behavior is the same.  There
 	// are subtle enough differences though that it is probably
 	// better to keep them separate, and introduce a core base
 	// class later for better factoring.
+	// 
+	// One of the most subtle differences has to do with the treatment
+    // of the text cursor after drawing.  A 'text' element resets the
+    // cursor to 0,0 at the start of its drawing, while a 'tspan'
+    // does not.
 	//=====================================================
 	struct SVGTextNode : public SVGTSpanNode
 	{
 		static void registerFactory()
 		{
-			registerContainerNodeByName("text",
+			registerContainerNode(svgtag::tag_text(),
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGTextNode>(groot);
 					node->loadFromXmlPull(iter, groot);
@@ -430,6 +437,68 @@ namespace waavs {
 		{
 		}
 
+		//  drawChildren()
+		//  
+
+		void drawChildren(IRenderSVG* ctx, IAmGroot* groot) override
+		{
+			fBBox = {};
+
+			for (auto& node : fNodes)
+			{
+
+				// dynamic cast the node to a SVGTextRun if possible
+				auto textNode = std::dynamic_pointer_cast<SVGTextRun>(node);
+				if (nullptr != textNode)
+				{
+					SVGAlignment anchor = ctx->getTextAnchor();
+					ByteSpan txt = textNode->text();
+					BLPoint pos = ctx->textCursor();
+					BLRect pRect = Fontography::calcTextPosition(ctx->getFont(), txt, pos.x, pos.y, anchor, fTextVAlignment, fDominantBaseline);
+					expandRect(fBBox, pRect);
+
+					// Get the paint order from the context
+					uint32_t porder = ctx->getPaintOrder();
+
+					for (int slot = 0; slot < 3; slot++)
+					{
+						uint32_t ins = porder & 0x03;	// get two lowest bits, which are a single instruction
+
+						switch (ins)
+						{
+						case PaintOrderKind::SVG_PAINT_ORDER_FILL:
+							ctx->fillText(txt, pRect.x, pRect.y);
+							break;
+
+						case PaintOrderKind::SVG_PAINT_ORDER_STROKE:
+							ctx->strokeText(txt, pRect.x, pRect.y);
+							break;
+
+						case PaintOrderKind::SVG_PAINT_ORDER_MARKERS:
+						{
+							//drawMarkers(ctx, groot);
+						}
+						break;
+						}
+
+						// discard instruction, shift down to get the next one ready
+						porder = porder >> 2;
+					}
+
+					ctx->textCursor(BLPoint(pRect.x + pRect.w, pRect.y));
+				}
+				else
+				{
+					// dynamic cast the node to a SVGTSpanNode if possible
+					auto tspanNode = std::dynamic_pointer_cast<SVGTSpanNode>(node);
+
+					if (nullptr != tspanNode)
+					{
+						tspanNode->draw(ctx, groot);
+					}
+				}
+			}
+		}
 
 		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{

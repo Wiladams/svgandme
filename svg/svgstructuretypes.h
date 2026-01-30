@@ -343,11 +343,6 @@ namespace waavs {
 		XmlElement fSourceElement{};
         
        virtual  std::shared_ptr<SVGVisualProperty> getVisualProperty(InternedKey key) = 0;
-        virtual  std::shared_ptr<SVGVisualProperty> getVisualPropertyByName(const char * name)
-        {
-            InternedKey k = PSNameTable::INTERN(name);
-            return getVisualProperty(k);
-        }
 
        bool isStructural() const { return fIsStructural; }
        void setIsStructural(bool aStructural) { fIsStructural = aStructural; }
@@ -405,17 +400,16 @@ namespace waavs {
         getSVGSingularCreationMap()[k] = std::move(func);
     }
 
-    static void registerContainerNode(const char* name, std::function<std::shared_ptr<ISVGElement>(IAmGroot*, XmlPull&)> creator) = delete;
-    //{
-    //    InternedKey k = PSNameTable::INTERN(name);
-    //    getSVGContainerCreationMap()[k] = std::move(creator);
-    //}
+    static void registerContainerNode(InternedKey key, std::function<std::shared_ptr<ISVGElement>(IAmGroot*, XmlPull&)> creator)
+    {
+        getSVGContainerCreationMap()[key] = std::move(creator);
+    }
 
     static void registerContainerNodeByName(const char* name,
         std::function<std::shared_ptr<ISVGElement>(IAmGroot*, XmlPull&)> creator)
     {
-        InternedKey k = PSNameTable::INTERN(name);
-        getSVGContainerCreationMap()[k] = std::move(creator);
+        InternedKey key = PSNameTable::INTERN(name);
+        return registerContainerNode(key, std::move(creator));
     }
 
 
@@ -675,23 +669,7 @@ namespace waavs {
                 // not have a registered factory method.
                 // so, we just consume its content until we find the matching end tag
                 // and throw it away.
-                //skipSubtree(iter);
-                ///*
-                // BUGBUG - we should use a faster 'skipSubtree' method here
-                static InternedKey gk = PSNameTable::INTERN("g");
-
-                auto& m = getSVGContainerCreationMap();
-                auto it = m.find(gk);
-                if (it != m.end() && it->second) {
-                    (void)it->second(groot, iter);
-                }
-                //else {
-                    // if 'g' isn't registered, we should fallback to skippint
-                    // the subtree entirely.
-                    // Really, skipping the subtree is the right thing to do anyway
-                    // and using the 'g' element is just a temporary workaround
-                //}
-                //*/
+                skipSubtree(iter);
             }
 
         }
@@ -856,7 +834,6 @@ namespace waavs {
             // Finally, override any of the attributes already set with the 
             // presentation attributes of the current element, if any
             fAttributes.mergeAttributes(fPresentationAttributes);
-
             this->fixupSelfStyleAttributes(ctx, groot);
 
             // Use up some of the attributes
@@ -864,8 +841,9 @@ namespace waavs {
             if (fAttributes.getValue(svgattr::display(), displayAttr))
             {
                 displayAttr = chunk_trim(displayAttr, chrWspChars);
+                InternedKey dv = PSNameTable::INTERN(displayAttr);
 
-                if (displayAttr == "none")
+                if (displayAttr == svgval::none())
                     visible(false);
             }
 
@@ -969,7 +947,7 @@ namespace waavs {
             // BUGBUG - need to apply transform appropriately here
             //if (fHasTransform)  //fTransform.type() != BL_MATRIX2D_TYPE_IDENTITY)
             //    ctx->applyTransform(fTransform);
-			auto tform = getVisualPropertyByName("transform");
+			auto tform = getVisualProperty(svgattr::transform());
 			if (tform)
 				tform->draw(ctx, groot);
 
@@ -980,7 +958,9 @@ namespace waavs {
                     continue;
 
                 if (prop.second->autoDraw() && prop.second->isSet())
+                {
                     prop.second->draw(ctx, groot);
+                }
             }
         }
 
@@ -1012,7 +992,7 @@ namespace waavs {
             // so set objectFrame on the context
             BLRect bbox = getBBox();
             if (bbox.w && bbox.h)
-                ctx->setObjectFrame(getBBox());
+                ctx->setObjectFrame(bbox);
 
             if (needsBinding())
                 this->bindToContext(ctx, groot);
