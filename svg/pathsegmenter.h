@@ -51,8 +51,10 @@ namespace waavs
 
 	struct SVGSegmentParseState
 	{
-        PathSegment seg;	// we need segment in here because we retain last command and iteration for implicit commands
-							// maybe we could just store the command and iteration count separately?
+        SVGPathCommand fSegmentKind{ SVGPathCommand::M };
+		size_t fIteration{ 0 };
+		size_t fArgCount{ 0 };
+		const char* fArgTypes{ nullptr };
 		ByteSpan remains{};
 		int fError{ 0 };
 
@@ -61,10 +63,6 @@ namespace waavs
 		SVGSegmentParseState(const ByteSpan& aSpan)
 		{
 			remains = aSpan;
-		}
-
-		unsigned char command() const {
-			return static_cast<unsigned char>(seg.fSegmentKind);
 		}
 
 		bool hasMore() const {
@@ -84,104 +82,80 @@ namespace waavs
 }
 
 
-namespace waavs {
-	
-
-
+namespace waavs 
+{	
 	//
 	// readNextSegmentCommand
 	// Given a current state of parsing, read the next segment command within
 	// an SVG path.  The state is updated with the new command, and the numeric
 	// arguments to go with it.
 	//
-	static bool readNextSegmentCommand(SVGSegmentParseParams& params, SVGSegmentParseState& cmdState) //, PathSegment &seg)
+	static bool readNextSegmentCommand(SVGSegmentIterator& iter, PathSegment& seg)
 	{
 		constexpr charset leadingChars("0123456789.+-");          // digits, symbols, and letters found at start of numbers
 		constexpr  charset pathWsp = chrWspChars + ',';
 		
 		// always ignore leading whitespace
-		cmdState.remains.skipWhile(pathWsp);
+		iter.fState.remains.skipWhile(pathWsp);
 
-		if (cmdState.remains.empty())
+		if (iter.fState.remains.empty())
 			return false;
 		
 		// put in a progress guard to ensure we don't
 		// cause an infinite loop
-		//const unsigned char* before = cmdState.remains.fStart;
+		//const unsigned char* before = iter.fState.remains.fStart;
 
 		// if the next character is not numeric, then 
-		// it must be a command
-		if (!leadingChars(*cmdState.remains)) 
+		// it must be a new command
+		if (!leadingChars(*iter.fState.remains))
 		{
 			// If we're in here, there must be a command
 			// if there isn't it's an error
-			const char* argTypes = getSegmentArgTypes(*cmdState.remains);
-		
-			if (!argTypes) {
-                cmdState.fError = -1;	// Indicate parsing error
+			iter.fState.fArgTypes = getSegmentArgTypes(*iter.fState.remains);
+
+			if (!iter.fState.fArgTypes) {
+				iter.fState.fError = -1;	// Indicate parsing error
 				return false;
 			}
 
-			cmdState.seg.reset(nullptr, strlen(argTypes), argTypes, static_cast<SVGPathCommand>(*cmdState.remains), 0);
-			cmdState.remains++;
+			iter.fState.fArgCount = strlen(iter.fState.fArgTypes);
+			iter.fState.fSegmentKind = static_cast<SVGPathCommand>(*iter.fState.remains);
+			iter.fState.fIteration = 0;	// New command, so reset iteration to zero
+
+			iter.fState.remains++;
 		}
 		else {
-			// Do implicit repetition for those commands that expect
-			// to have arguments
-			if (cmdState.seg.fArgCount == 0)
+            // Assume we've got some more arguments for the last command
+			// so it's a repeated command
+			if (iter.fState.fArgCount == 0)
 			{
 				// Strict: error out
-				cmdState.fError = -1;
+				iter.fState.fError = -1;
 				return false;
 			}
 
 			// If we are here, the next token is numeric
 			// so, we assume we're in the next iteration of the same
 			// command, so increment the iteration count
-			cmdState.seg.fIteration++;
+			iter.fState.fIteration++;
 		}
 
 		// Now, we need to read the numeric arguments
-		if (cmdState.seg.fArgCount > 0)
+		if (iter.fState.fArgCount > 0)
 		{
-			if (cmdState.seg.fArgCount != readFloatArguments(cmdState.remains, cmdState.seg.fArgTypes, cmdState.seg.fArgs))
+            float args[kMaxPathArgs]{ 0.0f };
+			if (iter.fState.fArgCount != readFloatArguments(iter.fState.remains, iter.fState.fArgTypes, args))
 			{
-				cmdState.fError = -1;	// Indicate parsing error
+				iter.fState.fError = -1;	// Indicate parsing error
 				return false;
 			}
-
-		}
+            seg.reset(args, iter.fState.fArgCount, iter.fState.fArgTypes, iter.fState.fSegmentKind, iter.fState.fIteration);
+		} else {
+			// no arguments
+			seg.reset(nullptr, 0, nullptr, iter.fState.fSegmentKind, iter.fState.fIteration);
+        }
 
 		return true;
 	}
-}
-
-
-namespace waavs {
-	struct SVGPathSegmentGenerator : public IProduce<PathSegment>
-	{
-		//SVGSegmentParseParams fParams{};
-		//SVGSegmentParseState fCmdState;
-        SVGSegmentIterator fIter;
-
-		SVGPathSegmentGenerator(const ByteSpan& pathSpan)
-			: fIter(pathSpan)
-		{
-		}
-
-		bool next(PathSegment& seg) override
-		{
-			auto success = readNextSegmentCommand(fIter.fParams, fIter.fState);
-			if (!success)
-			{
-				return false;
-			}
-
-			seg = fIter.fState.seg;
-
-			return true;
-		}
-
-	};
 }
 

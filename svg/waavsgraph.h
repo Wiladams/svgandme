@@ -160,6 +160,7 @@ namespace waavs
 
 	struct PathSegment final
 	{
+		
 		float fArgs[kMaxPathArgs]{ 0.0 };             // 32 bytes
 		char fArgTypes[kMaxPathArgs]{ 0 };             // 8 bytes
 		uint8_t fArgCount{ 0 };             // 1 byte

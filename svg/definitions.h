@@ -70,6 +70,10 @@
 #endif
 #endif
 
+#ifndef WAAVS_ASSERT
+#include <cassert>
+#define WAAVS_ASSERT(x) assert(x)
+#endif
 
 
 

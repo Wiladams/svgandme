@@ -13,8 +13,42 @@
 #include "svgmarker.h"
 
 
+namespace waavs {
+    // A helper to paint a path with fill/stroke/markers
+	// deals with the paint order
+	struct PathPainter
+	{
+		IRenderSVG* ctx;
+		IAmGroot* groot;
+		const BLPath& path;
+
+		// Optional: hook markers back to the owning element (or a helper).
+		// If nullptr, markers are a no-op.
+		void (*drawMarkersFn)(void* user, IRenderSVG* ctx, IAmGroot* groot) { nullptr };
+		void* markersUser{ nullptr };
+
+		// Same semantics as your SVGPathBasedGeometry::drawSelf():
+		// begin/end are outside paint-order ops so markers can be drawn between.
+		void begin() noexcept { ctx->beginDrawShape(path); }
+		void end()   noexcept { ctx->endDrawShape(); }
+
+		void onFill()    noexcept { ctx->fillShape(path); }
+		void onStroke()  noexcept { ctx->strokeShape(path); }
+		void onMarkers() noexcept
+		{
+			if (drawMarkersFn)
+				drawMarkersFn(markersUser, ctx, groot);
+		}
+	};
+
+} // namespace waavs
+
+
 
 namespace waavs {
+
+
+
 
 	// SVGPathBasedGeometry
 	//
@@ -78,12 +112,12 @@ namespace waavs {
 		bool checkForMarkers()
 		{
 			// figure out if we have any markers set
-			auto mStart = getAttributeByName("marker-start");
-			auto mMid = getAttributeByName("marker-mid");
-			auto mEnd = getAttributeByName("marker-end");
-			auto m = getAttributeByName("marker");
+			auto mStart = getAttribute(svgattr::marker_start());
+			auto mMid = getAttribute(svgattr::marker_mid());
+			auto mEnd = getAttribute(svgattr::marker_end());
+			auto m = getAttribute(svgattr::marker());
 			
-			if ((mStart&& mStart!="none") || (mMid&& mMid!="none") || (mEnd&&mEnd!="none") || (m&& m!="none")) 
+			if ((mStart&& mStart!=svgval::none()) || (mMid&& mMid!=svgval::none()) || (mEnd&&mEnd!=svgval::none()) || (m&& m!=svgval::none())) 
 			{
 				fHasMarkers = true;
 			}
@@ -376,6 +410,21 @@ namespace waavs {
 
 		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{
+			PaintOrderProgram<uint8_t> prog(ctx->getPaintOrder());
+			PathPainter painter{ctx, groot, fPath,
+				// drawMarkersFn:
+				fHasMarkers ? [](void* user, IRenderSVG* c, IAmGroot* g) {
+					static_cast<SVGPathBasedGeometry*>(user)->drawMarkers(c, g);
+				} : nullptr,
+				// markersUser:
+				this
+			};
+
+			painter.begin();
+			prog.run(painter);
+			painter.end();
+
+			/*
 			// Note:
 			// Since we need to deal with markers, we can not
 			// use the simple drawShape() function, as it does 
@@ -416,6 +465,7 @@ namespace waavs {
 			}
 
 			ctx->endDrawShape();
+			*/
 		}
 
 	};
@@ -895,7 +945,7 @@ namespace waavs {
 		{
 			fPath.clear();
 
-			auto d = getAttributeByName("d");
+			auto d = getAttribute(svgattr::d());
 			if (d) {
 				parsePath(d, fPath);
 				fPath.shrink();

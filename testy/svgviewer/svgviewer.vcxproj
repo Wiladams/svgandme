@@ -266,6 +266,7 @@
     <ClInclude Include="..\..\svg\membuff.h" />
     <ClInclude Include="..\..\svg\nametable.h" />
     <ClInclude Include="..\..\svg\parse_color.h" />
+    <ClInclude Include="..\..\svg\pathpu.h" />
     <ClInclude Include="..\..\svg\pathsegmenter.h" />
     <ClInclude Include="..\..\svg\pubsub.h" />
     <ClInclude Include="..\..\svg\smildatatypes.h" />

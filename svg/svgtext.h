@@ -6,8 +6,10 @@
 #include "xmlentity.h"
 #include "twobitpu.h"
 
-namespace waavs {
-	struct Fontography {
+namespace waavs 
+{
+	struct Fontography 
+	{
 
         // Measure how big a piece of text will be with a given font
 		static BLPoint textMeasure(const BLFont& font, const ByteSpan& txt) noexcept
@@ -240,70 +242,15 @@ namespace waavs {
 		return true;
 	}
 
-	// Mutate placements with cumulative dx/dy (SVG semantics for dx/dy lists).
-	static INLINE void applyDxDyListsToPlacements(IRenderSVG* ctx,
-		BLGlyphBuffer& gb,
-		double viewportW,
-		double viewportH) noexcept
-	{
-		const SVGTextPosStream& psConst = ctx->textPosStream();
-		const bool hasDx = psConst.hasDx;
-		const bool hasDy = psConst.hasDy;
 
-		if (!hasDx && !hasDy)
-			return;
 
-		// Get glyph run + placements.
-		BLGlyphRun run = gb.glyphRun();
-		if (!run.placementData || run.size == 0)
-			return;
-
-		// We must mutate placements, so treat placementData as mutable.
-		// Blend2D's BLGlyphRun::placementData is typed as `const BLGlyphPlacement*`
-		// in some versions; glyphbuffer usually owns mutable storage.
-		BLGlyphPlacement* pl = const_cast<BLGlyphPlacement*>(
-			static_cast<const BLGlyphPlacement*>(run.placementData));
-
-		double cumDxPx = 0.0;
-		double cumDyPx = 0.0;
-
-		for (size_t i = 0; i < size_t(run.size); ++i)
-		{
-			if (hasDx)
-			{
-				ByteSpan tok{};
-				if (ctx->consumeNextDxToken(tok))
-				{
-					double px = 0.0;
-					if (tokenToPx(ctx, tok, viewportW, px))
-						cumDxPx += px;
-				}
-			}
-
-			if (hasDy)
-			{
-				ByteSpan tok{};
-				if (ctx->consumeNextDyToken(tok))
-				{
-					double px = 0.0;
-					if (tokenToPx(ctx, tok, viewportH, px))
-						cumDyPx += px;
-				}
-			}
-
-			// Apply cumulative shift to each glyph placement.
-			pl[i].placement.x += blFixedFromPx(cumDxPx);
-			pl[i].placement.y += blFixedFromPx(cumDyPx);
-		}
-	}
-
-    using BLFixed = int32_t; // 26.6 fixed-point
-	static INLINE BLFixed consumeNextLengthPxOrZero(IRenderSVG* ctx, bool isDx) noexcept
+    //using BLFixed = int32_t; // 26.6 fixed-point
+	static INLINE double consumeNextLengthPxOrZero(IRenderSVG* ctx, bool isDx) noexcept
 	{
 		ByteSpan tok{};
 		bool ok = isDx ? ctx->consumeNextDxToken(tok) : ctx->consumeNextDyToken(tok);
 		if (!ok || tok.empty())
-			return BLFixed(0);
+			return double(0);
 
 		// Convert the length token to px; you already do this elsewhere via SVGVariableSize.
 		// A pragmatic approach is: parse token -> SVGVariableSize -> calculatePixels -> fixed.
@@ -316,27 +263,16 @@ namespace waavs {
 		const double rel = isDx ? vp.w : vp.h;
 
 		const double px = dim.calculatePixels(ctx->getFont(), rel, 0.0, 96.0);
-		return blFixedFromPx(px);
+		return px;
 	}
 
 
-	static INLINE void computePenPxToGlyph(
-		const BLGlyphPlacement* pl, size_t i0,
-		double& outPenXPx, double& outPenYPx) noexcept
-	{
-		int64_t ax = 0;
-		int64_t ay = 0;
 
-		for (size_t i = 0; i < i0; ++i) {
-			ax += pl[i].advance.x;
-			ay += pl[i].advance.y;
-		}
 
-		outPenXPx = blPxFromFixed(int32_t(ax));
-		outPenYPx = blPxFromFixed(int32_t(ay));
-	}
-
-    // Works with two-bit paint order encoding.
+    // GlyphPainter
+	// 
+    // This is an executor for paint-order rendering of glyph runs.
+    // It Works with two-bit paint order encoding.
 	struct GlyphPainter {
 		IRenderSVG* ctx;
 		const BLFont& font;
@@ -357,6 +293,11 @@ namespace waavs {
 		BLRect& ioBBox) noexcept
 	{
 		const BLFont& font = ctx->getFont();
+
+		// Get font matrix so we can build per-glyph transforms
+		BLFontMatrix fm = font.matrix();
+		const double sx = fm.m00;
+		const double sy = fm.m11;	// negative for y-down
 
 		// 1) Shape
 		BLGlyphBuffer gb;
@@ -406,20 +347,31 @@ namespace waavs {
 
 		double lastRotDeg = 0.0;
 
+        double cumDxPlace = 0.0;  
+        double cumDyPlace = 0.0;  
+
 		// dx/dy in SVG are cumulative offsets.
-		BLFixed cumDx = 0;
-		BLFixed cumDy = 0;
+		double cumDxUser = 0;
+		double cumDyUser = 0;
 
 		for (size_t i = 0; i < n; ++i) {
 			if (useDx) {
-				const BLFixed dx = consumeNextLengthPxOrZero(ctx, true);  // exhausted => 0
-				cumDx += dx;
-				pl[i].placement.x += (int32_t)cumDx;
+				const double dxUser = consumeNextLengthPxOrZero(ctx, true);  // exhausted => 0
+				cumDxUser += dxUser;
+
+				const double dxPlace = (sx != 0.0) ? (dxUser / sx) : 0.0;  // user units
+				cumDxPlace += dxPlace;
+
+				pl[i].placement.x += (int32_t)llround(cumDxPlace);
 			}
+
 			if (useDy) {
-				const BLFixed dy = consumeNextLengthPxOrZero(ctx, false); // exhausted => 0
-				cumDy += dy;
-				pl[i].placement.y += (int32_t)cumDy;
+				const double dyUser = consumeNextLengthPxOrZero(ctx, false); // exhausted => 0
+				cumDyUser += dyUser;
+
+                const double dyPlace = (sy != 0.0) ? (dyUser / sy) : 0.0;  // user units
+                cumDyPlace += dyPlace;
+				pl[i].placement.y += (int32_t)llround(cumDyPlace);
 			}
 
 			if (useRot) {
@@ -445,10 +397,7 @@ namespace waavs {
 			prog.run(painter);
 		}
 		else {
-            // Get font matrix so we can build per-glyph transforms
-			BLFontMatrix fm = font.matrix();
-			const double sx = fm.m00;
-            const double sy = fm.m11;	// negative for y-down
+
 
 			// ---- Robust rotate path ----
 			// Build ABSOLUTE per-glyph positions after dx/dy:
@@ -513,127 +462,13 @@ namespace waavs {
 		BLTextMetrics tm;
 		font.getTextMetrics(gb, tm);
 
-		const double endX = originX + tm.advance.x + blPxFromFixed((int32_t)cumDx);
-		const double endY = originY + tm.advance.y + blPxFromFixed((int32_t)cumDy);
+		const double endX = originX + tm.advance.x + cumDxUser;
+		const double endY = originY + tm.advance.y + cumDyUser;
+
 		ctx->textCursor(BLPoint(endX, endY));
 	}
 
 
-
-
-
-
-	static INLINE void drawTextRun(IRenderSVG* ctx,
-		const ByteSpan& txt,
-		TXTALIGNMENT vAlign,
-		DOMINANTBASELINE domBase,
-		BLRect& ioBBox) noexcept
-	{
-		if (txt.empty())
-			return;
-
-		// Resolve initial origin (SVG cursor).
-		const BLPoint cursor = ctx->textCursor();
-
-		// Compute initial aligned baseline position (your existing policy).
-		SVGAlignment anchor = ctx->getTextAnchor();
-		BLRect pRect = Fontography::calcTextPosition(ctx->getFont(), txt,
-			cursor.x, cursor.y,
-			anchor, vAlign, domBase);
-
-		// Shape once.
-		BLGlyphBuffer gb;
-		gb.setUtf8Text(txt.data(), txt.size());
-		ctx->getFont().shape(gb);
-
-		// Apply dx/dy list streams by mutating placements (if present).
-		const BLRect vp = ctx->viewport();
-		applyDxDyListsToPlacements(ctx, gb, vp.w, vp.h);
-
-		// Compute metrics AFTER placement edits so bbox/advance reflect dx/dy.
-		BLTextMetrics tm;
-		ctx->getFont().getTextMetrics(gb, tm);
-
-		// Expand bbox using the metrics bounding box, translated to pRect origin.
-		// tm.boundingBox is in user units relative to the glyph run origin.
-		BLRect metricsRect;
-		metricsRect.x = pRect.x + tm.boundingBox.x0;
-		metricsRect.y = pRect.y + tm.boundingBox.y0;
-		metricsRect.w = tm.boundingBox.x1 - tm.boundingBox.x0;
-		metricsRect.h = tm.boundingBox.y1 - tm.boundingBox.y0;
-		expandRect(ioBBox, metricsRect);
-
-		// Draw using glyph run so your edited placements are honored.
-		const BLGlyphRun run = gb.glyphRun();
-
-		uint32_t porder = ctx->getPaintOrder();
-		for (int slot = 0; slot < 3; ++slot)
-		{
-			const uint32_t ins = porder & 0x03;
-			switch (ins)
-			{
-			case PaintOrderKind::SVG_PAINT_ORDER_FILL:
-				ctx->fillGlyphRun(ctx->getFont(), run, pRect.x, pRect.y);
-				break;
-
-			case PaintOrderKind::SVG_PAINT_ORDER_STROKE:
-				ctx->strokeGlyphRun(ctx->getFont(), run, pRect.x, pRect.y);
-				break;
-
-			case PaintOrderKind::SVG_PAINT_ORDER_MARKERS:
-				// later
-				break;
-			}
-			porder >>= 2;
-		}
-
-		// Advance the SVG text cursor.
-		// tm.advance already includes any modified placements (dx/dy) in practice.
-		// (If your Blend2D version doesn't include placement shifts in advance, you can
-		//  track cumDx/cumDy in applyDxDyListsToPlacements() and add them here.)
-		ctx->textCursor(BLPoint(pRect.x + tm.advance.x, pRect.y + tm.advance.y));
-	}
-
-
-
-
-
-	/*
-	static INLINE void drawTextRun(IRenderSVG* ctx,
-		const ByteSpan& txt,
-		TXTALIGNMENT vAlign,
-		DOMINANTBASELINE domBase,
-		BLRect& ioBBox) noexcept
-	{
-		SVGAlignment anchor = ctx->getTextAnchor();
-		BLPoint pos = ctx->textCursor();
-
-		BLRect pRect = Fontography::calcTextPosition(ctx->getFont(), txt,
-			pos.x, pos.y,
-			anchor, vAlign, domBase);
-		expandRect(ioBBox, pRect);
-
-		uint32_t porder = ctx->getPaintOrder();
-		for (int slot = 0; slot < 3; ++slot) {
-			uint32_t ins = porder & 0x03;
-			switch (ins) {
-			case PaintOrderKind::SVG_PAINT_ORDER_FILL:
-				ctx->fillText(txt, pRect.x, pRect.y);
-				break;
-			case PaintOrderKind::SVG_PAINT_ORDER_STROKE:
-				ctx->strokeText(txt, pRect.x, pRect.y);
-				break;
-			case PaintOrderKind::SVG_PAINT_ORDER_MARKERS:
-				// markers later
-				break;
-			}
-			porder >>= 2;
-		}
-
-		// advance cursor
-		ctx->textCursor(BLPoint(pRect.x + pRect.w, pRect.y));
-	}
-	*/
 }
 
 namespace waavs
