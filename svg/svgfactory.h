@@ -73,7 +73,7 @@ namespace waavs {
             SVGStyleNode::registerFactory();            // 'style'
             SVGSwitchElement::registerFactory();        // 'switch'
             SVGTextNode::registerFactory();             // 'text'
-            //SVGTSpanNode::registerFactory();            // 'tspan'
+            SVGTSpanNode::registerFactory();            // 'tspan'
             SVGUseElement::registerFactory();           // 'use'
 
             // Non-Structural Nodes

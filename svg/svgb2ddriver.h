@@ -344,6 +344,16 @@ namespace waavs
             fDrawingContext->blitImage(dst, src, srcArea);
         }
 
+        // example in your concrete BLContext-backed renderer:
+        void onFillGlyphRun(const BLFont& font, const BLGlyphRun& run, double x, double y) override
+        {
+            fDrawingContext->fillGlyphRun(BLPoint(x, y), font, run);
+        }
+
+        void onStrokeGlyphRun(const BLFont& font, const BLGlyphRun& run, double x, double y) override
+        {
+            fDrawingContext->strokeGlyphRun(BLPoint(x, y), font, run);
+        }
 
         // Text Drawing
         void onStrokeText(const ByteSpan& txt, double x, double y) override

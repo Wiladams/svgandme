@@ -6,10 +6,57 @@
 
 #include "blend2d.h"
 #include "fonthandler.h"
-//#include "collections.h"
 #include "svgenums.h"
 #include "svgdrawingstate.h"
 #include "imanagesvgstate.h"
+
+
+namespace waavs
+{
+    // SVGTextPosStream
+    // 
+    // Used to manage the 'dx' and 'dy' attributes
+    struct SVGTextPosStream {
+        SVGTokenListView x{};
+        SVGTokenListView y{};
+        SVGTokenListView dx{};
+        SVGTokenListView dy{};
+        SVGTokenListView rotate{};
+
+        bool hasX{ false };
+        bool hasY{ false };
+        bool hasDx{ false };
+        bool hasDy{ false };
+        bool hasRotate{ false };
+
+        void reset() {
+            x.reset({});
+            y.reset({});
+            dx.reset({});
+            dy.reset({});
+            rotate.reset({});
+
+            hasX = false;
+            hasY = false;
+            hasDx = false;
+            hasDy = false;
+            hasRotate = false;
+        }
+
+        static const SVGTextPosStream & empty() noexcept
+        {
+            static const SVGTextPosStream sEmpty;
+            return sEmpty;
+        }
+
+    };
+
+    // A stack frame is the effective stream at a particular nesting level
+    struct SVGTextPosFrame
+    {
+        SVGTextPosStream eff{};
+    };
+}
 
 namespace waavs
 {
@@ -20,6 +67,10 @@ namespace waavs
     {
         SVGDrawingState *fCurrentDrawingState;
         SVGStateStack fStateStack;
+        
+        // Text position management
+        std::vector<waavs::SVGTextPosFrame> fTextPosStack;
+
 
     public:
         IRenderSVG()
@@ -36,6 +87,9 @@ namespace waavs
 
         void initState()
         {
+            fTextPosStack.clear();
+            fTextPosStack.reserve(8);   // reserve some space for text position frames
+
             fStateStack.reset();
 			fCurrentDrawingState = fStateStack.currentState();
             setDrawingState(fCurrentDrawingState);
@@ -95,6 +149,94 @@ namespace waavs
             //strokeWidth(1.0);
             onRenew();
         }
+
+        // Text position stack management
+        INLINE void pushTextPosStream(const SVGTextPosStream& ps) noexcept
+        {
+            SVGTextPosFrame frame{};
+
+            // Inherit from previous frame if there is one
+            if (!fTextPosStack.empty())
+            {
+                frame = fTextPosStack.back();
+            }
+            else
+            {
+                frame.eff.reset();
+            }
+
+            // override only what the incoming stream provides
+            if (ps.hasX) { frame.eff.x = ps.x; frame.eff.hasX = true;}
+            if (ps.hasY) { frame.eff.y = ps.y; frame.eff.hasY = true; }
+            if (ps.hasDx) { frame.eff.dx = ps.dx; frame.eff.hasDx = true; }
+            if (ps.hasDy) { frame.eff.dy = ps.dy; frame.eff.hasDy = true; }
+            if (ps.hasRotate) { frame.eff.rotate = ps.rotate; frame.eff.hasRotate = true; }
+
+            fTextPosStack.push_back(frame);
+        }
+
+        INLINE void popTextPosStream() noexcept
+        {
+            if (!fTextPosStack.empty())
+            {
+                fTextPosStack.pop_back();
+            }
+        }
+
+        INLINE bool hasTextPosStream() const noexcept { return !fTextPosStack.empty(); }
+
+        INLINE const SVGTextPosStream& textPosStream() const noexcept
+        {
+            if (!fTextPosStack.empty())
+            {
+                return fTextPosStack.back().eff;
+            }
+            return SVGTextPosStream::empty();
+        }
+
+        bool consumeNextDxToken(ByteSpan& tok) noexcept
+        {
+            tok.reset();
+            if (fTextPosStack.empty())
+                return false;
+
+            auto& eff = fTextPosStack.back().eff;
+            if (!eff.hasDx)
+                return false;
+
+            return eff.dx.nextLengthToken(tok);
+        }
+
+        bool consumeNextDyToken(ByteSpan& tok) noexcept
+        {
+            tok.reset();
+            if (fTextPosStack.empty())
+                return false;
+
+            auto& eff = fTextPosStack.back().eff;
+            if (!eff.hasDy)
+                return false;
+
+            return eff.dy.nextLengthToken(tok);
+        }
+
+        bool consumeNextRotateToken(ByteSpan& tok) noexcept
+        {
+            tok.reset();
+            if (fTextPosStack.empty())
+                return false;
+
+            auto& eff = fTextPosStack.back().eff;
+            if (!eff.hasRotate)
+                return false;
+
+            return eff.rotate.nextNumberToken(tok);
+        }
+
+
+
+
+
 
         virtual void onPush() {}
         void push()  
@@ -502,6 +644,21 @@ namespace waavs
 			onResetFont();
 		}
 
+
+        // Text drawing (glyph run)
+        virtual void onFillGlyphRun(const BLFont& , const BLGlyphRun& , double x, double y) {}
+        void fillGlyphRun(const BLFont& font, const BLGlyphRun& run, double x, double y)
+        {
+            onFillGlyphRun(font, run, x, y);
+        }
+
+        virtual void onStrokeGlyphRun(const BLFont& , const BLGlyphRun& , double x, double y) {}
+        void strokeGlyphRun(const BLFont& font, const BLGlyphRun& run, double x, double y)
+        {
+            onStrokeGlyphRun(font, run, x, y);
+        }
+
+
         // Text drawing
         virtual void onStrokeText(const ByteSpan& txt, double x, double y) {}
 		void strokeText(const ByteSpan& txt, double x, double y) 
@@ -520,6 +677,12 @@ namespace waavs
         {
             onDrawText(txt, x, y);
         }
+
+
+
+
+
+
     };
 
 }

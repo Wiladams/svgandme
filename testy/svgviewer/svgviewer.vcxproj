@@ -304,6 +304,7 @@
     <ClInclude Include="..\..\svg\svgtext.h" />
     <ClInclude Include="..\..\svg\svgportal.h" />
     <ClInclude Include="..\..\svg\svgunits.h" />
+    <ClInclude Include="..\..\svg\twobitpu.h" />
     <ClInclude Include="..\..\svg\utf8.h" />
     <ClInclude Include="..\..\svg\viewport.h" />
     <ClInclude Include="..\..\svg\wsenum.h" />

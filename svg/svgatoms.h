@@ -43,6 +43,11 @@ namespace waavs::svgattr
     inline InternedKey ry() { static InternedKey k = PSNameTable::INTERN("ry");            return k; }
     inline InternedKey width() { static InternedKey k = PSNameTable::INTERN("width");         return k; }
     inline InternedKey height() { static InternedKey k = PSNameTable::INTERN("height");        return k; }
+    
+    // Text positioning
+    inline InternedKey dx() { static InternedKey k = PSNameTable::INTERN("dx"); return k; }
+    inline InternedKey dy() { static InternedKey k = PSNameTable::INTERN("dy"); return k; }
+    inline InternedKey rotate() { static InternedKey k = PSNameTable::INTERN("rotate"); return k; }
 
     // Paths & shapes
     inline InternedKey d() { static InternedKey k = PSNameTable::INTERN("d");             return k; }
@@ -219,9 +224,7 @@ namespace waavs::svgval
     inline InternedKey non_scaling_stroke() { static InternedKey k = PSNameTable::INTERN("non-scaling-stroke"); return k;}
 
 
-    // Text positioning
-    inline InternedKey dx() { static InternedKey k = PSNameTable::INTERN("dx"); return k; }
-    inline InternedKey dy() { static InternedKey k = PSNameTable::INTERN("dy"); return k; }
+
 
     // Text align
     inline InternedKey center() { static InternedKey k = PSNameTable::INTERN("center");         return k; }

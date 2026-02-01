@@ -9,9 +9,12 @@
 #include "blend2d.h"
 #include "fonthandler.h"
 #include "svgenums.h"
+#include "svgdatatypes.h"
 
 
 namespace waavs {
+
+
 	// Represents the current state of the SVG rendering context
     // this can be used by DOM walkers, as well as rendering context
     //

@@ -541,5 +541,17 @@ namespace waavs {
     }
 }
 
+namespace waavs
+{
+    // Blend2D glyph placements are commonly 26.6 fixed-point (1/64 px).
+    // If your Blend2D build uses a different scale, change this.
+    static INLINE int32_t blFixedFromPx(double px) noexcept
+    {
+        constexpr double kScale = 64.0;
+        return (int32_t)llround(px * kScale);
+    }
+
+    static INLINE double blPxFromFixed(int32_t v) noexcept { return double(v) * (1.0 / 65536.0); }
+}
 
 #endif // _CONVERTERS_H_INCLUDED

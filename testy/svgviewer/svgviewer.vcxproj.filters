@@ -257,5 +257,8 @@
     <ClInclude Include="..\..\svg\svgflowroot.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\svg\twobitpu.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

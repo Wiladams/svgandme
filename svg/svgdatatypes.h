@@ -16,7 +16,257 @@
 #include "viewport.h"
 #include "svgatoms.h"
 #include "svgunits.h"
+#include "xmlscan.h"
 
+
+namespace waavs 
+{
+//
+// SVGTokenListView
+//
+// A zero-allocation forward iterator over SVG "list" attributes.
+// Typical separators: whitespace and/or ','.
+//
+// This view can produce:
+//  - number tokens (numeric lexeme only)
+//  - length tokens (numeric lexeme + optional unit suffix or '%')
+//
+// Design goals:
+//  - No allocation
+//  - No copying of token text
+//  - Compatible numeric grammar with WAAVS readNumber()
+//  - Cursor is a ByteSpan (WAAVS idiom)
+//
+    struct SVGTokenListView final
+    {
+        // The original source span (optional, for debugging)
+        ByteSpan fSrc{};
+
+        // The cursor span that advances as tokens are consumed
+        ByteSpan fCur{};
+
+        // separators in SVG lists: whitespace and comma
+        // (matches your existing readNextNumber())
+        static const charset& sepChars() noexcept
+        {
+            static charset sSep = chrWspChars + ",";
+            return sSep;
+        }
+
+        SVGTokenListView() noexcept = default;
+
+        explicit SVGTokenListView(const ByteSpan& src) noexcept
+        {
+            reset(src);
+        }
+
+        void reset(const ByteSpan& src) noexcept
+        {
+            fSrc = src;
+            fCur = src;
+        }
+
+        const ByteSpan& source() const noexcept { return fSrc; }
+        const ByteSpan& cursor() const noexcept { return fCur; }
+
+        bool empty() const noexcept { return fCur.empty(); }
+        explicit operator bool() const noexcept { return (bool)fCur; }
+
+        //
+        // skipSeparators()
+        // Skip list separators (whitespace and ',')
+        //
+        INLINE void skipSeparators() noexcept
+        {
+            fCur.skipWhile(sepChars());
+        }
+
+        //
+        // peekHasMore()
+        // Returns true if a number token exists ahead (after separators).
+        // Does not advance the cursor.
+        //
+        bool peekHasMore() const noexcept
+        {
+            ByteSpan tmp = fCur;
+            tmp.skipWhile(sepChars());
+            if (!tmp) return false;
+
+            // Match your numeric grammar by calling readNumber() on a copy.
+            double dummy = 0.0;
+            ByteSpan t2 = tmp;
+            return readNumber(t2, dummy);
+        }
+
+        //
+        // nextNumberToken()
+        // Return the next numeric lexeme as a ByteSpan [start..end),
+        // with NO units included.
+        //
+        // Advances cursor to the end of the number token.
+        //
+        bool nextNumberToken(ByteSpan& outTok) noexcept
+        {
+            outTok.reset();
+
+            skipSeparators();
+            if (!fCur) return false;
+
+            ByteSpan start = fCur;   // keep original start pointer
+            double dummy = 0.0;
+
+            if (!readNumber(fCur, dummy))
+                return false;
+
+            // fCur advanced to first byte after the number lexeme
+            outTok = { start.fStart, fCur.fStart };
+            return true;
+        }
+
+        //
+        // nextLengthToken()
+        // Return the next "length" token as a ByteSpan [start..end),
+        // including optional unit suffix or '%'.
+        //
+        // Examples:
+        //  "10"     -> "10"
+        //  "10px"   -> "10px"
+        //  "2.5em"  -> "2.5em"
+        //  "30%"    -> "30%"
+        //
+        // Advances cursor to the end of token (number + suffix).
+        //
+        bool nextLengthToken(ByteSpan& outTok) noexcept
+        {
+            outTok.reset();
+
+            skipSeparators();
+            if (!fCur) return false;
+
+            ByteSpan start = fCur;
+            double dummy = 0.0;
+
+            // First read the number portion using WAAVS grammar.
+            if (!readNumber(fCur, dummy))
+                return false;
+
+            // Now fCur sits at suffix (unit, %, whitespace, comma, ')', etc.)
+            // Capture optional unit:
+            //  - '%' single char
+            //  - alpha run: [A-Za-z]+
+            //
+            // Use your charset system.
+            if (fCur)
+            {
+                if (*fCur == '%')
+                {
+                    ++fCur; // include '%'
+                }
+                else if (chrAlphaChars(*fCur))
+                {
+                    // take an alpha run
+                    static charset chrNotAlpha = ~chrAlphaChars;
+                    // chunk_token returns span up to delim and advances the input
+                    // We want to advance fCur past the alpha run, so use chunk_token on fCur.
+                    (void)chunk_token(fCur, chrNotAlpha);
+                }
+            }
+
+            outTok = { start.fStart, fCur.fStart };
+            return true;
+        }
+
+        //
+        // nextIdentToken()
+        // Sometimes SVG lists contain identifiers (ex: "none").
+        // This parses an identifier token:
+        //   ident := [A-Za-z_][A-Za-z0-9_-]*
+        //
+        // This does NOT attempt to parse CSS escapes; it's for SVG-ish keywords.
+        //
+        bool nextIdentToken(ByteSpan& outTok) noexcept
+        {
+            outTok.reset();
+
+            skipSeparators();
+            if (!fCur) return false;
+
+            const uint8_t c0 = *fCur;
+            if (!(chrAlphaChars(c0) || c0 == '_'))
+                return false;
+
+            const uint8_t* start = fCur.fStart;
+            const uint8_t* end = fCur.fEnd;
+            const uint8_t* p = start;
+
+            // first char already validated
+            ++p;
+
+            while (p < end)
+            {
+                const uint8_t c = *p;
+                if (chrAlphaChars(c) || is_digit(c) || c == '_' || c == '-')
+                {
+                    ++p;
+                    continue;
+                }
+                break;
+            }
+
+            outTok = { start, p };
+            fCur.fStart = p;
+            return true;
+        }
+
+        //
+        // skipOneTokenOrChar()
+        // Best-effort forward progress on malformed inputs.
+        // Tries length token, then ident token; if neither matches,
+        // skips separators then one char.
+        //
+        bool skipOneTokenOrChar() noexcept
+        {
+            const uint8_t* before = fCur.fStart;
+
+            ByteSpan tok{};
+            if (nextLengthToken(tok)) return true;
+            if (nextIdentToken(tok))  return true;
+
+            skipSeparators();
+            if (fCur) ++fCur;
+
+            return fCur.fStart != before;
+        }
+
+        //
+        // isList()
+        // Cheap detection: returns true if there is more than one numeric token.
+        // (Does not allocate; scans using readNumber() twice.)
+        //
+        bool isList() const noexcept
+        {
+            ByteSpan tmp = fCur;
+            tmp.skipWhile(sepChars());
+            if (!tmp) return false;
+
+            double dummy = 0.0;
+            if (!readNumber(tmp, dummy)) return false;
+
+            tmp.skipWhile(sepChars());
+            if (!tmp) return false;
+
+            // second number?
+            ByteSpan t2 = tmp;
+            return readNumber(t2, dummy);
+        }
+
+        //
+        // remaining()
+        // Returns the remaining unconsumed portion (cursor span).
+        //
+        ByteSpan remaining() const noexcept { return fCur; }
+    };
+}
 
 //
 // Parsing routines for the core SVG data types
@@ -292,7 +542,7 @@ namespace waavs
 
         bool loadFromChunk(const ByteSpan& inChunk)
         {
-            ByteSpan s = chunk_ltrim(inChunk, xmlwsp);
+            ByteSpan s = chunk_ltrim(inChunk, chrWspChars);
             
             // don't change the state of 'hasValue'
             // if we previously parsed something, and now
@@ -447,7 +697,7 @@ namespace waavs
 
         bool loadFromChunk(const ByteSpan& inChunk)
         {
-            fSpanValue = chunk_ltrim(inChunk, xmlwsp);
+            fSpanValue = chunk_ltrim(inChunk, chrWspChars);
 
             // don't change the state of 'hasValue'
             // if we previously parsed something, and now
@@ -1168,4 +1418,7 @@ namespace waavs {
 }
 
 
+namespace waavs
+{
 
+}
