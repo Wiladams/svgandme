@@ -320,7 +320,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("linearGradient", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("linearGradient", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGLinearGradient>(groot);
 				node->loadFromXmlElement(elem, groot);
 
@@ -520,7 +520,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("radialGradient", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("radialGradient", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGRadialGradient>(groot);
 				node->loadFromXmlElement(elem, groot);
 
@@ -766,7 +766,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("conicGradient", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("conicGradient", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGConicGradient>(groot);
 				node->loadFromXmlElement(elem, groot);
 
@@ -902,7 +902,7 @@ namespace waavs {
 	struct SVGSolidColorElement : public SVGGraphicsElement
 	{
 		static void registerFactory() {
-			registerSVGSingularNode("solidColor", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("solidColor", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGSolidColorElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 

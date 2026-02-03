@@ -21,7 +21,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("a", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("a", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGAElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 

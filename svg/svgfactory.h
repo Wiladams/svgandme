@@ -18,7 +18,9 @@ namespace waavs {
         
         void registerNodeTypes()
         {
+            //=============================================
             // Register attributes
+            //=============================================
             SVGPaintOrderAttribute::registerFactory();
 
             SVGOpacity::registerFactory();
@@ -54,8 +56,12 @@ namespace waavs {
             //SVGClipPathAttribute::registerFactory();
             SVGTransform::registerFactory();
 
+            SVGStrokeDashArray::registerFactory();
+            SVGStrokeDashOffset::registerFactory();
 
-
+            //=============================================
+            // Register SVG Node Types
+            //=============================================
             // Register shape nodes
             SVGCircleElement::registerFactory();               // 'circle'
             SVGEllipseElement::registerFactory();              // 'ellipse'

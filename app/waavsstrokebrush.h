@@ -84,7 +84,7 @@ namespace waavs {
 	struct WaavsStrokeBrush : public SVGGraphicsElement
 	{
 		static void registerFactory() {
-			registerSVGSingularNode("strokeBrush",
+			registerSVGSingularNodeByName("strokeBrush",
 				[](IAmGroot* groot, const XmlElement& elem) {
 					auto node = std::make_shared<WaavsStrokeBrush>(groot);
 					node->loadFromXmlElement(elem, groot);

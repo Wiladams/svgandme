@@ -37,6 +37,12 @@ namespace waavs
 	{
 		std::vector<uint8_t> ops;
 		std::vector<float> args;
+
+        void clear() noexcept
+        {
+            ops.clear();
+            args.clear();
+        }
 	};
 
 	// Arity table, how many arguments each op takes

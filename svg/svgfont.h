@@ -90,7 +90,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("font-face", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("font-face", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGFontFaceNode>(groot);
 				node->loadFromXmlElement(elem, groot);
 				node->visible(false);
@@ -175,7 +175,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("missing-glyph", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("missing-glyph", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGMissingGlyphNode>(groot);
 				node->loadFromXmlElement(elem, groot);
 
@@ -232,7 +232,7 @@ namespace waavs {
 	struct SVGGlyphNode : public SVGPathBasedGeometry
 	{
 		static void registerFactory() {
-			registerSVGSingularNode("glyph", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("glyph", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGGlyphNode>(groot);
 				node->loadFromXmlElement(elem, groot);
 				
@@ -267,13 +267,12 @@ namespace waavs {
 			parseNumber(getAttributeByName("vert-origin-x"), fVertOriginX);
 			parseNumber(getAttributeByName("vert-origin-y"), fVertOriginY);
 			
-			
-			auto d = getAttributeByName("d");
-			if (!d)
-				return;
 
-			if (parsePath(d, fPath))
-				fPath.shrink();
+			auto d = getAttribute(svgattr::d());
+			if (d) {
+				parsePathProgram(d, fProg);
+				//fHasProg = true;
+			}
 		}
 
 	};
@@ -286,7 +285,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("font-face-src", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("font-face-src", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGFontFaceSrcNode>(groot);
 				node->loadFromXmlElement(elem, groot);
 
@@ -317,7 +316,7 @@ namespace waavs {
 	struct SVGFontFaceNameNode : public SVGGraphicsElement
 	{
 		static void registerFactory() {
-			registerSVGSingularNode("font-face-name", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("font-face-name", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGFontFaceNameNode>(groot);
 				node->loadFromXmlElement(elem, groot);
 				return node;

@@ -7,63 +7,118 @@
 #include <unordered_map>
 
 #include "svgattributes.h"
+#include "svgstructuretypes.h"
 #include "b2dpathbuilder.h"
 #include "svgtext.h"
 #include "viewport.h"
 #include "svgmarker.h"
 
 
-namespace waavs {
+
+namespace waavs 
+{
     // A helper to paint a path with fill/stroke/markers
 	// deals with the paint order
+
 	struct PathPainter
 	{
-		IRenderSVG* ctx;
-		IAmGroot* groot;
-		const BLPath& path;
+		IRenderSVG* fCtx{};
+		const BLPath& fFillPath;
+		const BLPath* fStrokePathOpt{ nullptr };
 
-		// Optional: hook markers back to the owning element (or a helper).
-		// If nullptr, markers are a no-op.
-		void (*drawMarkersFn)(void* user, IRenderSVG* ctx, IAmGroot* groot) { nullptr };
-		void* markersUser{ nullptr };
+		PathPainter(IRenderSVG* ctx, const BLPath& fillPath, const BLPath* strokeOpt) noexcept
+			: fCtx(ctx), fFillPath(fillPath), fStrokePathOpt(strokeOpt) {
+		}
 
-		// Same semantics as your SVGPathBasedGeometry::drawSelf():
-		// begin/end are outside paint-order ops so markers can be drawn between.
-		void begin() noexcept { ctx->beginDrawShape(path); }
-		void end()   noexcept { ctx->endDrawShape(); }
+		void begin() noexcept { fCtx->beginDrawShape(fFillPath); }
+		void end()   noexcept { fCtx->endDrawShape(); }
 
-		void onFill()    noexcept { ctx->fillShape(path); }
-		void onStroke()  noexcept { ctx->strokeShape(path); }
-		void onMarkers() noexcept
-		{
-			if (drawMarkersFn)
-				drawMarkersFn(markersUser, ctx, groot);
+		void onFill() noexcept { fCtx->fillShape(fFillPath); }
+
+		void onStroke() noexcept {
+			const BLPath& p = fStrokePathOpt ? *fStrokePathOpt : fFillPath;
+			fCtx->strokeShape(p);
 		}
 	};
 
+
+    // MarkersPainter
+	//
+    // A painter that only draws markers for a given path program
+	struct MarkersPainter
+	{
+		ISVGElement* fOwner{ nullptr };
+		IRenderSVG* fCtx{ nullptr };
+		IAmGroot* fGroot{ nullptr };
+		const PathProgram* fProg{nullptr};
+
+		void onFill() noexcept {}
+        void onStroke() noexcept {}
+		void onMarkers() noexcept
+		{
+			if (!fOwner || !fProg || !fCtx)
+                return;
+
+			drawMarkersForPathProgram(fOwner, fCtx, fGroot, *fProg);
+        }
+	};
+
+    // ShapePaintOps
+	// 
+    // This is a composite painter that can do fill, stroke, and markers
+	struct ShapePaintOps
+	{
+		PathPainter& path;
+		MarkersPainter& markers;
+
+		void onFill()    noexcept { path.onFill(); }
+		void onStroke()  noexcept { path.onStroke(); }
+		void onMarkers() noexcept { markers.onMarkers(); }
+	};
 } // namespace waavs
 
 
 
-namespace waavs {
-
-
-
-
+namespace waavs 
+{
 	// SVGPathBasedGeometry
 	//
 	// All SVG shapes are represented using the BLPath
 	// ultimately.  This serves as a base object for all the shapes
-	// It handles the various attributes, and drawing of markers
+	// It handles the various attributes, and drawing of markers.
+	// 
+    // The core representation of the shape is the PathProgram fProg,
+	// This program can be transformed by various programs.
 	//
 	struct SVGPathBasedGeometry : public SVGGraphicsElement
 	{
-		BLPath fPath{};
+        // Canonical path representation of the shape (normalized SVG semantics)
+		PathProgram fProg{};
+		//bool fHasProg{ false };
+
+		mutable BLPath fFillPath{};
+		mutable bool fFillPathValid{ false };
+
+        mutable BLPath fStrokePath{};
+		mutable uint64_t fStrokeCacheKey{ 0 };
+
+
+		// Indication of whether we have markers or not
 		bool fHasMarkers{ false };
+
+
+
 
 		SVGPathBasedGeometry(IAmGroot* iMap)
 			:SVGGraphicsElement()
 		{
+		}
+
+        // Any time drawing attributes change, we need to invalidate
+		void invalidateGeometry() noexcept
+		{
+			fFillPathValid = false;
+			fStrokeCacheKey = 0;
 		}
 
 		// Return bounding rectangle for shape
@@ -75,10 +130,45 @@ namespace waavs {
 			return bbox;
 		}
 
+		// Get the path used for filling. We do a lazy evaluation here so we only
+		// compute it when needed.
+		//
+		// Hybrid mode:
+		// - If fHasProg is true, materialize from fProg into fFillPath.
+		// - Otherwise, mirror the already-built fPath into fFillPath.
+		//
+		// Notes:
+		// - We always return fFillPath so callers have a stable reference.
+		// - If both fHasProg==false and fPath is empty, fFillPath will be empty.
+		const BLPath& getFillPath() const noexcept
+		{
+			if (fFillPathValid)
+				return fFillPath;
+
+			fFillPath.reset();
+
+			// Canonical path program -> BLPath
+			BLPathProgramExec exec(fFillPath);
+			runPathProgram(fProg, exec);
+			fFillPath.shrink();
+
+			fFillPathValid = true;
+			return fFillPath;
+		}
+
+
+		const BLPath & getStrokePath(IRenderSVG* ctx, IAmGroot* groot) const noexcept
+		{
+			// For now, stroke path is same as fill path
+			return getFillPath();
+        }
+
 		BLRect getBBox() const override
 		{
 			BLBox bbox{};
-			fPath.getBoundingBox(&bbox);
+			auto& path = getFillPath();
+
+			path.getBoundingBox(&bbox);
 
 			// if we have markers turned on, add in the bounding
 			// box of the markers
@@ -104,11 +194,15 @@ namespace waavs {
 
 			
 			// BUGBUG - should use actual fill rule
-			BLHitTest ahit = fPath.hitTest(localPoint, BLFillRule::BL_FILL_RULE_EVEN_ODD);
+			auto& path = getFillPath();
+
+			BLHitTest ahit = path.hitTest(localPoint, BLFillRule::BL_FILL_RULE_EVEN_ODD);
 			
 			return (ahit == BLHitTest::BL_HIT_TEST_IN);
 		}
 		
+
+
 		bool checkForMarkers()
 		{
 			// figure out if we have any markers set
@@ -117,7 +211,10 @@ namespace waavs {
 			auto mEnd = getAttribute(svgattr::marker_end());
 			auto m = getAttribute(svgattr::marker());
 			
-			if ((mStart&& mStart!=svgval::none()) || (mMid&& mMid!=svgval::none()) || (mEnd&&mEnd!=svgval::none()) || (m&& m!=svgval::none())) 
+			if ((!mStart.empty() && mStart != svgval::none()) || 
+				(!mMid.empty() && mMid != svgval::none()) || 
+				(!mEnd.empty() && mEnd != svgval::none()) || 
+				(!m.empty() && m != svgval::none()))
 			{
 				fHasMarkers = true;
 			}
@@ -129,343 +226,23 @@ namespace waavs {
 		{
 			checkForMarkers();
 		}
-		
-		//
-		// drawMarker
-		//
-		// Draw a single marker along the path.
-		// propname - specifies the kind of marker
-		// pos - specifies the position of the marker
-
-		bool drawMarker(IRenderSVG* ctx, IAmGroot* groot, InternedKey propKey, MarkerPosition pos, const BLPoint& p1, const BLPoint& p2, const BLPoint& p3)
-		{
-			std::shared_ptr<SVGVisualProperty> prop = getVisualProperty(propKey);
-			
-			// Look for the default marker if the specified one is not found
-			if (nullptr == prop)
-			{
-				prop = getVisualProperty(svgattr::marker());
-				if (nullptr == prop)
-					return false;
-			}
-			
-			// cast the prop to a SVGMarkerAttribute
-			auto marker = std::dynamic_pointer_cast<SVGMarkerAttribute>(prop);
-
-			if (nullptr == marker)
-				return false;
-
-			// get the marker node, as shared_ptr<IViewable>
-			auto aNode = marker->markerNode(ctx, groot);
-			if (nullptr == aNode)
-				return false;
-
-			// cast the node to a SVGMarkerNode
-			std::shared_ptr<SVGMarkerElement> markerNode = std::dynamic_pointer_cast<SVGMarkerElement>(aNode);
-
-
-
-			BLPoint transP{};
-			BLRgba32 transC{};
-
-			switch (pos)
-			{
-			case MarkerPosition::MARKER_POSITION_START:
-				transP = p1;
-				transC = BLRgba32(0x7fff0000);
-
-				break;
-			case MarkerPosition::MARKER_POSITION_MIDDLE:
-				transP = p2;
-				transC = BLRgba32(0x7f00ff00);
-				break;
-			case MarkerPosition::MARKER_POSITION_END:
-				transP = p2;
-				transC = BLRgba32(0x7f0000ff);
-				break;
-			}
-
-			// BUGBUG - red (start), green (mid), blue(end)
-			//ctx->fillCircle(transP.x, transP.y, 2, transC);
-
-
-
-			// Use the three given points to calculate the angle of rotation 
-			// from the markerNode
-			double rads = markerNode->orientation().calcRadians(pos, p1, p2, p3);
-			
-			BLRect objectFrame = markerNode->getBBox();
-			//BLRect viewport = ctx->viewport();
-			
-			ctx->push();
-			//ctx->objectFrame(objectFrame);
-			
-			ctx->translate(transP);
-			ctx->rotate(rads);
-
-			// draw the marker
-			markerNode->draw(ctx, groot);
-
-
-			ctx->pop();
-
-			return true;
-		}
-
-
-		void drawMarkers(IRenderSVG* ctx, IAmGroot* groot)
-		{
-			// early return if we don't have markers
-			if (!fHasMarkers)
-				return;
-
-
-			
-			static const uint8_t CMD_INVALID = 0xffu;
-
-			ByteSpan cmdSpan(fPath.commandData(), fPath.commandDataEnd());
-
-			const BLPoint* verts = fPath.vertexData();
-			size_t numVerts = fPath.size();
-			int vertOffset{ 0 };
-
-			// Array of 3 points which represent current vectors
-			BLPoint vecpts[3]{};
-
-			uint8_t lastCmd = CMD_INVALID;
-			BLPoint lastMoveTo{};
-			BLPoint lastOnPoint{};
-
-			//printf("Command Size: %d  Path Size: %d\n", cmdSpan.size(), fPath.size());
-			ctx->push();
-			
-			while (cmdSpan)
-			{
-				int nVerts = 0;
-				uint8_t cmd = cmdSpan[0];
-				//printf("COORD: %d %f, %f\n", cmd, verts[vertOffset].x, verts[vertOffset].y);
-
-				switch (cmd)
-				{
-					// For the MOVE command, it's a first point, so in order to calculate an angle
-					// we need a following point, if it exists.  If it doesn't exist, then we 
-					// just use the same point twice
-				case BL_PATH_CMD_MOVE: {
-					// how many points/commands to consume after this
-					nVerts = 1;
-
-					vecpts[0] = verts[vertOffset];
-					vecpts[1] = verts[vertOffset];
-					vecpts[2] = verts[vertOffset];
-
-					lastMoveTo = verts[vertOffset];
-					lastOnPoint = verts[vertOffset];
-
-					// If there is a next command, decide the second point
-					// based on what that command might be.
-					if (cmdSpan.size() > 1)
-					{
-						vecpts[1] = verts[vertOffset + nVerts];
-
-						uint8_t nextCmd = cmdSpan[1];
-						switch (nextCmd) {
-						case BL_PATH_CMD_ON:
-						case BL_PATH_CMD_CUBIC:
-						case BL_PATH_CMD_QUAD:
-							//vecpts[1] = verts[vertOffset + 1];
-							break;
-
-						case BL_PATH_CMD_CLOSE:
-						case BL_PATH_CMD_MOVE:
-						default:
-							vecpts[1] = vecpts[0];
-						}
-					}
-
-					drawMarker(ctx, groot, svgattr::marker_start(), MarkerPosition::MARKER_POSITION_START, vecpts[0], vecpts[1], vecpts[2]);
-
-					lastCmd = BL_PATH_CMD_MOVE;
-				}
-				break;
-
-
-				// This is a complex case.  
-				// Normally, we'd see a CMD_ON after a CMD_MOVE, but we could see a CMD_ON after a CMD_CUBIC
-				case BL_PATH_CMD_ON: {
-					nVerts = 1; // number of Vertices to consume
-
-					vecpts[0] = lastOnPoint;
-					vecpts[1] = verts[vertOffset];
-					vecpts[2] = verts[vertOffset];
-
-
-					// If there is another command, then we can decide the third point
-					if (cmdSpan.size() > 1)
-					{
-						uint8_t nextCmd = cmdSpan[1];
-						switch (nextCmd) {
-						case BL_PATH_CMD_ON:
-						case BL_PATH_CMD_CUBIC:
-							vecpts[2] = verts[vertOffset + nVerts];
-							drawMarker(ctx, groot, svgattr::marker_mid(), MarkerPosition::MARKER_POSITION_MIDDLE, vecpts[0], vecpts[1], vecpts[2]);
-							lastOnPoint = vecpts[1];
-							break;
-
-						case BL_PATH_CMD_CLOSE:
-							vecpts[2] = lastMoveTo;
-							drawMarker(ctx, groot, svgattr::marker_mid(), MarkerPosition::MARKER_POSITION_MIDDLE, vecpts[0], vecpts[1], vecpts[2]);
-							lastOnPoint = vecpts[1];
-							break;
-
-						case BL_PATH_CMD_MOVE:
-						default:
-							vecpts[2] = vecpts[1];
-							drawMarker(ctx, groot, svgattr::marker_end(), MarkerPosition::MARKER_POSITION_END, verts[vertOffset - 1], verts[vertOffset], verts[vertOffset]);
-							lastOnPoint = vecpts[1];
-						}
-					}
-					else {
-						// If there is no next command, then this is an 'end', so we should use the end marker if it exists
-						drawMarker(ctx, groot, svgattr::marker_end(), MarkerPosition::MARKER_POSITION_END, vecpts[0], vecpts[1], vecpts[2]);
-					}
-
-					lastCmd = BL_PATH_CMD_ON;
-					lastOnPoint = vecpts[1];
-				}
-				break;
-
-				case BL_PATH_CMD_QUAD:
-					nVerts = 2;
-					//drawMarker(ctx, "marker-mid", MarkerPosition::MARKER_POSITION_MIDDLE, verts[vertOffset], verts[vertOffset], verts[vertOffset+1], groot);
-					break;
-
-				case BL_PATH_CMD_CONIC:
-					//! Cubic-to control point (always used as a pair of commands).
-					//printf("BL_PATH_CMD_CONIC\n");
-					break;
-
-				case BL_PATH_CMD_CUBIC: {
-					nVerts = 3;
-					vecpts[0] = verts[vertOffset + 1];
-					vecpts[1] = verts[vertOffset + 2];
-					vecpts[2] = verts[vertOffset + 2];
-
-					if (cmdSpan.size() > 1)
-					{
-						uint8_t nextCmd = cmdSpan[1];
-						switch (nextCmd) {
-						case BL_PATH_CMD_ON:
-						case BL_PATH_CMD_CUBIC:
-							vecpts[2] = verts[vertOffset + nVerts];
-							drawMarker(ctx, groot, svgattr::marker_mid(), MarkerPosition::MARKER_POSITION_MIDDLE, vecpts[0], vecpts[1], vecpts[2]);
-							break;
-
-						case BL_PATH_CMD_CLOSE:
-							vecpts[2] = lastMoveTo;
-							drawMarker(ctx, groot, svgattr::marker_mid(), MarkerPosition::MARKER_POSITION_MIDDLE, vecpts[0], vecpts[1], vecpts[2]);
-							break;
-
-						case BL_PATH_CMD_MOVE:
-						default:
-							vecpts[2] = vecpts[1];
-							drawMarker(ctx, groot, svgattr::marker_end(), MarkerPosition::MARKER_POSITION_END, vecpts[0], vecpts[1], vecpts[2]);
-						}
-					}
-					else {
-						// If there is no next command, then this is an 'end', so we should use the end marker if it exists
-						drawMarker(ctx, groot, svgattr::marker_end(), MarkerPosition::MARKER_POSITION_END, vecpts[0], vecpts[1], vecpts[2]);
-					}
-
-					lastCmd = BL_PATH_CMD_CUBIC;
-					lastOnPoint = verts[vertOffset + 2];
-				}
-				break;
-
-				case BL_PATH_CMD_CLOSE: {
-					vecpts[0] = lastOnPoint;
-					vecpts[1] = lastMoveTo;
-
-					vecpts[2] = vecpts[1];
-					if (numVerts > 1)
-						vecpts[2] = verts[1];
-
-					nVerts = 1;
-
-					drawMarker(ctx, groot, svgattr::marker_end(), MarkerPosition::MARKER_POSITION_END, vecpts[0], vecpts[1], vecpts[2]);
-
-					lastCmd = BL_PATH_CMD_CLOSE;
-					lastOnPoint = vecpts[1];
-				}
-				break;
-
-				}
-
-				cmdSpan += nVerts;
-				vertOffset += nVerts;
-			}
-
-			ctx->pop();
-		}
-
 
 		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 			PaintOrderProgram<uint8_t> prog(ctx->getPaintOrder());
-			PathPainter painter{ctx, groot, fPath,
-				// drawMarkersFn:
-				fHasMarkers ? [](void* user, IRenderSVG* c, IAmGroot* g) {
-					static_cast<SVGPathBasedGeometry*>(user)->drawMarkers(c, g);
-				} : nullptr,
-				// markersUser:
-				this
-			};
 
-			painter.begin();
-			prog.run(painter);
-			painter.end();
+            const BLPath& fillP = getFillPath();
+            const BLPath& strokeP = getStrokePath(ctx, groot);
 
-			/*
-			// Note:
-			// Since we need to deal with markers, we can not
-			// use the simple drawShape() function, as it does 
-			// not deal with markers.
-			ctx->beginDrawShape(fPath);
+			PathPainter pathOps(ctx, fillP, &strokeP);
 
-			// Get the paint order from the context
-			// Note: It might be interesting to have a simple
-			// functor that takes the porder as a 'program', and
-			// the drawing routines as a lambda expression, or even
-			// just a table of routines to be executed depending
-			// on the instruction.
-			uint32_t porder = ctx->getPaintOrder();
+			MarkersPainter markerOps{ this, ctx, groot, &fProg };
 
-			for (int slot = 0; slot < 3; slot++)
-			{
-				uint32_t ins = porder & 0x03;	// get two lowest bits, which are a single instruction
+            ShapePaintOps shapeOps{ pathOps, markerOps };
 
-				switch (ins)
-				{
-				case PaintOrderKind::SVG_PAINT_ORDER_FILL:
-					ctx->fillShape(fPath);
-					break;
-					
-				case PaintOrderKind::SVG_PAINT_ORDER_STROKE:
-					ctx->strokeShape(fPath);
-					break;
-
-				case PaintOrderKind::SVG_PAINT_ORDER_MARKERS:
-				{
-					drawMarkers(ctx, groot);
-				}
-				break;
-				}
-
-				// discard instruction, shift down to get the next one ready
-				porder = porder >> 2;
-			}
-
-			ctx->endDrawShape();
-			*/
+			pathOps.begin();
+            prog.run(shapeOps);
+            pathOps.end();
 		}
 
 	};
@@ -479,7 +256,7 @@ namespace waavs {
 	struct SVGLineElement : public SVGPathBasedGeometry
 	{
 		static void registerFactory() {
-			registerSVGSingularNode("line", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("line", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGLineElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 				return node;
@@ -491,21 +268,6 @@ namespace waavs {
 
 		SVGLineElement(IAmGroot* iMap)
 			:SVGPathBasedGeometry(iMap) {}
-
-		/*
-		BLRect getBBox() const override
-		{
-			// return a rectangle that represents the bounding box of the 
-			// line geometry
-			BLRect bounds{};
-			bounds.x = waavs::min(geom.x0, geom.x1);
-			bounds.y = waavs::min(geom.y0, geom.y1);
-			bounds.w = waavs::max(geom.x0, geom.x1) - bounds.x;
-			bounds.h = waavs::max(geom.y0, geom.y1) - bounds.y;
-			
-			return bounds;
-		}
-		*/
 
 		
 		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
@@ -545,8 +307,21 @@ namespace waavs {
 			if (fDimY2.isSet())
 				geom.y1 = fDimY2.calculatePixels(h, 0, dpi);
 			
-			fPath.addLine(geom);
-			fPath.shrink();
+
+			fProg.clear();
+			//fHasProg = false;
+
+
+			PathProgramBuilder pb;
+            pb.moveTo(geom.x0, geom.y0);
+            pb.lineTo(geom.x1, geom.y1);
+			pb.end();
+
+			fProg = std::move(pb.prog);
+            //fHasProg = true;
+
+			fFillPathValid = false;
+			fStrokeCacheKey = 0;
 		}
 		
 	};
@@ -555,10 +330,104 @@ namespace waavs {
 	//====================================
 	// SVGRectElement
 	//====================================
+	// SVG <rect> path emission.
+	// - If w<=0 or h<=0 => not rendered => returns false.
+	// - Corner radii follow SVG rules:
+	//   * rx/ry default to 0.
+	//   * if only one specified, the other equals it.
+	//   * negative radii -> treat as 0.
+	//   * clamp rx <= w/2, ry <= h/2.
+	//
+	// Emits:
+	//   - sharp corners: M (x,y) L ... Z
+	//   - rounded corners: M (x+rx,y) (L + A)*4 Z
+	static INLINE bool buildRectPathProgram(
+		PathProgram& outProg,
+		float x, float y, float w, float h,
+		float rx, float ry) noexcept
+	{
+		outProg.clear();
+
+		if (!(w > 0.0f) || !(h > 0.0f))
+			return false;
+
+		// Normalize radii per SVG
+		if (rx < 0.0f) rx = 0.0f;
+		if (ry < 0.0f) ry = 0.0f;
+
+		// If exactly one radius is non-zero, mirror it to the other.
+		// (This matches SVG's behavior where unspecified rx/ry defaults to the other if that one is set.)
+		if (rx > 0.0f && ry == 0.0f) ry = rx;
+		if (ry > 0.0f && rx == 0.0f) rx = ry;
+
+		// Clamp to half extents
+		const float hw = 0.5f * w;
+		const float hh = 0.5f * h;
+		if (rx > hw) rx = hw;
+		if (ry > hh) ry = hh;
+
+		PathProgramBuilder b;
+		b.reset();
+
+		// Sharp-corner rect
+		if (rx == 0.0f || ry == 0.0f)
+		{
+			b.moveTo(x, y);
+			b.lineTo(x + w, y);
+			b.lineTo(x + w, y + h);
+			b.lineTo(x, y + h);
+			b.close();
+			b.end();
+
+			outProg = std::move(b.prog);
+			return true;
+		}
+
+		// Rounded rect: use 4 quarter-ellipse arcs (A)
+		//
+		// Arc params: rx ry xAxisRotation largeArcFlag sweepFlag x y
+		// For quarter arcs: largeArcFlag=0 always.
+		// sweepFlag controls direction; keep consistent (1) for clockwise outline.
+		constexpr float kXRot = 0.0f;
+		constexpr float kLarge = 0.0f;
+		constexpr float kSweep = 1.0f;
+
+		const float x0 = x;
+		const float y0 = y;
+		const float x1 = x + w;
+		const float y1 = y + h;
+
+		// Start at top edge, after top-left corner
+		b.moveTo(x0 + rx, y0);
+
+		// Top edge -> top-right corner
+		b.lineTo(x1 - rx, y0);
+		b.arcTo(rx, ry, kXRot, kLarge, kSweep, x1, y0 + ry);
+
+		// Right edge -> bottom-right corner
+		b.lineTo(x1, y1 - ry);
+		b.arcTo(rx, ry, kXRot, kLarge, kSweep, x1 - rx, y1);
+
+		// Bottom edge -> bottom-left corner
+		b.lineTo(x0 + rx, y1);
+		b.arcTo(rx, ry, kXRot, kLarge, kSweep, x0, y1 - ry);
+
+		// Left edge -> top-left corner
+		b.lineTo(x0, y0 + ry);
+		b.arcTo(rx, ry, kXRot, kLarge, kSweep, x0 + rx, y0);
+
+		b.close();
+		b.end();
+
+		outProg = std::move(b.prog);
+		return true;
+	}
+
+
 	struct SVGRectElement : public SVGPathBasedGeometry
 	{
 		static void registerSingular() {
-			registerSVGSingularNode("rect", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("rect", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGRectElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 				return node;
@@ -663,13 +532,17 @@ namespace waavs {
 			{
 			}
 
-			fPath.clear();
-			if (fIsRound)
-				fPath.addRoundRect(geom);
-			else {
-				fPath.addRect(geom.x, geom.y, geom.w, geom.h);
-			}
-			fPath.shrink();
+			fProg.clear();
+			//fHasProg = false;
+
+			buildRectPathProgram(
+				fProg,
+				(float)geom.x, (float)geom.y,
+				(float)geom.w, (float)geom.h,
+				(float)geom.rx, (float)geom.ry);
+
+			// Invalidate cached fill/stroke materializations
+			invalidateGeometry();
 		}
 	
 	};
@@ -678,10 +551,43 @@ namespace waavs {
 	//====================================
 	//  SVGCircleElement 
 	//====================================
+	// Emit a circle into a PathProgram using two SVG arc segments.
+	// Returns true if it emitted a drawable program (r > 0).
+	static INLINE bool buildCirclePathProgram(PathProgram& outProg, float cx, float cy, float r) noexcept
+	{
+		outProg.clear();
+
+		// Per SVG, r <= 0 => no rendering.
+		if (!(r > 0.0f))
+			return false;
+
+		PathProgramBuilder b;
+		b.reset();
+
+		// Start at (cx + r, cy)
+		b.moveTo(cx + r, cy);
+
+		// Two 180-degree arcs to complete the circle.
+		// Use largeArcFlag=1, sweepFlag=0 (or 1) consistently; either way works,
+		// as long as the two arcs connect endpoints correctly.
+		//
+		// rx ry xAxisRotation largeArcFlag sweepFlag x y
+		b.arcTo(r, r, 0.0f, 1.0f, 0.0f, cx - r, cy);
+		b.arcTo(r, r, 0.0f, 1.0f, 0.0f, cx + r, cy);
+
+		b.close();
+		b.end();
+
+		outProg = std::move(b.prog);
+		return true;
+	}
+
+
+
 	struct SVGCircleElement : public SVGPathBasedGeometry
 	{
 		static void registerSingular() {
-			registerSVGSingularNode("circle", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("circle", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGCircleElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 				return node;
@@ -737,9 +643,11 @@ namespace waavs {
 			geom.cy = fCy.calculatePixels(h, 0, dpi);
 			geom.r = fR.calculatePixels(w, h, dpi);
 
-			fPath.clear();
-			fPath.addCircle(geom);
-			fPath.shrink();
+            fProg.clear();
+            buildCirclePathProgram(fProg, (float)geom.cx, (float)geom.cy, (float)geom.r);
+
+            // Invalidate cached paths
+			invalidateGeometry();
 
 		}
 	};
@@ -748,10 +656,38 @@ namespace waavs {
 	//====================================
 	//	SVGEllipseElement 
 	//====================================
+	// Emit an ellipse into a PathProgram using two SVG arc segments.
+	// Returns true if it emitted a drawable program (rx > 0 && ry > 0).
+	static INLINE bool buildEllipsePathProgram(PathProgram& outProg, float cx, float cy, float rx, float ry) noexcept
+	{
+		outProg.clear();
+
+		// Per SVG, if rx<=0 or ry<=0 => no rendering.
+		if (!(rx > 0.0f) || !(ry > 0.0f))
+			return false;
+
+		PathProgramBuilder b;
+		b.reset();
+
+		// Start at (cx + rx, cy)
+		b.moveTo(cx + rx, cy);
+
+		// Two 180-degree arcs.
+		// rx ry xAxisRotation largeArcFlag sweepFlag x y
+		b.arcTo(rx, ry, 0.0f, 1.0f, 0.0f, cx - rx, cy);
+		b.arcTo(rx, ry, 0.0f, 1.0f, 0.0f, cx + rx, cy);
+
+		b.close();
+		b.end();
+
+		outProg = std::move(b.prog);
+		return true;
+	}
+
 	struct SVGEllipseElement : public SVGPathBasedGeometry
 	{
 		static void registerFactory() {
-			registerSVGSingularNode("ellipse", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("ellipse", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGEllipseElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 				
@@ -805,9 +741,20 @@ namespace waavs {
 			geom.rx = fRx.calculatePixels(w, 0, dpi);
 			geom.ry = fRy.calculatePixels(h, 0, dpi);
 
-			fPath.clear();
-			fPath.addEllipse(geom);
-			fPath.shrink();
+
+			// Program-first (no legacy fPath)
+			fProg.clear();
+			//fHasProg = false;
+
+			if (buildEllipsePathProgram(fProg,
+				(float)geom.cx, (float)geom.cy,
+				(float)geom.rx, (float)geom.ry))
+			{
+				//fHasProg = true;
+			}
+
+			// Invalidate caches
+			invalidateGeometry();
 		}
 
 	};
@@ -817,10 +764,85 @@ namespace waavs {
 	// SVGPolylineElement
 	//
 	//====================================
+		// Parse SVG "points" attribute into a PathProgram.
+	// - closePath=false => polyline
+	// - closePath=true  => polygon
+	//
+	// Returns true if it produced at least a moveto.
+	static bool parsePointsToPathProgram(const ByteSpan& inChunk, PathProgram& outProg, bool closePath) noexcept
+	{
+		outProg.clear();
+
+		ByteSpan s = chunk_trim(inChunk, chrWspChars);
+		if (!s)
+			return false;
+
+		SVGTokenListView view(s);
+
+		ByteSpan tok{};
+		double dx = 0.0;
+		double dy = 0.0;
+
+		// Need first x
+		if (!view.nextNumberToken(tok))
+			return false;
+		{
+			ByteSpan t = tok;
+			if (!readNumber(t, dx))
+				return false;
+		}
+
+		// Need first y
+		if (!view.nextNumberToken(tok))
+			return false;
+		{
+			ByteSpan t = tok;
+			if (!readNumber(t, dy))
+				return false;
+		}
+
+		PathProgramBuilder b;
+		b.reset();
+
+		// moveTo first pair
+		b.moveTo((float)dx, (float)dy);
+
+		// Remaining pairs => lineTo
+		while (view.nextNumberToken(tok))
+		{
+			ByteSpan t = tok;
+			if (!readNumber(t, dx))
+				break;
+
+			if (!view.nextNumberToken(tok))
+				break; // trailing odd number (permissive)
+
+			t = tok;
+			if (!readNumber(t, dy))
+				break;
+
+			b.lineTo((float)dx, (float)dy);
+		}
+
+		if (closePath)
+			b.close();
+
+		b.end();
+		outProg = std::move(b.prog);
+
+		// Optional strictness:
+		// ByteSpan rem = view.remaining();
+		// rem.skipWhile(SVGTokenListView::sepChars());
+		// if (rem) return false;
+
+		return true;
+	}
+
+
 	struct SVGPolylineElement : public SVGPathBasedGeometry
 	{
 		static void registerFactory() {
-			registerSVGSingularNode("polyline", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("polyline", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGPolylineElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 				
@@ -830,7 +852,7 @@ namespace waavs {
 
 		
 		SVGPolylineElement(IAmGroot* iMap) :SVGPathBasedGeometry(iMap) {}
-		
+		/*
 		void loadPoints(const ByteSpan& inChunk)
 		{
 			if (!inChunk)
@@ -854,13 +876,28 @@ namespace waavs {
 				}
 			}
 		}
-		
+		*/
+
 		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-			fPath.clear();
 
-			loadPoints(getAttributeByName("points"));
-			fPath.shrink();
+			ByteSpan pts{};
+			pts = getAttribute(svgattr::points());
+			if (!pts.empty())
+			{
+				if (!parsePointsToPathProgram(pts, fProg, false)) {
+					// Failed to parse points; clear program
+					fProg.clear();
+					//fHasProg = false;
+				}
+				else {
+					//fHasProg = true;
+                }
+			}
+
+			fFillPathValid = false;
+			fStrokeCacheKey = 0;
+
 		}
 	};
 	
@@ -870,11 +907,11 @@ namespace waavs {
 	// SVGPolygonElement
 	//
 	//====================================
-	struct SVGPolygonElement : public SVGPolylineElement
+	struct SVGPolygonElement : public SVGPathBasedGeometry
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("polygon", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("polygon", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGPolygonElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 				return node;
@@ -895,14 +932,26 @@ namespace waavs {
 		}
 
 		SVGPolygonElement(IAmGroot* iMap) 
-			:SVGPolylineElement(iMap) {}
+			:SVGPathBasedGeometry(iMap) {}
 
 		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-			SVGPolylineElement::bindSelfToContext(ctx, groot);
-			
-			fPath.close();
-			fPath.shrink();
+
+			ByteSpan pts{};
+			pts = getAttribute(svgattr::points());
+			if (!pts.empty())
+			{
+				if (!parsePointsToPathProgram(pts, fProg, true)) {
+					fProg.clear();
+					//fHasProg = false;
+				}
+				else {
+					//fHasProg = true;
+				}
+			}
+
+			fFillPathValid = false;
+			fStrokeCacheKey = 0;
 		}
 	};
 	
@@ -914,7 +963,7 @@ namespace waavs {
 	struct SVGPathElement : public SVGPathBasedGeometry
 	{
 		static void registerSingularNode() {
-			registerSVGSingularNode("path", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName(svgtag::tag_path(), [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGPathElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 				
@@ -924,7 +973,7 @@ namespace waavs {
 
 		static void registerFactory()
 		{
-			registerContainerNodeByName("path",
+			registerContainerNodeByName(svgtag::tag_path(),
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGPathElement>(groot);
 					node->loadFromXmlPull(iter, groot);
@@ -943,13 +992,17 @@ namespace waavs {
 		
 		virtual void bindSelfToContext(IRenderSVG*, IAmGroot*) override
 		{
-			fPath.clear();
+			fProg.clear();
+			//fHasProg = false;
 
 			auto d = getAttribute(svgattr::d());
 			if (d) {
-				parsePath(d, fPath);
-				fPath.shrink();
+                parsePathProgram(d, fProg);
+                //fHasProg = true;
 			}
+
+            fFillPathValid = false;
+            fStrokeCacheKey = 0;
 		}
 
 

@@ -363,6 +363,7 @@ namespace waavs {
 namespace waavs {
 	// Some common character sets
 	static constexpr charset chrWspChars("\t\r\n\f\v ");          // whitespace characters
+    static constexpr charset chrWspComma = chrWspChars + ",";		// whitespace + comma	
 	static constexpr charset chrAlphaChars("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
 	static constexpr charset chrDecDigits("0123456789");
 	static constexpr charset chrHexDigits("0123456789ABCDEFabcdef");

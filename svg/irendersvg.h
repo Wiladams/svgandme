@@ -419,6 +419,19 @@ namespace waavs
             onStrokeMiterLimit();
         }
 
+        virtual void onDashArray() {}
+        void dashArray(const std::vector<SVGDimension> &dashes)
+        {
+            setStrokeDashArrayRaw(dashes);
+            onDashArray();
+        }
+
+        virtual void onDashOffset() {}
+        void dashOffset(const SVGDimension &offset)
+        {
+            setStrokeDashOffsetRaw(offset);
+            onDashOffset();
+        }
 
         // paint for filling shapes
         virtual void onFill() {}

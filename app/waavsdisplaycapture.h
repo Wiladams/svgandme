@@ -22,7 +22,7 @@ namespace waavs {
 	struct DisplayCaptureElement : public SVGGraphicsElement
 	{
 		static void registerFactory() {
-			registerSVGSingularNode("displayCapture",
+			registerSVGSingularNodeByName("displayCapture",
 				[](IAmGroot* groot, const XmlElement& elem) {
 					auto node = std::make_shared<DisplayCaptureElement>(groot);
 					node->loadFromXmlElement(elem, groot);

@@ -491,8 +491,7 @@ namespace waavs
         uint32_t fUnits{ SVG_LENGTHTYPE_NUMBER };
         bool fHasValue{ false };
 
-        SVGDimension(const SVGDimension& other) = delete;
-        
+        SVGDimension(const SVGDimension& other) = default;
         SVGDimension() = default;
 		SVGDimension(double value, unsigned short units, bool setValue = true)
             : fValue(value)
@@ -1418,7 +1417,102 @@ namespace waavs {
 }
 
 
-namespace waavs
-{
+namespace waavs {
+    // State that represents the stroke-dasharray and stroke-dashoffset
+    struct StrokeDashState
+    {
+        bool fHasArray{ false };
+        bool fHasOffset{ false };
+
+        // Raw as-authored values (preserve units)
+        std::vector<SVGDimension> fArray{};   // each entry is a <length> or <percentage>
+        SVGDimension fOffset{};               // <length> or <percentage>
+
+        void clearArray() noexcept
+        {
+            fArray.clear();
+            fHasArray = false;
+        }
+
+        void clearOffset() noexcept
+        {
+            fOffset = SVGDimension{};
+            fHasOffset = false;
+        }
+    };
+
+    static bool parseStrokeDashArray(const ByteSpan& inChunk,
+        std::vector<SVGDimension>& outArray,
+        bool& outIsNone) noexcept
+    {
+        outArray.clear();
+        outIsNone = false;
+
+        ByteSpan s = chunk_trim(inChunk, chrWspChars);
+        if (!s) {
+            // empty attribute -> treat as "none" (no dash array set)
+            outIsNone = true;
+            return true;
+        }
+
+        // Keyword "none"
+        if (s == "none") {
+            outIsNone = true;
+            return true;
+        }
+
+        SVGTokenListView view(s);
+
+        ByteSpan tok{};
+        while (view.nextLengthToken(tok))
+        {
+            SVGDimension dim{};
+            if (!dim.loadFromChunk(tok))
+                return false;
+
+            // SVG disallows negative dash lengths
+            if (dim.value() < 0.0)
+                return false;
+
+            outArray.push_back(dim);
+        }
+
+        // If we got no tokens, treat as none-ish
+        if (outArray.empty()) {
+            outIsNone = true;
+            return true;
+        }
+
+        // If there is trailing junk, you can choose strict or permissive:
+        // Strict: return false if non-separator remains
+        // Permissive: ignore remaining garbage if any progress made
+        ByteSpan rem = view.remaining();
+        rem.skipWhile(SVGTokenListView::sepChars());
+        if (rem) {
+            // permissive: ignore; strict: return false;
+            // return false;
+        }
+
+        return true;
+    }
+
+    static bool parseStrokeDashOffset(const ByteSpan& inChunk, SVGDimension& outOffset) noexcept
+    {
+        ByteSpan s = chunk_trim(inChunk, chrWspChars);
+        if (!s) {
+            // empty -> treat as not set
+            outOffset = SVGDimension{};
+            return false;
+        }
+
+        SVGDimension dim{};
+        if (!dim.loadFromChunk(s))
+            return false;
+
+        // dashoffset may be negative; keep as-is.
+        outOffset = dim;
+        return true;
+    }
+
 
 }

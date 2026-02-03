@@ -158,16 +158,17 @@ namespace waavs {
 		{
             // do nothing by default
             setNeedsBinding(false);
-
 		}
 
         // Give an attribute a chance to update itself
         virtual void update(IAmGroot*) { ; }
 
         // Apply property to the context
-        virtual void drawSelf(IRenderSVG*, IAmGroot*) { ; }
+        virtual void drawSelf(IRenderSVG*, IAmGroot*) = delete; // { ; }
 
-        virtual void draw(IRenderSVG* ctx, IAmGroot* groot)
+        virtual void applySelfToContext(IRenderSVG*, IAmGroot*) { ; }
+        
+        virtual void applyToContext(IRenderSVG* ctx, IAmGroot* groot)
         {
             //printf("SVGVisualProperty::draw == ");
             //printChunk(fRawValue);
@@ -175,7 +176,7 @@ namespace waavs {
                 this->bindToContext(ctx, groot);
             
             if (isSet())
-                this->drawSelf(ctx, groot);
+                this->applySelfToContext(ctx, groot);
         }
 
     };
@@ -393,7 +394,9 @@ namespace waavs {
 
 
     // Register named creation routines
-    static void registerSVGSingularNode(const char* name,
+    static void registerSVGSingularNode(const char* name, std::function<std::shared_ptr<ISVGElement>(IAmGroot*, const XmlElement&)> func) = delete;
+
+    static void registerSVGSingularNodeByName(const char* name,
         std::function<std::shared_ptr<ISVGElement>(IAmGroot*, const XmlElement&)> func)
     {
         InternedKey k = PSNameTable::INTERN(name);
@@ -949,7 +952,7 @@ namespace waavs {
             //    ctx->applyTransform(fTransform);
 			auto tform = getVisualProperty(svgattr::transform());
 			if (tform)
-				tform->draw(ctx, groot);
+				tform->applyToContext(ctx, groot);
 
             for (auto& prop : fVisualProperties) {
                 // We've already applied the transform, so skip
@@ -959,7 +962,7 @@ namespace waavs {
 
                 if (prop.second->autoDraw() && prop.second->isSet())
                 {
-                    prop.second->draw(ctx, groot);
+                    prop.second->applyToContext(ctx, groot);
                 }
             }
         }

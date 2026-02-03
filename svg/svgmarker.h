@@ -216,4 +216,302 @@ namespace waavs {
 	};
 }
 
+namespace waavs 
+{
 
+	struct ResolvedMarkers {
+		std::shared_ptr<SVGMarkerElement> start;
+		std::shared_ptr<SVGMarkerElement> mid;
+		std::shared_ptr<SVGMarkerElement> end;
+		std::shared_ptr<SVGMarkerElement> any; // 'marker' fallback
+
+		INLINE bool hasAny() const noexcept { return (start || mid || end || any); }
+	};
+
+    // Pick the marker for the given position from a resolved set of markers
+    // default is the 'any' marker
+	INLINE SVGMarkerElement* pickMarker(const ResolvedMarkers& rm, MarkerPosition pos) noexcept
+	{
+		switch (pos) {
+		case MarkerPosition::MARKER_POSITION_START:  return rm.start ? rm.start.get() : rm.any.get();
+		case MarkerPosition::MARKER_POSITION_MIDDLE: return rm.mid ? rm.mid.get() : rm.any.get();
+		case MarkerPosition::MARKER_POSITION_END:    return rm.end ? rm.end.get() : rm.any.get();
+		}
+		return rm.any.get();
+	}
+
+
+	INLINE std::shared_ptr<SVGMarkerElement> resolveMarkerNode(ISVGElement* self, IRenderSVG* ctx, IAmGroot* groot, InternedKey key)
+	{
+		auto prop = self->getVisualProperty(key);
+		if (!prop) return nullptr;
+
+		auto attr = std::dynamic_pointer_cast<SVGMarkerAttribute>(prop);
+		if (!attr) return nullptr;
+
+		auto node = attr->markerNode(ctx, groot);
+		if (!node) return nullptr;
+
+		return std::dynamic_pointer_cast<SVGMarkerElement>(node);
+	}
+}
+
+
+// Marker resolution helpers
+namespace waavs
+{
+
+	struct MarkerProgramExec
+	{
+		IRenderSVG* ctx{};
+		IAmGroot* groot{};
+		ISVGElement* owner{};
+		ResolvedMarkers rm{};
+
+		// --- path state ---
+		BLPoint subStart{};
+		BLPoint cur{};
+		bool hasCP{ false };
+
+		bool subpathOpen{ false };
+		bool pendingStart{ false };     // saw moveto, not yet emitted start marker (need first segment tangent)
+
+		bool havePrevEndTan{ false };
+		BLPoint prevEndTan{};         // tangent at end of previous segment (incoming to current vertex)
+
+		// last segment info, used for end marker when a subpath ends without CLOSE
+		bool haveLastSeg{ false };
+		BLPoint lastEndTan{};
+
+		explicit MarkerProgramExec(IRenderSVG* c, IAmGroot* g, ISVGElement* o)
+			: ctx(c), groot(g), owner(o)
+		{
+		}
+
+		// Call once before running program
+		bool initResolvedMarkers() noexcept
+		{
+			rm.start = resolveMarkerNode(owner, ctx, groot, svgattr::marker_start());
+			rm.mid = resolveMarkerNode(owner, ctx, groot, svgattr::marker_mid());
+			rm.end = resolveMarkerNode(owner, ctx, groot, svgattr::marker_end());
+			rm.any = resolveMarkerNode(owner, ctx, groot, svgattr::marker());
+			return rm.hasAny();
+		}
+
+		// --- small vector helpers ---
+		static INLINE BLPoint sub(const BLPoint& a, const BLPoint& b) noexcept { return { a.x - b.x, a.y - b.y }; }
+
+		static INLINE bool isZero(const BLPoint& v) noexcept { return v.x == 0.0 && v.y == 0.0; }
+
+		// Manufacture 3 points from tangents for your existing orientation API:
+		// p1 = pt - inTan, p2 = pt, p3 = pt + outTan
+		static INLINE void makeTriplet(const BLPoint& pt, const BLPoint& inTan, const BLPoint& outTan,
+			BLPoint& p1, BLPoint& p2, BLPoint& p3) noexcept
+		{
+			p1 = { pt.x - inTan.x,  pt.y - inTan.y };
+			p2 = pt;
+			p3 = { pt.x + outTan.x, pt.y + outTan.y };
+		}
+
+		INLINE void drawMarkerAt(MarkerPosition pos, const BLPoint& pt, const BLPoint& inTan, const BLPoint& outTan) noexcept
+		{
+			SVGMarkerElement* m = pickMarker(rm, pos);
+			if (!m) return;
+
+			// Avoid degenerate atan2(0,0) situations by falling back.
+			BLPoint inV = inTan;
+			BLPoint outV = outTan;
+			if (isZero(inV) && !isZero(outV)) inV = outV;
+			if (isZero(outV) && !isZero(inV)) outV = inV;
+			if (isZero(inV) && isZero(outV)) { outV = { 1.0, 0.0 }; inV = outV; }
+
+			BLPoint p1{}, p2{}, p3{};
+			makeTriplet(pt, inV, outV, p1, p2, p3);
+
+			const double rads = m->orientation().calcRadians(pos, p1, p2, p3);
+
+			ctx->push();
+			ctx->translate(pt);
+			ctx->rotate(rads);
+			m->draw(ctx, groot);
+			ctx->pop();
+		}
+
+		// Called at the *start* of a new segment, with the segment's start tangent.
+		INLINE void atSegmentStart(const BLPoint& segStartTan) noexcept
+		{
+			if (!subpathOpen) return;
+
+			if (pendingStart) {
+				// start marker at subStart, oriented by first segment's start tangent
+				drawMarkerAt(MarkerPosition::MARKER_POSITION_START, subStart, segStartTan, segStartTan);
+				pendingStart = false;
+				// At the first segment start, there is no "incoming" tangent for a mid marker.
+				havePrevEndTan = false;
+				return;
+			}
+
+			if (havePrevEndTan) {
+				// mid marker at current vertex (cur), oriented by incoming and outgoing tangents
+				drawMarkerAt(MarkerPosition::MARKER_POSITION_MIDDLE, cur, prevEndTan, segStartTan);
+			}
+		}
+
+		// Called at the end of a segment, with the segment's end tangent.
+		INLINE void atSegmentEnd(const BLPoint& segEndTan) noexcept
+		{
+			havePrevEndTan = true;
+			prevEndTan = segEndTan;
+
+			haveLastSeg = true;
+			lastEndTan = segEndTan;
+		}
+
+		// Finish a subpath that ended without OP_CLOSE (either OP_MOVETO starts a new subpath, or OP_END).
+		INLINE void finishOpenSubpath() noexcept
+		{
+			if (!subpathOpen) return;
+
+			if (pendingStart) {
+				// degenerate subpath: moveTo only, no segments
+				// pragmatic: if markers exist, draw start & end at that point
+				drawMarkerAt(MarkerPosition::MARKER_POSITION_START, subStart, { 1,0 }, { 1,0 });
+				drawMarkerAt(MarkerPosition::MARKER_POSITION_END, subStart, { 1,0 }, { 1,0 });
+			}
+			else if (haveLastSeg) {
+				drawMarkerAt(MarkerPosition::MARKER_POSITION_END, cur, lastEndTan, lastEndTan);
+			}
+
+			// reset per-subpath
+			subpathOpen = false;
+			pendingStart = false;
+			havePrevEndTan = false;
+			haveLastSeg = false;
+		}
+
+		// --- executor entry point ---
+		void execute(uint8_t op, const float* a) noexcept
+		{
+			switch ((PathOp)op) {
+			case OP_MOVETO: {
+				// Starting a new subpath implicitly ends the previous one (if any)
+				finishOpenSubpath();
+
+				cur = { a[0], a[1] };
+				subStart = cur;
+
+				hasCP = true;
+				subpathOpen = true;
+				pendingStart = true;
+
+				havePrevEndTan = false;
+				haveLastSeg = false;
+			} break;
+
+			case OP_LINETO: {
+				if (!hasCP) break;
+				const BLPoint p0 = cur;
+				const BLPoint p1{ a[0], a[1] };
+
+				const BLPoint t = sub(p1, p0);          // start and end tangents are same for line
+				atSegmentStart(t);
+
+				cur = p1;
+				atSegmentEnd(t);
+			} break;
+
+			case OP_QUADTO: {
+				if (!hasCP) break;
+				const BLPoint p0 = cur;
+				const BLPoint c{ a[0], a[1] };
+				const BLPoint p1{ a[2], a[3] };
+
+				// derivatives at ends (scaled, scale doesn't matter for angle)
+				const BLPoint t0 = sub(c, p0);          // proportional to 2*(c-p0)
+				const BLPoint t1 = sub(p1, c);          // proportional to 2*(p1-c)
+
+				atSegmentStart(t0);
+
+				cur = p1;
+				atSegmentEnd(t1);
+			} break;
+
+			case OP_CUBICTO: {
+				if (!hasCP) break;
+				const BLPoint p0 = cur;
+				const BLPoint c1{ a[0], a[1] };
+				const BLPoint c2{ a[2], a[3] };
+				const BLPoint p1{ a[4], a[5] };
+
+				const BLPoint t0 = sub(c1, p0);         // proportional to 3*(c1-p0)
+				const BLPoint t1 = sub(p1, c2);         // proportional to 3*(p1-c2)
+
+				atSegmentStart(t0);
+
+				cur = p1;
+				atSegmentEnd(t1);
+			} break;
+
+			case OP_ARCTO: {
+				if (!hasCP) break;
+				// args: rx ry xrot large sweep x y
+				const BLPoint p0 = cur;
+				const BLPoint p1{ a[5], a[6] };
+
+				// Pragmatic tangent: chord direction (good enough for arrows in many cases)
+				const BLPoint t = sub(p1, p0);
+
+				atSegmentStart(t);
+
+				cur = p1;
+				atSegmentEnd(t);
+			} break;
+
+			case OP_CLOSE: {
+				if (!hasCP) break;
+				// CLOSE adds a segment back to subStart and sets current point = subStart
+				const BLPoint p0 = cur;
+				const BLPoint p1 = subStart;
+				const BLPoint t = sub(p1, p0);
+
+				atSegmentStart(t);
+
+				cur = p1;
+				// End marker on close is at the close point (subStart / now cur)
+				drawMarkerAt(MarkerPosition::MARKER_POSITION_END, cur, t, t);
+
+				// reset per-subpath
+				subpathOpen = false;
+				pendingStart = false;
+				havePrevEndTan = false;
+				haveLastSeg = false;
+			} break;
+
+			case OP_END:
+			default:
+				// OP_END is handled outside by caller (or you can handle here too)
+				break;
+			}
+		}
+	};
+
+}
+
+namespace waavs
+{
+    // Most useful utility:
+    // Called by an element (owner) to draw markers along a given path program
+	//
+	INLINE bool drawMarkersForPathProgram(ISVGElement* owner, IRenderSVG* ctx, IAmGroot* groot, const PathProgram& prog) noexcept
+	{
+		if (!owner || !ctx || !groot) return false;
+
+		MarkerProgramExec exec(ctx, groot, owner);
+		if (!exec.initResolvedMarkers())
+			return false;
+
+		runPathProgram(prog, exec);
+		exec.finishOpenSubpath();
+		return true;
+	}
+}

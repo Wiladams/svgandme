@@ -165,7 +165,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("g", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("g", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGGElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 
@@ -213,7 +213,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("use", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("use", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGUseElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 				return node;
@@ -369,7 +369,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("defs",  [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("defs",  [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGDefsNode>(groot);
 				node->loadFromXmlElement(elem, groot);
 				//node->visible(false);
@@ -414,7 +414,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("desc", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("desc", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGDescNode>(groot);
 				node->loadFromXmlElement(elem, groot);
 
@@ -467,7 +467,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("title", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("title", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGTitleNode>(groot);
 				node->loadFromXmlElement(elem, groot);
 				node->visible(false);

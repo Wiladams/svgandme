@@ -40,7 +40,7 @@ namespace waavs {
 
         // StrokeState
 		BLStrokeOptions fStrokeOptions{};
-
+        StrokeDashState fDash{};
 
         // FontState
         BLFont fFont{};
@@ -90,8 +90,9 @@ namespace waavs {
             fFillRule = other.fFillRule;
             
             // Stroke Options
-			fStrokeOptions = other.fStrokeOptions;
-            
+            fStrokeOptions = other.fStrokeOptions;
+            fDash = other.fDash;
+
             // Paints
             fStrokePaint.assign(other.fStrokePaint);
             fFillPaint.assign(other.fFillPaint);
@@ -288,6 +289,41 @@ namespace waavs {
         void setLineJoin(BLStrokeJoin join)
         {
             fDrawingState->fStrokeOptions.join = join;
+            markModified();
+        }
+        
+        const StrokeDashState& getStrokeDashState() const { return fDrawingState->fDash; }
+        void setStrokeDashArrayRaw(const std::vector<SVGDimension>& arr)
+        {
+            fDrawingState->fDash.fArray = arr;
+            fDrawingState->fDash.fHasArray = !arr.empty();
+            markModified();
+        }
+
+        void clearStrokeDashArray()
+        {
+            fDrawingState->fDash.clearArray();
+            markModified();
+        }
+
+        void setStrokeDashOffsetRaw(const SVGDimension& off)
+        {
+            fDrawingState->fDash.fOffset = off;
+            fDrawingState->fDash.fHasOffset = off.isSet();
+            markModified();
+        }
+
+        void clearStrokeDashOffset() 
+        {
+            fDrawingState->fDash.clearOffset();
+            markModified();
+        }
+
+
+        //const std::vector<SVGLength>& getStrokeDashArray() const { return std::vector<double>{}; }
+        void setStrokeDashArray(const double *dashes, size_t count)
+        {
+            //fDrawingState->fStrokeDashArray = dashes;
             markModified();
         }
 

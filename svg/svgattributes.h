@@ -84,7 +84,7 @@ namespace waavs {
         const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override { return fOpacityVar; }
         
         
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
 			ctx->globalOpacity(fValue);
         }
@@ -121,7 +121,7 @@ namespace waavs {
         
         SVGFillOpacity(IAmGroot* iMap)  :SVGOpacity(iMap)  { setName(svgattr::fill_opacity());}
         
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
 			ctx->fillOpacity(fValue);
         }
@@ -141,7 +141,7 @@ namespace waavs {
 
         SVGStrokeOpacity(IAmGroot* iMap) :SVGOpacity(iMap) { setName(svgattr::stroke_opacity()); }
 
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
             ctx->strokeOpacity(fValue);
         }
@@ -297,7 +297,7 @@ namespace waavs
             return true;
         }
         
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
             ctx->setPaintOrder(fInstruct);
         }
@@ -400,7 +400,7 @@ namespace waavs {
             return success;
         }
 
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
             ctx->setTextAnchor(fValue);
         }
@@ -515,7 +515,7 @@ namespace waavs {
             setNeedsBinding(false);
         }
         
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
             ctx->fontSize(static_cast<float>(fValue));
         }
@@ -562,7 +562,7 @@ namespace waavs {
 			return true;
         }
         
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
             ctx->fontFamily(fValue);
         }
@@ -603,7 +603,7 @@ namespace waavs {
 			return success;
         }
 
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
             ctx->fontStyle(fValue);
         }
@@ -634,7 +634,7 @@ namespace waavs {
 			return success;
 		}
 
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
             ctx->fontWeight(value());
         }
@@ -666,7 +666,7 @@ namespace waavs {
 
         }
 
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
             ctx->fontStretch(value());
         }
@@ -915,7 +915,7 @@ namespace waavs {
             return true;
         }
 
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
             ctx->setDefaultColor(getVariant(ctx, groot));
         }
@@ -940,7 +940,7 @@ namespace waavs {
         SVGFillPaint(IAmGroot* root) : SVGPaint(root) { setName(svgattr::fill()); }
 
         
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
             ctx->fill(getVariant(ctx, groot));
         }
@@ -975,7 +975,7 @@ namespace waavs {
             return success;
         }
 
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
             ctx->fillRule(fValue);
         }
@@ -1044,7 +1044,7 @@ namespace waavs {
             return loadFromChunk(strokeAttr);
         }
 
-		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+		void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{
             ctx->stroke(getVariant(ctx, groot));
 		}
@@ -1087,7 +1087,7 @@ namespace waavs {
             return true;
         }
 
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
             ctx->strokeWidth(fWidth);
         }
@@ -1128,7 +1128,7 @@ namespace waavs {
             return true;
         }
 
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
             ctx->strokeMiterLimit(fMiterLimit);
         }
@@ -1185,7 +1185,7 @@ namespace waavs {
 			return success;
         }
 
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
             if (fBothCaps) {
                 ctx->strokeCaps(fLineCap);
@@ -1225,7 +1225,7 @@ namespace waavs {
             return success;
         }
 
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
             ctx->lineJoin(fLineJoin);
         }
@@ -1271,7 +1271,7 @@ namespace waavs {
 			return true;
 		}
 
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
             ctx->applyTransform(fMatrix);
         }
@@ -1412,7 +1412,6 @@ namespace waavs {
         
         double calcRadians(MarkerPosition pos, const BLPoint& p1, const BLPoint& p2, const BLPoint& p3) const
         {
-            double angle = fAngle;
 
             
             if (fOrientation == MarkerOrientation::MARKER_ORIENT_ANGLE)
@@ -1422,17 +1421,39 @@ namespace waavs {
             }
             
             // get the angle between the vectors
-
+            auto angleOfVec = [](double x, double y) noexcept -> double {
+                return std::atan2(y, x);
+                };
             
+            auto norm = [](double x, double y, double& ox, double& oy) noexcept -> bool {
+                const double len2 = x * x + y * y;
+                if (len2 == 0.0) { ox = 0.0; oy = 0.0; return false; }
+                const double inv = 1.0 / std::sqrt(len2);
+                ox = x * inv;
+                oy = y * inv;
+                return true;
+                };
+
+
+            // v1 = p2 - p1 (incoming tangent direction in your triplet)
+            const double v1x = p2.x - p1.x;
+            const double v1y = p2.y - p1.y;
+
+            // v2 = p3 - p2 (outgoing tangent direction)
+            const double v2x = p3.x - p2.x;
+            const double v2y = p3.y - p2.y;
+
+            double angle = 0.0;
+
 
             switch (pos)
             {
             case MARKER_POSITION_START:
             {
                 // angle is between the first point, and the second point
-                angle = angleOfTwoPointVector(p1, p2);
+                angle = angleOfVec(v1x, v1y);
 
-                
+
                 // If the marker is at the start, and orient='auto-start-reverse',
                 // then we want to flip the angle 180 degrees, which we can do 
                 // by adding 'pi' to it, as that's half a circle.
@@ -1441,14 +1462,42 @@ namespace waavs {
             }
             break;
 
-            case MARKER_POSITION_MIDDLE:
-                angle = angleBetweenVectors(p1, p2, p3);
-                angle = angle / 2.0;
+            case MARKER_POSITION_END:
+                angle = angleOfVec(v1x, v1y);
                 break;
 
-            case MARKER_POSITION_END:
-                angle = angleOfTwoPointVector(p1, p2);
-                break;
+
+            case MARKER_POSITION_MIDDLE:
+            {
+                // Normalize both, then bisect by vector sum
+                double u1x, u1y, u2x, u2y;
+                const bool ok1 = norm(v1x, v1y, u1x, u1y);
+                const bool ok2 = norm(v2x, v2y, u2x, u2y);
+
+                if (!ok1 && !ok2) {
+                    angle = 0.0;
+                    break;
+                }
+                if (!ok1) { angle = angleOfVec(u2x, u2y); break; }
+                if (!ok2) { angle = angleOfVec(u1x, u1y); break; }
+
+                // Bisector candidate
+                double bx = u1x + u2x;
+                double by = u1y + u2y;
+
+                // If cusp (180°), sum is near zero; choose a stable fallback
+                const double bLen2 = bx * bx + by * by;
+                if (bLen2 == 0.0) {
+                    // choose outgoing (common pragmatic choice)
+                    angle = angleOfVec(u2x, u2y);
+                }
+                else {
+                    angle = angleOfVec(bx, by);
+                }
+            }
+            break;
+
+
             }
             
             //printf("calcRadians::MARKER_POSITION: %d - %3.2f\n", pos, waavs::degrees(angle));
@@ -1456,7 +1505,7 @@ namespace waavs {
             return radians_normalize(angle);
         }
 
-        
+        /*
         double calculateRadians(MarkerPosition pos, const BLPoint& p1, const BLPoint& p2, const BLPoint& p3) const
         {
             if (fOrientation == MarkerOrientation::MARKER_ORIENT_ANGLE)
@@ -1505,7 +1554,7 @@ namespace waavs {
             
             return ang;
         }
-
+        */
         static double angleOfSinglePointVector(const BLPoint& p1)
         {
             return atan2(p1.y, p1.x);
@@ -1606,7 +1655,7 @@ namespace waavs {
             return true;
         }
         
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
 			if (fWrappedNode)
 				fWrappedNode->draw(ctx, groot);
@@ -1726,7 +1775,7 @@ namespace waavs {
             return success;
         }
 
-		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+		void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{
 			if (VECTOR_EFFECT_NON_SCALING_STROKE == fEffectKind)
 			{
@@ -1735,3 +1784,111 @@ namespace waavs {
 		}
     };
 }
+
+
+// Dash array/offset attributes
+namespace waavs 
+{
+    //=========================================================
+     // SVGStrokeDashArray
+     // stroke-dasharray: none | <length-percentage>#
+     //=========================================================
+    struct SVGStrokeDashArray : public SVGVisualProperty
+    {
+        static void registerFactory()
+        {
+            registerSVGAttribute(svgattr::stroke_dasharray(), [](const XmlAttributeCollection& attrs) {
+                auto node = std::make_shared<SVGStrokeDashArray>(nullptr);
+                node->loadFromAttributes(attrs);
+                return node;
+                });
+        }
+
+        std::vector<SVGDimension> fArray{};
+        bool fIsNone{ true };
+
+        SVGStrokeDashArray(IAmGroot* groot) : SVGVisualProperty(groot)
+        {
+            setName(svgattr::stroke_dasharray());
+        }
+
+        bool loadSelfFromChunk(const ByteSpan& inChunk) override
+        {
+            // Delegate to your parser.
+            if (!parseStrokeDashArray(inChunk, fArray, fIsNone))
+                return set(false);
+
+            set(true);
+            setNeedsBinding(false);
+            return true;
+        }
+
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* /*groot*/) override
+        {
+            if (ctx == nullptr)
+                return;
+
+            if (fIsNone)
+            {
+                // No dash pattern.
+                ctx->clearStrokeDashArray();
+                return;
+            }
+
+            // Store raw dash segments in state.
+            ctx->dashArray(fArray);
+        }
+    };
+
+
+    //=========================================================
+// SVGStrokeDashOffset
+// stroke-dashoffset: <length-percentage>
+//=========================================================
+    struct SVGStrokeDashOffset : public SVGVisualProperty
+    {
+        static void registerFactory()
+        {
+            registerSVGAttribute(svgattr::stroke_dashoffset(), [](const XmlAttributeCollection& attrs) {
+                auto node = std::make_shared<SVGStrokeDashOffset>(nullptr);
+                node->loadFromAttributes(attrs);
+                return node;
+                });
+        }
+
+        SVGDimension fOffset;
+        bool fHasOffset{ false };
+
+        SVGStrokeDashOffset(IAmGroot* groot) : SVGVisualProperty(groot)
+        {
+            setName(svgattr::stroke_dashoffset());
+        }
+
+        bool loadSelfFromChunk(const ByteSpan& inChunk) override
+        {
+            fHasOffset = parseStrokeDashOffset(inChunk, fOffset);
+
+            // Even if empty/not set, we still consider the property "set"
+            // if the attribute existed; drawSelf() will clear the state.
+            set(true);
+            setNeedsBinding(false);
+            return true;
+        }
+
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* /*groot*/) override
+        {
+            if (ctx == nullptr)
+                return;
+
+            if (!fHasOffset)
+            {
+                ctx->clearStrokeDashOffset();
+                return;
+            }
+
+            ctx->dashOffset(fOffset);
+        }
+    };
+
+} // namespace waavs
+

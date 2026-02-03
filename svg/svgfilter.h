@@ -52,7 +52,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("filter", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("filter", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGFilterElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 
@@ -137,7 +137,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("feBlend", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("feBlend", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGFeBlendElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 
@@ -174,7 +174,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("feComponentTransfer", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("feComponentTransfer", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGFeComponentTransferElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 
@@ -211,7 +211,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("feComposite", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("feComposite", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGFeCompositeElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 				
@@ -248,7 +248,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("feColorMatrix", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("feColorMatrix", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGFeColorMatrixElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 				
@@ -284,7 +284,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("feConvolveMatrix", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("feConvolveMatrix", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGFeConvolveMatrixElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 
@@ -320,7 +320,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("feDiffuseLighting", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("feDiffuseLighting", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGFeDiffuseLightingElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 
@@ -356,7 +356,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("feDisplacementMap", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("feDisplacementMap", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGFeDisplacementMapElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 
@@ -391,7 +391,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("feDistantLight", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("feDistantLight", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGFeDistantLightElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 
@@ -427,7 +427,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("feFlood", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("feFlood", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGFeFloodElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 
@@ -465,7 +465,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("feGaussianBlur", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("feGaussianBlur", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGFeGaussianBlurElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 				
@@ -508,7 +508,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("feOffset", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("feOffset", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGFeOffsetElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 
@@ -545,7 +545,7 @@ namespace waavs {
 	{
 		static void registerSingularNode()
 		{
-			registerSVGSingularNode("feTurbulence", [](IAmGroot* groot, const XmlElement& elem) {
+			registerSVGSingularNodeByName("feTurbulence", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGFeTurbulenceElement>(groot);
 				node->loadFromXmlElement(elem, groot);
 

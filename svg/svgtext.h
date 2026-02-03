@@ -710,7 +710,7 @@ namespace waavs {
 	{
 		static void registerSingular()
 		{
-			registerSVGSingularNode(svgtag::tag_tspan(),
+			registerSVGSingularNodeByName(svgtag::tag_tspan(),
 				[](IAmGroot* groot, const XmlElement& elem) {
 					auto node = std::make_shared<SVGTSpanNode>(groot);
 					node->loadFromXmlElement(elem, groot);
