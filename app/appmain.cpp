@@ -88,7 +88,7 @@ static int screenPixelWidth = 0;
 static double screenWidthInches;
 static double screenHeightInches;
 
-unsigned int physicalDpi = 192;   // starting pixel density
+unsigned int physicalDpi = 96;   // starting pixel density
 
 // Stuff related to rate of displaying frames
 float fFrameRate = 1;
@@ -1455,7 +1455,7 @@ static void setDPIAware()
 
     // Calculate physical DPI (using vertial dimensions)
     double screenPpi = (double)screenPixelHeight / screenHeightInches;
-    physicalDpi = (unsigned int)std::round(screenPpi);
+    //physicalDpi = (unsigned int)std::round(screenPpi);
 
     ::DeleteDC(dhdc);
 }

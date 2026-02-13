@@ -67,7 +67,8 @@ namespace waavs {
         ByteSpan fName{};
         ByteSpan fId{};      // The id of the element
 
-        
+        virtual ~IViewable() = default;
+
         const ByteSpan& id() const noexcept { return fId; }
         void setId(const ByteSpan& aid) noexcept { fId = aid; }
 
@@ -78,7 +79,7 @@ namespace waavs {
         void visible(bool visible) = delete; // { fIsVisible = visible; }
         void setIsVisible(bool visible) { fIsVisible = visible; }
 
-        virtual BLRect viewPort() const noexcept { return {}; }
+        virtual BLRect viewPort() const noexcept = delete; // { return {}; }
         virtual BLRect objectBoundingBox() const noexcept{ return {}; }
 
         virtual bool contains(double x, double y) { return false; }
@@ -511,12 +512,13 @@ namespace waavs {
             return fVar;
         }
 
+        /*
         // Viewport is where the graphic wants to be displayed
         // in the parent's coordinate system
         BLRect viewPort() const override
         {
             return BLRect{};
-/*            BLRect extent{};
+            BLRect extent{};
             bool firstOne = true;
 
             // traverse the graphics
@@ -533,9 +535,9 @@ namespace waavs {
             }
 
             return extent;
-            */
-        }        
 
+        }        
+            */
 
 
         bool hasAttribute(InternedKey key) const noexcept
@@ -543,10 +545,9 @@ namespace waavs {
             return fAttributes.hasValue(key); 
         }
 
-        bool hasAttributeByName(const char * name) const noexcept
+        bool getAttribute(InternedKey key, ByteSpan& value) const noexcept
         {
-            InternedKey key = PSNameTable::INTERN(name);
-            return fAttributes.hasValue(key);
+            return fAttributes.getValue(key, value);
         }
 
         ByteSpan getAttribute(InternedKey key) const noexcept
@@ -834,7 +835,7 @@ namespace waavs {
             //onEndTag(groot);
         }
 
-        virtual void fixupSelfStyleAttributes(/*IRenderSVG*,*/ IAmGroot*)
+        virtual void fixupSelfStyleAttributes(IAmGroot*)
         {
            // printf("fixupSelfStyleAttributes\n");
         }
@@ -1079,14 +1080,14 @@ namespace waavs {
 
 
             // Now, compute bbox in the same user space as paints
-            BLRect bbox = objectBoundingBox();
+            BLRect bbox = this->objectBoundingBox();
 
             // If objectBoundingBox() is local, it must be
             // transformed by the current transformation
-            BLMatrix2D ctm = ctx->getTransform();
+            //BLMatrix2D ctm = ctx->getTransform();
             //BLRect bboxUser = mapRectAABB(ctm, bbox);
 
-            //ctx->setObjectFrame(bboxUser);
+            ctx->setObjectFrame(bbox);
 
             //applyNonTransformProperties(ctx, groot);
             applyProperties(ctx, groot);

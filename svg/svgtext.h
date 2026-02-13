@@ -355,9 +355,9 @@ namespace waavs {
         const auto& ps = ctx->textPosStream();
         const bool useDy = hasPS && ps.hasDy;
 
-        if (txt.size() && memchr(txt.data(), 'H', txt.size())) { // any cheap marker
-            printf("hasPS=%d hasDy=%d\n", int(hasPS), int(useDy));
-        }
+        //if (txt.size() && memchr(txt.data(), 'H', txt.size())) { // any cheap marker
+        //    printf("hasPS=%d hasDy=%d\n", int(hasPS), int(useDy));
+        //}
         //=============== END TEST =============
 
         const BLFont& font = ctx->getFont();

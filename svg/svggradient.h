@@ -7,7 +7,6 @@
 //
 
 #include <functional>
-#include <unordered_map>
 
 #include "svgattributes.h"
 #include "svgstructuretypes.h"
@@ -130,7 +129,7 @@ namespace waavs {
 
             BLVar aVar = paint.getVariant(nullptr, groot);
             uint32_t colorValue = 0;
-            auto res = blVarToRgba32(&aVar, &colorValue);
+            (void)blVarToRgba32(&aVar, &colorValue);
             fColor.value = colorValue;
         }
         
@@ -146,6 +145,8 @@ namespace waavs {
     //============================================================
     struct SVGGradient : public SVGGraphicsElement
     {
+        static constexpr uint32_t kMaxGradientHrefDepth = 32;
+
         BLMatrix2D fGradientTransform{};
         bool fHasGradientTransform = false;
 
@@ -175,19 +176,27 @@ namespace waavs {
 
         BLGradientType gradientType() const { return fGradient.type(); }
 
+        ByteSpan href() const { return fTemplateReference; }
+        bool hasHref() const { return !fTemplateReference.empty(); }
+
         // getVariant()
         //
         // Whomever is using us for paint is calling in here to get
-        // our paint variant.  This is the place to construct
-        // the thing.
+        // our paint variant.  This is the place to construct the thing,
+        // if it hasn't already been constructed.
+        //
+        // It's like a bindToContext essentially, but bindToContext is
+        // only called as part of a drawing chain.
         const BLVar getVariant(IRenderSVG *ctx, IAmGroot *groot) noexcept override
         {
             bindToContext(ctx, groot);
 
-            BLVar tmpVar{};
-            tmpVar = fGradient;
+            return fGradientVar;
 
-            return tmpVar;
+            //BLVar tmpVar{};
+            //tmpVar = fGradient;
+
+            //return tmpVar;
         }
 
         //
@@ -197,82 +206,119 @@ namespace waavs {
         //   gradientTransform
         //   spreadMethod
         //
+        void setAttributeIfAbsent(const SVGGradient* elem, InternedKey key)
+        {
+            if (!elem)
+                return;
+            if (!hasAttribute(key))
+            {
+                ByteSpan candidateAttr{};
+                if (elem->getAttribute(key, candidateAttr))
+                    setAttributeByName(key, candidateAttr);
+            }
+        }
+
+
+        // The way the inheritance works is, if we don't currently have
+        // a value for a particular attribute, but the referred to gradient does
+        // then we should take that value from the referred to gradient.
+        // 
+        // Inherit the raw attributes that are common to all gradients,
+        // if we don't already have them.
+        void inheritCommonAttributesRaw(const SVGGradient* elem)
+        {
+            if (!elem)
+                return;
+
+            setAttributeIfAbsent(elem, svgattr::gradientUnits());
+            setAttributeIfAbsent(elem, svgattr::gradientTransform());
+            setAttributeIfAbsent(elem, svgattr::spreadMethod());
+        }
+
         virtual void inheritSameKindProperties(const SVGGradient* elem)
         {
             ;
         }
         
-        // Inherit the general properties that are always
-        // inherited
-        //   stops
-        //   
-
-
         virtual void inheritProperties(const SVGGradient* elem)
         {
-            if (!elem)
-                return;
+            if (!elem) return;
 
-
-            // If we already have some stops, don't take stops
-            // from the referred to gradient
-            // If we don't have stops, and the referred to gradient does
-            // copy the gradient stops from the referred to gradient
+            // 1) stops: copy stops from referred to only if 
+            // we don't have any stops already.
             if (fGradient.size() == 0)
             {
                 auto stopsView = elem->fGradient.stopsView();
-
                 if (stopsView.size > 0)
                 {
                     fGradient.assignStops(stopsView.data, stopsView.size);
                 }
             }
 
-            // inherity type specific properties
+            // 2) Common raw attributes 
+            inheritCommonAttributesRaw(elem);
+
+            // 3) type-specific raw attributes, only if
+            // same type of gradient.
             if (elem->gradientType() == gradientType())
             {
                 inheritSameKindProperties(elem);
             }
         }
         
-        // resolveReference()
-        // 
-        // We want to copy all relevant data from the reference.
-        // Most importantly, we need the color stops.
-        // then we need the coordinate system (userspace or bounding box
-        //
-        void resolveReference(IAmGroot* groot)
+        // If we have an href, followed the chain of referred to
+        // gradients, inheriting raw attributes that are missing 
+        // along the way.
+        void resolveReferenceChain(IAmGroot* groot)
         {
-            // return early if we can't do a lookup
-            if (!groot)
-                return;
+            if (!groot) return;
+            if (!hasHref()) return;
+        
+            const SVGGradient* cur = this;
+            ByteSpan hrefSpan = href();
 
-            // Quick return if there is no referred to pattern
-            if (!fTemplateReference)
-                return;
+            // Keep a simple visited list to detect cycles
+            const SVGGradient* visited[kMaxGradientHrefDepth]{};
+            uint32_t visitedCount = 0;
 
-            // Try to find the referred to pattern
-            auto node = groot->findNodeByHref(fTemplateReference);
+            // Traverse the chain of references, inheriting attributes
+            // and copying stops if we don't have any.
+            for (uint32_t depth = 0; depth < kMaxGradientHrefDepth; ++depth)
+            {
+                if (!hrefSpan) break;
 
-            // Didn't find the node, so return empty handed
-            if (!node)
-                return;
+                // Make sure we actually find a node associated with the href
+                auto node = groot->findNodeByHref(hrefSpan);
+                if (!node) break;
 
+                // Make sure that node is a gradient
+                auto gnode = std::dynamic_pointer_cast<SVGGradient>(node);
+                if (!gnode) break;
 
+                const SVGGradient* ref = gnode.get();
 
-            // try to cast to SVGGradient
-            auto gnode = std::dynamic_pointer_cast<SVGGradient>(node);
+                // cycle detection (including self)
+                bool seen = (ref == this);
+                for (uint32_t i = 0; i < visitedCount && !seen; ++i)
+                    if (visited[i] == ref) seen = true;
 
-            // if we can't cast, then we can't resolve the reference
-            // so return immediately
-            if (!gnode)
-                return;
+                if (seen)
+                {
+                    WAAVS_ASSERT(false && "Gradient href cycle detected");
+                    break;
+                }
 
-            
-            //gnode->bindToContext(ctx, groot);
-            inheritProperties(gnode.get());
+                if (visitedCount < kMaxGradientHrefDepth)
+                    visited[visitedCount++] = ref;
+
+                // Merge from nearest first: direct reference wins.
+                inheritProperties(ref);
+
+                // follow next link in the chain
+                hrefSpan = ref->href();   // requires ref to have captured its href in its own fixup/load
+            }
+
         }
-
 
 
         //
@@ -295,7 +341,7 @@ namespace waavs {
 
         }
 
-        void fixupSelfStyleAttributes(IAmGroot *groot) override
+        void fixupCommonAttributes(IAmGroot* groot)
         {
             // spreadMethod / gradientUnits / gradientTransform
             if (getEnumValue(SVGSpreadMethod, getAttribute(svgattr::spreadMethod()), (uint32_t&)fSpreadMethod))
@@ -305,18 +351,21 @@ namespace waavs {
 
             fHasGradientTransform = parseTransform(getAttribute(svgattr::gradientTransform()), fGradientTransform);
 
-
             // See if we have a template reference
             if (getAttribute(svgattr::href()))
                 fTemplateReference = getAttribute(svgattr::href());
             else if (getAttributeByName(svgattr::xlink_href()))
                 fTemplateReference = getAttributeByName(svgattr::xlink_href());
+        }
 
+        /*
+        void fixupSelfStyleAttributes(IAmGroot *groot) override
+        {
             // we should be able resolve any inheritance
             // at this point
-            resolveReference(groot);
+            resolveReferenceChain(groot);
         }
-        
+        */
 
     };
 
@@ -373,38 +422,17 @@ namespace waavs {
             if (!elem)
                 return;
 
-            // The way the inheritance works is, if we don't currently have
-            // a value for a particular attribute, but the referred to gradient does
-            // then we should take that value from the referred to gradient.
-            if (!getAttributeByName(svgattr::x1()))
-            {
-                if (elem->getAttributeByName(svgattr::x1()))
-                    setAttributeByName("x1", elem->getAttributeByName(svgattr::x1()));
-            }
-
-            if (!getAttributeByName(svgattr::y1()))
-            {
-                if (elem->getAttributeByName(svgattr::y1()))
-                    setAttributeByName("y1", elem->getAttributeByName(svgattr::y1()));
-            }
-            
-            if (!getAttributeByName(svgattr::x2()))
-            {
-                if (elem->getAttributeByName(svgattr::x2()))
-                    setAttributeByName("x2", elem->getAttributeByName(svgattr::x2()));
-            }
-
-            if (!getAttributeByName(svgattr::y2()))
-            {
-                if (elem->getAttributeByName(svgattr::y2()))
-                    setAttributeByName("y2", elem->getAttributeByName(svgattr::y2()));
-            }
-            
+            setAttributeIfAbsent(elem, svgattr::x1());
+            setAttributeIfAbsent(elem, svgattr::y1());
+            setAttributeIfAbsent(elem, svgattr::x2());
+            setAttributeIfAbsent(elem, svgattr::y2());
         }
         
 
         void fixupSelfStyleAttributes(IAmGroot* groot) override
         {
+            fixupCommonAttributes(groot);
+
             // Parse attributes if present
             ByteSpan s;
             if ((s = getAttribute(svgattr::x1()))) { ByteSpan t = s; parseLengthValue(t, x1); }
@@ -412,7 +440,7 @@ namespace waavs {
             if ((s = getAttribute(svgattr::x2()))) { ByteSpan t = s; parseLengthValue(t, x2); }
             if ((s = getAttribute(svgattr::y2()))) { ByteSpan t = s; parseLengthValue(t, y2); }
 
-            SVGGradient::fixupSelfStyleAttributes(groot);
+            resolveReferenceChain(groot);
         }
 
 
@@ -503,13 +531,9 @@ namespace waavs {
                     node->loadFromXmlPull(iter, groot);
                     return node;
                 });
-            
-
 
             registerSingularNode();
         }
-
-
 
         SVGRadialGradient(IAmGroot* groot) :SVGGradient(groot)
         {
@@ -520,52 +544,31 @@ namespace waavs {
         // cx, cy
         // r
         // fx, fy
-        virtual void inheritSameKindProperties(const SVGGradient* elem) override
+        void inheritSameKindProperties(const SVGGradient* elem) override
         {
             if (!elem)
                 return;
             
-            if (!getAttributeByName("cx"))
-            {
-                if (elem->getAttributeByName("cx"))
-                    setAttributeByName("cx", elem->getAttributeByName("cx"));
-            }
-
-            if (!getAttributeByName("cy"))
-            {
-                if (elem->getAttributeByName("cy"))
-                    setAttributeByName("cy", elem->getAttributeByName("cy"));
-            }
-
-            if (!getAttributeByName("r"))
-            {
-                if (elem->getAttributeByName("r"))
-                    setAttributeByName("r", elem->getAttributeByName("r"));
-            }
-
-            if (!getAttributeByName("fx"))
-            {
-                if (elem->getAttributeByName("fx"))
-                    setAttributeByName("fx", elem->getAttributeByName("fx"));
-            }
-
-            if (!getAttributeByName("fy"))
-            {
-                if (elem->getAttributeByName("fy"))
-                    setAttributeByName("fy", elem->getAttributeByName("fy"));
-            }
+            setAttributeIfAbsent(elem, svgattr::cx());
+            setAttributeIfAbsent(elem, svgattr::cy());
+            setAttributeIfAbsent(elem, svgattr::r());
+            setAttributeIfAbsent(elem, svgattr::fx());
+            setAttributeIfAbsent(elem, svgattr::fy());
         }
 
-        
+        void fixupSelfStyleAttributes(IAmGroot* groot) override
+        {
+            fixupCommonAttributes(groot);
+
+            // Parse attributes if present
+
+            resolveReferenceChain(groot);
+        }
+
         void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) override
         {
             
-            double dpi = 96;
-            if (nullptr != groot)
-            {
-                dpi = groot->dpi();
-            }
-
+            double dpi = groot ? groot->dpi() : 96.0;
 
             BLRadialGradientValues values = fGradient.radial();
 
@@ -638,21 +641,21 @@ namespace waavs {
                 if (fR.isSet()) {
                     if (fR.fUnits == SVG_LENGTHTYPE_NUMBER) {
                         if (fR.value() <= 1.0) {
-                            values.r1 = calculateDistance(fR.value() * 100, w, h);
+                            values.r0 = calculateDistance(fR.value() * 100, w, h);
                         }
                         else
-                            values.r1 = fR.value();
+                            values.r0 = fR.value();
                     }
                     else
-                        values.r1 = fR.calculatePixels(w, 0, dpi);
+                        values.r0 = fR.calculatePixels(w, 0, dpi);
 
                 }
                 else
-                    values.r1 = (w * 0.50);	// default to center of object
+                    values.r0 = (w * 0.50);	// default to half width of object
 
                 values.x1 = values.x0;
                 values.y1 = values.y0;
-                values.r0 = 0;
+                values.r1 = 0;
 
                 
                 if (fFx.isSet()) {
@@ -682,7 +685,6 @@ namespace waavs {
                 }
                 else
                     values.y1 = values.y0;
-
             }
             else if (fGradientUnits == SVG_SPACE_USER)
             {
@@ -703,10 +705,7 @@ namespace waavs {
                     values.y1 = fFy.calculatePixels(h, 0, dpi);
                 else
                     values.y1 = values.y0;
-
             }
-            
-
             
             fGradient.setValues(values);
             
@@ -716,8 +715,6 @@ namespace waavs {
             
             fGradientVar = fGradient;
         }
-
-
 
     };
 
@@ -751,14 +748,12 @@ namespace waavs {
                     return node;
                 });
             
-
             registerSingularNode();
         }
 
 
-
-
-        SVGConicGradient(IAmGroot* aroot) :SVGGradient(aroot)
+        SVGConicGradient(IAmGroot* aroot) 
+            :SVGGradient(aroot)
         {
             fGradient.setType(BLGradientType::BL_GRADIENT_TYPE_CONIC);
         }
@@ -772,45 +767,29 @@ namespace waavs {
             if (!elem)
                 return;
 
-            if (!getAttributeByName("x1"))
-            {
-                if (elem->getAttributeByName("x1"))
-                    setAttributeByName("x1", elem->getAttributeByName("x1"));
-            }
+            setAttributeIfAbsent(elem, svgattr::x1());
+            setAttributeIfAbsent(elem, svgattr::y1());
+            setAttributeIfAbsent(elem, svgattr::angle());
+            setAttributeIfAbsent(elem, svgattr::repeat());
 
-            if (!getAttributeByName("y1"))
-            {
-                if (elem->getAttributeByName("y1"))
-                    setAttributeByName("y1", elem->getAttributeByName("y1"));
-            }
 
-            if (!getAttributeByName("angle"))
-            {
-                if (elem->getAttributeByName("angle"))
-                    setAttributeByName("angle", elem->getAttributeByName("angle"));
-            }
-        
-            if (!getAttributeByName("repeat"))
-            {
-                if (elem->getAttributeByName("repeat"))
-                    setAttributeByName("repeat", elem->getAttributeByName("repeat"));
-            }
         }
         
+        void fixupSelfStyleAttributes(IAmGroot* groot) override
+        {
+            fixupCommonAttributes(groot);
+
+            // Parse attributes if present
+
+            resolveReferenceChain(groot);
+        }
+
+
         void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) override
         {
-
-            double dpi = 96;
-            double w = 1.0;
-            double h = 1.0;
-
-            if (nullptr != groot)
-            {
-                dpi = groot->dpi();
-                w = groot->canvasWidth();
-                h = groot->canvasHeight();
-            }
-
+            double dpi = groot ? groot->dpi() : 96.0;
+            double w = groot ? groot->canvasWidth() : 1.0;
+            double h = groot ? groot->canvasHeight() : 1.0;
 
             BLConicGradientValues values = fGradient.conic();
 
@@ -819,34 +798,32 @@ namespace waavs {
             SVGDimension angle{};
             SVGDimension repeat{};
             
-            if (hasAttributeByName("x1")) {
-                x0.loadFromChunk(getAttributeByName("x1"));
+            ByteSpan x1Attr, y1Attr, angleAttr, repeatAttr;
+            if (getAttribute(svgattr::x1(), x1Attr)) {
+                x0.loadFromChunk(x1Attr);
                 values.x0 = x0.calculatePixels(w, 0, dpi);
             }
 
-            if (hasAttributeByName("y1")) {
-                y0.loadFromChunk(getAttributeByName("y1"));
+            if (getAttribute(svgattr::y1(), y1Attr)) {
+                y0.loadFromChunk(y1Attr);
                 values.y0 = y0.calculatePixels(h, 0, dpi);
             }
 
-            if (hasAttributeByName("angle")) {
+            if (getAttribute(svgattr::angle(), angleAttr)) {
                 // treat the angle as an angle type
-                ByteSpan angAttr = getAttributeByName("angle");
-                if (angAttr)
-                {
-                    SVGAngleUnits units;
-                    parseAngle(angAttr, values.angle, units);
-                }
+                SVGAngleUnits units;
+                parseAngle(angleAttr, values.angle, units);
             }
 
-            if (hasAttributeByName("repeat")) {
-                repeat.loadFromChunk(getAttributeByName("repeat"));
+            if (getAttribute(svgattr::repeat(), repeatAttr)) {
+                repeat.loadFromChunk(repeatAttr);
                 values.repeat = repeat.calculatePixels(1.0, 0, dpi);
             }
             else if (values.repeat == 0)
                 values.repeat = 1.0;
+
             
-            fHasGradientTransform = parseTransform(getAttributeByName("gradientTransform"), fGradientTransform);
+            fHasGradientTransform = parseTransform(getAttribute(svgattr::gradientTransform()), fGradientTransform);
 
             fGradient.setValues(values);
             if (fHasGradientTransform) {

@@ -37,7 +37,7 @@ namespace waavs {
 			ViewNavigator nav;
 
 			
-			BLRect bbox = doc->viewPort();
+			BLRect bbox = doc->objectBoundingBox();
 			nav.setFrame(BLRect(2, 1, iconSize, iconSize));
 			nav.setBounds(bbox);
 

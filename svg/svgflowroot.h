@@ -386,7 +386,7 @@ namespace waavs {
             setNeedsBinding(true);
         }
 
-        BLRect viewPort() const override { return fFlowBox; }
+        BLRect objectBoundingBox() const override { return fFlowBox; }
 
         // Parse <rect ...> attributes (x,y,width,height) from element.data()
         void parseRectFromElement(const XmlElement& elem)

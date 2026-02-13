@@ -268,7 +268,7 @@ namespace waavs {
 		const SVGOrient& orientation() const { return fDoc.orient; }
 	
 		// For markers, the viewport is the marker tile size
-		BLRect viewPort() const override
+		BLRect objectBoundingBox() const override
 		{
 			return fHasResolved ? fRes.viewport : BLRect{};
 		}

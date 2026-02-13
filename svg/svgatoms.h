@@ -120,6 +120,10 @@ namespace waavs::svgattr
     inline InternedKey gradientTransform(){static InternedKey k = PSNameTable::INTERN("gradientTransform"); return k;}
     inline InternedKey spreadMethod() { static InternedKey k = PSNameTable::INTERN("spreadMethod");  return k; }
     inline InternedKey extendMode() { static InternedKey k = PSNameTable::INTERN("extendMode");    return k; }
+    inline InternedKey angle() { static InternedKey k = PSNameTable::INTERN("angle");  return k; }
+    inline InternedKey repeat() { static InternedKey k = PSNameTable::INTERN("repeat");  return k; }
+    inline InternedKey fx() { static InternedKey k = PSNameTable::INTERN("fx");  return k; }
+    inline InternedKey fy() { static InternedKey k = PSNameTable::INTERN("fy");  return k; }
 
     // Pattern attributes
     inline InternedKey patternUnits() { static InternedKey k = PSNameTable::INTERN("patternUnits");  return k; }

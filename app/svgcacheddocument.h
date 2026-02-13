@@ -56,7 +56,7 @@ namespace waavs {
 			auto rootElem = doc->documentElement();
 			if (rootElem != nullptr)
 			{
-				sFrame = rootElem->viewPort();
+				sFrame = rootElem->objectBoundingBox();
 			}
 
 

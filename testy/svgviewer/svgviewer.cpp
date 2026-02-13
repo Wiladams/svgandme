@@ -53,13 +53,9 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 		return nullptr;
 	}
 
-	// BUGBUG - we should use physicalDpi, not hardcoded 96
-	// but until that is plumbed all the way through, it will
-	// cause problems.  So, we'll just use 96 for now and
-	// take another pass to ensure dpi awareness across the board.
 	ByteSpan aspan;
 	aspan.resetFromSize(mapped->data(), mapped->size());
-	std::shared_ptr<SVGDocument> aDoc = SVGFactory::createFromChunk(aspan, appFrameWidth, appFrameHeight, 96);
+	std::shared_ptr<SVGDocument> aDoc = SVGFactory::createFromChunk(aspan, appFrameWidth, appFrameHeight, physicalDpi);
 	
 	return aDoc;
 }
@@ -177,7 +173,7 @@ static void onFileDrop(const FileDropEvent& fde)
             auto rootElem = gDoc->documentElement();
 			if (rootElem != nullptr)
 			{
-				docFr = rootElem->viewPort();
+				docFr = rootElem->objectBoundingBox();
             }
 
 			// Set the initial viewport

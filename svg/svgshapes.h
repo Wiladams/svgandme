@@ -156,7 +156,8 @@ namespace waavs
         //
         // The bounding box of the shape, in the shape's own user space.  
         // This is used for percentage sizing, and marker placement.
-        BLRect objectBoundingBox() const override
+
+        BLRect objectBoundingBox() const noexcept override
         {
             //double x{}, y{}, width{}, height{};
             //getBoundingBox(fProg, x, y, width, height);
@@ -669,10 +670,10 @@ return true;
             :SVGPathBasedGeometry(iMap) {}
         
         
-        BLRect objectBoundingBox() const override
-        {
-            return BLRect(geom.cx - geom.rx, geom.cy - geom.ry, geom.rx * 2, geom.ry * 2);
-        }
+        //BLRect objectBoundingBox() const noexcept override
+        //{
+        //    return BLRect(geom.cx - geom.rx, geom.cy - geom.ry, geom.rx * 2, geom.ry * 2);
+        //}
         
         void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {

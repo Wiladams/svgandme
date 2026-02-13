@@ -70,7 +70,7 @@ namespace waavs {
 		bool isTopLevel() const { return fIsTopLevel; }
 
 
-		BLRect viewPort() const override
+		BLRect objectBoundingBox() const noexcept override
 		{
             return fViewportState.fViewport;
 		}

@@ -343,8 +343,12 @@ namespace waavs {
                 return true;
             }
 
-            // Explicitly clear value if attribute doesn't exist
-            value.reset(); 
+            // Do not explicitly clear value if attribute doesn't exist
+            // That way, the caller can decide to set a value and override
+            // it only if the attribute is found, or leave it alone if not found
+            // This assumes the caller will clear the value before calling getValue() 
+            // if they want it cleared when not found
+            //value.reset(); 
             return false;
         }
 

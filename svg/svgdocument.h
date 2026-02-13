@@ -148,11 +148,11 @@ namespace waavs
 		double canvasHeight() const override { return fCanvasHeight; }
         void canvasSize(const double w, const double h) { fCanvasWidth = w; fCanvasHeight = h; }
         
-        BLRect viewPort() const override
+        BLRect objectBoundingBox() const override
         {
             if (fTopLevelNode != nullptr)
             {
-                return fTopLevelNode->viewPort();
+                return fTopLevelNode->objectBoundingBox();
             }
 
             if (fCanvasWidth <= 0 || fCanvasHeight <= 0)
@@ -339,8 +339,7 @@ namespace waavs
             if (needsBinding())
                 this->bindToContext(ctx, groot);
 
-            BLRect vpFrame = viewPort();
-            //BLRect bbox = getBBox();
+            BLRect vpFrame = objectBoundingBox();
 
             ctx->push();
 

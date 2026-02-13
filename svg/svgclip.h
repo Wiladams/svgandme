@@ -55,8 +55,8 @@ namespace waavs {
 			if (!fVar.isNull())
 				return fVar;
 
-			// get our frame() extent
-			BLRect extent = viewPort();
+			// get our extent
+			BLRect extent = objectBoundingBox();
 
 			// create a surface of that size
 			// if it's valid
