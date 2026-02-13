@@ -77,7 +77,7 @@ namespace waavs {
             lt = state.input.fEnd;
 
         if (lt != start) {
-            out.reset(XML_TOKEN_TEXT, { start, lt }, false);
+            out.reset(XML_TOKEN_TEXT, ByteSpan::fromPointers( start, lt ), false);
             state.input.fStart = lt;
             return true;
         }
@@ -115,7 +115,7 @@ namespace waavs {
             const unsigned char* end = start;
             while (end < state.input.fEnd && *end != ch)
                 ++end;
-            out.reset(XML_TOKEN_STRING, { start, end }, true);
+            out.reset(XML_TOKEN_STRING, ByteSpan::fromPointers( start, end ), true);
             state.input.fStart = (end < state.input.fEnd) ? end + 1 : end;
             return true;
         }
@@ -125,13 +125,13 @@ namespace waavs {
                 const unsigned char* start = state.input.fStart - 1;
                 while (!state.input.empty() && xmlNameChars(*state.input))
                     ++state.input.fStart;
-                out.reset(XML_TOKEN_NAME, { start, state.input.fStart }, true);
+                out.reset(XML_TOKEN_NAME, ByteSpan::fromPointers( start, state.input.fStart ), true);
                 return true;
             }
             break;
         }
 
-        out.reset(XML_TOKEN_INVALID, { state.input.fStart - 1, state.input.fStart }, state.inTag);
+        out.reset(XML_TOKEN_INVALID, ByteSpan::fromPointers( state.input.fStart - 1, state.input.fStart ), state.inTag);
         return true;
     }
 

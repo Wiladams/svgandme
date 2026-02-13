@@ -5,6 +5,7 @@
 #include <functional>
 
 #include "blend2d.h"
+
 #include "fonthandler.h"
 #include "svgenums.h"
 #include "svgdrawingstate.h"
@@ -420,14 +421,14 @@ namespace waavs
         }
 
         virtual void onDashArray() {}
-        void dashArray(const std::vector<SVGDimension> &dashes)
+        void dashArray(const std::vector<SVGLengthValue> &dashes)
         {
             setStrokeDashArrayRaw(dashes);
             onDashArray();
         }
 
         virtual void onDashOffset() {}
-        void dashOffset(const SVGDimension &offset)
+        void dashOffset(const SVGLengthValue &offset)
         {
             setStrokeDashOffsetRaw(offset);
             onDashOffset();

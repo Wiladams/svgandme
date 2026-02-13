@@ -13,144 +13,8 @@
 #include "svgcolors.h"
 #include "twobitpu.h"
 
-namespace waavs {
-    //
-    // SVGPatternExtendMode
-    // 
-	// A structure that represents the extend mode of a pattern.
-	struct SVGPatternExtendMode : public SVGVisualProperty 
-    {
-        static void registerFactory() {
-            registerSVGAttribute(svgattr::extendMode(), [](const XmlAttributeCollection& attrs) {
-                auto node = std::make_shared<SVGPatternExtendMode>(nullptr);
-                node->loadFromAttributes(attrs);
-                return node;
-                });
-        }
-        
-        uint32_t fExtendMode{ BL_EXTEND_MODE_REPEAT };      // repeat by default
 
-        SVGPatternExtendMode(IAmGroot* iMap) : SVGVisualProperty(iMap) 
-        {
-            setName(svgattr::extendMode());
-            //autoDraw(false);
-        }
-
-        BLExtendMode value() const { return static_cast<BLExtendMode>(fExtendMode); }
-        
-        bool loadSelfFromChunk(const ByteSpan& inChunk) override
-        {   
-            bool success = getEnumValue(SVGExtendMode, inChunk, fExtendMode);
-            set(success);
-            setNeedsBinding(false);
-            
-            return success;
-        }
-
-	};
-}
-
-
-
-
-// Specific types of attributes
-namespace waavs {
-
-    //
-    // SVGOpacity
-    // https://svgwg.org/svg2-draft/render.html#ObjectAndGroupOpacityProperties
-    // Opacity, when applied to a group, should create a backing
-    // store to be created.
-    // We don't need to set the global opacity as part of drawing
-    // this attribute.  Allow the specific geometry to do what it will 
-    // with this attribute during it's own drawing.  That might include
-    // simply inheriting the value.
-    //
-    struct SVGOpacity : public SVGVisualProperty
-    {
-        static void registerFactory() {
-			registerSVGAttribute(svgattr::opacity(), [](const XmlAttributeCollection& attrs) {
-				auto node = std::make_shared<SVGOpacity>(nullptr);
-			node->loadFromAttributes(attrs);
-			return node;
-				});
-        }
-        
-        double fValue{1};
-        BLVar fOpacityVar;
-        
-        SVGOpacity(IAmGroot* groot) :SVGVisualProperty(groot) { setName(svgattr::opacity()); }
-
-        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override { return fOpacityVar; }
-        
-        
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
-        {
-			ctx->globalOpacity(fValue);
-        }
-
-        bool loadSelfFromChunk(const ByteSpan& inChunk) override
-        {
-            if (!inChunk)
-                return false;
-            
-            SVGDimension dim;
-			dim.loadFromChunk(inChunk);
-			fValue = dim.calculatePixels(1.0);
-            fOpacityVar = fValue;
-            
-            set(true);
-			setNeedsBinding(false);
-            
-            return true;
-        }
-        
-
-    };
-    
-    struct SVGFillOpacity : public SVGOpacity
-    {
-        static void registerFactory() {
-            registerSVGAttribute(svgattr::fill_opacity(), [](const XmlAttributeCollection& attrs) {
-                auto node = std::make_shared<SVGFillOpacity>(nullptr); 
-                node->loadFromAttributes(attrs);
-                return node;
-                });
-            
-        }
-        
-        SVGFillOpacity(IAmGroot* iMap)  :SVGOpacity(iMap)  { setName(svgattr::fill_opacity());}
-        
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
-        {
-			ctx->fillOpacity(fValue);
-        }
-
-    };
-
-    struct SVGStrokeOpacity : public SVGOpacity
-    {
-        static void registerFactory() {
-            registerSVGAttribute(svgattr::stroke_opacity(), [](const XmlAttributeCollection& attrs) {
-                auto node = std::make_shared<SVGStrokeOpacity>(nullptr); 
-                node->loadFromAttributes(attrs);
-                return node; 
-                });
-
-        }
-
-        SVGStrokeOpacity(IAmGroot* iMap) :SVGOpacity(iMap) { setName(svgattr::stroke_opacity()); }
-
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
-        {
-            ctx->strokeOpacity(fValue);
-        }
-
-    };
-
-}
-
-namespace waavs 
+namespace waavs
 {
 
     template <typename StorageT>
@@ -180,7 +44,7 @@ namespace waavs
 
             // Default program is fill, stroke, markers
             // so, create that code if the attribute is 'normal' or empty
-            if (!bs || bs == "normal") 
+            if (!bs || bs == "normal")
             {
                 // fill, stroke, markers
                 tpu.emit(TBPU::OP_1, 0);    // Fill
@@ -209,7 +73,7 @@ namespace waavs
             // 1) parse the user provided tokens
             // (strict: max 3 unique recognized tokens
             ByteSpan p = bs;
-            while (p && slot < 3) 
+            while (p && slot < 3)
             {
                 ByteSpan tok = chunk_token(p, chrWspChars);
                 if (tok.empty())
@@ -237,17 +101,17 @@ namespace waavs
         template <class Renderer>
         void run(Renderer& r) const noexcept
         {
-            struct Executor 
+            struct Executor
             {
                 Renderer& r;
 
-                void execute(uint32_t op) const noexcept 
+                void execute(uint32_t op) const noexcept
                 {
                     switch (op) {
-                        case TBPU::OP_1: r.onFill();  break;
-                        case TBPU::OP_2: r.onStroke(); break;
-                        case TBPU::OP_3: r.onMarkers(); break;
-                        default: break;
+                    case TBPU::OP_1: r.onFill();  break;
+                    case TBPU::OP_2: r.onStroke(); break;
+                    case TBPU::OP_3: r.onMarkers(); break;
+                    default: break;
                     }
                 }
             };
@@ -259,7 +123,153 @@ namespace waavs
     private:
         TBPU fTPU;
     };
+}
 
+
+namespace waavs {
+    //
+    // SVGPatternExtendMode
+    // 
+    // A structure that represents the extend mode of a pattern.
+    struct SVGPatternExtendMode : public SVGVisualProperty 
+    {
+        static void registerFactory() {
+            registerSVGAttribute(svgattr::extendMode(), [](const XmlAttributeCollection& attrs) {
+                auto node = std::make_shared<SVGPatternExtendMode>(nullptr);
+                node->loadFromAttributes(attrs);
+                return node;
+                });
+        }
+        
+        uint32_t fExtendMode{ BL_EXTEND_MODE_REPEAT };      // repeat by default
+
+        SVGPatternExtendMode(IAmGroot* iMap) : SVGVisualProperty(iMap) 
+        {
+            setName(svgattr::extendMode());
+            //setAutoDraw(false);
+        }
+
+        BLExtendMode value() const { return static_cast<BLExtendMode>(fExtendMode); }
+        
+        bool loadSelfFromChunk(const ByteSpan& inChunk) override
+        {   
+            bool success = getEnumValue(SVGExtendMode, inChunk, fExtendMode);
+            set(success);
+            setNeedsBinding(false);
+            
+            return success;
+        }
+
+    };
+}
+
+
+
+
+// Specific types of attributes
+namespace waavs {
+
+    //
+    // SVGOpacity
+    // https://svgwg.org/svg2-draft/render.html#ObjectAndGroupOpacityProperties
+    // Opacity, when applied to a group, should create a backing
+    // store to be created.
+    // We don't need to set the global opacity as part of drawing
+    // this attribute.  Allow the specific geometry to do what it will 
+    // with this attribute during it's own drawing.  That might include
+    // simply inheriting the value.
+    //
+    struct SVGOpacity : public SVGVisualProperty
+    {
+        static void registerFactory() {
+            registerSVGAttribute(svgattr::opacity(), [](const XmlAttributeCollection& attrs) {
+                auto node = std::make_shared<SVGOpacity>(nullptr);
+            node->loadFromAttributes(attrs);
+            return node;
+                });
+        }
+        
+        double fValue{1};
+        BLVar fOpacityVar;
+        
+        SVGOpacity(IAmGroot* groot) :SVGVisualProperty(groot) { setName(svgattr::opacity()); }
+
+        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override { return fOpacityVar; }
+        
+        
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        {
+            ctx->globalOpacity(fValue);
+        }
+
+        bool loadSelfFromChunk(const ByteSpan& inChunk) override
+        {
+            if (!inChunk)
+                return false;
+            
+            SVGNumberOrPercent op{};
+            ByteSpan s = inChunk;
+
+            if (!readSVGNumberOrPercent(s, op))
+                return false;
+
+            fValue = waavs::clamp(op.calculatedValue(), 0.0, 1.0);
+            fOpacityVar = fValue;
+
+            set(true);
+            setNeedsBinding(false);
+            
+            return true;
+        }
+        
+
+    };
+    
+    struct SVGFillOpacity : public SVGOpacity
+    {
+        static void registerFactory() {
+            registerSVGAttribute(svgattr::fill_opacity(), [](const XmlAttributeCollection& attrs) {
+                auto node = std::make_shared<SVGFillOpacity>(nullptr); 
+                node->loadFromAttributes(attrs);
+                return node;
+                });
+            
+        }
+        
+        SVGFillOpacity(IAmGroot* iMap)  :SVGOpacity(iMap)  { setName(svgattr::fill_opacity());}
+        
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        {
+            ctx->fillOpacity(fValue);
+        }
+
+    };
+
+    struct SVGStrokeOpacity : public SVGOpacity
+    {
+        static void registerFactory() {
+            registerSVGAttribute(svgattr::stroke_opacity(), [](const XmlAttributeCollection& attrs) {
+                auto node = std::make_shared<SVGStrokeOpacity>(nullptr); 
+                node->loadFromAttributes(attrs);
+                return node; 
+                });
+
+        }
+
+        SVGStrokeOpacity(IAmGroot* iMap) :SVGOpacity(iMap) { setName(svgattr::stroke_opacity()); }
+
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        {
+            ctx->strokeOpacity(fValue);
+        }
+
+    };
+
+}
+
+
+
+namespace waavs {
     struct SVGPaintOrderAttribute : public SVGVisualProperty
     {
         static void registerFactory() {
@@ -415,33 +425,33 @@ namespace waavs {
     // This is fairly complex.  There are several categories of sizes
     // Absolute size values (FontSizeKeywordKind, SVGFontSizeKeywordEnum)
     //  xx-small
-	//   x-small
-	//     small
+    //   x-small
+    //     small
     //     medium
     //     large
     //   x-large
     //  xx-large
     // xxx-large
     // 
-	// Relative size values
+    // Relative size values
     //   smaller
     //   larger
     // 
-	// Length values
-	//   px, pt, pc, cm, mm, in, em, ex, ch, rem, vw, vh, vmin, vmax
+    // Length values
+    //   px, pt, pc, cm, mm, in, em, ex, ch, rem, vw, vh, vmin, vmax
     // 
-	// Percentage values
-	//   100%
+    // Percentage values
+    //   100%
     // math
-	//   calc(100% - 10px)
+    //   calc(100% - 10px)
     // 
     // Global values
-	//   inherit, initial, revert, revert-layer, unset
+    //   inherit, initial, revert, revert-layer, unset
     //
     // So, there are two steps to figuring out what the value should
     // be.  
     // 1) Figure out which of these categories of measures is being used
-	// 2) Figure out what the actual value is
+    // 2) Figure out what the actual value is
     // Other than the length values, we need to figure out at draw time
     // what the actual value is, because we need to know what the current value
     // is, and calculate relative to that.
@@ -463,26 +473,24 @@ namespace waavs {
         SVGFontSize(IAmGroot* inMap) 
             : SVGVisualProperty(inMap) 
         {
-			setName(svgattr::font_size());
+            setName(svgattr::font_size());
         }
 
         SVGFontSize& operator=(const SVGFontSize& rhs)
-		{
-			dimValue = rhs.dimValue;
-			fValue = rhs.fValue;
-			
+        {
+            dimValue = rhs.dimValue;
+            fValue = rhs.fValue;
+            
             return *this;
-		}
+        }
 
-		double value() const { return fValue; }
+        double value() const { return fValue; }
         
         
-
-
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
-			if (!inChunk)
-				return false;
+            if (!inChunk)
+                return false;
             
             // BUGBUG
             // We need to check size keywords first, then 
@@ -505,17 +513,18 @@ namespace waavs {
         {
             if (nullptr == groot)
                 return;
+            double dpi = groot ? groot->dpi() : 96.0;
 
             if (dimValue.isSet() && ctx != nullptr)
             {
-                auto fsize = ctx->getFontSize();
-                fValue = dimValue.calculatePixels(ctx->getFont(), ctx->getFont().size(), 0, groot->dpi());
+                double fsize = ctx->getFontSize();
+                fValue = dimValue.calculatePixels(ctx->getFont(), fsize, 0, dpi);
             }
 
             setNeedsBinding(false);
         }
         
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot*) override
         {
             ctx->fontSize(static_cast<float>(fValue));
         }
@@ -546,20 +555,20 @@ namespace waavs {
         SVGFontFamily& operator=(const SVGFontFamily& rhs) = delete;
 
 
-		const ByteSpan& value() const { return fValue; }
+        const ByteSpan& value() const { return fValue; }
         
 
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
             if (!inChunk)
-				return false;
+                return false;
             
             fValue = inChunk;
             set(true);
-			setNeedsBinding(false);
+            setNeedsBinding(false);
             
-			return true;
+            return true;
         }
         
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
@@ -568,9 +577,9 @@ namespace waavs {
         }
     };
 
-	//========================================================
-	// SVGFontStyle
-	// attribute name="font-style" type="string" default="normal"
+    //========================================================
+    // SVGFontStyle
+    // attribute name="font-style" type="string" default="normal"
     //========================================================
     struct SVGFontStyleAttribute : public SVGVisualProperty
     {
@@ -597,10 +606,10 @@ namespace waavs {
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
             bool success = getEnumValue(SVGFontStyle, inChunk, (uint32_t &)fValue);
-			set(success);
+            set(success);
             setNeedsBinding(false);
             
-			return success;
+            return success;
         }
 
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
@@ -623,22 +632,22 @@ namespace waavs {
         
         SVGFontWeightAttribute() :SVGVisualProperty(nullptr) { setName(svgattr::font_weight()); }
 
-		BLFontWeight value() const { return fWeight; }
+        BLFontWeight value() const { return fWeight; }
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
-			bool success = getEnumValue(SVGFontWeight, inChunk, (uint32_t &)fWeight);
+            bool success = getEnumValue(SVGFontWeight, inChunk, (uint32_t &)fWeight);
             set(success);
             setNeedsBinding(false);
             
-			return success;
-		}
+            return success;
+        }
 
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
             ctx->fontWeight(value());
         }
-	};
+    };
 
     struct SVGFontStretchAttribute : public SVGVisualProperty
     {
@@ -658,8 +667,8 @@ namespace waavs {
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
-			bool success = getEnumValue(SVGFontStretch, inChunk, (uint32_t &)fValue);
-			set(success);
+            bool success = getEnumValue(SVGFontStretch, inChunk, (uint32_t &)fValue);
+            set(success);
             setNeedsBinding(false);
             
             return success;
@@ -697,12 +706,12 @@ namespace waavs {
 
         const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
         {
-			// If our raw value is 'currentColor', then we need to get the current color
-			// from the context
-			if (ctx!=nullptr && rawValue() == "currentColor")
-			{
-				return ctx->getDefaultColor();
-			}
+            // If our raw value is 'currentColor', then we need to get the current color
+            // from the context
+            if (ctx!=nullptr && rawValue() == "currentColor")
+            {
+                return ctx->getDefaultColor();
+            }
 
             // otherwise, use the variant we have calculated
             return fPaintVar;
@@ -719,7 +728,7 @@ namespace waavs {
         ByteSpan fPaintReference{};
 
 
-        SVGPaint(IAmGroot* iMap) : SVGPaintAttribute(iMap) {}
+        SVGPaint(IAmGroot* groot) : SVGPaintAttribute(groot) {}
         SVGPaint(const SVGPaint& other) = delete;
 
 
@@ -732,7 +741,7 @@ namespace waavs {
         // 
         virtual void resolvePaint(IRenderSVG *ctx, IAmGroot* groot)
         {
-            if (!fPaintReference)
+            if (!fPaintReference  || !groot)
                 return;
 
 
@@ -747,11 +756,8 @@ namespace waavs {
                 // Tell the referant node to resolve itself
                 //node->bindToContext(ctx, groot);
 
-                const BLVar& aVar = node->getVariant(ctx, groot);
-
-                auto res = blVarAssignWeak(&fPaintVar, &aVar);
-                if (res != BL_SUCCESS)
-                    return;
+                BLVar aVar = node->getVariant(ctx, groot);
+                fPaintVar = aVar;
 
                 set(true);
             }
@@ -769,19 +775,19 @@ namespace waavs {
         }
 
         // load a color from a ByteSpan
-		// There are many different ways to represent a color in SVG
-		// This function will try to figure out what the color is
+        // There are many different ways to represent a color in SVG
+        // This function will try to figure out what the color is
         // Function forms:
-		//   rgb(255, 0, 0)
-		//   rgba(255, 0, 0, 0.5)
+        //   rgb(255, 0, 0)
+        //   rgba(255, 0, 0, 0.5)
 
-		//   hsl(120, 100%, 50%)
-		//   hsla(120, 100%, 50%, 0.5)
+        //   hsl(120, 100%, 50%)
+        //   hsla(120, 100%, 50%, 0.5)
         
         // Literals:
         //   #ff0000
         //   #FFF
-		//   color name
+        //   color name
         //   url()
         //
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
@@ -968,7 +974,7 @@ namespace waavs {
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
-			bool success = getEnumValue(SVGFillRule, inChunk, (uint32_t &)fValue);
+            bool success = getEnumValue(SVGFillRule, inChunk, (uint32_t &)fValue);
             set(success);
             setNeedsBinding(false);
             
@@ -1004,7 +1010,7 @@ namespace waavs {
         bool loadFromAttributes(const XmlAttributeCollection& attrs) override
         {
             // get the value of the 'stroke' attribute.
-			// if it == 'color', then we need to get the color from 
+            // if it == 'color', then we need to get the color from 
             // other attributes
             ByteSpan strokeAttr{};
 
@@ -1016,18 +1022,18 @@ namespace waavs {
             // 1) It is being used on an element, where there is also a 'color' attribute
             //   In this case, whatever is in the 'color' attribute needs to become our
             //   BLVar value, and set on the context at drawing time.
-			// 2) It is being used on an element, where there is no 'color' attribute
+            // 2) It is being used on an element, where there is no 'color' attribute
             //   In this case, it is inheritance.  The color value is determined by what is
             //   currently on the 'currentColor()' property of the context, so we should use
             //   that when it comes time to draw.
             if (strokeAttr == "currentColor")
-			{
+            {
                 // get the value of the 'color' attribute, if it exists
                 // and use that as the color
                 ByteSpan colorAttr{};
                 if (!attrs.getValue(svgattr::color(),colorAttr))
                 {
-					return loadFromChunk(colorAttr);
+                    return loadFromChunk(colorAttr);
                 }
                 else {
                     // if the 'color' attribute does not exist
@@ -1038,16 +1044,16 @@ namespace waavs {
                     return true;
                 }
 
-			}
+            }
 
             // It's not 'currentColor', so process an immediate color value
             return loadFromChunk(strokeAttr);
         }
 
-		void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
-		{
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        {
             ctx->stroke(getVariant(ctx, groot));
-		}
+        }
 
     };
 
@@ -1182,7 +1188,7 @@ namespace waavs {
             set(success);
             setNeedsBinding(false);
             
-			return success;
+            return success;
         }
 
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
@@ -1247,33 +1253,35 @@ namespace waavs {
                 {auto node = std::make_shared<SVGTransform>(); node->loadFromAttributes(attrs);  return node; });
         }
 
-		BLMatrix2D fMatrix{ BLMatrix2D::makeIdentity() };
+        BLMatrix2D fMatrix{ BLMatrix2D::makeIdentity() };
 
-		SVGTransform() : SVGVisualProperty(nullptr) 
+        SVGTransform() : SVGVisualProperty(nullptr) 
         { 
             setName(svgattr::transform());
-			autoDraw(false);
+            setAutoDraw(false);
         }
-		SVGTransform(const SVGTransform& other) = delete;
-		SVGTransform& operator=(const SVGTransform& rhs) = delete;
+        SVGTransform(const SVGTransform& other) = delete;
+        SVGTransform& operator=(const SVGTransform& rhs) = delete;
 
 
 
-		bool loadSelfFromChunk(const ByteSpan& inChunk) override
-		{
+        bool loadSelfFromChunk(const ByteSpan& inChunk) override
+        {
             if (!parseTransform(inChunk, fMatrix)) {
                 return false;
-			}
+            }
 
             set(true);
             setNeedsBinding(false);
             
-			return true;
-		}
+            return true;
+        }
 
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->applyTransform(fMatrix);
+            if ((fMatrix.type() != BLTransformType::BL_TRANSFORM_TYPE_INVALID) && 
+                (fMatrix.type() != BLTransformType::BL_TRANSFORM_TYPE_IDENTITY))
+                ctx->applyTransform(fMatrix);
         }
     };
     
@@ -1324,7 +1332,7 @@ namespace waavs {
         
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
-			if (!parseViewBox(inChunk, fRect))
+            if (!parseViewBox(inChunk, fRect))
                 return false;
 
             set(true);
@@ -1399,17 +1407,6 @@ namespace waavs {
         // calculate the angle between line segments
         // return the value in radians
         //
-        // Noteworthy:
-        /*
-            // Calculate the angle based on the tangent
-            double ang1 = radians_normalize(atan2(p2.y - p1.y, p2.x-p1.x));
-            double ang2 = radians_normalize(atan2(p2.y - p3.y, p2.x-p3.x));
-
-            double angle = ang1;
-        */
-        
-
-        
         double calcRadians(MarkerPosition pos, const BLPoint& p1, const BLPoint& p2, const BLPoint& p3) const
         {
 
@@ -1505,97 +1502,6 @@ namespace waavs {
             return radians_normalize(angle);
         }
 
-        /*
-        double calculateRadians(MarkerPosition pos, const BLPoint& p1, const BLPoint& p2, const BLPoint& p3) const
-        {
-            if (fOrientation == MarkerOrientation::MARKER_ORIENT_ANGLE)
-            {
-                // fAngle is already in radians
-                return fAngle;
-            }
-
-            
-            // Calculate the angle based on tangent
-			double diffx1 = p2.x - p1.x;
-			double diffy1 = p2.y - p1.y;
-			//double diffx2 = p3.x - p2.x;
-			//double diffy2 = p3.y - p2.y;
-            
-            //double diffx1 = p1.x - p2.x;
-            //double diffy1 = p1.y - p2.y;
-            double diffx2 = p3.x - p2.x;
-            double diffy2 = p3.y - p2.y;
-
-            double ang = 0;
-            double ang1 = std::atan2(diffy1, diffx1);
-            double ang2 = std::atan2(diffy2, diffx2);
-            
-            switch (pos)
-            {
-                case MARKER_POSITION_START: 
-                {
-                    if (fOrientation == MarkerOrientation::MARKER_ORIENT_AUTOSTARTREVERSE)
-                        ang = ang1 + waavs::pi;
-                }
-                break;
-                
-                case MARKER_POSITION_MIDDLE:
-                    ang = (ang1 + ang2) / 2.0;
-                break;
-
-                case MARKER_POSITION_END:
-                    //if (fOrientation == MarkerOrientation::MARKER_ORIENT_AUTOSTARTREVERSE)
-                    //    return ang1 + waavs::pi;
-                    
-                   ang = ang1;
-                break;
-            }
-
-            
-            return ang;
-        }
-        */
-        static double angleOfSinglePointVector(const BLPoint& p1)
-        {
-            return atan2(p1.y, p1.x);
-        }
-        
-        static double angleOfTwoPointVector(const BLPoint& p1, const BLPoint& p2)
-        {
-			double dy = p2.y - p1.y;
-			double dx = p2.x - p1.x;
-			return atan2(dy, dx);
-        }
-        
-        static double angleBetweenVectors(const BLPoint& p1, const BLPoint& p2, const BLPoint& p3)
-        {
-            // Vector 1: p1 -> p2
-            //BLPoint v1{ p2.x - p1.x, p2.y - p1.y };
-            double v1dx = p2.x - p1.x;
-            double v1dy = p2.y - p1.y;
-
-            // Vector 2: p2 -> p3
-			// BLPoint v2{ p3.x - p2.x, p3.y - p2.y};
-            double v2x = p3.x - p2.x;
-            double v2y = p3.y - p2.y;
-
-            // Dot product of vectors
-            double dotProduct = v1dx * v2x + v1dy * v2y;
-
-            // Magnitude of vectors
-            double magV1 = std::sqrt(v1dx * v1dx + v1dy * v1dy);
-            double magV2 = std::sqrt(v2x * v2x + v2y * v2y);
-
-            // Cosine of the angle
-            // cos(theta)
-            double costheta = dotProduct / (magV1 * magV2);
-
-            // calculate the actual angle
-			double angle = std::acos(costheta);
-            
-            // return Angle in radians
-            return angle;
-        }
     };
 }
 
@@ -1621,14 +1527,14 @@ namespace waavs {
             setName(key); 
         }
         
-		std::shared_ptr<IViewable> markerNode(IRenderSVG* ctx, IAmGroot* groot)
-		{
+        std::shared_ptr<IViewable> markerNode(IRenderSVG* ctx, IAmGroot* groot)
+        {
             if (fWrappedNode == nullptr)
             {
                 bindToContext(ctx, groot);
             }
             return fWrappedNode;
-		}
+        }
         
         void bindToContext(IRenderSVG *ctx, IAmGroot* groot) noexcept override
         {
@@ -1639,7 +1545,7 @@ namespace waavs {
 
                 if (fWrappedNode != nullptr)
                 {
-					fWrappedNode->bindToContext(ctx, groot);
+                    fWrappedNode->bindToContext(ctx, groot);
                     set(true);
                 }
             }
@@ -1648,8 +1554,8 @@ namespace waavs {
         
         bool loadSelfFromChunk(const ByteSpan& ) override
         {
-			autoDraw(false); // we mark it as invisible, because we don't want it drawing when attributes are drawn
-			// we only want it to draw when we're drawing during polyline/polygon drawing
+            setAutoDraw(false); // we mark it as invisible, because we don't want it drawing when attributes are drawn
+            // we only want it to draw when we're drawing during polyline/polygon drawing
             setNeedsBinding(true);
             
             return true;
@@ -1657,8 +1563,8 @@ namespace waavs {
         
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
-			if (fWrappedNode)
-				fWrappedNode->draw(ctx, groot);
+            if (fWrappedNode)
+                fWrappedNode->draw(ctx, groot);
         }
     };
 }
@@ -1670,7 +1576,7 @@ namespace waavs {
     // shape that's being drawn.  Whatever is doing the drawing
     // should call getVariant() to retrieve the BLImage which
     // represents the clipPath 
-	//======================================================
+    //======================================================
     struct SVGClipPathAttribute : public SVGVisualProperty
     {
         static void registerFactory()
@@ -1768,20 +1674,20 @@ namespace waavs {
         
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
-			bool success = getEnumValue(SVGVectorEffect, inChunk, (uint32_t &)fEffectKind);
+            bool success = getEnumValue(SVGVectorEffect, inChunk, (uint32_t &)fEffectKind);
             set(success);
             setNeedsBinding(false);
             
             return success;
         }
 
-		void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
-		{
-			if (VECTOR_EFFECT_NON_SCALING_STROKE == fEffectKind)
-			{
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        {
+            if (VECTOR_EFFECT_NON_SCALING_STROKE == fEffectKind)
+            {
                 ctx->strokeBeforeTransform(true);
-			}
-		}
+            }
+        }
     };
 }
 
@@ -1804,7 +1710,7 @@ namespace waavs
                 });
         }
 
-        std::vector<SVGDimension> fArray{};
+        std::vector<SVGLengthValue> fArray{};
         bool fIsNone{ true };
 
         SVGStrokeDashArray(IAmGroot* groot) : SVGVisualProperty(groot)
@@ -1856,7 +1762,7 @@ namespace waavs
                 });
         }
 
-        SVGDimension fOffset;
+        SVGLengthValue fOffset;
         bool fHasOffset{ false };
 
         SVGStrokeDashOffset(IAmGroot* groot) : SVGVisualProperty(groot)

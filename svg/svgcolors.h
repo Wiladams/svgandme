@@ -10,8 +10,6 @@
 
 namespace waavs
 {
-
-    
     // Database of SVG colors
     // BUGBUG - it might be better if these used float instead of byte values
     // Then they can be converted to various forms as needed.
@@ -214,5 +212,391 @@ namespace waavs
 		//printChunk(colorName);
         
         return BLRgba32(128, 128, 128);
+    }
+}
+
+//======================================================
+// Definition of SVG colors
+//======================================================
+
+    // Representation of color according to CSS specification
+    // https://www.w3.org/TR/css-color-4/#typedef-color
+    // Over time, this structure could represent the full specification
+    // but for practical purposes, we'll focus on rgb, rgba for now
+    //
+    //<color> = <absolute-color-base> | currentcolor | <system-color>
+    //
+    //<absolute-color-base> = <hex-color> | <absolute-color-function> | <named-color> | transparent
+    //<absolute-color-function> = <rgb()> | <rgba()> |
+    //                        <hsl()> | <hsla()> | <hwb()> |
+    //                        <lab()> | <lch()> | <oklab()> | <oklch()> |
+    //                        <color()>
+
+
+
+namespace waavs {
+    // Scan a bytespan for a sequence of hex digits
+    // without using scanf. return 'true' upon success
+    // false for any error.
+    // The format is either
+    // 
+    // #RRGGBB
+    // #RGB
+    // 
+    // Anything else is an error
+    static bool parseHexToRgba32(const ByteSpan& inSpan, BLRgba32& outValue) noexcept
+    {
+        outValue.value = 0;
+
+        if (inSpan.size() == 0)
+            return false;
+
+        if (inSpan[0] != '#')
+            return false;
+
+        uint8_t r{};
+        uint8_t g{};
+        uint8_t b{};
+        uint8_t a{ 0xffu };
+
+        if (inSpan.size() == 4) {
+            // #RGB
+            r = hexToDec(inSpan[1]);
+            g = hexToDec(inSpan[2]);
+            b = hexToDec(inSpan[3]);
+
+            outValue = BLRgba32(r * 17, g * 17, b * 17);			// same effect as (r<<4|r), (g<<4|g), ..
+
+            return true;
+        }
+        else if (inSpan.size() == 5) {
+            // #RGBA
+            r = hexToDec(inSpan[1]);
+            g = hexToDec(inSpan[2]);
+            b = hexToDec(inSpan[3]);
+            a = hexToDec(inSpan[4]);
+
+            outValue = BLRgba32(r * 17, g * 17, b * 17, a * 17);			// same effect as (r<<4|r), (g<<4|g), ..
+
+            return true;
+        }
+        else if (inSpan.size() == 7) {
+            // #RRGGBB
+            r = (hexToDec(inSpan[1]) << 4) | hexToDec(inSpan[2]);
+            g = (hexToDec(inSpan[3]) << 4) | hexToDec(inSpan[4]);
+            b = (hexToDec(inSpan[5]) << 4) | hexToDec(inSpan[6]);
+
+            outValue = BLRgba32(r, g, b);
+            return true;
+        }
+        else if (inSpan.size() == 9) {
+            // #RRGGBBAA
+            r = (hexToDec(inSpan[1]) << 4) | hexToDec(inSpan[2]);
+            g = (hexToDec(inSpan[3]) << 4) | hexToDec(inSpan[4]);
+            b = (hexToDec(inSpan[5]) << 4) | hexToDec(inSpan[6]);
+            a = (hexToDec(inSpan[7]) << 4) | hexToDec(inSpan[8]);
+            outValue = BLRgba32(r, g, b, a);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    // Turn a 3 or 6 digit hex string into a BLRgba32 value
+    // if there's an error in the conversion, a transparent color is returned
+    // BUGBUG - maybe a more obvious color should be returned
+    static BLRgba32 parseColorHex(const ByteSpan& chunk) noexcept
+    {
+        BLRgba32 res{};
+        if (parseHexToRgba32(chunk, res))
+            return res;
+
+        return BLRgba32(0);
+    }
+
+
+    //
+    // parse a color string
+    // Return a BLRgba32 value
+
+    // HSL to RGB conversion function based on the algorithm from the CSS specification:
+    // Hue normalization to [0, 1).
+    // This is NOT a clamp. It's modulo-1 wrapping, used for cyclic hue.
+    static INLINE double normalize01(double x) noexcept
+    {
+        // Map x into (-1, 1) via fmod, then shift into [0,1).
+        x = std::fmod(x, 1.0);
+        if (x < 0.0)
+            x += 1.0;
+        return x;
+    }
+
+    // Normalize degrees to [0, 360).
+    static INLINE double normalizeDegrees(double deg) noexcept
+    {
+        deg = std::fmod(deg, 360.0);
+        if (deg < 0.0)
+            deg += 360.0;
+        return deg;
+    }
+
+    // Convert normalized [0..1) hue to [0..1) after accepting degrees input.
+    // (Convenience helper; keeps callsites clean.)
+    static INLINE double normalizeHue01FromDegrees(double deg) noexcept
+    {
+        return normalizeDegrees(deg) / 360.0;
+    }
+
+    static double hue_to_rgb(double p, double q, double t) noexcept
+    {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1 / 6.0) return p + (q - p) * 6 * t;
+        if (t < 1 / 2.0) return q;
+        if (t < 2 / 3.0) return p + (q - p) * (2 / 3.0 - t) * 6;
+        return p;
+    }
+
+    static BLRgba32 hsl_to_rgb(double h, double s, double l) noexcept
+    {
+        double r, g, b;
+
+        if (s == 0) {
+            r = g = b = l; // achromatic
+        }
+        else {
+            double q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            double p = 2 * l - q;
+            r = hue_to_rgb(p, q, h + 1 / 3.0);
+            g = hue_to_rgb(p, q, h);
+            b = hue_to_rgb(p, q, h - 1 / 3.0);
+        }
+
+        return BLRgba32(uint32_t(r * 255), uint32_t(g * 255), uint32_t(b * 255));
+    }
+
+    // ------------------------------------------------------------
+    // Updated parseColorHsl() that does NOT advance the caller's cursor:
+    // (per your convention: parse takes const ByteSpan&)
+    // ------------------------------------------------------------
+    static BLRgba32 parseColorHsl(const ByteSpan& inChunk) noexcept
+    {
+        BLRgba32 defaultColor(0, 0, 0);
+
+        // Work on local cursor only (parse => does not mutate caller input)
+        ByteSpan str = inChunk;
+
+        // Split at '('
+        (void)chunk_token(str, "(");
+
+        // Pull the substring up to ')'
+        ByteSpan nums = chunk_token(str, ")");
+
+        // h can be <number> (treated as degrees in hsl()).
+        // s and l are typically percentages; CSS allows numbers too.
+        // alpha (optional) is number|percent (0..1 or 0..100%).
+        SVGNumberOrPercent hNP{};
+        SVGNumberOrPercent sNP{};
+        SVGNumberOrPercent lNP{};
+        SVGNumberOrPercent aNP{};
+
+        // h
+        ByteSpan tok = chunk_token(nums, ",");
+        {
+            ByteSpan t = tok;
+            if (!readSVGNumberOrPercent(t, hNP) || !hNP.isSet())
+                return defaultColor;
+        }
+
+        // s
+        tok = chunk_token(nums, ",");
+        {
+            ByteSpan t = tok;
+            if (!readSVGNumberOrPercent(t, sNP) || !sNP.isSet())
+                return defaultColor;
+        }
+
+        // l
+        tok = chunk_token(nums, ",");
+        {
+            ByteSpan t = tok;
+            if (!readSVGNumberOrPercent(t, lNP) || !lNP.isSet())
+                return defaultColor;
+        }
+
+        // optional alpha
+        double alpha01 = 1.0;
+        tok = chunk_token(nums, ",");
+        if (tok) {
+            ByteSpan t = tok;
+            if (readSVGNumberOrPercent(t, aNP) && aNP.isSet()) {
+                alpha01 = aNP.isPercent() ? (aNP.value() / 100.0) : aNP.value();
+                alpha01 = waavs::clamp(alpha01, 0.0, 1.0);
+            }
+        }
+
+        // ---- Normalize / clamp per CSS/SVG behavior ----
+        // Hue is cyclic: normalize modulo 360deg, then to [0,1).
+        double h01 = normalizeHue01FromDegrees(hNP.value());
+
+        // Saturation & lightness are linear factors. If authored as percent:
+        //   0..100% => 0..1
+        // If authored as number: treat as already 0..1 (then clamp).
+        double s01 = sNP.isPercent() ? (sNP.value() / 100.0) : sNP.value();
+        double l01 = lNP.isPercent() ? (lNP.value() / 100.0) : lNP.value();
+        s01 = waavs::clamp(s01, 0.0, 1.0);
+        l01 = waavs::clamp(l01, 0.0, 1.0);
+
+        BLRgba32 res = hsl_to_rgb(h01, s01, l01);
+        res.setA((uint32_t)std::lround(alpha01 * 255.0));
+        return res;
+    }
+
+    /*
+
+
+    static BLRgba32 parseColorHsl(const ByteSpan& inChunk) noexcept
+    {
+        BLRgba32 defaultColor(0, 0, 0);
+        ByteSpan str = inChunk;
+        auto leading = chunk_token(str, "(");
+
+        // h, s, l attributes can be numeric, or percent
+        // get the numbers by separating at the ')'
+        auto nums = chunk_token(str, ")");
+        SVGDimension hd{};
+        SVGDimension sd{};
+        SVGDimension ld{};
+        SVGDimension od{255,SVG_LENGTHTYPE_NUMBER};
+
+        double h = 0, s = 0, l = 0;
+        double o = 1.0;
+
+        auto num = chunk_token(nums, ",");
+        if (!hd.loadFromChunk(num))
+            return defaultColor;
+
+        num = chunk_token(nums, ",");
+        if (!sd.loadFromChunk(num))
+            return defaultColor;
+
+        num = chunk_token(nums, ",");
+        if (!ld.loadFromChunk(num))
+            return defaultColor;
+
+        // check for opacity
+        num = chunk_token(nums, ",");
+        if (od.loadFromChunk(num))
+        {
+            o = od.calculatePixels(1.0);
+        }
+
+
+        // get normalized values to start with
+        h = hd.calculatePixels(360) / 360.0;
+        s = sd.calculatePixels(100) / 100.0;
+        l = ld.calculatePixels(100) / 100.0;
+        //o = od.calculatePixels(255);
+
+        auto res = hsl_to_rgb(h, s, l);
+        res.setA(uint32_t(o * 255));
+
+        return res;
+    }
+    */
+
+
+    // Parse rgb color. The pointer 'str' must point at "rgb(" (4+ characters).
+    // Default:
+    //      This function returns gray (rgb(128, 128, 128) == '#808080') on parse errors
+    //      for backwards compatibility. 
+    // Note: some image viewers return black instead.
+    static INLINE bool readCSSRGBChannel(ByteSpan& s, uint8_t& outC) noexcept
+    {
+        SVGNumberOrPercent c{};
+        if (!readSVGNumberOrPercent(s, c))
+            return false;
+
+        double v = 0.0;
+        if (c.isPercent()) {
+            // 0..100% -> 0..255
+            v = (waavs::clamp(c.value(), 0.0, 100.0) * 255.0) / 100.0;
+        }
+        else {
+            // 0..255
+            v = std::clamp(c.value(), 0.0, 255.0);
+        }
+
+        outC = (uint8_t)std::lround(v);
+        return true;
+    }
+
+    static INLINE bool readCSSAlphaValue(ByteSpan& s, double& outA) noexcept
+    {
+        SVGNumberOrPercent a{};
+        if (!readSVGNumberOrPercent(s, a))
+            return false;
+
+        double v = a.isPercent() ? (a.value() / 100.0) : a.value();
+        outA = std::clamp(v, 0.0, 1.0);
+        return true;
+    }
+
+    static bool parseColorRGB(const ByteSpan& inChunk, BLRgba32& aColor)
+    {
+        // skip past the leading "rgb("
+        ByteSpan s = inChunk;
+        auto leading = chunk_token_char(s, '(');
+
+        // s should now point to the first number
+        // and 'leading' should contain 'rgb'
+        // BUGBUG - we can check 'leading' to see if it's actually 'rgb'
+        // but we'll just assume it is for now
+
+        // get the numbers by separating at the ')'
+        auto nums = chunk_token_char(s, ')');
+
+        // So, now nums contains the individual numeric values, separated by ','
+        // The individual numeric values are 'number | percent' (50, 50%)
+        // 50 - an absolute value in the range [0..255]
+        // 50% - a percentage of 255
+
+        int i = 0;
+        uint8_t rgba[4]{};
+
+        // Get the first token, which is red
+        // if it's not there, then return gray
+        auto num = chunk_token_char(nums, ',');
+        if (num.size() < 1)
+        {
+            //aColor.reset(128, 128, 128, 0);
+            aColor.reset(255, 255, 0, 255);     // Use turquoise to indicate error
+            return false;
+        }
+
+        while (num && i < 4)
+        {
+            if (i < 3) {
+                if (!readCSSRGBChannel(num, rgba[i]))
+                    return false;
+            }
+            else {
+                double a = 1.0;
+                if (!readCSSAlphaValue(num, a))
+                    return false;
+                rgba[i] = (uint8_t)std::lround(a * 255.0);
+            }
+
+            i++;
+            num = chunk_token_char(nums, ',');
+        }
+
+        if (i == 4)
+            aColor.reset(rgba[0], rgba[1], rgba[2], rgba[3]);
+        else
+            aColor.reset(rgba[0], rgba[1], rgba[2]);
+
+        return true;
     }
 }

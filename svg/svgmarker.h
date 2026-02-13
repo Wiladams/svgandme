@@ -3,12 +3,227 @@
 //
 // Feature String: http://www.w3.org/TR/SVG11/feature#Marker
 //
-//#include <functional>
-//#include <unordered_map>
 
-#include "svgattributes.h"
 #include "svgstructuretypes.h"
-#include "svgportal.h"
+#include "svgattributes.h"
+#include "viewport.h"
+
+namespace waavs
+{
+	// -----------------------------
+	// Authored marker state (Doc)
+	// -----------------------------
+	struct DocMarkerState
+	{
+		// markerUnits default per SVG is strokeWidth
+		SpaceUnitsKind markerUnits{ SpaceUnitsKind::SVG_SPACE_STROKEWIDTH };
+
+		// markerWidth/markerHeight default to 3 (SVG spec default)
+		// Store as <length>/<percentage> like everything else.
+		SVGLengthValue markerWidth{ 3.0, SVG_LENGTHTYPE_NUMBER, true };
+		SVGLengthValue markerHeight{ 3.0, SVG_LENGTHTYPE_NUMBER, true };
+
+		// refX/refY default to 0
+		SVGLengthValue refX{ 0.0, SVG_LENGTHTYPE_NUMBER, true };
+		SVGLengthValue refY{ 0.0, SVG_LENGTHTYPE_NUMBER, true };
+
+		// orient
+		SVGOrient orient{ nullptr };
+
+		// viewBox + preserveAspectRatio live in the same doc viewport structure you already have
+		DocViewportState vp{};
+		bool hasVP{ false };
+	};
+
+
+	// -----------------------------
+	// Resolved marker state
+	// -----------------------------
+	struct ResolvedMarkerState
+	{
+		// Marker viewport in the *parent user space of the marker instance*
+		// We keep it local at origin because MarkerProgramExec already translates to the vertex.
+		BLRect viewport{ 0,0,0,0 };
+
+		// The viewBox in marker content user space (children see this as nearest viewport)
+		BLRect viewBox{ 0,0,0,0 };
+		bool hasViewBox{ false };
+
+		// Final mapping to apply before drawing marker children:
+		// maps marker content user space -> marker instance space (at origin)
+		BLMatrix2D contentToInstance{ BLMatrix2D::makeIdentity() };
+
+		bool resolved{ false };
+	};
+
+	// Helpers: treat markerWidth/Height differently depending on markerUnits.
+// Policy used here (consistent + simple):
+// - First resolve length to "user units" using percentage ref.
+// - If markerUnits == strokeWidth: scale the result by strokeWidth (so 3 -> 3*strokeWidth).
+	static INLINE double resolveMarkerLen(
+		const SVGLengthValue& L,
+		double percentRef,      // usually nearest viewport w/h for userSpaceOnUse, or strokeWidth for strokeWidth units
+		double strokeWidth,
+		double dpi,
+		const BLFont* fontOpt,
+		SpaceUnitsKind markerUnits) noexcept
+	{
+		LengthResolveCtx ctx = makeLengthCtxUser(percentRef, /*origin*/0.0, dpi, fontOpt);
+		double v = resolveLengthOr(L, ctx, /*fallback*/0.0);
+
+		if (markerUnits == SpaceUnitsKind::SVG_SPACE_STROKEWIDTH)
+			v *= strokeWidth;
+
+		return v;
+	}
+
+	// Resolve marker state for a specific instance.
+//
+// Inputs you already have at draw time:
+// - nearestVP: ctx->viewport() (nearest viewport for percentages in markerWidth/Height when userSpaceOnUse)
+// - strokeWidth: ctx->getStrokeWidth()
+//
+// Output:
+// - out.viewport: {0,0,w,h}
+// - out.viewBox: authored viewBox or default {0,0,w,h}
+// - out.contentToInstance: viewBox->viewport + refX/refY shift baked in
+//
+	static INLINE bool resolveMarkerState(
+		const DocMarkerState& doc,
+		const BLRect& nearestVP,
+		double strokeWidth,
+		double dpi,
+		const BLFont* fontOpt,
+		ResolvedMarkerState& out) noexcept
+	{
+		out = ResolvedMarkerState{};
+
+		// Defaults: if doc markerWidth/Height not set, SVG default is 3
+		// (your DocMarkerState constructor already sets them as set=true).
+
+		// Percentage refs:
+		// - userSpaceOnUse: markerWidth/Height % use nearest viewport w/h
+		// - strokeWidth: % treated as % of strokeWidth (simple + matches your previous intent)
+		const double refW = (doc.markerUnits == SpaceUnitsKind::SVG_SPACE_USER) ? nearestVP.w : strokeWidth;
+		const double refH = (doc.markerUnits == SpaceUnitsKind::SVG_SPACE_USER) ? nearestVP.h : strokeWidth;
+
+		double w = resolveMarkerLen(doc.markerWidth, refW, strokeWidth, dpi, fontOpt, doc.markerUnits);
+		double h = resolveMarkerLen(doc.markerHeight, refH, strokeWidth, dpi, fontOpt, doc.markerUnits);
+
+		// Clamp invalid sizes
+		if (w < 0.0) w = 0.0;
+		if (h < 0.0) h = 0.0;
+
+		out.viewport = BLRect{ 0.0, 0.0, w, h };
+
+		if (out.viewport.w <= 0.0 || out.viewport.h <= 0.0)
+			return false;
+
+		// viewBox/par
+		out.hasViewBox = doc.vp.hasViewBox;
+		out.viewBox = doc.vp.hasViewBox
+			? doc.vp.viewBox
+			: BLRect{ 0.0, 0.0, out.viewport.w, out.viewport.h };
+
+		if (out.viewBox.w <= 0.0 || out.viewBox.h <= 0.0)
+			return false;
+
+		// Resolve refX/refY:
+		// Spec-wise these are in the marker’s own coordinate system (i.e. viewBox space when viewBox is present).
+		// So % references should use viewBox w/h (not viewport w/h).
+		const double refRefW = out.viewBox.w;
+		const double refRefH = out.viewBox.h;
+
+		LengthResolveCtx rxCtx = makeLengthCtxUser(refRefW, 0.0, dpi, fontOpt);
+		LengthResolveCtx ryCtx = makeLengthCtxUser(refRefH, 0.0, dpi, fontOpt);
+
+		const double refX = resolveLengthOr(doc.refX, rxCtx, 0.0);
+		const double refY = resolveLengthOr(doc.refY, ryCtx, 0.0);
+
+		// Build content->instance matrix:
+		// This is computeViewBoxToViewport(...) PLUS translating so that (refX,refY) becomes the origin.
+		//
+		// We can bake refX/refY into the final translate that also accounts for viewBox.x/y:
+		//   ... scale(sx,sy); translate(-(viewBox.x + refX), -(viewBox.y + refY))
+		//
+		// We reuse your alignment logic.
+		{
+			const BLRect& viewport = out.viewport;
+			const BLRect& viewBox = out.viewBox;
+			const PreserveAspectRatio& par = doc.vp.par;
+
+			const double sx0 = viewport.w / viewBox.w;
+			const double sy0 = viewport.h / viewBox.h;
+
+			double sx = sx0, sy = sy0;
+			double ax = 0.0, ay = 0.0;
+
+			if (par.align() != AspectRatioAlignKind::SVG_ASPECT_RATIO_NONE) {
+				double s = sx0;
+				if (par.meetOrSlice() == AspectRatioMeetOrSliceKind::SVG_ASPECT_RATIO_SLICE)
+					s = waavs::max(sx0, sy0);
+				else
+					s = waavs::min(sx0, sy0);
+
+				sx = sy = s;
+
+				const double fitW = viewBox.w * s;
+				const double fitH = viewBox.h * s;
+
+				SVGAlignment xA{}, yA{};
+				PreserveAspectRatio::splitAlignment(par.align(), xA, yA);
+
+				if (xA == SVGAlignment::SVG_ALIGNMENT_MIDDLE) ax = (viewport.w - fitW) * 0.5;
+				else if (xA == SVGAlignment::SVG_ALIGNMENT_END) ax = (viewport.w - fitW);
+
+				if (yA == SVGAlignment::SVG_ALIGNMENT_MIDDLE) ay = (viewport.h - fitH) * 0.5;
+				else if (yA == SVGAlignment::SVG_ALIGNMENT_END) ay = (viewport.h - fitH);
+			}
+
+			BLMatrix2D m = BLMatrix2D::makeIdentity();
+			m.translate(viewport.x, viewport.y);
+			m.translate(ax, ay);
+			m.scale(sx, sy);
+			m.translate(-(viewBox.x + refX), -(viewBox.y + refY)); // ref baked here
+			out.contentToInstance = m;
+		}
+
+		out.resolved = true;
+		return true;
+	}
+
+		// Load DocMarkerState from styled attributes (no binding).
+		static INLINE void loadDocMarkerState(DocMarkerState& d, const XmlAttributeCollection& attrs) noexcept
+		{
+			d = DocMarkerState{}; // reset defaults
+
+			// markerUnits
+			ByteSpan mu{};
+			if (attrs.getValue(svgattr::markerUnits(), mu))
+				getEnumValue(MarkerUnitEnum, mu, (uint32_t&)d.markerUnits);
+
+			// markerWidth/markerHeight (defaults already in d)
+			ByteSpan mw{}, mh{};
+			if (attrs.getValue(svgattr::markerWidth(), mw))  d.markerWidth = parseLengthAttr(mw);
+			if (attrs.getValue(svgattr::markerHeight(), mh)) d.markerHeight = parseLengthAttr(mh);
+
+			// refX/refY (defaults already in d)
+			ByteSpan rx{}, ry{};
+			if (attrs.getValue(svgattr::refX(), rx)) d.refX = parseLengthAttr(rx);
+			if (attrs.getValue(svgattr::refY(), ry)) d.refY = parseLengthAttr(ry);
+
+			// orient
+			ByteSpan o{};
+			if (attrs.getValue(svgattr::orient(), o))
+				d.orient.loadFromChunk(o);
+
+			// viewBox/par
+			loadDocViewportState(d.vp, attrs);
+			d.hasVP = true;
+		}
+
+
+}
 
 namespace waavs {
 	//=================================================
@@ -31,176 +246,112 @@ namespace waavs {
 			
 		}
 
-		// Fields
-		SVGPortal fPortal{};
-		SVGVariableSize fDimRefX{};
-		SVGVariableSize fDimRefY{};
-
-		SpaceUnitsKind fMarkerUnits{ SpaceUnitsKind::SVG_SPACE_STROKEWIDTH };
-		SVGOrient fOrientation{ nullptr };
-
-		// Resolved field values
-		double fRefX = 0;
-		double fRefY = 0;
-
 		
-		BLPoint fMarkerContentScale{ 1,1 };
-		BLPoint fMarkerTranslation{ 0,0 };
-		BLRect fMarkerBoundingBox{ 0,0,3,3 };
-		BLRect fViewbox{};
-		
-		
-		SVGMarkerElement(IAmGroot* root)
-			: SVGGraphicsElement()
+
+		DocMarkerState fDoc;
+		bool fHasDoc{ false };
+
+		// Cached resolved (optional, but pragmatic)
+		ResolvedMarkerState fRes{};
+        double fResStrokeWidth{ -1.0 }; // track strokeWidth used for resolution so we know when to re-resolve
+        BLRect fResNearestVP{}; // track nearest viewport used for resolution so we know when to re-resolve
+        double fResDpi{ -1.0 }; // track dpi used for resolution so we know when to re-resolve
+		bool fHasResolved{ false };
+
+		SVGMarkerElement(IAmGroot *) : SVGGraphicsElement()
 		{
-			setIsStructural(false);
+			setIsStructural(true);
+			setIsVisible(false);
 		}
 
+
+		const SVGOrient& orientation() const { return fDoc.orient; }
+	
+		// For markers, the viewport is the marker tile size
 		BLRect viewPort() const override
 		{
-            BLRect vpFrame{};
-			fPortal.getViewportFrame(vpFrame);
-
-			return vpFrame;
-		}
-		
-		BLRect getBBox() const override
-		{
-			return fPortal.getBBox();
+			return fHasResolved ? fRes.viewport : BLRect{};
 		}
 		
 
-		const SVGOrient& orientation() const { return fOrientation; }
-
-
-		//
-		// createPortal
-		// 
-		// This code establishes the coordinate space for the element, and 
-		// its child nodes.
-		// 
-		
-		void createPortal(IRenderSVG *ctx, IAmGroot *groot)
+		void fixupSelfStyleAttributes(IAmGroot*) override
 		{
-			// First, we want to know the size of the object we're going to be
-			// rendered into
-			// We also want to know the size of the container the object is in
-			BLRect objectBoundingBox = ctx->getObjectFrame();
-			BLRect containerBoundingBox = ctx->viewport();
-			
-			
-			double dpi = 96;
-			if (nullptr != groot)
-			{
-				dpi = groot->dpi();
-			}
+			loadDocMarkerState(fDoc, fAttributes);
+			fHasDoc = true;
 
-			// Load parameters for the portal
-			SVGDimension fDimWidth{};
-			SVGDimension fDimHeight{};
-
-			// If these are not specified, then we use default values of '3'
-			fDimWidth.loadFromChunk(getAttributeByName("markerWidth"));
-			fDimHeight.loadFromChunk(getAttributeByName("markerHeight"));
-			bool haveViewbox = parseViewBox(getAttributeByName("viewBox"), fViewbox);
-			fPortal.loadFromAttributes(fAttributes);
-			
-			double sWidth = ctx->getStrokeWidth();
-
-			// First, we setup the marker bounding box
-			// This is determined based on the markerWidth, and markerHeight
-			// attributes.
-			if (fMarkerUnits == SpaceUnitsKind::SVG_SPACE_STROKEWIDTH)
-			{
-				// We use the strokeWidth to scale the marker
-				// If the dimension type is percentage, then calculate
-				// based on a percentage of the stroke width
-				// If the dimension is a number, then use that number, and 
-				// multiply it by the strokeWidth
-				if (fDimWidth.isSet())
-				{
-					if (fDimWidth.isPercentage())
-					{
-						fMarkerBoundingBox.w = fDimWidth.calculatePixels(sWidth);
-					}
-					else
-					{
-						fMarkerBoundingBox.w = fDimWidth.calculatePixels() * sWidth;
-					}
-				}
-				
-				if (fDimHeight.isSet())
-				{
-					if (fDimWidth.isPercentage())
-					{
-						fMarkerBoundingBox.h = fDimHeight.calculatePixels(sWidth);
-					}
-					else {
-						fMarkerBoundingBox.h = fDimHeight.calculatePixels() * sWidth;
-					}
-				}
-			}
-			else if (fMarkerUnits == SpaceUnitsKind::SVG_SPACE_USER)
-			{
-				if (fDimWidth.isSet())
-				{
-					fMarkerBoundingBox.w = fDimWidth.calculatePixels(containerBoundingBox.w)*sWidth;
-				}
-
-				if (fDimHeight.isSet())
-				{
-					fMarkerBoundingBox.h = fDimHeight.calculatePixels(containerBoundingBox.h)*sWidth;
-				}
-			}
-			
-			// Now that we have the markerBoundingBox settled, we need to calculate an additional 
-			// scaling for the content area if a viewBox is specified
-			
-			if (haveViewbox) {
-				fMarkerContentScale.x = fMarkerBoundingBox.w / fViewbox.w;
-				fMarkerContentScale.y = fMarkerBoundingBox.h / fViewbox.h;
-			}
-			
-			fDimRefX.parseValue(fMarkerTranslation.x, ctx->getFont(), fMarkerBoundingBox.w, 0, dpi);
-			fDimRefY.parseValue(fMarkerTranslation.y, ctx->getFont(), fMarkerBoundingBox.h, 0, dpi);
-
-			fPortal.setViewportFrame(fMarkerBoundingBox);
-		}
-		
-		void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*) override
-		{
-			// printf("fixupSelfStyleAttributes\n");
-			getEnumValue(MarkerUnitEnum, getAttributeByName("markerUnits"), (uint32_t&)fMarkerUnits);
-			//getEnumValue(SVGAspectRatioEnum, getAttribute("preserveAspectRatio"), (uint32_t&)fPreserveAspectRatio);
-
-			fDimRefX.loadFromChunk(getAttributeByName("refX"));
-			fDimRefY.loadFromChunk(getAttributeByName("refY"));
-			fOrientation.loadFromChunk(getAttributeByName("orient"));
-
+			// clear cache
+			fHasResolved = false;
+			fResStrokeWidth = -1.0;
+			fResDpi = -1.0;
+			fResNearestVP.reset();
 		}
 
 		
 		void bindSelfToContext(IRenderSVG *ctx, IAmGroot *groot) override 
 		{
-			createPortal(ctx, groot);
+			// do nothing here as there's nothing persistent to bind
+			// markers depend on current strokeWidth and nearest viewport
+            // so we resolve them at draw time, and cache the result, 
+			// but we don't have anything to bind here.
+		}
 
+		// Resolve (with a tiny cache) using the current context.
+		INLINE bool ensureResolved(IRenderSVG* ctx, IAmGroot* groot) noexcept
+		{
+			if (!fHasDoc || !ctx) return false;
+
+			const double dpi = groot ? groot->dpi() : 96.0;
+			const BLFont* fontOpt = &ctx->getFont();
+
+			const double sw = ctx->getStrokeWidth();
+			const BLRect nearestVP = ctx->viewport();
+
+			// Tiny cache: reuse if same parameters
+			if (fHasResolved &&
+				fResStrokeWidth == sw &&
+				fResDpi == dpi &&
+				fResNearestVP.x == nearestVP.x && fResNearestVP.y == nearestVP.y &&
+				fResNearestVP.w == nearestVP.w && fResNearestVP.h == nearestVP.h)
+			{
+				return true;
+			}
+
+			ResolvedMarkerState tmp{};
+			if (!resolveMarkerState(fDoc, nearestVP, sw, dpi, fontOpt, tmp))
+				return false;
+
+			fRes = tmp;
+			fResStrokeWidth = sw;
+			fResNearestVP = nearestVP;
+			fResDpi = dpi;
+			fHasResolved = true;
+			return true;
 		}
 
 
 		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-			//createPortal(ctx, groot);
-			
-			ctx->scale(fMarkerContentScale.x, fMarkerContentScale.y);
-			ctx->translate(-fMarkerTranslation.x, -fMarkerTranslation.y);
+			if (!ensureResolved(ctx, groot))
+				return;
 
+			// MarkerProgramExec already did:
+			//   ctx->translate(vertex);
+			//   ctx->rotate(angle);
+			// So here we only establish marker content coordinates.
+
+			// Map marker content user space -> marker instance user space
+			ctx->applyTransform(fRes.contentToInstance);
+
+			// Establish nearest viewport for marker children (percent lengths inside marker)
+			// Use the marker's content user space viewport (viewBox).
+			ctx->setViewport(fRes.viewBox);
 		}
 
 		void drawChildren(IRenderSVG* ctx, IAmGroot* groot) override
 		{
+			// Keep your current marker child paint defaults
 			ctx->push();
 
-			// Setup drawing state
 			ctx->blendMode(BL_COMP_OP_SRC_OVER);
 			ctx->fill(BLRgba32(0, 0, 0));
 			ctx->noStroke();

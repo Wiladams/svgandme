@@ -40,12 +40,14 @@
 
 #include "svgclip.h"
 #include "svgconditional.h"
+#include "svgdefs.h"
 #include "svggradient.h"
 #include "svgimage.h"
 #include "svgmarker.h"
 #include "svgmask.h"
 #include "svgstructure.h"
 #include "svgshapes.h"
+#include "svgsolidcolor.h"
 #include "svgstyle.h"
 #include "svgsymbol.h"
 #include "svgpattern.h"
@@ -53,6 +55,7 @@
 #include "svgfilter.h"
 #include "svghyperlink.h"
 #include "svgflowroot.h"
+#include "svguse.h"
 
 
 
@@ -147,6 +150,11 @@ namespace waavs
         
         BLRect viewPort() const override
         {
+            if (fTopLevelNode != nullptr)
+            {
+                return fTopLevelNode->viewPort();
+            }
+
             if (fCanvasWidth <= 0 || fCanvasHeight <= 0)
                 return BLRect{};
 
@@ -154,19 +162,6 @@ namespace waavs
             return outFr;
         }
 
-        BLRect topLevelViewPort() const
-        {
-            if (fTopLevelNode != nullptr)
-            {
-                return fTopLevelNode->viewPort();
-            }
-            return viewPort();
-        }
-
-        BLRect getBBox() const override
-        {
-            return topLevelViewPort();
-        }
 
         std::shared_ptr<CSSStyleSheet> styleSheet() override { return fStyleSheet; }
         void styleSheet(std::shared_ptr<CSSStyleSheet> sheet) override { fStyleSheet = sheet; }
@@ -176,7 +171,7 @@ namespace waavs
 		std::shared_ptr<SVGSVGElement> documentElement() const { return fTopLevelNode; }
 
 
-        bool addNode(std::shared_ptr < ISVGElement > node, IAmGroot* groot) override
+        bool addNode(std::shared_ptr < IViewable > node, IAmGroot* groot) override
         {            
 			if (!SVGGraphicsElement::addNode(node, groot))
                 return false;
@@ -194,6 +189,25 @@ namespace waavs
             return true;
         }
         
+        void onDocumentLoaded(IAmGroot* groot)
+        {
+            if (!groot)
+                return;
+
+            // 1) Normal DOM pass to resolve styles
+            this->resolveStyleSubtree(groot);
+
+            //primeResourceNodes(groot);
+        }
+
+        void primeResources(IAmGroot* groot)
+        {
+            for (auto& node : fNodes)
+            {
+                //node->primeResources(groot);
+            }
+        }
+
         // We override this here, because we don't want to do anything with the information
         // in any of the top level xml elements
         // Maybe we should hold onto the XMLDECL if it's seen, 
@@ -215,7 +229,8 @@ namespace waavs
                     break;
                 case XML_ELEMENT_TYPE_END_TAG:                      // </tag>
                     this->loadEndTag(elem, groot);
-                    return;
+                    onEndTag(groot);
+                    break;
                 case XML_ELEMENT_TYPE_SELF_CLOSING:                 // <tag/>
                     this->loadSelfClosingNode(elem, groot);
                     break;
@@ -242,7 +257,7 @@ namespace waavs
             }
 
             setNeedsBinding(true);
-
+            onDocumentLoaded(groot);
         }
  
         

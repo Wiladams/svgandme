@@ -181,9 +181,19 @@ namespace waavs {
             fDrawingState->fViewport = r;
             markModified();
         }
-        BLRect viewport() const { return fDrawingState->fViewport; }
+        BLRect viewport() const { 
+            return fDrawingState->fViewport; 
+        }
 
-        BLRect getObjectFrame() const { return fDrawingState->fObjectFrame; }
+        BLRect getObjectFrame() const 
+        {
+            if (!fDrawingState) {
+                printf("IAccessDrawingState::getObjectFrame, ERROR: No drawing state set\n");
+                return BLRect{};
+            }
+
+            return fDrawingState->fObjectFrame; 
+        }
         void setObjectFrame(const BLRect& r) {
             fDrawingState->fObjectFrame = r;
             markModified();
@@ -204,7 +214,7 @@ namespace waavs {
             markModified();
         }
 
-		const BLVar& getBackgroundPaint() const { return fDrawingState->fBackgroundPaint; }
+		BLVar getBackgroundPaint() const { return fDrawingState->fBackgroundPaint; }
 		template<typename StyleT>
 		void setBackgroundPaint(const StyleT& paint)
 		{
@@ -212,7 +222,7 @@ namespace waavs {
 			markModified();
 		}
 
-        const BLVar& getDefaultColor() const { return fDrawingState->fDefaultColor; }
+        BLVar getDefaultColor() const { return fDrawingState->fDefaultColor; }
         void setDefaultColor(const BLVar& color)
         {
             fDrawingState->fDefaultColor.assign(color);
@@ -238,7 +248,7 @@ namespace waavs {
             markModified();
         }
 
-        const BLVar& getStrokePaint() const { return fDrawingState->fStrokePaint; }
+        BLVar getStrokePaint() const { return fDrawingState->fStrokePaint; }
         template<typename StyleT>
         void setStrokePaint(const StyleT& paint)
         {
@@ -293,7 +303,7 @@ namespace waavs {
         }
         
         const StrokeDashState& getStrokeDashState() const { return fDrawingState->fDash; }
-        void setStrokeDashArrayRaw(const std::vector<SVGDimension>& arr)
+        void setStrokeDashArrayRaw(const std::vector<SVGLengthValue>& arr)
         {
             fDrawingState->fDash.fArray = arr;
             fDrawingState->fDash.fHasArray = !arr.empty();
@@ -306,7 +316,7 @@ namespace waavs {
             markModified();
         }
 
-        void setStrokeDashOffsetRaw(const SVGDimension& off)
+        void setStrokeDashOffsetRaw(const SVGLengthValue& off)
         {
             fDrawingState->fDash.fOffset = off;
             fDrawingState->fDash.fHasOffset = off.isSet();
@@ -320,7 +330,6 @@ namespace waavs {
         }
 
 
-        //const std::vector<SVGLength>& getStrokeDashArray() const { return std::vector<double>{}; }
         void setStrokeDashArray(const double *dashes, size_t count)
         {
             //fDrawingState->fStrokeDashArray = dashes;
@@ -328,7 +337,7 @@ namespace waavs {
         }
 
         // Fill Attributes
-        const BLVar& getFillPaint() const { return fDrawingState->fFillPaint; }
+        BLVar getFillPaint() const { return fDrawingState->fFillPaint; }
         template<typename StyleT>
         void setFillPaint(const StyleT& paint)
         {

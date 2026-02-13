@@ -1,6 +1,7 @@
 #pragma once
 
-#include "svgcontainer.h"
+
+#include "svgstructuretypes.h"
 
 namespace waavs {
 	//===========================================
@@ -12,11 +13,11 @@ namespace waavs {
 	// such as allowing the width and height to be specified in an style
 	// sheet or inline style attribute
 	//===========================================
-	struct SVGSymbolNode : public SVGGraphicsElement	// SVGContainer
+	struct SVGSymbolNode : public SVGGraphicsElement	
 	{
 		static void registerFactory()
 		{
-			registerContainerNodeByName("symbol",
+			registerContainerNodeByName(svgtag::tag_symbol(),
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGSymbolNode>(groot);
 					node->loadFromXmlPull(iter, groot);
@@ -25,9 +26,13 @@ namespace waavs {
 				});
 		}
 
-		SVGPortal fPortal;
-		SVGDimension fDimRefX{};
-		SVGDimension fDimRefY{};
+		DocViewportState fDocVP{};		// only using; par, hasViewBox, viewBox
+        bool fHasDocVP{ false };
+
+		// Optional Reference Point
+		SVGLengthValue fRefX{};
+		SVGLengthValue fRefY{};
+		bool fHasRefXY{ false };
 
 
 		BLPoint fSymbolContentTranslation{};
@@ -37,93 +42,73 @@ namespace waavs {
 		SVGSymbolNode(IAmGroot* root)
 			: SVGGraphicsElement()
 		{
-			setIsStructural(false);
-		}
-
-		BLRect viewPort() const override
-		{
-            BLRect vpFrame{};
-            fPortal.getViewportFrame(vpFrame);
-            return vpFrame;
-		}
-
-		BLRect getBBox() const override
-		{
-			return fPortal.getBBox();
+			setIsStructural(true);
+			setIsVisible(false);
 		}
 		
 
 
-		
-		void createPortal(IRenderSVG* ctx, IAmGroot* groot)
+		virtual void fixupSelfStyleAttributes(IAmGroot*) override
 		{
-			/*
-			BLRect objectBoundingBox = ctx->objectFrame();
-			//BLRect containerBoundingBox = ctx->localFrame();
+			// PreserveAspectRatio + viewBox
+			loadDocViewportState(fDocVP, fAttributes);
+			fHasDocVP = true;
 
-			// Load parameters for the portal
-			SVGDimension fDimX{};
-			SVGDimension fDimY{};
-			SVGDimension fDimWidth{};
-			SVGDimension fDimHeight{};
-
-			fDimX.loadFromChunk(getAttribute("x"));
-			fDimY.loadFromChunk(getAttribute("y"));
-			fDimWidth.loadFromChunk(getAttribute("width"));
-			fDimHeight.loadFromChunk(getAttribute("height"));
-
-			// Load parameters for the viewbox
-			haveViewbox = parseViewBox(getAttribute("viewBox"), viewboxRect);
-
-			double x, y, w, h = 0;
-
-			x = fDimX.calculatePixels(objectBoundingBox.w);
-			y = fDimY.calculatePixels(objectBoundingBox.h);
-			w = fDimWidth.calculatePixels(objectBoundingBox.w);
-			h = fDimHeight.calculatePixels(objectBoundingBox.h);
-
-			// If we have a viewbox, we need to calculate the scale and translation
-			if (haveViewbox)
-			{
-				// Calculate the scale
-				fSymbolContentScale.x = objectBoundingBox.w / viewboxRect.w;
-				fSymbolContentScale.y = objectBoundingBox.h / viewboxRect.h;
-
-				// Calculate the translation
-				fSymbolContentTranslation.x = viewboxRect.x;
-				fSymbolContentTranslation.y = viewboxRect.y;
-			}
-			else
-			{
-				// If we don't have a viewbox, we need to calculate the scale
-				fSymbolContentScale.x = w / objectBoundingBox.w;
-				fSymbolContentScale.y = h / objectBoundingBox.h;
-
-			}
-					*/
+			// refX/refY (SVG2 adds these on <symbol>; if you’re using them)
+			fRefX = parseLengthAttr(getAttributeByName("refX"));
+			fRefY = parseLengthAttr(getAttributeByName("refY"));
+			fHasRefXY = fRefX.isSet() || fRefY.isSet();
 		}
 
-
-		virtual void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*) override
+		void bindSelfToContext(IRenderSVG*, IAmGroot*) override
 		{
-			fPortal.loadFromAttributes(fAttributes);
-			
-			fDimRefX.loadFromChunk(getAttributeByName("refX"));
-			fDimRefY.loadFromChunk(getAttributeByName("refY"));
+			// No persistent “binding” needed for symbol viewport.
+			// The instance viewport is provided by <use> at draw time.
 		}
 
-		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
-		{
-			fPortal.bindToContext(ctx, groot);
-		}
 
 		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-			ctx->applyTransform(fPortal.viewBoxToViewportTransform());
-			ctx->setViewport(getBBox());
+			if (!fHasDocVP)
+				return;
 
-			//ctx->translate(-fSymbolContentTranslation.x, -fSymbolContentTranslation.y);
+			// Instance viewport should already be established by <use>.
+			// In your current <use> pattern, this is typically {0,0,w,h}.
+			const BLRect instanceVP = ctx->viewport();
+			if (instanceVP.w <= 0.0 || instanceVP.h <= 0.0)
+				return;
+
+			const double dpi = groot ? groot->dpi() : 96.0;
+			const BLFont* fontOpt = &ctx->getFont();
+
+			SVGViewportState vp{};
+			// For symbol: treat as "not top-level"; x/y don’t apply anyway.
+			// We only care about mapping symbol viewBox -> instance viewport.
+			if (!resolveViewState(instanceVP, fDocVP, /*isTopLevel*/ false, dpi, fontOpt, vp))
+				return;
+
+			// Apply mapping from symbol user space (viewBox) into instance viewport.
+			ctx->applyTransform(vp.viewBoxToViewportXform);
+
+			// Nearest viewport for children (percentage lengths inside the symbol):
+			// After applying transform, symbol’s local user space is vp.fViewBox.
+			ctx->setViewport(vp.fViewBox);
+
+			// Optional: refX/refY support (only if you decide to use it now)
+			// A common policy is to translate so that (refX,refY) becomes the origin.
+			// Reference length for percentages: use viewBox w/h.
+			if (fHasRefXY)
+			{
+				LengthResolveCtx cx = makeLengthCtxUser(vp.fViewBox.w, 0.0, dpi, fontOpt);
+				LengthResolveCtx cy = makeLengthCtxUser(vp.fViewBox.h, 0.0, dpi, fontOpt);
+
+				const double rx = resolveLengthOr(fRefX, cx, 0.0);
+				const double ry = resolveLengthOr(fRefY, cy, 0.0);
+
+				if (rx != 0.0 || ry != 0.0)
+					ctx->translate(-rx, -ry);
+			}
 		}
-
 	};
+
 }

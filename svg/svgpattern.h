@@ -5,23 +5,337 @@
 // pattern
 //
 
-
-#include <functional>
 #include <memory>
+#include <vector>
+#include <cmath>
+#include <cstdint>
 
-#include "svgattributes.h"
+
 #include "svgstructuretypes.h"
-#include "svgportal.h"
+#include "viewport.h"
 #include "svgb2ddriver.h"
 
-namespace waavs {
 
+namespace waavs
+{
+    struct SVGPatternElement; // forward declaration
+
+
+	// The state of a pattern as found in the document
+	// before binding occurs
+	struct DocPatternState
+	{
+		// <length> / <percentage>
+		SVGLengthValue x{};
+		SVGLengthValue y{};
+		SVGLengthValue width{};
+		SVGLengthValue height{};
+
+		// Enums
+		SpaceUnitsKind patternUnits{ SpaceUnitsKind::SVG_SPACE_OBJECT };        // objectBoundingBox default
+		SpaceUnitsKind patternContentUnits{ SpaceUnitsKind::SVG_SPACE_USER };   // userSpaceOnUse default
+		BLExtendMode extendMode{ BL_EXTEND_MODE_REPEAT };
+
+		// Optional transforms
+		bool hasPatternTransform{ false };
+		BLMatrix2D patternTransform; // { BLMatrix2D::makeIdentity() };
+
+		// viewBox/par
+		bool hasViewBox{ false };
+		BLRect viewBox;
+		PreserveAspectRatio par;
+
+		// href template (raw string span)
+		waavs::ByteSpan href;
+	};
+
+	static INLINE bool resolvePatternDocWithHref(const DocPatternState& authored, IAmGroot* groot, DocPatternState& outFinal) noexcept;
+
+
+
+	// The state of a patter after binding occurs.
+	struct ResolvedPatternState
+	{
+		// Tile rectangle in pattern user space.  This is the area that will be repeated to fill the pattern.
+		BLRect tile{};
+
+		// Transform to apply on a scratch context when rendering tile pixels.
+		// This maps "pattern content user space" to "tile image pixel space".
+		BLMatrix2D contentToTilePx{};
+
+		// Transform to set on BLPattern
+		// (placement / phase / author patternTransform).
+		BLMatrix2D patternMatrix{};
+		bool resolved{ false };
+	};
+
+	// some small helpers
+	static INLINE int clampTilePx(int v) noexcept { return v < 1 ? 1 : v; }
+
+	static INLINE uint64_t hashU64(uint64_t h, uint64_t v) noexcept
+	{
+		// simple mix, not cryptographic
+		h ^= v + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
+		return h;
+	}
+
+	static INLINE uint64_t hashDbl(uint64_t h, double d) noexcept
+	{
+		union { double d; uint64_t u; } x{ d };
+		return hashU64(h, x.u);
+	}
+
+	static INLINE uint64_t hashRect(uint64_t h, const BLRect& r) noexcept
+	{
+		h = hashDbl(h, r.x);
+		h = hashDbl(h, r.y);
+		h = hashDbl(h, r.w);
+		h = hashDbl(h, r.h);
+		return h;
+	}
+
+	static INLINE uint64_t hashMatrix(uint64_t h, const BLMatrix2D& m) noexcept
+	{
+		h = hashDbl(h, m.m00); h = hashDbl(h, m.m01);
+		h = hashDbl(h, m.m10); h = hashDbl(h, m.m11);
+		h = hashDbl(h, m.m20); h = hashDbl(h, m.m21);
+		return h;
+	}
+
+	static INLINE uint64_t hashDocPattern(const DocPatternState& d) noexcept
+	{
+		uint64_t h = 0xcbf29ce484222325ULL;
+
+		h = hashDbl(h, d.x.value());      h = hashU64(h, d.x.unitType());      h = hashU64(h, d.x.isSet());
+		h = hashDbl(h, d.y.value());      h = hashU64(h, d.y.unitType());      h = hashU64(h, d.y.isSet());
+		h = hashDbl(h, d.width.value());  h = hashU64(h, d.width.unitType());  h = hashU64(h, d.width.isSet());
+		h = hashDbl(h, d.height.value()); h = hashU64(h, d.height.unitType()); h = hashU64(h, d.height.isSet());
+
+		h = hashU64(h, uint64_t(d.patternUnits));
+		h = hashU64(h, uint64_t(d.patternContentUnits));
+		h = hashU64(h, uint64_t(d.extendMode));
+
+		h = hashU64(h, uint64_t(d.hasPatternTransform));
+		if (d.hasPatternTransform) h = hashMatrix(h, d.patternTransform);
+
+		h = hashU64(h, uint64_t(d.hasViewBox));
+		if (d.hasViewBox) h = hashRect(h, d.viewBox);
+
+		h = hashU64(h, uint64_t(d.par.align()));
+		h = hashU64(h, uint64_t(d.par.meetOrSlice()));
+
+		// href is not hashed (doc merge already applied); leaving it out is fine.
+		return h;
+	}
+
+	static INLINE void mergeIfUnset(DocPatternState& dst, const DocPatternState& src) noexcept
+	{
+		if (!dst.x.isSet() && src.x.isSet())     dst.x = src.x;
+		if (!dst.y.isSet() && src.y.isSet())     dst.y = src.y;
+		if (!dst.width.isSet() && src.width.isSet()) dst.width = src.width;
+		if (!dst.height.isSet() && src.height.isSet())dst.height = src.height;
+
+		// enums: only override if dst still default AND src differs (template provides explicit).
+		// (Simple rule: always take src if dst is default construction and src came from authored.)
+		// Here: take src unconditionally if dst has not explicitly set the attribute.
+		// Since we don't track "isSet" for enums, we just merge only when the attribute is absent
+		// at parse time. We'll implement that by setting enums during parse only when attribute exists.
+		// (So this merge assumes parse does NOT overwrite defaults unless attribute present.)
+		// Thus: just copy.
+		dst.patternUnits = src.patternUnits;
+		dst.patternContentUnits = src.patternContentUnits;
+		dst.extendMode = src.extendMode;
+
+		if (!dst.hasPatternTransform && src.hasPatternTransform) {
+			dst.hasPatternTransform = true;
+			dst.patternTransform = src.patternTransform;
+		}
+
+		if (!dst.hasViewBox && src.hasViewBox) {
+			dst.hasViewBox = true;
+			dst.viewBox = src.viewBox;
+		}
+
+		// preserveAspectRatio: always merge (default is fine)
+		dst.par = src.par;
+	}
+
+
+}
+
+namespace waavs
+{
+	// ---------------------------- parsing doc state ----------------------------
+
+	static  void loadDocPatternState(DocPatternState& out, const XmlAttributeCollection& attrs) noexcept
+	{
+		out = DocPatternState{};
+
+		// href / xlink:href
+		ByteSpan href{};
+		attrs.getValue(svgattr::href(), href);
+		if (!href) attrs.getValue(svgattr::xlink_href(), href);
+		out.href = chunk_trim(href, chrWspChars);
+
+		// x,y,w,h
+		ByteSpan xA{}, yA{}, wA{}, hA{};
+		attrs.getValue(svgattr::x(), xA);
+		attrs.getValue(svgattr::y(), yA);
+		attrs.getValue(svgattr::width(), wA);
+		attrs.getValue(svgattr::height(), hA);
+
+		out.x = parseLengthAttr(xA);
+		out.y = parseLengthAttr(yA);
+		out.width = parseLengthAttr(wA);
+		out.height = parseLengthAttr(hA);
+
+		// patternUnits / patternContentUnits (only if present; otherwise keep defaults)
+		ByteSpan puA{}, pcuA{};
+		if (attrs.getValue(svgattr::patternUnits(), puA)) {
+			uint32_t v{};
+			if (getEnumValue(SVGSpaceUnits, puA, v)) out.patternUnits = (SpaceUnitsKind)v;
+		}
+		if (attrs.getValue(svgattr::patternContentUnits(), pcuA)) {
+			uint32_t v{};
+			if (getEnumValue(SVGSpaceUnits, pcuA, v)) out.patternContentUnits = (SpaceUnitsKind)v;
+		}
+
+		// extendMode (your custom)
+		ByteSpan emA{};
+		if (attrs.getValue(svgattr::extendMode(), emA)) {
+			uint32_t v{};
+			if (getEnumValue(SVGExtendMode, emA, v)) out.extendMode = (BLExtendMode)v;
+		}
+
+		// patternTransform
+		ByteSpan ptA{};
+		if (attrs.getValue(svgattr::patternTransform(), ptA)) {
+			out.hasPatternTransform = parseTransform(ptA, out.patternTransform);
+		}
+
+		// preserveAspectRatio
+		ByteSpan parA{};
+		if (attrs.getValue(svgattr::preserveAspectRatio(), parA)) {
+			out.par.loadFromChunk(parA);
+		}
+
+		// viewBox
+		ByteSpan vbA{};
+		BLRect vb{};
+		if (attrs.getValue(svgattr::viewBox(), vbA) && parseViewBox(vbA, vb)) {
+			out.hasViewBox = true;
+			out.viewBox = vb;
+		}
+	}
+
+
+
+
+
+	// ---------------------------- resolve per-use ----------------------------
+
+	static bool resolvePatternState(
+		const BLRect& paintVP,
+		const BLRect& objBBox,
+		const DocPatternState& doc,
+		double dpi,
+		const BLFont* fontOpt,
+		double deviceScaleX,
+		double deviceScaleY,
+		ResolvedPatternState& out) noexcept
+	{
+		out = ResolvedPatternState{};
+
+		if (paintVP.w <= 0 || paintVP.h <= 0)
+			return false;
+
+		const bool puObject = (doc.patternUnits == SpaceUnitsKind::SVG_SPACE_OBJECT);
+
+		// Resolve tile x/y/w/h
+		LengthResolveCtx cx{}, cy{}, cw{}, ch{};
+		if (puObject) {
+			cx = makeLengthCtxUser(objBBox.w, 0.0, dpi, fontOpt); cx.space = SpaceUnitsKind::SVG_SPACE_OBJECT;
+			cy = makeLengthCtxUser(objBBox.h, 0.0, dpi, fontOpt); cy.space = SpaceUnitsKind::SVG_SPACE_OBJECT;
+			cw = cx; ch = cy;
+		}
+		else {
+			cx = makeLengthCtxUser(paintVP.w, 0.0, dpi, fontOpt);
+			cy = makeLengthCtxUser(paintVP.h, 0.0, dpi, fontOpt);
+			cw = cx; ch = cy;
+		}
+
+		const double x = resolveLengthOr(doc.x, cx, 0.0) + (puObject ? objBBox.x : paintVP.x);
+		const double y = resolveLengthOr(doc.y, cy, 0.0) + (puObject ? objBBox.y : paintVP.y);
+		const double w = resolveLengthOr(doc.width, cw, 0.0);
+		const double h = resolveLengthOr(doc.height, ch, 0.0);
+
+		if (w <= 0.0 || h <= 0.0)
+			return false;
+
+		out.tile = BLRect{ x, y, w, h };
+
+		// Decide tile pixel size using device scale (quality)
+		const int tilePxW = clampTilePx(int(std::ceil(w * (deviceScaleX > 0 ? deviceScaleX : 1.0))));
+		const int tilePxH = clampTilePx(int(std::ceil(h * (deviceScaleY > 0 ? deviceScaleY : 1.0))));
+
+		// tileUser -> tilePx
+		BLMatrix2D tileUserToPx = BLMatrix2D::makeIdentity();
+		tileUserToPx.scale(double(tilePxW) / w, double(tilePxH) / h);
+
+		// content -> tileUser
+		BLMatrix2D contentToTileUser = BLMatrix2D::makeIdentity();
+
+		if (doc.hasViewBox)
+		{
+			// viewBox defines content coords
+			BLMatrix2D vb2tile{};
+			if (!computeViewBoxToViewport(BLRect{ 0,0,w,h }, doc.viewBox, doc.par, vb2tile))
+				return false;
+			contentToTileUser = vb2tile;
+		}
+		else
+		{
+			// no viewBox: content coords depend on patternContentUnits
+			if (doc.patternContentUnits == SpaceUnitsKind::SVG_SPACE_USER)
+			{
+				// content in paint user space -> tile local
+				contentToTileUser.translate(-out.tile.x, -out.tile.y);
+			}
+			else // objectBoundingBox
+			{
+				// content in bbox fraction space: (0..1)->bbox in paint user space -> tile local
+				contentToTileUser.translate(objBBox.x, objBBox.y);
+				contentToTileUser.scale(objBBox.w, objBBox.h);
+				contentToTileUser.translate(-out.tile.x, -out.tile.y);
+			}
+		}
+
+		// content -> tilePx
+		out.contentToTilePx = tileUserToPx;
+		out.contentToTilePx.postTransform(contentToTileUser);
+
+		// pattern matrix (phase + patternTransform)
+		out.patternMatrix = BLMatrix2D::makeIdentity();
+		out.patternMatrix.translate(-out.tile.x, -out.tile.y);
+		if (doc.hasPatternTransform)
+			out.patternMatrix.transform(doc.patternTransform);
+
+		out.resolved = true;
+		return true;
+	}
+
+}
+
+
+namespace waavs
+{
 	//============================================================
 	// SVGPatternElement
 	// https://www.svgbackgrounds.com/svg-pattern-guide/#:~:text=1%20Background-size%3A%20cover%3B%20This%20declaration%20is%20good%20when,5%20Background-repeat%3A%20repeat%3B%206%20Background-attachment%3A%20scroll%20%7C%20fixed%3B
 	// https://www.svgbackgrounds.com/category/pattern/
 	// https://www.visiwig.com/patterns/
 	//============================================================
+
 	struct SVGPatternElement : public SVGGraphicsElement
 	{
 		static void registerSingularNode()
@@ -33,7 +347,6 @@ namespace waavs {
 				});
 		}
 
-
 		static void registerFactory()
 		{
 			registerContainerNodeByName("pattern",
@@ -42,398 +355,266 @@ namespace waavs {
 					node->loadFromXmlPull(iter, groot);
 					return node;
 				});
-			
-
 			registerSingularNode();
 		}
 
+		// ---- Stored doc + cache ----
+		DocPatternState fDoc{};
+		bool fHasDoc{ false };
 
-		
-		ByteSpan fTemplateReference{};		// A referred to pattern as template
-		
-		
-		SpaceUnitsKind fPatternUnits{ SpaceUnitsKind::SVG_SPACE_OBJECT };
-		SpaceUnitsKind fPatternContentUnits{ SpaceUnitsKind::SVG_SPACE_USER };
-		BLExtendMode fExtendMode{ BL_EXTEND_MODE_REPEAT };
-		
-		
-		BLMatrix2D fPatternTransform{};
-		BLMatrix2D fContentTransform{};
-		bool fHasPatternTransform{ false };
-		
+		// cache key inputs
+		uint64_t fDocHash{ 0 };
+		BLRect fLastPaintVP{};
+		BLRect fLastObjBBox{};
+		double fLastDpi{ 96.0 };
+		double fLastScaleX{ 1.0 };
+		double fLastScaleY{ 1.0 };
 
-		SVGPortal fPortal;
-		BLRect viewboxRect{};
-		bool haveViewbox{ false };
-		PreserveAspectRatio fPreserveAspectRatio{};
-		
-		
-		// Things we'll need to calculate
-		BLRect fObjectBoundingBox{};
-		BLRect fPatternBoundingBox{};
-		BLPoint fPatternOffset{ 0,0 };
-		BLPoint fPatternContentScale{ 1.0,1.0 };
-		
-
-
-
-
-		BLImage fPatternCache{};
+		// resolved + cache
+		ResolvedPatternState fResolved{};
+		BLImage  fTileImage{};
 		BLPattern fPattern{};
-		BLVar fPatternVar{};
 
-		
-		
-		SVGPatternElement(IAmGroot* )
-			:SVGGraphicsElement()
+		SVGPatternElement(IAmGroot*) : SVGGraphicsElement()
 		{
-			fPattern.setExtendMode(BL_EXTEND_MODE_PAD);
-			fPatternTransform = BLMatrix2D::makeIdentity();
-			fContentTransform = BLMatrix2D::makeIdentity();
+			setIsStructural(true);
+            setIsVisible(false); // never directly visible; only via paint server
 
-			setIsStructural(false);
+			fPattern.setExtendMode(BL_EXTEND_MODE_REPEAT);
 		}
 
-
-		
-		const BLVar getVariant(IRenderSVG *ctx, IAmGroot *groot) noexcept override
-		{ 
-			//bindToContext(ctx, groot);
-
-
-			// Create image and draw into it right here
-			// At this point, all attributes have been captured
-			// and all dimensions are known.
-			// So, we can size a bitmap and draw into it
-			drawIntoCache(ctx, groot);
-			
-			BLVar tmpVar{};
-			tmpVar = fPattern;
-			return tmpVar;
-		}
-		
-		BLRect getBBox() const override
+		// Expose doc to templates resolver
+		void getDocPatternState(DocPatternState& out) const noexcept
 		{
-			return fPatternBoundingBox;
+			out = fDoc;
 		}
 
-		void inheritProperties(const SVGPatternElement *elem)
+		// Fixup after style application: parse doc state only (no resolving here).
+		void fixupSelfStyleAttributes(IAmGroot*) override
 		{
-			if (!elem)
-				return;
-			
-			// inherit: 
-			// x, y, width, height, patternUnits, patternContentUnits, patternTransform
-			// viewBox, preserveAspectRatio
-			if (!getAttributeByName("x"))
-			{
-				if (elem->getAttributeByName("x"))
-					setAttribute("x", elem->getAttributeByName("x"));
-			}
-
-			if (!getAttributeByName("y"))
-			{
-				if (elem->getAttributeByName("y"))
-					setAttribute("y", elem->getAttributeByName("y"));
-			}
-			
-			if (!getAttributeByName("width"))
-			{
-				if (elem->getAttributeByName("width"))
-					setAttribute("width", elem->getAttributeByName("width"));
-
-			}
-
-			if (!getAttributeByName("height"))
-			{
-				if (elem->getAttributeByName("height"))
-					setAttribute("height", elem->getAttributeByName("height"));
-			}
-			
-			if (!getAttributeByName("patternUnits"))
-			{
-				if (elem->getAttributeByName("patternUnits"))
-					setAttribute("patternUnits", elem->getAttributeByName("patternUnits"));
-			}
-			
-			if (!getAttributeByName("patternContentUnits"))
-			{
-				if (elem->getAttributeByName("patternContentUnits"))
-					setAttribute("patternContentUnits", elem->getAttributeByName("patternContentUnits"));
-			}
-
-			if (!getAttributeByName("patternTransform"))
-			{
-				if (elem->getAttributeByName("patternTransform"))
-					setAttribute("patternTransform", elem->getAttributeByName("patternTransform"));
-			}
-
-			if (!getAttributeByName("viewBox"))
-			{
-				if (elem->getAttributeByName("viewBox"))
-					setAttribute("viewBox", elem->getAttributeByName("viewBox"));
-			}
-
-			if (!getAttributeByName("preserveAspectRatio"))
-			{
-				if (elem->getAttributeByName("preserveAspectRatio"))
-					setAttribute("preserveAspectRatio", elem->getAttributeByName("preserveAspectRatio"));
-			}
+			loadDocPatternState(fDoc, fAttributes);
+			fHasDoc = true;
 		}
 
-		
-		void resolveReference(IRenderSVG *ctx, IAmGroot* groot)
+		// Pattern is used as a paint server: return variant
+		const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
 		{
-			// return early if we can't do a lookup
-			if (!groot)
+			// Resolve + update cache if needed
+			(void)ensurePatternReady(ctx, groot);
+
+			BLVar v{};
+			v = fPattern;
+			return v;
+		}
+
+		// Not a geometry bbox; return something stable
+		BLRect objectBoundingBox() const override
+		{
+			return fResolved.resolved ? fResolved.tile : BLRect{};
+		}
+
+	private:
+		// We need some way to estimate device scale for quality.
+		static INLINE void getDeviceScaleEstimate(IRenderSVG* ctx, double& sx, double& sy) noexcept
+		{
+			sx = 1.0;
+			sy = 1.0;
+			if (!ctx) 
 				return;
 
-			// Quick return if there is no referred to pattern
-			if (!fTemplateReference)
-				return;
-			
-			// Try to find the referred to pattern
-			auto node = groot->findNodeByHref(fTemplateReference);
+			const BLMatrix2D m = ctx->getTransform();
 
-			// Didn't find the node, so return empty handed
-			if (!node)
-				return;
+			// Column magnitudes (scale of unit vectors)
+			const double ax = m.m00;
+			const double bx = m.m01;
+			const double ay = m.m10;
+			const double by = m.m11;
 
-			// Try to cast the node to a SVGPatternElement, so we get get some properties from it
-			auto pattNode = std::dynamic_pointer_cast<SVGPatternElement>(node);
+			const double xLen = std::hypot(ax, bx);
+			const double yLen = std::hypot(ay, by);
 
-			// If it didn't cast, then it's not an SVGPatternElement, so return
-			if (!pattNode)
-				return;
-			
-			
-			// We need to do the inheritance thing here
-			// There are a fixed number of properties that we care to 
-			// inherit: x, y, width, height, patternUnits, patternContentUnits, patternTransform
-			// viewBox, preserveAspectRatio
-			// If we have set them ourselves, then don't bother getting them from the referenced
-			// pattern.  But, if we have not set them, then get them from the referenced pattern
-			// Use getVisualProperty() to figure out if the property has already been set or not
-			// 
-			pattNode->bindToContext(ctx, groot);
-			inheritProperties(pattNode.get());
+			// Guard against degenerate transforms.
+			if (xLen > 1e-12) sx = xLen;
+			if (yLen > 1e-12) sy = yLen;
+
+			// Optional: if you want “uniform-ish” scale for rasterization:
+			// const double s = std::max(sx, sy); sx = sy = s;
 		}
 
-		// fixupSelfStyleAttributes
-		//
-		// This is the earliest opportunity to load raw attribute
-		// values, after styling has been applied.
-		//
-		// We want to load things here that are invariant between 
-		// coordinate spaces, mostly enums, transform, and viewbox.
-		// 
-		// BUGBUG 
-		// can we also resolve inheritance here?
-		// has the document already been fully loaded.
-		//
-		void fixupSelfStyleAttributes(IRenderSVG *ctx, IAmGroot *groot) override
+		void bindPatternAfterRender(
+			const DocPatternState& docFinal,
+			const ResolvedPatternState& rs,
+			int tilePxW,
+			int tilePxH) noexcept
 		{
-			// See if we have a template reference
-			if (getAttributeByName("href"))
-				fTemplateReference = getAttributeByName("href");
-			else if (getAttributeByName("xlink:href"))
-				fTemplateReference = getAttributeByName("xlink:href");
+			// USER -> PIXEL scale (this was inverted before)
+			const double uxToPx = double(tilePxW) / rs.tile.w;
+			const double uyToPx = double(tilePxH) / rs.tile.h;
 
-			resolveReference(ctx, groot);
-			
-			// Get the aspect ratio, and spacial units
-			//getEnumValue(SVGAspectRatioEnum, getAttribute("preserveAspectRatio"), (uint32_t&)fPreserveAspectRatio);
-			getEnumValue(SVGSpaceUnits, getAttributeByName("patternUnits"), (uint32_t&)fPatternUnits);
-			getEnumValue(SVGSpaceUnits, getAttributeByName("patternContentUnits"), (uint32_t&)fPatternContentUnits);
+			BLMatrix2D m = BLMatrix2D::makeIdentity();
 
+			// 1) map user space to image pixel space
+			m.scale(uxToPx, uyToPx);
 
-			haveViewbox = parseViewBox(getAttributeByName("viewBox"), viewboxRect);
+			// 2) phase (tile origin) in user units
+			m.translate(-rs.tile.x, -rs.tile.y);
 
-			fHasPatternTransform = parseTransform(getAttributeByName("patternTransform"), fPatternTransform);
+			// 3) authored patternTransform (user space)
+			if (docFinal.hasPatternTransform)
+				m.transform(docFinal.patternTransform);
 
-			getEnumValue(SVGExtendMode, getAttributeByName("extendMode"), (uint32_t&)fExtendMode);
-		}
-		
-		//
-		// createPortal
-		// 
-		// This code establishes the coordinate space for the element, and 
-		// its child nodes.
-		// 
-		void createPortal(IRenderSVG* ctx, IAmGroot* groot)
-		{
-			double dpi = 96;
-			if (nullptr != groot)
-			{
-				dpi = groot->dpi();
-			}
-
-			// First, we want to know the size of the object we're going to be
-			// rendered into
-			BLRect objectBoundingBox = ctx->getObjectFrame();
-			// We also want to know the size of the container the object is in
-			BLRect containerBoundingBox = ctx->viewport();
-			
-			// Load parameters for the portal
-			SVGVariableSize fDimX{};
-			SVGVariableSize fDimY{};
-			SVGVariableSize fDimWidth{};
-			SVGVariableSize fDimHeight{};
-
-
-			fDimX.loadFromChunk(getAttributeByName("x"));
-			fDimY.loadFromChunk(getAttributeByName("y"));
-			fDimWidth.loadFromChunk(getAttributeByName("width"));
-			fDimHeight.loadFromChunk(getAttributeByName("height"));
-
-			// We need to calculate the fPatternBoundingBox
-			// this is based on the patternUnits
-			// Set default surfaceFrame
-			if (fPatternUnits == SVG_SPACE_OBJECT)
-			{
-				// Start with the offset
-				if (fDimX.isSet())
-					fPatternBoundingBox.x = fDimX.calculatePixels(ctx->getFont(), objectBoundingBox.w, 0, dpi, fPatternUnits);
-				if (fDimY.isSet())
-					fPatternBoundingBox.y = fDimY.calculatePixels(ctx->getFont(), objectBoundingBox.h, 0, dpi, fPatternUnits);
-
-				
-				if (fDimWidth.isSet())
-					fPatternBoundingBox.w = fDimWidth.calculatePixels(ctx->getFont(), objectBoundingBox.w, 0, dpi, fPatternUnits);
-				if (fDimHeight.isSet())
-					fPatternBoundingBox.h = fDimHeight.calculatePixels(ctx->getFont(), objectBoundingBox.h, 0, dpi, fPatternUnits);
-
-				fPatternOffset.x = fPatternBoundingBox.x;
-				fPatternOffset.y = fPatternBoundingBox.y;
-
-
-				
-			}
-			else if (fPatternUnits == SVG_SPACE_USER)
-			{
-				// Start with the offset					// Start with the offset
-				if (fDimX.isSet())
-					fPatternBoundingBox.x = fDimX.calculatePixels(ctx->getFont(), containerBoundingBox.w, 0, dpi, fPatternUnits);
-				if (fDimY.isSet())
-					fPatternBoundingBox.y = fDimY.calculatePixels(ctx->getFont(), containerBoundingBox.h, 0, dpi, fPatternUnits);
-
-
-				if (fDimWidth.isSet())
-					fPatternBoundingBox.w = fDimWidth.calculatePixels(ctx->getFont(), containerBoundingBox.w, 0, dpi, fPatternUnits);
-				if (fDimHeight.isSet())
-					fPatternBoundingBox.h = fDimHeight.calculatePixels(ctx->getFont(), containerBoundingBox.h, 0, dpi, fPatternUnits);
-
-				
-				fPatternOffset.x = fPatternBoundingBox.x;
-				fPatternOffset.y = fPatternBoundingBox.y;
-				
-			}
-
-			if (fPatternContentUnits == SVG_SPACE_OBJECT)
-			{
-				if (!haveViewbox) {
-					fPatternContentScale = { objectBoundingBox.w, objectBoundingBox.h };
-				}
-				else {
-					fPatternContentScale = { fPatternBoundingBox.w / viewboxRect.w, fPatternBoundingBox.h / viewboxRect.h };
-				}
-			}
-			else if (fPatternContentUnits == SVG_SPACE_USER)
-			{
-				if (!haveViewbox) {
-					fPatternContentScale = { 1.0,1.0 };
-				}
-				else {
-					fPatternContentScale = { fPatternBoundingBox.w / viewboxRect.w, fPatternBoundingBox.h / viewboxRect.h };
-				}
-
-			}
-
+			fPattern.setImage(fTileImage);
+			fPattern.setExtendMode(docFinal.extendMode);
+			fPattern.setTransform(m);
 		}
 
 
 
-		void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) override
+
+
+
+		bool ensurePatternReady(IRenderSVG* ctx, IAmGroot* groot) noexcept
 		{
-			createPortal(ctx, groot);
-			fPortal.bindToContext(ctx, groot);
+			if (!ctx || !fHasDoc)
+				return false;
 
-			// We need to resolve the size of the user space
-			// start out with some information from groot
-			double dpi = 96;
+			DocPatternState docFinal{};
+			resolvePatternDocWithHref(fDoc, groot, docFinal);
 
+			const BLRect paintVP = ctx->viewport();
+			const BLRect objBBox = ctx->getObjectFrame();
+			//const double dpi = groot ? groot->dpi() : 96.0;
+			const double dpi = 96.0;
 
-			// The width and height can default to the size of the canvas
-			// we are rendering to.
-			if (groot)
-				dpi = groot->dpi();
+			double devSx = 1.0, devSy = 1.0;
+			getDeviceScaleEstimate(ctx, devSx, devSy);
 
+			const uint64_t h = hashDocPattern(docFinal);
 
-			
-			// Need to apply the various transformations before drawing
-			fPattern.resetTransform();
-			fPattern.translate(-fPatternOffset.x, -fPatternOffset.y);
-			
-			// This is to properly scale the drawing within the context
-			//auto & scTform = fViewport.sceneToSurfaceTransform();
-			//fPattern.applyTransform(scTform);
-			
-			if (fHasPatternTransform)
-				fPattern.applyTransform(fPatternTransform);
+			const bool needsResolve =
+				(!fResolved.resolved) ||
+				(h != fDocHash) ||
+				(dpi != fLastDpi) ||
+				(devSx != fLastScaleX) || (devSy != fLastScaleY) ||
+				(paintVP.x != fLastPaintVP.x || paintVP.y != fLastPaintVP.y ||
+					paintVP.w != fLastPaintVP.w || paintVP.h != fLastPaintVP.h) ||
+				(objBBox.x != fLastObjBBox.x || objBBox.y != fLastObjBBox.y ||
+					objBBox.w != fLastObjBBox.w || objBBox.h != fLastObjBBox.h);
 
+			if (!needsResolve)
+				return true;
 
+			ResolvedPatternState rs{};
+			const BLFont* font = &ctx->getFont();
+			if (!resolvePatternState(paintVP, objBBox, docFinal, dpi, font, devSx, devSy, rs))
+				return false;
 
-			// Whether it was a reference or not, set the extendMode
-			fPattern.setExtendMode(fExtendMode);
+			const int tilePxW = clampTilePx(int(std::ceil(rs.tile.w * (devSx > 0 ? devSx : 1.0))));
+			const int tilePxH = clampTilePx(int(std::ceil(rs.tile.h * (devSy > 0 ? devSy : 1.0))));
 
+			if (!renderTile(groot, docFinal, rs, tilePxW, tilePxH))
+				return false;
+
+			bindPatternAfterRender(docFinal, rs, tilePxW, tilePxH);
+
+			fResolved = rs;
+			fDocHash = h;
+			fLastPaintVP = paintVP;
+			fLastObjBBox = objBBox;
+			fLastDpi = dpi;
+			fLastScaleX = devSx;
+			fLastScaleY = devSy;
+
+			return true;
 		}
 
-		void drawIntoCache(IRenderSVG* ctx, IAmGroot* groot)
+
+
+		bool renderTile(
+			IAmGroot* groot,
+			const DocPatternState& docFinal,
+			const ResolvedPatternState& rs,
+			int tilePxW,
+			int tilePxH) noexcept
 		{
-			bindToContext(ctx, groot);
+			// Allocate & clear
+			fTileImage.create(tilePxW, tilePxH, BL_FORMAT_PRGB32);
 
-			auto box = getBBox();
-
-			fPatternCache.create(static_cast<int>(fPatternBoundingBox.w), static_cast<int>(fPatternBoundingBox.h), BL_FORMAT_PRGB32);
-			SVGB2DDriver ictx; 
-			ictx.attach(fPatternCache);
-
-
+			SVGB2DDriver ictx;
+			ictx.attach(fTileImage);
 			ictx.renew();
 			ictx.clear();
-			ictx.scale(fPatternContentScale.x, fPatternContentScale.y);
 
-			draw(&ictx, groot);
+			// Nearest viewport for pattern children is the TILE USER RECT.
+			ictx.setViewport(BLRect{ 0.0, 0.0, rs.tile.w, rs.tile.h });
+
+			// Object frame for children:
+			// - If patternContentUnits==objectBoundingBox and no viewBox: children content space is 0..1
+			// - Otherwise: treat like tile user space
+			if (docFinal.patternContentUnits == SpaceUnitsKind::SVG_SPACE_OBJECT && !docFinal.hasViewBox)
+				ictx.setObjectFrame(BLRect{ 0.0, 0.0, 1.0, 1.0 });
+			else
+				ictx.setObjectFrame(BLRect{ 0.0, 0.0, rs.tile.w, rs.tile.h });
+
+			// Map pattern-content user coords -> tile pixels.
+			// IMPORTANT: setTransform, not applyTransform, so we start clean.
+			ictx.setTransform(rs.contentToTilePx);
+
+			// Draw children into the tile image.
+			drawChildren(&ictx, groot);
 
 			ictx.flush();
 			ictx.detach();
-
-			fPattern.setImage(fPatternCache);
+			return true;
 		}
 
-		
-		void draw(IRenderSVG* ctx, IAmGroot* groot) override
+
+
+
+
+		// Resolve template chain into final doc state (no attribute mutation).
+		static INLINE bool resolvePatternDocWithHref(
+			const DocPatternState& authored,
+			IAmGroot* groot,
+			DocPatternState& outFinal) noexcept
 		{
-			if (!visible())
-				return;
+			outFinal = authored;
 
-			if (needsBinding())
+			if (!groot || !authored.href)
+				return true;
+
+			// follow up to N levels to avoid cycles
+			DocPatternState cur = authored;
+			for (int depth = 0; depth < 8; ++depth)
 			{
-				bindToContext(ctx, groot);
+				if (!cur.href) break;
+
+				auto node = groot->findNodeByHref(cur.href);
+				if (!node) break;
+
+				auto patt = std::dynamic_pointer_cast<SVGPatternElement>(node);
+				if (!patt) break;
+
+				//patt->ensureDocReady(groot);
+
+				// Ensure the referenced pattern has its doc parsed (style already merged).
+				// We'll just ask it for its doc state via a helper (see below).
+				DocPatternState templ{};
+				patt->getDocPatternState(templ);
+
+				// Merge: only fill unset fields. For enums, templ overwrites only if it was explicitly authored;
+				// in this reference we keep it simple and merge unconditionally (good enough once you preserve
+				// enum "isSet" if you want strictness).
+				mergeIfUnset(outFinal, templ);
+
+				// Continue chain from template's href (SVG allows href chains)
+				cur = templ;
 			}
-			
-			ctx->push();
-			
-			ctx->setObjectFrame(getBBox());
-			
-			applyProperties(ctx, groot);
-			drawSelf(ctx, groot);
 
-			drawChildren(ctx, groot);
-
-			ctx->pop();
+			return true;
 		}
-		
+
+
 	};
-	
+
 }

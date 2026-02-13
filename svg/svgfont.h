@@ -42,7 +42,6 @@ namespace waavs {
 			registerContainerNodeByName("font", [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFontNode>(groot);
 				node->loadFromXmlPull(iter, groot);
-				node->visible(false);
 
 				return node;
 				});
@@ -61,7 +60,8 @@ namespace waavs {
 			, fHorizAdvX{ 0 }
 			, fHorizOriginX{0}
 		{
-			setIsStructural(false);
+			setIsStructural(true);
+            setIsVisible(false);
 		}
 
 
@@ -93,7 +93,6 @@ namespace waavs {
 			registerSVGSingularNodeByName("font-face", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGFontFaceNode>(groot);
 				node->loadFromXmlElement(elem, groot);
-				node->visible(false);
 
 				return node;
 			});
@@ -104,7 +103,6 @@ namespace waavs {
 			registerContainerNodeByName("font-face", [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFontFaceNode>(groot);
 				node->loadFromXmlPull(iter, groot);
-				node->visible(false);
 
 				return node;
 			});
@@ -146,13 +144,15 @@ namespace waavs {
 		std::string fOverlinePosition;
 		std::string fOverlineThickness;
 
-		SVGFontFaceNode(IAmGroot* iMap) :SVGGraphicsElement() {}
+		SVGFontFaceNode(IAmGroot* iMap) 
+			:SVGGraphicsElement() 
+		{
+            setIsVisible(false);
+		}
 
 
 		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{
-
-
 			auto fontFamily = getAttributeByName("font-family");
 			auto fontStyle = getAttributeByName("font-style");
 			auto fontVariant = getAttributeByName("font-variant");
@@ -325,7 +325,10 @@ namespace waavs {
 
 		ByteSpan fFaceName{};
 
-		SVGFontFaceNameNode(IAmGroot* iMap) :SVGGraphicsElement() { visible(false); }
+		SVGFontFaceNameNode(IAmGroot* iMap) :SVGGraphicsElement() 
+		{ 
+			setIsVisible(false); 
+		}
 
 		const ByteSpan& faceName() const {
 			return fFaceName;

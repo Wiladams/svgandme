@@ -10,6 +10,7 @@
 // Mainly parsing numeric types
 //
 
+#include <string>
 
 #include "bspan.h"
 #include "maths.h"
@@ -26,6 +27,13 @@ static int readFloatArguments(waavs::ByteSpan& s, const char* argTypes, float* o
 static int readNumericArguments(waavs::ByteSpan& s, const char* argTypes, double* outArgs) noexcept;
 
 
+static INLINE std::string toString(const waavs::ByteSpan& inChunk) noexcept
+{
+    if (!inChunk)
+        return std::string();
+
+    return std::string(inChunk.fStart, inChunk.fEnd);
+}
 
 // given an input character representing a hex digit
 // return the decimal value of that hex digit
@@ -504,41 +512,7 @@ namespace waavs {
         return i;
     }
 
-    static int readNumericArguments(ByteSpan& s, const char* argTypes, double* outArgs) noexcept
-    {
-        // typical whitespace found in lists of numbers, like on paths and polylines
-        //static charset segWspChars(",\t\n\f\r ");
 
-        int i = 0;
-        for (i = 0; argTypes[i]; i++)
-        {
-            switch (argTypes[i])
-            {
-            case 'c':		// read a coordinate
-            case 'r':		// read a radius
-            {
-                if (!readNextNumber(s, outArgs[i]))
-                    return i;
-            } break;
-
-            case 'f':		// read a flag
-            {
-                int aflag{ 0 };
-                if (!readNextFlag(s, aflag))
-                    return i;
-                outArgs[i] = aflag;
-
-            } break;
-
-            default:
-            {
-                return 0;
-            }
-            }
-        }
-
-        return i;
-    }
 }
 
 

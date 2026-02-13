@@ -52,7 +52,13 @@ namespace waavs {
 
 			fDocument = doc;
 
-			auto sFrame = fDocument->topLevelViewPort();
+			BLRect sFrame{};
+			auto rootElem = doc->documentElement();
+			if (rootElem != nullptr)
+			{
+				sFrame = rootElem->viewPort();
+			}
+
 
 			setBounds(sFrame);
 			setNeedsRedraw(true);

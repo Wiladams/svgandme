@@ -11,13 +11,11 @@
 // symbol
 // use
 
-#include <string>
 #include <array>
 #include <functional>
-#include <unordered_map>
 
-#include "svgattributes.h"
-#include "svgcontainer.h"
+#include "svgstructuretypes.h"
+#include "viewport.h"
 
 
 namespace waavs {
@@ -42,10 +40,15 @@ namespace waavs {
 
 		}
 
-		SVGPortal fPortal;			// The coordinate system
-		bool fIsTopLevel{ false };	// Is this a top level svg element
+		bool fIsTopLevel{ true };	// Is this a top level svg element
+
+		DocViewportState fDocViewport;	// The viewport attributes as authored in the document, before resolution
+		bool fHasDocViewport{ false };
+
+		SVGViewportState fViewportState;	// The resolved viewport state
 		
-		SVGSVGElement(IAmGroot* )
+
+		SVGSVGElement(IAmGroot* groot )
 			: SVGGraphicsElement()
 		{
 			setNeedsBinding(true);
@@ -63,84 +66,82 @@ namespace waavs {
 		// to set the size of the node, but not the position.
 		// And svg node is NOT top level by default, and is explicitly set
 		// to be top level by the DOM constructor
-		void setTopLevel(bool isTop) 
-		{ 
-			fIsTopLevel = isTop; 
-		}
+		void setTopLevel(bool isTop) { fIsTopLevel = isTop; }
 		bool isTopLevel() const { return fIsTopLevel; }
 
 
 		BLRect viewPort() const override
 		{
-			BLRect vpFrame{};
-			fPortal.getViewportFrame(vpFrame);
-			return vpFrame;
-		}
-
-		BLRect getBBox() const override
-		{
-			return fPortal.getBBox();
+            return fViewportState.fViewport;
 		}
 
 		
-		void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot *groot) override
+
+		void fixupSelfStyleAttributes(IAmGroot *groot) override
 		{
 			// printf("fixupSelfStyleAttributes\n");
-			//fPortal.loadFromAttributes(fAttributes);
-		}
+						// load the document representation of the viewport attributes
+			DocViewportState vps{};
+			loadDocViewportState(vps, fAttributes);
 
-		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
-		{
-			// We primarily need to establish the coordinate system here
-			// It is a mix of intrinsic size, the canvas size, and the viewbox
-
-			BLRect intrinsicRect{};
-
-			double intrinsicW = 0;
-			double intrinsicH = 0;
-			double dpi = 96.0;
-
-			// Set canvas size and dpi from groot, if we have it
-			if (groot != nullptr)
+			// Try to resolve the viewport state 
+			if (fIsTopLevel && groot)
 			{
-				intrinsicW = groot->canvasWidth();
-				intrinsicH = groot->canvasHeight();
-				dpi = groot->dpi();
+				const BLRect containingVP{ 0,0, groot->canvasWidth(), groot->canvasHeight() };
+
+				const double dpi = groot->dpi();
+				resolveViewState(containingVP, vps, true, dpi, nullptr, fViewportState);
+			}
+			else {
+				fDocViewport = vps;
+				fHasDocViewport = true;
+				fViewportState.fResolved = false;
 			}
 
-			// If the canvas size is not set, we use a default size
-			if (intrinsicW <= 0)
-				intrinsicW = 300;
-			if (intrinsicH <= 0)
-				intrinsicH = 150;
-
-			intrinsicRect = BLRect{ 0,0, intrinsicW, intrinsicH };
-
-
-			// 
-			// At this point, we know whether we're the top level svg element
-			// We need to figure out the viewport and viewbox settings
-            ByteSpan xAttr{}, yAttr{}, wAttr{}, hAttr{};
-
-            fAttributes.getValue(svgattr::x(), xAttr);
-            fAttributes.getValue(svgattr::y(), yAttr);
-            fAttributes.getValue(svgattr::width(), wAttr);
-            fAttributes.getValue(svgattr::height(), hAttr);
-
-			SVGVariableSize dimX; dimX.loadFromChunk(xAttr);
-			SVGVariableSize dimY;  dimY.loadFromChunk(yAttr);
-			SVGVariableSize dimWidth;  dimWidth.loadFromChunk(wAttr);
-			SVGVariableSize dimHeight; dimHeight.loadFromChunk(hAttr);
-
-			//fDimX.parseValue(srfFrame.x, ctx->getFont(), viewport.w, origin, dpi, SpaceUnitsKind::SVG_SPACE_USER);
-			//fDimY.parseValue(srfFrame.y, ctx->getFont(), viewport.h, origin, dpi, SpaceUnitsKind::SVG_SPACE_USER);
-			//fDimWidth.parseValue(srfFrame.w, ctx->getFont(), viewport.w, origin, dpi, SpaceUnitsKind::SVG_SPACE_USER);
-			//fDimHeight.parseValue(srfFrame.h, ctx->getFont(), viewport.h, origin, dpi, SpaceUnitsKind::SVG_SPACE_USER);
-
-			fPortal.loadFromAttributes(fAttributes);
-			fPortal.bindToContext(ctx, groot);
 		}
 
+		/*
+        // onLoadedFromXmlPull
+		//
+        // This is called after we've loaded the element and all its children from the XML
+        // In the case of the top level svg element, the entirety of the document has been loaded
+		// and we can resolve style attributes now.
+        //
+		virtual void onEndTag(IAmGroot* groot)
+		{
+			if (fIsTopLevel)
+				resolveStyleSubtree(groot);
+
+			// load the document representation of the viewport attributes
+            DocViewportState vps{};
+			loadDocViewportState(vps, fAttributes);
+
+			// Try to resolve the viewport state 
+			if (fIsTopLevel && groot)
+			{
+                const BLRect containingVP{ 0,0, groot->canvasWidth(), groot->canvasHeight() };
+
+                const double dpi = groot->dpi();
+				resolveViewState(containingVP, vps, true, dpi, nullptr, fViewportState);
+			}
+			else {
+				fDocViewport = vps;
+				fHasDocViewport = true;
+				fViewportState.fResolved = false;
+			}
+		}
+		*/
+		
+		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+		{
+			if (!fViewportState.fResolved)
+			{
+				const BLRect containingVP = ctx->viewport();
+				const double dpi = groot ? groot->dpi() : 96.0;
+				resolveViewState(containingVP, fDocViewport, false, dpi, nullptr, fViewportState);
+			}
+		}
+		
 		
 		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
 		{
@@ -149,11 +150,25 @@ namespace waavs {
 			// it will not transform along with the context
 			//ctx->clip(getBBox());
 
+
+
+            // Apply mapping from this svg's user space (viewBox) to its 
+			// parent user space (viewport)
 			// We do an 'applyTransform' instead of 'setTransform'
 			// because there might already be a transform on the context
 			// and we want to build upon that, rather than replace it.
-			ctx->applyTransform(fPortal.viewBoxToViewportTransform());
-			ctx->setViewport(getBBox());
+			ctx->applyTransform(fViewportState.viewBoxToViewportXform);
+
+			// Establish the 'nearest viewport' for children, in THIS
+			// svg's user space.  This is what percentage lengths should
+			// use as their reference.
+			ctx->setViewport(fViewportState.fViewBox);
+
+			// Object frame for <svg> isn't a true geometry bbox; we'll
+			// keep it simple, just so there is something.
+			// We could just ignore it, and allow whatever was already
+			// to remain.
+            //ctx->setObjectFrame(fViewportState.fViewBox);
 		}
 	};
 	
@@ -204,205 +219,7 @@ namespace waavs {
 	
 
 	
-	//====================================
-	// SVGUseNode
-	// https://www.w3.org/TR/SVG11/struct.html#UseElement
-	// <use>
-	//====================================
-	struct SVGUseElement : public SVGGraphicsElement
-	{
-		static void registerSingularNode()
-		{
-			registerSVGSingularNodeByName("use", [](IAmGroot* groot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGUseElement>(groot);
-				node->loadFromXmlElement(elem, groot);
-				return node;
-				});
-		}
 
-		static void registerFactory()
-		{
-			registerContainerNodeByName("use",
-				[](IAmGroot* groot, XmlPull& iter) {
-					auto node = std::make_shared<SVGUseElement>(groot);
-					node->loadFromXmlPull(iter, groot);
-					return node;
-				});
-			
-
-			registerSingularNode();
-		}
-
-
-		ByteSpan fWrappedID{};
-		std::shared_ptr<IViewable> fWrappedNode{ nullptr };
-
-
-		//double x{ 0 };
-		//double y{ 0 };
-		//double width{ 0 };
-		//double height{ 0 };
-		BLRect fBoundingBox{};
-		
-		SVGVariableSize fDimX{};
-		SVGVariableSize fDimY{};
-		SVGVariableSize fDimWidth{};
-		SVGVariableSize fDimHeight{};
-
-
-		SVGUseElement(const SVGUseElement& other) = delete;
-		SVGUseElement(IAmGroot* ) 
-			: SVGGraphicsElement() {}
-
-		BLRect viewPort() const override
-		{
-			// BUGBUG: This is not correct
-			// Needs to be adjusted for the x/y
-			// and the transform
-			if (fWrappedNode != nullptr)
-				return fWrappedNode->viewPort();
-
-			return BLRect{ };
-		}
-
-		BLRect getBBox() const override
-		{
-			return fBoundingBox;
-		}
-		
-		void update(IAmGroot *groot) override 
-		{ 
-			if (!fWrappedNode)
-				return;
-			
-			fWrappedNode->update(groot);
-		}
-
-		void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*) override 
-		{
-			fDimX.loadFromChunk(getAttributeByName("x"));
-			fDimY.loadFromChunk(getAttributeByName("y"));
-			fDimWidth.loadFromChunk(getAttributeByName("width"));
-			fDimHeight.loadFromChunk(getAttributeByName("height"));
-
-			// look for the href, or xlink:href attribute
-			auto href = getAttributeByName("xlink:href");
-			if (href.empty())
-			{
-				href = getAttributeByName("href");
-			}
-
-			fWrappedID = chunk_trim(href, chrWspChars);
-		}
-		
-		
-		void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) override
-		{
-			double dpi = 96;
-
-
-			if (nullptr != groot)
-			{
-				dpi = groot->dpi();
-			}
-
-			BLRect objFrame = ctx->getObjectFrame();
-			BLRect vpFrame = ctx->viewport();
-			BLRect cartFrame{};
-
-			cartFrame = objFrame;
-			if ((cartFrame.w <= 0) || (cartFrame.h <=0))
-                cartFrame = vpFrame;
-
-			fDimX.parseValue(fBoundingBox.x, ctx->getFont(), cartFrame.w, 0, dpi);
-			fDimY.parseValue(fBoundingBox.y, ctx->getFont(), cartFrame.h, 0, dpi);
-			fDimWidth.parseValue(fBoundingBox.w, ctx->getFont(), cartFrame.w, 0, dpi);
-			fDimHeight.parseValue(fBoundingBox.h, ctx->getFont(), cartFrame.h, 0, dpi);
-			
-
-
-			if (fWrappedID && groot) {
-				fWrappedNode = groot->findNodeByHref(fWrappedID);
-			}
-		}
-
-
-		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
-		{
-			if (fWrappedNode == nullptr)
-				return;
-
-			// set local size, if width and height were set
-			// we don't want to do scaling here, because the
-			// wrapped graphic might want to do something different
-			// really it applies to symbols, and they're do their 
-			// own scaling.
-			// width and height only apply when the wrapped graphic
-			// is a symbol.  So, we should do that when we lookup the node
-			//if (fDimWidth.isSet() && fDimHeight.isSet())
-			//{
-			//	ctx->localFrame(BLRect{ x,y,width,height });
-			//}
-			
-			
-			ctx->push();
-			ctx->translate(fBoundingBox.x, fBoundingBox.y);
-			
-			// Draw the wrapped graphic
-			if (fBoundingBox.w > 0 && fBoundingBox.h > 0) {
-				ctx->setObjectFrame(fBoundingBox);
-				ctx->setViewport(BLRect{ 0,0,fBoundingBox.w, fBoundingBox.h });
-			}
-
-			fWrappedNode->draw(ctx, groot);
-
-			ctx->pop();
-		}
-
-	};
-
-	//============================================================
-	// 	SVGDefsNode
-	// This node is here to hold onto definitions of other nodes
-	//============================================================
-	struct SVGDefsNode : public SVGGraphicsElement
-	{
-		static void registerSingularNode()
-		{
-			registerSVGSingularNodeByName("defs",  [](IAmGroot* groot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGDefsNode>(groot);
-				node->loadFromXmlElement(elem, groot);
-				//node->visible(false);
-
-				return node;
-				});
-		}
-
-		// Static constructor to register factory method in map
-		static void registerFactory()
-		{
-			registerContainerNodeByName("defs",
-				[](IAmGroot* groot, XmlPull& iter) {
-					auto node = std::make_shared<SVGDefsNode>(groot);
-					node->loadFromXmlPull(iter, groot);
-					//node->visible(false);
-
-					return node;
-				});
-
-
-			registerSingularNode();
-		}
-
-		// Instance Constructor
-		SVGDefsNode(IAmGroot*)
-			: SVGGraphicsElement()
-		{
-			setIsStructural(false);
-			visible(false);
-		}
-
-	};
 
 
 	//=================================================
@@ -443,8 +260,8 @@ namespace waavs {
 		SVGDescNode(IAmGroot*)
 			: SVGGraphicsElement()
 		{
-			setIsStructural(false);
-			visible(false);
+			//setIsStructural(false);
+			setIsVisible(false);
 		}
 
 		const ByteSpan& content() const { return fContent; }
@@ -470,7 +287,6 @@ namespace waavs {
 			registerSVGSingularNodeByName("title", [](IAmGroot* groot, const XmlElement& elem) {
 				auto node = std::make_shared<SVGTitleNode>(groot);
 				node->loadFromXmlElement(elem, groot);
-				node->visible(false);
 
 				return node;
 				});
@@ -483,7 +299,6 @@ namespace waavs {
 				[](IAmGroot* groot, XmlPull& iter) {
 					auto node = std::make_shared<SVGTitleNode>(groot);
 					node->loadFromXmlPull(iter, groot);
-					node->visible(false);
 
 					return node;
 				});
@@ -496,7 +311,10 @@ namespace waavs {
 
 		// Instance Constructor
 		SVGTitleNode(IAmGroot*)
-			: SVGGraphicsElement() {}
+			: SVGGraphicsElement() 
+		{
+            setIsVisible(false);
+		}
 
 		const ByteSpan& content() const { return fContent; }
 

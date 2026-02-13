@@ -77,7 +77,7 @@ namespace waavs {
 		const BLVar strokeStyle() const { return fGraphState.getStrokePaint(); }
 		void setStrokeStyle(const BLVar& style) { fGraphState.setStrokePaint(style); }
 
-		const BLVar& fillStyle() const { return fGraphState.getFillPaint(); }
+		const BLVar fillStyle() const { return fGraphState.getFillPaint(); }
 		void setFillStyle(const BLVar& style) { fGraphState.setFillPaint(style); }
 
 		void setPreserveAspectRatio(const char* par)

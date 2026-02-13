@@ -166,3 +166,25 @@ namespace waavs
 	}
 	
 }
+
+namespace waavs
+{
+	// This is a little gem AI generated
+	// At some point it might be useful to compare
+    // this routine to the table based one in decode() above, 
+	// to see if it's worth using this for fast skipping of codepoints.
+	static INLINE const uint8_t* utf8_next(const uint8_t* p, const uint8_t* e) noexcept
+	{
+		if (p >= e) 
+			return e;
+
+		uint8_t c = *p++;
+		if (c < 0x80) return p;
+
+		// assumes valid UTF-8; fast skip only
+		if ((c >> 5) == 0x6)  return (p + 1 <= e) ? (p + 1) : e; // 2 bytes total
+		if ((c >> 4) == 0xE)  return (p + 2 <= e) ? (p + 2) : e; // 3 bytes total
+		if ((c >> 3) == 0x1E) return (p + 3 <= e) ? (p + 3) : e; // 4 bytes total
+		return e;
+	}
+}

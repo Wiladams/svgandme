@@ -32,7 +32,7 @@ namespace waavs {
 
         SVGScriptElement(IAmGroot* groot) : SVGGraphicsElement(groot)
         {
-            setIsStructural(false);
+            //setIsStructural(false);
         }
 
         // When content is not wrapped in CDATA

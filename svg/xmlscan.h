@@ -389,7 +389,7 @@ namespace waavs {
 
             if (q + 1 < end && q[1] == '>') 
             {
-                ByteSpan content{ contentStart, q };
+                ByteSpan content = ByteSpan::fromPointers( contentStart, q );
 
                 // Advance past '?>'
                 st.fState.input.fStart = q + 2;
@@ -516,11 +516,11 @@ namespace waavs {
                 {
                     selfClosing = true;
                     // Exclude that '/' from the attribute span (also exclude any whitespace before '>' if you want).
-                    attrSpan = { attrStart, q - 1 };
+                    attrSpan = ByteSpan::fromPointers( attrStart, q - 1 );
                 }
                 else
                 {
-                    attrSpan = { attrStart, gt };
+                    attrSpan = ByteSpan::fromPointers( attrStart, gt );
                 }
 
                 // Advance iterator past '>'

@@ -1,8 +1,13 @@
 #pragma once
 
+
 #include "blend2d.h"
-#include "svgenums.h"
+
 #include "charset.h"
+#include "maths.h"
+#include "svgenums.h"
+
+#include "svgdatatypes.h"
 
 
 namespace waavs {
@@ -37,7 +42,7 @@ namespace waavs {
 		// meetOrSlice to 'meet' by default
 		if (!s.empty()) {
 			ByteSpan mos = chunk_token(s, chrWspChars);
-			if (!mos.empty() && !getEnumValue(SVGAspectRatioMeetOrSliceEnum, s, (uint32_t&)meetOrSlice))
+			if (!mos.empty() && !getEnumValue(SVGAspectRatioMeetOrSliceEnum, mos, (uint32_t&)meetOrSlice))
 				return false;
 		}
 
@@ -46,7 +51,7 @@ namespace waavs {
 }
 
 namespace waavs {
-	
+
 	struct PreserveAspectRatio final
 	{
 	private:
@@ -55,30 +60,31 @@ namespace waavs {
 
 		AspectRatioAlignKind fAlignment = DEFAULT_ALIGNMENT;
 		AspectRatioMeetOrSliceKind fMeetOrSlice = DEFAULT_MEET_OR_SLICE;
+        bool fIsSet{ false };
 
 	public:
 		PreserveAspectRatio() = default;
-		
+
 		PreserveAspectRatio(const char* cstr) noexcept
 		{
 			ByteSpan aspan(cstr);
 			loadFromChunk(aspan);
 		}
-		
+
 		PreserveAspectRatio(const ByteSpan& inChunk) noexcept
 		{
 			loadFromChunk(inChunk);
 		}
-		
+
 		constexpr AspectRatioMeetOrSliceKind meetOrSlice() const noexcept { return fMeetOrSlice; }
 		void setMeetOrSlice(AspectRatioMeetOrSliceKind m) noexcept { fMeetOrSlice = m; }
 
 		constexpr AspectRatioAlignKind align() const noexcept { return fAlignment; }
 		void setAlign(AspectRatioAlignKind a) noexcept { fAlignment = a; }
 
-		void getAlignment(SVGAlignment& xAlign, SVGAlignment& yAlign) const noexcept
+		static void splitAlignment(AspectRatioAlignKind aligned, SVGAlignment& xAlign, SVGAlignment& yAlign) noexcept
 		{
-			switch (fAlignment)
+			switch (aligned)
 			{
 			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMINYMIN:
 				xAlign = SVGAlignment::SVG_ALIGNMENT_START;
@@ -97,7 +103,7 @@ namespace waavs {
 				return;
 
 
-			// X Middle
+				// X Middle
 			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMIDYMIN:
 				xAlign = SVGAlignment::SVG_ALIGNMENT_MIDDLE;
 				yAlign = SVGAlignment::SVG_ALIGNMENT_START;
@@ -114,7 +120,7 @@ namespace waavs {
 				return;
 
 
-			// X End
+				// X End
 			case AspectRatioAlignKind::SVG_ASPECT_RATIO_XMAXYMIN:
 				xAlign = SVGAlignment::SVG_ALIGNMENT_END;
 				yAlign = SVGAlignment::SVG_ALIGNMENT_START;
@@ -130,7 +136,7 @@ namespace waavs {
 				yAlign = SVGAlignment::SVG_ALIGNMENT_END;
 				return;
 
-			// NONE
+				// NONE
 			case AspectRatioAlignKind::SVG_ASPECT_RATIO_NONE:
 			default:
 				xAlign = SVGAlignment::SVG_ALIGNMENT_NONE;
@@ -144,722 +150,245 @@ namespace waavs {
 		// Load the data type from a single ByteSpan
 		bool loadFromChunk(const ByteSpan& inChunk) noexcept
 		{
-			return parsePreserveAspectRatio(inChunk, fAlignment, fMeetOrSlice);
+			fIsSet = parsePreserveAspectRatio(inChunk, fAlignment, fMeetOrSlice);
+			return fIsSet;
 		}
 
 
 	};
-	
 
-	// PortalView
-	// 
-	// Constains the raw information that makes up a viewport
-    // The viewport is the 'window' through which we are looking at a scene
-    // Do, it contains the portion of the scene we are looking at, and the size
-	// of the window.
-	// This also contains the rotation and aspect ratio as well.
-	// Note: We want to separate this from the transformation stuff
-	// because we might want to use it in a context beyond that transformation.
-	// If the values for the viewport or videwbox are <= 0, they are considered
-	// to not be set.
-	//
-	struct PortalView 
+	static bool parseViewBox(const ByteSpan& inChunk, BLRect& r) noexcept
 	{
-	public:
-		BLRect fViewportFrame{};
-		BLRect fViewBoxFrame{};
-        double fRotRad = 0.0;		// Number of radians rotated
-        BLPoint fRotCenter{};		// Point around which we rotate
-        PreserveAspectRatio fPreserveAspectRatio;
-	
-	public:
-		static void clampFrame(BLRect& fr)
-		{
-			if (fr.w < 0) fr.w = 0;
-			if (fr.h < 0) fr.h = 0;
-		}
+		if (!inChunk)
+			return false;
 
-		void reset()
-		{
-            fViewportFrame = BLRect{};
-            fViewBoxFrame = BLRect{};
-            fRotRad = 0.0;
-            fRotCenter = BLPoint{};
-            fPreserveAspectRatio = PreserveAspectRatio{};
-		}
+		SVGTokenListView view(inChunk);
+		double x = 0.0, y = 0.0, w = 0.0, h = 0.0;
 
-        void resetView(const BLRect& viewBoxFr, const BLRect& viewportFr)
-		{
-			fViewportFrame = viewportFr;
-			fViewBoxFrame = viewBoxFr;
+		if (!view.readANumber(x)) return false;
+		if (!view.readANumber(y)) return false;
+		if (!view.readANumber(w) || (w <= 0.0)) return false;
+		if (!view.readANumber(h) || (h <= 0.0)) return false;
 
-            //clampFrame(fViewportFrame);
-            //clampFrame(fViewBoxFrame);
+		r.reset(x, y, w, h);
 
-			fRotRad = 0.0;
-			fRotCenter = BLPoint{};
-			fPreserveAspectRatio = PreserveAspectRatio{};
-        }
+		return true;
+	}
 
-		bool isValid() const
-		{
-			return ((fViewBoxFrame.w > 0) && (fViewBoxFrame.h > 0) && (fViewportFrame.w > 0) && (fViewportFrame.h > 0));
-		}
+    // ViewStateAuthoring
+	//
+    // Represents the as-authored state of the viewport and viewbox settings for an element.
+    // This is the state that is loaded from the XML attributes, and it preserves the original units and values.
+    // This is separate from the resolved state (SVGViewportState) because we may need to re-resolve the viewport 
+	// settings if the context changes (e.g. parent element's viewport changes, or the canvas size changes).
+	struct DocViewportState
+	{
+		// as-authored values (after style merge)
+		SVGLengthValue x{};
+		SVGLengthValue y{};
+		SVGLengthValue width{};
+		SVGLengthValue height{};
 
-        void setViewportFrame(const BLRect& fr) { 
-			fViewportFrame = fr; 
-            //clampFrame(fViewportFrame);
-		}
-        bool getViewportFrame(BLRect& outFr) const
-			{
-			if (fViewportFrame.w <= 0 || fViewportFrame.h <= 0)
-				return false;
-			outFr = fViewportFrame;
-			return true;
-        }
+		PreserveAspectRatio par{};
 
-        void setViewBoxFrame(const BLRect& fr) 
-		{ 
-			fViewBoxFrame = fr; 
-            //clampFrame(fViewBoxFrame);
-		}
-		bool getViewBoxFrame(BLRect& outFr) const
-		{
-			if (fViewBoxFrame.w <= 0 || fViewBoxFrame.h <= 0)
-				return false;
-			outFr = fViewBoxFrame;
-			return true;
-        }
-
-		void setRotation(double rads, const BLPoint& center) 
-		{	
-			// Keep the rotation between 0 - 2pi
-			fRotRad += rads;
-			fRotRad = std::fmod(fRotRad, 2.0 * waavs::pi);
-			if (fRotRad < 0.0)
-				fRotRad += 2.0 * waavs::pi;
-			
-			fRotCenter = center; 
-		}
-
-        bool getRotation(double& outRadians, BLPoint& outCenter) const
-        {
-			outRadians = fRotRad;
-			outCenter = fRotCenter;
-			return true;
-        }
-
-		void setPreserveAspectRatio(const PreserveAspectRatio& par) { fPreserveAspectRatio = par; }
-		bool getPreserveAspectRatio(PreserveAspectRatio& outPar) const
-		{
-			outPar = fPreserveAspectRatio;
-			return true;
-        }
+        bool hasViewBox{ false };
+		BLRect viewBox{};
 	};
 
-
-	//
-	// ViewportTransformer
-	// 
-	// The ViewportTransformer represents the mapping between a viewport and a viewbox.
-	// 
-	// The viewportFrame, is where the image is projected.  This is typically
-	// the actual window on the screen the user is interacting with.
-	// 
-	// The viewboxFrame, is the content that is being looked at.  So, if you're looking
-	// through a window as a painting outside, the viewboxFrame is the painting.
-	// The 'viewbox' is assumed to be an infinite canvas.  The 'viewboxFrame' is the portion
-	// of that infinite canvas you want to actually show up within the viewportFrame.
-	// 
-	// Interesting operations:
-	// 1) If you have a bounded thing, like a bitmap, and you want it to fill the surface
-	// you can specify the viewboxFrame(BLRect(0,0,img.width, img.height))
-	// 
-	// 2) If you want to do some 'panning', you send a viewboxFrame to equal the size
-	// of the viewportFrame initially, then use the translateBy(), and translateTo() functions
-	// to adjust the position of that boundary against the scene you're scrolling.
-	// 
-	// The viewport allows you to do typical 'camera' kinds of movements, like pan, zoom,
-	// lookAt, and the like, and returns you the transformation matrix that you can 
-	// apply to a drawing context.
-	//
-
-	struct ViewportTransformer
+	struct SVGViewportState
 	{
-	protected:
-		BLMatrix2D fTransform = BLMatrix2D::makeIdentity();
-		BLMatrix2D fInverseTransform = BLMatrix2D::makeIdentity();
-		
-        PortalView fPortalView{};
+		BLRect fViewport;   // The viewport rectangle
 
+		bool fHasViewBox{ false };
+		BLRect fViewBox;    // The viewBox rectangle
 
+		PreserveAspectRatio fPreserveAspect{};
 
-	public:
-		ViewportTransformer() = default;
-		
-		
-		ViewportTransformer(const ViewportTransformer& other)
-			: fTransform(other.fTransform)
-			, fInverseTransform(other.fInverseTransform)
-            , fPortalView(other.fPortalView)
+		// The transformation from viewBox to viewport,
+		// Calculated based on the viewport, viewbox, and preserveAspectRatio settings
+		BLMatrix2D viewBoxToViewportXform{};
 
-		{
-		}
-		
-		ViewportTransformer& operator=(const ViewportTransformer& other)
-		{
-			fTransform = other.fTransform;
-			fInverseTransform = other.fInverseTransform;
-            fPortalView = other.fPortalView;
-				
-			return *this;
-		}
-		
-		
-		ViewportTransformer(const BLRect& aSurfaceFrame, const BLRect& aSceneFrame)
-
-		{
-            fPortalView.setViewportFrame(aSurfaceFrame);
-            fPortalView.setViewBoxFrame(aSceneFrame);
-			
-			updateTransformMatrix();
-		}
-		
-		ViewportTransformer(double x, double y, double w, double h)
-		{
-			fPortalView.setViewportFrame({ x,y,w,h });
-            fPortalView.setViewBoxFrame({ 0,0,w,h });
-			updateTransformMatrix();
-		}
-		
-		~ViewportTransformer() = default;
-
-		
-		void reset() 
-		{
-            fPortalView.reset();
-			fPortalView.setViewportFrame({ 0,0,1,1 });
-			fPortalView.setViewBoxFrame({ 0,0,1,1 });
-
-			updateTransformMatrix();
-		}
-
-		void setPreserveAspectRatio(const PreserveAspectRatio& aPreserveAspectRatio)
-		{
-            fPortalView.setPreserveAspectRatio(aPreserveAspectRatio);
-			updateTransformMatrix();
-		}
-		bool getPreserveAspectRatio(PreserveAspectRatio &aspect) const
-		{
-			return fPortalView.getPreserveAspectRatio(aspect);
-		}
-		
-		
-		// sceneToSurfaceTransform()
-		// 
-		// This is the transform that is applied to a drawing context when we're
-		// drawing the scene onto the surface.
-		
-		const BLMatrix2D& viewBoxToViewportTransform() const {
-			return fTransform; 
-		}
-		
-		// viewportToViewBoxTransform()
-		//
-		// Use this transform when you've got a point in the surfaceFrame and you 
-		// want to know where in the scene it is.  This is typically used when 
-		// you do a mouse click on the surface, and you want to know where in the
-		// scene that click hits.
-		const BLMatrix2D& viewportToViewBoxTransform() const { 
-			return fInverseTransform; 
-		}
-		
-		// setting and getting surface frame
-		bool setViewportFrame(const BLRect& fr) 
-		{
-			// return false if the frame is invalid
-			if (fr.w <= 0 || fr.h <= 0)
-				return false;
-			
-			fPortalView.setViewportFrame(fr);
-
-			updateTransformMatrix(); 
-			
-			// return true if we actually set the frame
-			return true;
-		}
-		
-		bool getViewportFrame(BLRect &aFrame) const 
-		{ 
-			return fPortalView.getViewportFrame(aFrame); 
-		}
-
-		// setting and getting scene frame
-		bool setViewBoxFrame(const BLRect& fr) 
-		{ 
-			// return false if the frame is invalid
-			if (fr.w <= 0 || fr.h <= 0)
-				return false;
-			
-			fPortalView.setViewBoxFrame(fr);
-
-			updateTransformMatrix(); 
-		
-			return true;
-		}
-		
-		bool getViewBoxFrame(BLRect &aframe) const 
-		{
-			return fPortalView.getViewBoxFrame(aframe);
-		}
-
-		
-		// Convert a point from the scene to the surface
-		BLPoint mapViewBoxToViewport(double x, double y) const
-		{
-			BLPoint pt = fTransform.mapPoint(x, y);
-			return pt;
-		}
-		
-		// Convert a point from the surface to the scene
-		BLPoint mapViewportToViewBox(double x, double y) const
-		{
-			BLPoint pt = fInverseTransform.mapPoint(x, y );
-			return pt;
-		}
-
-	protected:
-
-		void getAspectScale(BLPoint& ascale)
-		{
-			if (fPortalView.fPreserveAspectRatio.align() == AspectRatioAlignKind::SVG_ASPECT_RATIO_NONE)
-			{
-				// Scale each dimension to fit the scene to the frame
-				// do not preserve aspect ratio
-				// ignore the meet/slice
-				ascale.x = (fPortalView.fViewportFrame.w / fPortalView.fViewBoxFrame.w);
-				ascale.y = (fPortalView.fViewportFrame.h / fPortalView.fViewBoxFrame.h);
-			}
-			else {
-				double scaleX = (fPortalView.fViewportFrame.w / fPortalView.fViewBoxFrame.w);
-				double scaleY = (fPortalView.fViewportFrame.h / fPortalView.fViewBoxFrame.h);
-				
-				// Check the meet/slice
-				double uniformScale{};
-				if (fPortalView.fPreserveAspectRatio.meetOrSlice() == AspectRatioMeetOrSliceKind::SVG_ASPECT_RATIO_SLICE)
-					uniformScale = std::max(scaleX, scaleY);
-				else  // default to 'meet'
-					uniformScale = std::min(scaleX, scaleY);
-
-				ascale.x = uniformScale;
-				ascale.y = uniformScale;
-			}
-		}
-	
-		void updateTransformMatrix()
-		{	
-			fTransform = BLMatrix2D::makeIdentity();
-			
-			BLPoint ascale(1, 1);
-			BLPoint atrans(0, 0);
-			
-			if (fPortalView.fPreserveAspectRatio.align() == AspectRatioAlignKind::SVG_ASPECT_RATIO_NONE)
-			{
-				// Scale each dimension to fit the scene to the frame
-				// do not preserve aspect ratio
-				// ignore the meet/slice
-				ascale.x = (fPortalView.fViewportFrame.w / fPortalView.fViewBoxFrame.w);
-				ascale.y = (fPortalView.fViewportFrame.h / fPortalView.fViewBoxFrame.h);
-
-			} else {
-				// calculate candidate scaling factors
-				double scaleX = (fPortalView.fViewportFrame.w / fPortalView.fViewBoxFrame.w);
-				double scaleY = (fPortalView.fViewportFrame.h / fPortalView.fViewBoxFrame.h);
-
-				// Check the meet/slice
-				double uniformScale{};
-				if (fPortalView.fPreserveAspectRatio.meetOrSlice() == AspectRatioMeetOrSliceKind::SVG_ASPECT_RATIO_SLICE)
-					uniformScale = std::max(scaleX, scaleY);
-				else  // default to 'meet'
-					uniformScale = std::min(scaleX, scaleY);
-					
-				ascale.x = uniformScale;
-				ascale.y = uniformScale;
-					
-				// Next, compute the alignment offset
-				// we'll see how big the sceneFrame is 
-				// with scaling applied
-				double scaleW = fPortalView.fViewBoxFrame.w * uniformScale;
-				double scaleH = fPortalView.fViewBoxFrame.h * uniformScale;
-					
-				// Decide alignment in X direction
-				SVGAlignment xAlign{};
-				SVGAlignment yAlign{};
-				fPortalView.fPreserveAspectRatio.getAlignment(xAlign, yAlign);
-
-				switch (xAlign)
-				{
-					case SVGAlignment::SVG_ALIGNMENT_START:
-						atrans.x = 0;
-						break;
-						
-					case SVGAlignment::SVG_ALIGNMENT_MIDDLE:
-						atrans.x = (fPortalView.fViewportFrame.w - scaleW) / 2;
-						break;
-						
-					case SVGAlignment::SVG_ALIGNMENT_END:
-						atrans.x = fPortalView.fViewportFrame.w - scaleW;
-						break;
-				}
-					
-				// Decide alignment in Y direction
-				switch (yAlign) {
-					case SVGAlignment::SVG_ALIGNMENT_START:
-						atrans.y = 0;
-						break;
-
-					case SVGAlignment::SVG_ALIGNMENT_MIDDLE:
-						atrans.y = (fPortalView.fViewportFrame.h - scaleH) / 2;
-						break;
-						
-					case SVGAlignment::SVG_ALIGNMENT_END:
-						atrans.y = fPortalView.fViewportFrame.h - scaleH;
-						break;
-				}
-
-			}
-
-			
-			// Translate by viewportFrame amount first
-			// because we assume the context hasn't already done this
-			fTransform.translate(fPortalView.fViewportFrame.x, fPortalView.fViewportFrame.y);
-			
-
-			// Apply the 'letter box' alignment offset
-			fTransform.translate(atrans.x, atrans.y);
-
-
-
-
-
-			// Scale
-			// scale by the computed factors
-			fTransform.scale(ascale);
-
-
-			// Translate scene frame amount
-			fTransform.translate(-fPortalView.fViewBoxFrame.x, -fPortalView.fViewBoxFrame.y);
-
-			fTransform.rotate(fPortalView.fRotRad, fPortalView.fRotCenter);
-
-
-			// Rotation; applied to the translated object space
-			// space
-			//BLPoint pivotLocal = {
-			//	fPortalView.fRotCenter.x - (fPortalView.fViewBoxFrame.x),
-			//	fPortalView.fRotCenter.y - (fPortalView.fViewBoxFrame.y)
-			//};
-			//fTransform.rotate(fPortalView.fRotRad, pivotLocal);
-
-
-			// Calculate the inverse transform
-			// so we can convert from world space to object space
-			fInverseTransform = fTransform;
-			fInverseTransform.invert();
-		}
-		
-	public:
-		// @brief Translates the scene frame to an absolute position in scene coordinates.
-		//
-		// Moves the origin of the current scene frame to (x, y) in the scene's coordinate
-		// space. After updating the position, the internal transformation matrix is recalculated.
-		//
-		// @param[in] x  The new x-coordinate of the scene frame's origin in scene coordinates.
-		// @param[in] y  The new y-coordinate of the scene frame's origin in scene coordinates.
-		//
-		// @return `true` if the viewport is valid and the translation was applied successfully;
-		//         `false` otherwise.
-	
-		bool translateTo(double x, double y)
-		{
-			if (!fPortalView.isValid())
-				return false;
-
-			
-			fPortalView.fViewBoxFrame.x = x;
-			fPortalView.fViewBoxFrame.y = y;
-			updateTransformMatrix();
-
-			return true;
-		}
-
-		// @brief Translates the scene frame by a relative offset in scene coordinates.
-		//
-		// Moves the current scene frame by (dx, dy) from its existing position, then
-		// recalculates the transformation matrix. Internally, this calls `translateTo()`
-		// with the updated coordinates.
-		//
-		// @param[in] dx  The translation offset along the x-axis in scene coordinates.
-		// @param[in] dy  The translation offset along the y-axis in scene coordinates.
-		//
-		// @return `true` if the translation was applied successfully (i.e., the viewport
-		//         remains valid); `false` otherwise.
-		bool translateBy(double dx, double dy)
-		{
-			return translateTo(fPortalView.fViewBoxFrame.x + dx, fPortalView.fViewBoxFrame.y + dy);
-		}
-
-
-
-
-
-		// @brief Scales the scene frame around a specified pivot in surface coordinates.
-		//
-		// Scales the current scene frame by the factors `sdx` and `sdy`, ensuring that the point 
-		// (`cx`, `cy`) in surface coordinates remains visually consistent after the transformation. 
-		// This function disallows zero or negative scaling; if `sdx` or `sdy` is non-positive, 
-		// the method returns `false` and no scaling is applied.
-		//
-		// The pivot is converted from surface to scene coordinates using the current scaling 
-		// before the final transformation is performed. If the scaling succeeds, the internal 
-		// transformation matrix is updated to reflect the changes.
-		//
-		// @param[in] sdx  The horizontal scaling factor; must be greater than 0.
-		// @param[in] sdy  The vertical scaling factor; must be greater than 0.
-		// @param[in] cx   The x-coordinate of the scaling pivot in surface coordinates.
-		// @param[in] cy   The y-coordinate of the scaling pivot in surface coordinates.
-		//
-		// @return `true` if the scale was successfully applied and the transform updated; 
-		//         `false` if the viewport is invalid or if any scale factor is non-positive.
-		//
-		bool scaleViewBoxBy(double sx, double sy, double centerx, double centery)
-		{
-			if (!fPortalView.isValid())
-				return false;
-
-			fPortalView.fViewBoxFrame.x = float(centerx + ((double)fPortalView.fViewBoxFrame.x - centerx) * sx);
-			fPortalView.fViewBoxFrame.y = float(centery + ((double)fPortalView.fViewBoxFrame.y - centery) * sy);
-			fPortalView.fViewBoxFrame.w *= sx;
-			fPortalView.fViewBoxFrame.h *= sy;
-
-			return true;
-		}
-		
-		bool scaleBy(double sdx, double sdy, double cx, double cy)
-		{
-			// we don't allow for negative scaling
-			if (sdx <= 0 || sdy <= 0)
-				return false;
-			
-			BLPoint ascale{};
-			getAspectScale(ascale);
-
-			double x = fPortalView.fViewBoxFrame.x + (cx - fPortalView.fViewportFrame.x) / ascale.x;
-			double y = fPortalView.fViewBoxFrame.y + (cy - fPortalView.fViewportFrame.y) / ascale.y;
-			//double w = fViewBoxFrame.w / sdx;
-			//double h = fViewBoxFrame.h / sdy;
-
-			if (!scaleViewBoxBy(sdx, sdy, x, y))
-				return false;
-			
-			updateTransformMatrix();
-
-			return true;
-		}
-
-		// @brief Rotates the scene by a specified angle around a given pivot in surface coordinates.
-		//
-		// Rotates the current scene view by the amount specified in 'rad' radians, using (cx, cy)
-		// as the rotation pivot in surface coordinates.  After updating the rotation angle,
-		// the transfomration matrix is recalculated.  The total rotation is kept within the [0,2pi) range.
-		//
-		// @param[in] rad
-		// @param[in] cx
-		// @param[in] cy
-		//
-		// @return 'true' if the rotation was successfully applied (i.e., the viewport is still valid)
-		//			'false' otherwise.
-		//
-		// @note The pivot is expected in surface coordinates.  If your application needs to rotate
-		//		around a point in the scene, convert that point to surface coordinates first using mapSceneToSurface()
-		//
-		bool rotateBy(double rad, double cx, double cy)
-		{
-			if (!fPortalView.isValid())
-				return false;
-			
-			// Keep the rotation between 0 - 2pi
-			fPortalView.fRotRad += rad;
-			fPortalView.fRotRad = std::fmod(fPortalView.fRotRad, 2.0 * waavs::pi);
-			if (fPortalView.fRotRad < 0.0)
-				fPortalView.fRotRad += 2.0 * waavs::pi;
-
-			fPortalView.fRotCenter = { cx, cy };
-			updateTransformMatrix();
-
-			return true;
-		}
-
-		// @brief Re-centers the view so that the specified scene coordinate appears at the surface’s center.
-		//
-		// Calculates the current scene coordinate mapped to the midpoint of the surface (the “viewport center”)
-		// and shifts the scene frame such that `(cx, cy)` in scene coordinates becomes the new center of the view.
-		// After adjusting the scene frame, the internal transformation matrix is updated.
-		//
-		// @param[in] cx  The x-coordinate in scene space that should become the center of the surface.
-		// @param[in] cy  The y-coordinate in scene space that should become the center of the surface.
-		//
-		// @return `true` if the viewport is valid and the re-centering operation succeeded; 
-		//         `false` otherwise.
-		//
-		bool lookAt(double cx, double cy)
-		{
-			if (!fPortalView.isValid())
-				return false;
-			
-			BLRect vpFrame{};
-			fPortalView.getViewBoxFrame(vpFrame);
-
-
-			double surfaceCenterX = vpFrame.x + vpFrame.w * 0.5;
-			double surfaceCenterY = vpFrame.y + vpFrame.h * 0.5;
-
-			BLPoint sceneCenter = mapViewportToViewBox(surfaceCenterX, surfaceCenterY);
-
-			double dx = cx - sceneCenter.x;
-			double dy = cy - sceneCenter.y;
-
-			// Adjust the scene frame to apply this shift
-			BLRect oFrame{};
-			fPortalView.getViewBoxFrame(oFrame);
-			oFrame.x += dx;
-			oFrame.y += dy;
-
-            fPortalView.setViewBoxFrame(oFrame);
-
-			updateTransformMatrix();
-			
-			return true;
-		}
-
+		// Whether the viewBoxToViewportXform has been resolved based on the current settings
+		bool fResolved{ false };
 	};
-}
 
-namespace waavs {
-
-    // getPortalViewTransformMatrices
-	// 
-	// This single function can take the PortalView information and turn
-    // it into the transformation matrices needed to convert between
-    // object space (viewbox) and world space (viewport).
-	// 
-    // tform - matrix used to convert from viewbox to viewport
-    // invtform - matrix used to convert from viewport to viewbox
+	// onLoadedFromXmlPull
 	//
-	static bool getPortalViewTransformMatrices(const PortalView &pview, BLMatrix2D &tform, BLMatrix2D &invtform)
+	// This is called after we've loaded the element and all its children from the XML
+	// In the case of a top level svg element, the entirety of the document has been loaded
+	// so it's safe to resolve style attributes now.
+	//
+	// For non-top level svg elements, it's not guaranteed that the 
+	// style information has been fully loaded yet, so we just
+	// resolve what we can.
+	//
+	static void loadDocViewportState(DocViewportState& vps, const XmlAttributeCollection& attrs)
 	{
-		tform = BLMatrix2D::makeIdentity();
 
-        BLPoint ascale(1, 1);	// default scaling is 1,1
-        BLPoint atrans(0, 0);	// default alignment translation is 0,0
+		// Load the non-bound attribute values here, for processing later
+		// when we bind.
+		// x, y, width, height
+		ByteSpan xAttr{}, yAttr{}, wAttr{}, hAttr{};
+		attrs.getValue(svgattr::x(), xAttr);
+		attrs.getValue(svgattr::y(), yAttr);
+		attrs.getValue(svgattr::width(), wAttr);
+		attrs.getValue(svgattr::height(), hAttr);
 
+		vps.x = parseLengthAttr(xAttr);
+		vps.y = parseLengthAttr(yAttr);
+		vps.width = parseLengthAttr(wAttr);
+		vps.height = parseLengthAttr(hAttr);
 
-		if (pview.fPreserveAspectRatio.align() == AspectRatioAlignKind::SVG_ASPECT_RATIO_NONE)
+		// preserAspectRatio
+		ByteSpan parAttr{};
+		if (attrs.getValue(svgattr::preserveAspectRatio(), parAttr))
 		{
-			// Scale each dimension to fit the scene to the frame
-			// do not preserve aspect ratio
-			// ignore the meet/slice
-			ascale.x = (pview.fViewportFrame.w / pview.fViewBoxFrame.w);
-			ascale.y = (pview.fViewportFrame.h / pview.fViewBoxFrame.h);
-
+			vps.par.loadFromChunk(parAttr);
 		}
-		else {
-			// calculate candidate scaling factors
-			double scaleX = (pview.fViewportFrame.w / pview.fViewBoxFrame.w);
-			double scaleY = (pview.fViewportFrame.h / pview.fViewBoxFrame.h);
 
-			// Check the meet/slice
-			double uniformScale{};
-			if (pview.fPreserveAspectRatio.meetOrSlice() == AspectRatioMeetOrSliceKind::SVG_ASPECT_RATIO_SLICE)
-				uniformScale = std::max(scaleX, scaleY);
-			else  // default to 'meet'
-				uniformScale = std::min(scaleX, scaleY);
-
-			ascale.x = uniformScale;
-			ascale.y = uniformScale;
-
-			// Next, compute the alignment offset
-			// we'll see how big the sceneFrame is 
-			// with scaling applied
-			double scaleW = pview.fViewBoxFrame.w * uniformScale;
-			double scaleH = pview.fViewBoxFrame.h * uniformScale;
-
-			// Decide alignment in X direction
-			SVGAlignment xAlign{};
-			SVGAlignment yAlign{};
-			pview.fPreserveAspectRatio.getAlignment(xAlign, yAlign);
-
-			switch (xAlign)
-			{
-			case SVGAlignment::SVG_ALIGNMENT_START:
-				atrans.x = 0;
-				break;
-
-			case SVGAlignment::SVG_ALIGNMENT_MIDDLE:
-				atrans.x = (pview.fViewportFrame.w - scaleW) / 2;
-				break;
-
-			case SVGAlignment::SVG_ALIGNMENT_END:
-				atrans.x = pview.fViewportFrame.w - scaleW;
-				break;
-			}
-
-			// Decide alignment in Y direction
-			switch (yAlign) {
-			case SVGAlignment::SVG_ALIGNMENT_START:
-				atrans.y = 0;
-				break;
-
-			case SVGAlignment::SVG_ALIGNMENT_MIDDLE:
-				atrans.y = (pview.fViewportFrame.h - scaleH) / 2;
-				break;
-
-			case SVGAlignment::SVG_ALIGNMENT_END:
-				atrans.y = pview.fViewportFrame.h - scaleH;
-				break;
-			}
-
+		// viewBox (structural)
+		ByteSpan vbAttr{};
+		BLRect vbFrame{};
+		if (attrs.getValue(svgattr::viewBox(), vbAttr) && parseViewBox(vbAttr, vbFrame))
+		{
+			vps.hasViewBox = true;
+			vps.viewBox = vbFrame;
 		}
 
 
-		// Translate by viewportFrame amount first
-		// because we assume the context hasn't already done this
-		tform.translate(pview.fViewportFrame.x, pview.fViewportFrame.y);
-
-		// Now apply transformations in order
-		// Rotate
-		tform.rotate(pview.fRotRad, pview.fRotCenter);
-
-		// Apply the alignment offset
-		// Since this was computed in the viewport space,
-		// it needs to be applied before scaling.
-		tform.translate(atrans.x, atrans.y);
-
-		// Scale
-		// scale by the computed factors
-		tform.scale(ascale);
-
-
-
-
-		// Translate scene frame amount
-		tform.translate(-pview.fViewBoxFrame.x, -pview.fViewBoxFrame.y);
-
-		// Calculate the inverse transform
-		// so we can convert from world space to object space
-		invtform = tform;
-		invtform.invert();
-
-        return true;
 	}
 }
+
+
+
+namespace waavs
+{
+
+	static bool computeViewBoxToViewport(
+		const BLRect& viewport,
+		const BLRect& viewBox,
+		const PreserveAspectRatio& par,
+		BLMatrix2D& out)
+	{
+		if (viewport.w <= 0 || viewport.h <= 0) return false;
+		if (viewBox.w <= 0 || viewBox.h <= 0) return false;
+
+		const double sx0 = viewport.w / viewBox.w;
+		const double sy0 = viewport.h / viewBox.h;
+
+		double sx = sx0, sy = sy0;
+		double ax = 0.0, ay = 0.0;
+
+		if (par.align() != AspectRatioAlignKind::SVG_ASPECT_RATIO_NONE) {
+			double s = sx0;
+			if (par.meetOrSlice() == AspectRatioMeetOrSliceKind::SVG_ASPECT_RATIO_SLICE)
+				s = waavs::max(sx0, sy0);
+			else
+				s = waavs::min(sx0, sy0);
+
+			sx = sy = s;
+
+			const double fitW = viewBox.w * s;
+			const double fitH = viewBox.h * s;
+
+			SVGAlignment xA{}, yA{};
+			PreserveAspectRatio::splitAlignment(par.align(), xA, yA);
+
+			if (xA == SVGAlignment::SVG_ALIGNMENT_MIDDLE) ax = (viewport.w - fitW) * 0.5;
+			else if (xA == SVGAlignment::SVG_ALIGNMENT_END) ax = (viewport.w - fitW);
+
+			if (yA == SVGAlignment::SVG_ALIGNMENT_MIDDLE) ay = (viewport.h - fitH) * 0.5;
+			else if (yA == SVGAlignment::SVG_ALIGNMENT_END) ay = (viewport.h - fitH);
+		}
+
+		out = BLMatrix2D::makeIdentity();
+		out.translate(viewport.x, viewport.y);
+		out.translate(ax, ay);
+		out.scale(sx, sy);
+		out.translate(-viewBox.x, -viewBox.y);
+
+		return true;
+	}
+
+
+	// Minimal resolve:
+// - containingVP: parent viewport rect (user units)
+// - authored: parsed attribute state (lengths + viewBox + par)
+// - isTopLevel: top-level <svg> ignores x/y; nested honors x/y
+// - dpi/font: only needed for em/ex; pass nullptr font if you want
+	static bool resolveViewState(
+		const BLRect& containingVP,
+		const DocViewportState& authored,
+		bool isTopLevel,
+		double dpi,
+		const BLFont* fontOpt,
+		SVGViewportState& out) noexcept
+	{
+		out = SVGViewportState{}; // reset
+
+		// If containingVP is not meaningful, fall back to SVG defaults.
+		const double containW = (containingVP.w > 0.0) ? containingVP.w : 300.0;
+		const double containH = (containingVP.h > 0.0) ? containingVP.h : 150.0;
+
+		// Defaults:
+		// - nested <svg>: width/height default 100% of containingVP
+		// - top-level <svg>: if containingVP is meaningful, use it; else 300x150
+		const double defaultW = isTopLevel ? containW : containW;
+		const double defaultH = isTopLevel ? containH : containH;
+
+		// Percent references for x/y/w/h are the containing viewport width/height.
+		const LengthResolveCtx ctxX = makeLengthCtxUser(containW, /*origin*/0.0, dpi, fontOpt);
+		const LengthResolveCtx ctxY = makeLengthCtxUser(containH, /*origin*/0.0, dpi, fontOpt);
+		const LengthResolveCtx ctxW = makeLengthCtxUser(containW, /*origin*/0.0, dpi, fontOpt);
+		const LengthResolveCtx ctxH = makeLengthCtxUser(containH, /*origin*/0.0, dpi, fontOpt);
+
+		// x/y:
+		// Your rule: top-level ignores x/y; nested honors them.
+		double x = isTopLevel ? containingVP.x : (resolveLengthOr(authored.x, ctxX, 0.0) + containingVP.x);
+		double y = isTopLevel ? containingVP.y : (resolveLengthOr(authored.y, ctxY, 0.0) + containingVP.y);
+
+		// width/height:
+		double w = resolveLengthOr(authored.width, ctxW, defaultW);
+		double h = resolveLengthOr(authored.height, ctxH, defaultH);
+
+		// Clamp negatives => non-renderable viewport (minimal policy)
+		if (w < 0.0) w = 0.0;
+		if (h < 0.0) h = 0.0;
+
+		out.fViewport = BLRect{ x, y, w, h };
+
+		if (out.fViewport.w <= 0.0 || out.fViewport.h <= 0.0) {
+			out.fResolved = false;
+			return false;
+		}
+
+		// viewBox:
+		out.fPreserveAspect = authored.par;
+
+		if (authored.hasViewBox) {
+			out.fHasViewBox = true;
+			out.fViewBox = authored.viewBox;
+		}
+		else {
+			out.fHasViewBox = false;
+			out.fViewBox = BLRect{ 0.0, 0.0, out.fViewport.w, out.fViewport.h };
+		}
+
+		if (out.fViewBox.w <= 0.0 || out.fViewBox.h <= 0.0) {
+			out.fResolved = false;
+			return false;
+		}
+
+		// viewBox -> viewport mapping
+		if (!computeViewBoxToViewport(out.fViewport, out.fViewBox, out.fPreserveAspect, out.viewBoxToViewportXform)) {
+			out.fResolved = false;
+			return false;
+		}
+
+		out.fResolved = true;
+		return true;
+	}
+
+}
+
+

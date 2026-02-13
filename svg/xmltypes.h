@@ -48,8 +48,8 @@ namespace waavs {
         const unsigned char* p =
             static_cast<const unsigned char*>(std::memchr(q.fStart, ':', q.size()));
         if (p) {
-            prefix = ByteSpan(q.fStart, p);
-            local = ByteSpan(p + 1, q.fEnd);
+            prefix = ByteSpan::fromPointers(q.fStart, p);
+            local = ByteSpan::fromPointers(p + 1, q.fEnd);
         }
     }
 
@@ -329,8 +329,6 @@ namespace waavs {
             return addValue(key, valueChunk);
         }
 
-        bool getAttributeInterned(AttrKey key, ByteSpan& value) const noexcept = delete;
-
         bool getValue(AttrKey key, ByteSpan& value) const noexcept
         {
             if (!key)
@@ -350,10 +348,8 @@ namespace waavs {
             return false;
         }
 
-        bool getAttribute(const ByteSpan& name, ByteSpan& value) const noexcept = delete;
-
         // get an attribute from the collection, based on a bytespan name
-        bool getAttributeBySpan(const ByteSpan& name, ByteSpan& value) const noexcept
+        bool getValueBySpan(const ByteSpan& name, ByteSpan& value) const noexcept
         {
             AttrKey key = PSNameTable::INTERN(name);
             return getValue(key, value);
@@ -361,6 +357,7 @@ namespace waavs {
 
 
         // mergeAttributes()
+        // 
         // Combine collections of attributes
         // If there are duplicates, the new value will replace the old
         XmlAttributeCollection& mergeAttributes(const XmlAttributeCollection& other) noexcept

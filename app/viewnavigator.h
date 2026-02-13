@@ -1,8 +1,9 @@
 #pragma once
 
-#include "viewport.h"
+
 #include "pubsub.h"
 #include "uievent.h"
+#include "svgcamera.h"
 
 namespace waavs {
 	// ViewNavigator

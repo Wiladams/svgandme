@@ -3,6 +3,7 @@
 #include "svgb2ddriver.h"
 #include "viewport.h"
 #include "uievent.h"
+#include "svgcamera.h"
 
 namespace waavs {
 	//
@@ -28,8 +29,7 @@ namespace waavs {
 		BLMatrix2D fSurfaceToSceneTransform{};
 
         PortalView fPortalView{};
-		//BLRect fFrame{};
-		//BLRect fBounds{};
+
 
 	public:
 		GraphicView()
@@ -147,6 +147,7 @@ namespace waavs {
 		void setFrame(const BLRect& arect) override
 		{
 			GraphicView::setFrame(arect);
+
 			fCachedImage.reset();
 			fCachedImage.create(static_cast<int>(arect.w), static_cast<int>(arect.h), BL_FORMAT_PRGB32);
 			

@@ -2,7 +2,7 @@
 
 #include "svgstructuretypes.h"
 #include "svgenums.h"
-
+#include "svgcamera.h"
 
 namespace waavs {
     
@@ -89,6 +89,8 @@ namespace waavs {
         {
             double origin = 0;
             BLRect viewport = ctx->viewport();
+            BLRect srfFrame = viewport;
+
             double dpi = 96;
             if (groot != nullptr)
                 dpi = groot->dpi();
@@ -96,8 +98,6 @@ namespace waavs {
             // Resolve the bounding box first
             // Start with it being the containing frame
             // alter only the parts that are specified
-            BLRect srfFrame = viewport;
-
 
             fDimX.parseValue(srfFrame.x, ctx->getFont(), viewport.w, origin, dpi, SpaceUnitsKind::SVG_SPACE_USER);
             fDimY.parseValue(srfFrame.y, ctx->getFont(), viewport.h, origin, dpi, SpaceUnitsKind::SVG_SPACE_USER);

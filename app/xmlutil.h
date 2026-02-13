@@ -41,7 +41,7 @@ namespace waavs {
     static void printXmlAttributeCollection(const XmlAttributeCollection& attrColl)
     {
 
-        for (const auto& attr : attrColl.attributes())
+        for (const auto& attr : attrColl.values())
         {
             printf("  ");
             writeChunk(attr.first);

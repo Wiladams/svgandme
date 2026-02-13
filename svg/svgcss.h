@@ -348,7 +348,7 @@ namespace waavs
         // Return an iterator representing the end (empty iterator)
         CSSSelectorIterator end() const
         {
-            return CSSSelectorIterator(ByteSpan(fSource.fEnd, fSource.fEnd));
+            return CSSSelectorIterator(ByteSpan::fromPointers(fSource.fEnd, fSource.fEnd));
         }
     };
 

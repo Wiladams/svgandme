@@ -1,12 +1,129 @@
 #pragma once
 
-
+#include <vector>
+#include <cmath>
 
 #include "definitions.h"
 #include "waavsgraph.h"     // PathSegment
 
-#include <vector>
 
+//=================================
+// BBox helpers
+//=================================
+namespace waavs
+{
+    static INLINE void bboxInit(double &minX, double &minY, 
+        double &maxX, double &maxY, 
+        double x, double y) noexcept
+    {
+        minX = maxX = x;
+        minY = maxY = y;
+
+        //minX = minY = std::numeric_limits<double>::infinity();
+        //maxX = maxY = -std::numeric_limits<double>::infinity();
+    }
+
+    static INLINE void bboxExpand(double &minX, double &minY, 
+        double &maxX, double &maxY, 
+        double x, double y) noexcept
+    {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+    }
+
+    static INLINE void quadBounds(
+        double x0, double y0,
+        double x1, double y1,
+        double x2, double y2,
+        double& minX, double& minY,
+        double& maxX, double& maxY)
+    {
+        bboxExpand(minX, minY, maxX, maxY, x2, y2);
+
+        // X extrema
+        double dx = x0 - 2.0 * x1 + x2;
+        if (dx != 0.0) {
+            double t = (x0 - x1) / dx;
+            if (t > 0.0 && t < 1.0) {
+                double mt = 1.0 - t;
+                double x = mt * mt * x0 + 2 * mt * t * x1 + t * t * x2;
+                double y = mt * mt * y0 + 2 * mt * t * y1 + t * t * y2;
+                bboxExpand(minX, minY, maxX, maxY, x, y);
+            }
+        }
+
+        // Y extrema
+        double dy = y0 - 2.0 * y1 + y2;
+        if (dy != 0.0) {
+            double t = (y0 - y1) / dy;
+            if (t > 0.0 && t < 1.0) {
+                double mt = 1.0 - t;
+                double x = mt * mt * x0 + 2 * mt * t * x1 + t * t * x2;
+                double y = mt * mt * y0 + 2 * mt * t * y1 + t * t * y2;
+                bboxExpand(minX, minY, maxX, maxY, x, y);
+            }
+        }
+    }
+
+    static inline void cubicBounds(
+        double x0, double y0,
+        double x1, double y1,
+        double x2, double y2,
+        double x3, double y3,
+        double& minX, double& minY,
+        double& maxX, double& maxY)
+    {
+        bboxExpand(minX, minY, maxX, maxY, x3, y3);
+
+        auto solve = [&](double p0, double p1, double p2, double p3,
+            bool isX)
+            {
+                double a = -p0 + 3 * p1 - 3 * p2 + p3;
+                double b = 2 * (p0 - 2 * p1 + p2);
+                double c = -p0 + p1;
+
+                if (std::abs(a) < 1e-12) {
+                    if (std::abs(b) < 1e-12) return;
+                    double t = -c / b;
+                    if (t > 0.0 && t < 1.0) {
+                        double mt = 1.0 - t;
+                        double x = mt * mt * mt * x0 + 3 * mt * mt * t * x1 + 3 * mt * t * t * x2 + t * t * t * x3;
+                        double y = mt * mt * mt * y0 + 3 * mt * mt * t * y1 + 3 * mt * t * t * y2 + t * t * t * y3;
+                        bboxExpand(minX, minY, maxX, maxY, x, y);
+                    }
+                    return;
+                }
+
+                double disc = b * b - 4 * a * c;
+                if (disc < 0.0) return;
+
+                double s = std::sqrt(disc);
+                double t1 = (-b + s) / (2 * a);
+                double t2 = (-b - s) / (2 * a);
+
+                auto eval = [&](double t) {
+                    if (t > 0.0 && t < 1.0) {
+                        double mt = 1.0 - t;
+                        double x = mt * mt * mt * x0 + 3 * mt * mt * t * x1 + 3 * mt * t * t * x2 + t * t * t * x3;
+                        double y = mt * mt * mt * y0 + 3 * mt * mt * t * y1 + 3 * mt * t * t * y2 + t * t * t * y3;
+                        bboxExpand(minX, minY, maxX, maxY, x, y);
+                    }
+                    };
+
+                eval(t1);
+                eval(t2);
+            };
+
+        solve(x0, x1, x2, x3, true);
+        solve(y0, y1, y2, y3, false);
+    }
+
+
+
+
+}
 
 // Machinery for a PathProgram
 // That represents a sequence of path operations
@@ -632,4 +749,97 @@ namespace waavs
 			ap += n;
 		}
 	}
+}
+
+namespace waavs 
+{
+
+    static INLINE bool getBoundingBox(const PathProgram& prog,
+        double& x, double& y,
+        double& width, double& height)
+    {
+        if (prog.ops.empty())
+            return false;
+
+        double minX = 0, minY = 0, maxX = 0, maxY = 0;
+        bool   hasBBox = false;
+
+        double cx = 0, cy = 0;
+        double sx = 0, sy = 0;
+        bool   hasPoint = false;
+
+        size_t ip = 0;
+        size_t ap = 0;
+
+        while (ip < prog.ops.size()) {
+            uint8_t op = prog.ops[ip++];
+            if (op == OP_END)
+                break;
+
+            const float* a = prog.args.data() + ap;
+            ap += kPathOpArity[op];
+
+            auto include = [&](double px, double py) {
+                if (!hasBBox) {
+                    bboxInit(minX, minY, maxX, maxY, px, py);
+                    hasBBox = true;
+                }
+                else {
+                    bboxExpand(minX, minY, maxX, maxY, px, py);
+                }
+                };
+
+            switch (op) {
+            case OP_MOVETO:
+                cx = a[0]; cy = a[1];
+                sx = cx; sy = cy;
+                hasPoint = true;
+                include(cx, cy);
+                break;
+
+            case OP_LINETO:
+                cx = a[0]; cy = a[1];
+                include(cx, cy);
+                break;
+
+            case OP_QUADTO:
+                quadBounds(cx, cy,
+                    a[0], a[1],
+                    a[2], a[3],
+                    minX, minY, maxX, maxY);
+                cx = a[2]; cy = a[3];
+                break;
+
+            case OP_CUBICTO:
+                cubicBounds(cx, cy,
+                    a[0], a[1],
+                    a[2], a[3],
+                    a[4], a[5],
+                    minX, minY, maxX, maxY);
+                cx = a[4]; cy = a[5];
+                break;
+
+            case OP_CLOSE:
+                cx = sx; cy = sy;
+                include(cx, cy);
+                break;
+
+            case OP_ARCTO:
+                // For now: include endpoints (safe fallback)
+                // You can replace this with full arc math next.
+                cx = a[5]; cy = a[6];
+                include(cx, cy);
+                break;
+            }
+        }
+
+        if (!hasBBox)
+            return false;
+
+        x = minX;
+        y = minY;
+        width = maxX - minX;
+        height = maxY - minY;
+        return true;
+    }
 }

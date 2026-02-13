@@ -72,7 +72,7 @@ namespace waavs {
         ByteSpan span() const noexcept
         {
             if (fBuf.empty()) return {};
-            return ByteSpan(fBuf.data(), fBuf.data() + fBuf.size());
+            return ByteSpan::fromPointers(fBuf.data(), fBuf.data() + fBuf.size());
         }
 
         bool empty() const noexcept { return fBuf.empty(); }
@@ -101,13 +101,13 @@ namespace waavs {
         {
             const uint8_t* amp = (const uint8_t*)std::memchr(p, '&', size_t(e - p));
             if (!amp) {
-                out.append(ByteSpan(p, e));
+                out.append(ByteSpan::fromPointers(p, e));
                 break;
             }
 
             // copy bytes before '&'
             if (amp > p)
-                out.append(ByteSpan(p, amp));
+                out.append(ByteSpan::fromPointers(p, amp));
 
             // attempt decode entity
             const uint8_t* semi = (const uint8_t*)std::memchr(amp, ';', size_t(e - amp));
@@ -118,7 +118,7 @@ namespace waavs {
                 continue;
             }
 
-            ByteSpan ent(amp, semi + 1); // includes & ... ;
+            ByteSpan ent = ByteSpan::fromPointers(amp, semi + 1); // includes & ... ;
             // Common entities
             if (ent == "&quot;") out.appendChar('"');
             else if (ent == "&apos;") out.appendChar('\'');
@@ -216,7 +216,7 @@ namespace waavs {
 
         // percent
         if (t.size() >= 2 && t.fEnd[-1] == '%') {
-            ByteSpan num(t.fStart, t.fEnd - 1);
+            ByteSpan num = ByteSpan::fromPointers(t.fStart, t.fEnd - 1);
             double v = 0.0;
             if (parseNumber(num, v) && v > 0.0)
                 return v / 100.0;
@@ -225,7 +225,7 @@ namespace waavs {
 
         // px
         if (t.size() >= 2 && t.fEnd[-2] == 'p' && t.fEnd[-1] == 'x') {
-            ByteSpan num(t.fStart, t.fEnd - 2);
+            ByteSpan num = ByteSpan::fromPointers(t.fStart, t.fEnd - 2);
             double v = 0.0;
             if (parseNumber(num, v) && v > 0.0) {
                 absolutePx = true;
@@ -386,7 +386,7 @@ namespace waavs {
             setNeedsBinding(true);
         }
 
-        BLRect getBBox() const override { return fFlowBox; }
+        BLRect viewPort() const override { return fFlowBox; }
 
         // Parse <rect ...> attributes (x,y,width,height) from element.data()
         void parseRectFromElement(const XmlElement& elem)

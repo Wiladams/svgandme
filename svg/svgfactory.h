@@ -78,9 +78,13 @@ namespace waavs {
             SVGSVGElement::registerFactory();           // 'svg'
             SVGStyleNode::registerFactory();            // 'style'
             SVGSwitchElement::registerFactory();        // 'switch'
+            SVGUseElement::registerFactory();           // 'use'
+
+            // Text nodes
             SVGTextNode::registerFactory();             // 'text'
             SVGTSpanNode::registerFactory();            // 'tspan'
-            SVGUseElement::registerFactory();           // 'use'
+            SVGFlowRoot::registerFactory();             // 'flowRoot'
+            
 
             // Non-Structural Nodes
             SVGSolidColorElement::registerFactory();    // 'solidColor'
@@ -96,56 +100,39 @@ namespace waavs {
 
 
             // Filter node registrations
-            SVGFilterElement::registerFactory();            // 'filter'
-            SVGFeBlendElement::registerFactory();           // 'feBlend'
-            SVGFeColorMatrixElement::registerFactory();     // 'feColorMatrix'
-            SVGFeCompositeElement::registerFactory();       // 'feComposite'
-            SVGFeComponentTransferElement::registerFactory();       // 'feComponentTransfer'
-            SVGFeConvolveMatrixElement::registerFactory();  // 'feConvolveMatrix'
-            SVGFeDiffuseLightingElement::registerFactory(); // 'feDiffuseLighting'
-            SVGFeDisplacementMapElement::registerFactory(); // 'feDisplacementMap'
-            SVGFeDistantLightElement::registerFactory();    // 'feDistantLightMap'
-            SVGFeFloodElement::registerFactory();           // 'feFlood'
-            SVGFeGaussianBlurElement::registerFactory();    // 'feGaussianBlur'
-            SVGFeOffsetElement::registerFactory();          // 'feOffset'
-            SVGFeTurbulenceElement::registerFactory();      // 'feTurbulence'
+            //SVGFilterElement::registerFactory();            // 'filter'
+            //SVGFeBlendElement::registerFactory();           // 'feBlend'
+            //SVGFeColorMatrixElement::registerFactory();     // 'feColorMatrix'
+            //SVGFeCompositeElement::registerFactory();       // 'feComposite'
+            //SVGFeComponentTransferElement::registerFactory();       // 'feComponentTransfer'
+            //SVGFeConvolveMatrixElement::registerFactory();  // 'feConvolveMatrix'
+            //SVGFeDiffuseLightingElement::registerFactory(); // 'feDiffuseLighting'
+            //SVGFeDisplacementMapElement::registerFactory(); // 'feDisplacementMap'
+            //SVGFeDistantLightElement::registerFactory();    // 'feDistantLightMap'
+            //SVGFeFloodElement::registerFactory();           // 'feFlood'
+            //SVGFeGaussianBlurElement::registerFactory();    // 'feGaussianBlur'
+            //SVGFeOffsetElement::registerFactory();          // 'feOffset'
+            //SVGFeTurbulenceElement::registerFactory();      // 'feTurbulence'
 
 
             // Font node registrations
             // These are obsolete and deprecated
-            SVGFontNode::registerFactory();             // 'font'
-            SVGFontFaceNode::registerFactory();         // 'font-face'
-            SVGGlyphNode::registerFactory();            // 'glyph'
-            SVGMissingGlyphNode::registerFactory();     // 'missing-glyph'
-            SVGFontFaceNameNode::registerFactory();     // 'font-face-name'
-            SVGFontFaceSrcNode::registerFactory();      // 'font-face-src'
+            //SVGFontNode::registerFactory();             // 'font'
+            //SVGFontFaceNode::registerFactory();         // 'font-face'
+            //SVGGlyphNode::registerFactory();            // 'glyph'
+            //SVGMissingGlyphNode::registerFactory();     // 'missing-glyph'
+            //SVGFontFaceNameNode::registerFactory();     // 'font-face-name'
+            //SVGFontFaceSrcNode::registerFactory();      // 'font-face-src'
 
             // Miscellaneous
-            SVGDescNode::registerFactory();             // 'desc'
-            SVGTitleNode::registerFactory();            // 'title'
-            SVGFlowRoot::registerFactory();          // 'flowRoot'
+            //SVGDescNode::registerFactory();             // 'desc'
+            //SVGTitleNode::registerFactory();            // 'title'
 
 
         }
 
     private:
-        /*
-        // createDOMInternal
-        // 
-        // Create a new SVGDocument object
-        // This document is not bound to a drawing context, so a lot of things are not going
-        // to be resolved, particularly relative sizing, and fonts
-        // But, tree visitors can be used to turn the DOM into something useful, like 
-        // a graphics rendering tree.
-        std::shared_ptr<SVGDocument> createDOMInternal(const ByteSpan& srcChunk)
-        {
-            auto doc = std::make_shared<SVGDocument>(640, 480, 96);
-            if (!doc->loadFromChunk(srcChunk))
-                return {};
 
-            return doc;
-        }
-        */
 
         // A convenience to construct the document from a chunk, and return
         // a shared pointer to the document
@@ -173,13 +160,7 @@ namespace waavs {
 
             return sFactory.get();
         }
-        /*
-        static std::shared_ptr<SVGDocument> createDOM(const ByteSpan& srcChunk, FontHandler* fh)
-        {
-            // this MUST be done, or node registrations will not happen
-            return getSingleton()->createDOMInternal(srcChunk);
-        }
-        */
+
         // A convenience to construct the document from a chunk, and return
         // a shared pointer to the document
         static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, double w, double h, double ppi)
@@ -188,13 +169,6 @@ namespace waavs {
 
             if (!doc)
                 return nullptr;
-
-            // BUGBUG - render into a dummy context so that we can
-// get the sizing.
-            IRenderSVG actx; // (fh);
-            actx.setViewport(BLRect(0, 0, w, h));
-            doc->draw(&actx, doc.get());
-            //printf("SVGFactory::CreateFromChunk(), END\n");
 
             return doc;
         }

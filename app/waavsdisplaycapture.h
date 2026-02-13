@@ -71,7 +71,7 @@ namespace waavs {
 			return fVar;
 		}
 
-		void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*) override
+		void fixupSelfStyleAttributes(IAmGroot*) override
 		{
 			fSrcSpan = getAttributeByName("src");
 

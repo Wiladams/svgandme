@@ -39,12 +39,33 @@ namespace waavs {
 
 		SVGSwitchElement(IAmGroot* root) noexcept : SVGGraphicsElement() {}
 
+		bool addNode(std::shared_ptr<IViewable> node, IAmGroot* groot) override
+		{
+			// If the node has a language attribute, add it to the language map
+			// IViewable doesn't have the getVisualProperty method, so we need to dynamic_cast to ISVGElement
+			auto svgNode = std::dynamic_pointer_cast<ISVGElement>(node);
+
+			ByteSpan lang{};
+            if (svgNode->getRawAttributeBySpan(svgattr::systemLanguage(), lang))
+			{
+				fLanguageNodes[lang] = node;
+			}
+			else {
+				fDefaultNode = node;
+			}
+
+			return true;
+		}
+
+
+		void fixupSelfStyleAttributes(IAmGroot* groot) override
+		{
+			// systemLanguage
+			fSystemLanguage = getAttribute(svgattr::systemLanguage());
+        }
 
 		void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) override
 		{
-
-			// Get the system language
-			fSystemLanguage = groot->systemLanguage();
 
 			// Find the language specific node
 			auto iter = fLanguageNodes.find(fSystemLanguage);
@@ -66,19 +87,7 @@ namespace waavs {
 			}
 		}
 
-		bool addNode(std::shared_ptr<ISVGElement> node, IAmGroot* groot) override
-		{
-			// If the node has a language attribute, add it to the language map
-			auto lang = node->getVisualProperty(svgattr::systemLanguage());
-			if (lang) {
-				fLanguageNodes[lang->rawValue()] = node;
-			}
-			else {
-				fDefaultNode = node;
-			}
 
-			return true;
-		}
 
 
 	};

@@ -9,10 +9,11 @@
 
 
 #include "svgdatatypes.h"
-#include "svgportal.h"
 #include "collections.h"
 #include "b2dpathbuilder.h"
 #include "pathsegmenter.h"
+#include "viewport.h"
+
 
 using namespace waavs;
 
@@ -56,21 +57,23 @@ static void testAViewport(const char *xmlattrs)
 	scanAttributes(attrs, xmlattrs);
     
     // Create a viewport, and load the attributes
-    SVGPortal vp{};
-	vp.loadFromAttributes(attrs);
+    DocViewportState docvps{};
+    loadDocViewportState(docvps, attrs);
 
-    // Create a render context so the viewport can be bound to it
-	IRenderSVG ctx;
 	
 	// Bind the viewport to the context
-	vp.bindToContext(&ctx, nullptr);
-	
+    SVGViewportState vp{};
+    BLRect containingVP{ 0, 0, 800, 600 };
+
+    resolveViewState(containingVP, docvps, true, 96, nullptr, vp);
+
+
     
     // Print out the viewport's bounding box
     printf("================\n%s\n-----------------\n", xmlattrs);
-	printRect(vp.viewportFrame());
-	printRect(vp.viewBoxFrame());
-	printTransform(vp.viewBoxToViewportTransform());
+	printRect(vp.fViewport);
+	printRect(vp.fViewBox);
+	printTransform(vp.viewBoxToViewportXform);
 }
 
 static void testViewport()

@@ -285,6 +285,32 @@ namespace waavs {
 		{
 			//BLFontManager::addFontDirectory(dir);
 		}
+
+        static double ascent(const BLFont& font) noexcept
+        {
+            return font.metrics().ascent;
+        }
+
+        static double descent(const BLFont& font) noexcept
+        {
+            return font.metrics().descent;
+        }
+
+        static double capHeight(const BLFont& font) noexcept
+        {
+            return font.metrics().capHeight;
+        }
+
+        static double emHeight(const BLFont& font) noexcept
+        {
+            auto h = font.metrics().ascent + font.metrics().descent;
+            return h;
+        }
+
+        static double exHeight(const BLFont& font) noexcept
+        {
+            return font.metrics().xHeight;
+        }
     };
 
 }

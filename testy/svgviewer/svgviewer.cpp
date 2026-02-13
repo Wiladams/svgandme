@@ -14,6 +14,9 @@
 
 using namespace waavs;
 
+static constexpr int canvasWidth = 2560;
+static constexpr int canvasHeight = 1440;
+
 
 // Reference to currently active document
 std::shared_ptr<SVGDocument> gDoc{ nullptr };
@@ -50,10 +53,13 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 		return nullptr;
 	}
 
-	
+	// BUGBUG - we should use physicalDpi, not hardcoded 96
+	// but until that is plumbed all the way through, it will
+	// cause problems.  So, we'll just use 96 for now and
+	// take another pass to ensure dpi awareness across the board.
 	ByteSpan aspan;
 	aspan.resetFromSize(mapped->data(), mapped->size());
-	std::shared_ptr<SVGDocument> aDoc = SVGFactory::createFromChunk(aspan, appFrameWidth, appFrameHeight, physicalDpi);
+	std::shared_ptr<SVGDocument> aDoc = SVGFactory::createFromChunk(aspan, appFrameWidth, appFrameHeight, 96);
 	
 	return aDoc;
 }
@@ -83,7 +89,6 @@ static void drawDocument()
 	// draw the document into the ctx
 	if (gDoc != nullptr)
 	{
-		//gDoc->draw(getDrawingContext(), gDoc.get(), appFrameWidth, appFrameHeight);
 		gDoc->draw(getDrawingContext(), gDoc.get());
 	}
 
@@ -113,7 +118,7 @@ static void handleViewChange(const bool& changeOccured)
 	if (gDoc == nullptr)
 		return;
 
-	//printf("svgviewer::handleChange\n");
+	printf("svgviewer::handleChange\n");
 	draw();
 
 	// we do this screenRefresh here because mouse dragging
@@ -164,7 +169,7 @@ static void onFileDrop(const FileDropEvent& fde)
 
 		if (gDoc != nullptr)
 		{
-			BLRect viewFr = gDoc->viewPort();
+			BLRect viewFr = { 0,0,canvasWidth, canvasHeight };	// gDoc->viewPort();
             BLRect docFr = viewFr;
 
 			// If there is a documentElement, we can use its viewport
@@ -209,7 +214,7 @@ static void onFrameEvent(const FrameCountEvent& fe)
 
 static void onResizeEvent(const ResizeEvent& re)
 {
-	gNavigator.setFrame(BLRect(0, 0, appFrameWidth, appFrameHeight));
+	//gNavigator.setFrame(BLRect(0, 0, appFrameWidth, appFrameHeight));
 	
 	//printf("onResizeEvent: %d x %d\n", re.width, re.height);
 	BLContextCreateInfo ctxInfo{};
@@ -303,8 +308,7 @@ static void setupFonts()
 
 }
 
-static constexpr int canvasWidth = 2560;
-static constexpr int canvasHeight = 1440;
+
 
 // called once before main loop is running
 void setup()

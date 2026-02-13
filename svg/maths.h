@@ -195,18 +195,20 @@ namespace waavs
 
 }
 
-
+//=================================
+// DECLARATIONS for doubles
+//=================================
 namespace waavs
 {
-    INLINE double min(double  a, double b) noexcept { return a < b ? a : b; }
-    INLINE double max(double a, double b) noexcept { return a > b ? a : b; }
-    INLINE double abs(double a) noexcept { return a < 0 ? -a : a; }
+    INLINE double min(const double  a, const double b) noexcept { return a < b ? a : b; }
+    INLINE double max(const double a, const double b) noexcept { return a > b ? a : b; }
+    INLINE double abs(const double a) noexcept { return a < 0 ? -a : a; }
+    INLINE double clamp(const double a, const double min_, const double max_) noexcept { return min(max(a, min_), max_); }
 
     INLINE double atan(double a) noexcept { return std::atan(a); }
     INLINE double atan2(double y, double x) noexcept { return std::atan2(y, x); }
 
     
-    INLINE double clamp(double a, double min_, double max_) noexcept { return min(max(a, min_), max_); }
 
     INLINE double radians(double a) noexcept { return (a * 0.017453292519943295); }
     INLINE double degrees(double a) noexcept { return (a * 57.29577951308232); }
@@ -1597,7 +1599,7 @@ namespace waavs
     INLINE bool isfinite(const vec4f& a) {
         return isfinite(a.x) && isfinite(a.y) && isfinite(a.z) && isfinite(a.w);
     }
-    INLINE void swap(vec4f& a, vec4f& b) { std::swap(a, b); }
+    //INLINE void swap(vec4f& a, vec4f& b) { std::swap(a, b); }
 }
 
 //===========================================

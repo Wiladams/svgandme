@@ -108,16 +108,16 @@ namespace waavs {
 			return true;
 		}
 
-		bool addNode(std::shared_ptr < ISVGElement > node, IAmGroot* groot) override
-		{
+		//bool addNode(std::shared_ptr < IViewable > node, IAmGroot* groot) override
+		//{
 			// if superclass fails to add the node, then forget it
-			if (!SVGGraphicsElement::addNode(node, groot))
-				return false;
+		//	if (!SVGGraphicsElement::addNode(node, groot))
+		//		return false;
 			
 			//printf("SVGFeFilter.addNode(%s)\n", node->id().c_str());
 			
-			return true;
-		}
+		//	return true;
+		//}
 
 		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
 		{
@@ -150,7 +150,6 @@ namespace waavs {
 			registerContainerNodeByName("feBlend", [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFeBlendElement>(groot);
 				node->loadFromXmlPull(iter, groot);
-				node->visible(false);
 				
 				return node;
 				});
@@ -164,6 +163,7 @@ namespace waavs {
 			: SVGGraphicsElement()
 		{
 			setIsStructural(true);
+			setIsVisible(false);
 		}
 	};
 	
@@ -440,7 +440,6 @@ namespace waavs {
 			registerContainerNodeByName("feFlood", [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFeFloodElement>(groot);
 				node->loadFromXmlPull(iter, groot);
-				node->visible(false);
 				
 				return node;
 				});
@@ -454,6 +453,7 @@ namespace waavs {
 			: SVGGraphicsElement()
 		{
 			setIsStructural(true);
+			setIsVisible(false);
 		}
 	};
 
@@ -478,7 +478,6 @@ namespace waavs {
 			registerContainerNodeByName("feGaussianBlur", [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFeGaussianBlurElement>(groot);
 				node->loadFromXmlPull(iter, groot);
-				node->visible(false);
 				
 				return node;
 			});
@@ -493,6 +492,7 @@ namespace waavs {
 			: SVGGraphicsElement()
 		{
 			setIsStructural(true);
+            setIsVisible(false);
 		}
 
 		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
@@ -521,7 +521,6 @@ namespace waavs {
 			registerContainerNodeByName("feOffset", [](IAmGroot* groot, XmlPull& iter) {
 				auto node = std::make_shared<SVGFeOffsetElement>(groot);
 				node->loadFromXmlPull(iter, groot);
-				node->visible(false);
 				
 				return node;
 				});
@@ -534,6 +533,7 @@ namespace waavs {
 			: SVGGraphicsElement()
 		{
 			setIsStructural(true);
+            setIsVisible(false);
 		}
 	};
 	
@@ -571,6 +571,7 @@ namespace waavs {
 			: SVGGraphicsElement()
 		{
 			setIsStructural(true);
+			setIsVisible(false);
 		}
 	};
 }

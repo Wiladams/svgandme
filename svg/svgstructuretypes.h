@@ -62,6 +62,8 @@ namespace waavs {
     struct IViewable : public SVGObject
     {
         bool fIsVisible{ true };
+        bool fIsStructural{ true };
+
         ByteSpan fName{};
         ByteSpan fId{};      // The id of the element
 
@@ -69,26 +71,36 @@ namespace waavs {
         const ByteSpan& id() const noexcept { return fId; }
         void setId(const ByteSpan& aid) noexcept { fId = aid; }
 
-        virtual BLRect viewPort() const = 0;
-        virtual BLRect getBBox() const = 0;
+        bool isStructural() const { return fIsStructural; }
+        void setIsStructural(bool aStructural) { fIsStructural = aStructural; }
+        
+        bool visible() const { return fIsVisible; }
+        void visible(bool visible) = delete; // { fIsVisible = visible; }
+        void setIsVisible(bool visible) { fIsVisible = visible; }
+
+        virtual BLRect viewPort() const noexcept { return {}; }
+        virtual BLRect objectBoundingBox() const noexcept{ return {}; }
+
         virtual bool contains(double x, double y) { return false; }
         
         void name(const ByteSpan& aname) { fName = aname; }
         const ByteSpan& name() const { return fName; }
 
-        bool visible() const { return fIsVisible; }
-        void visible(bool visible) { fIsVisible = visible; }
 
-        virtual void fixupStyleAttributes(IRenderSVG* ctx, IAmGroot* groot) = 0;
+
+        virtual void fixupStyleAttributes(IAmGroot* groot) = 0;
 
         virtual void update(IAmGroot*) = 0;
         virtual void draw(IRenderSVG*, IAmGroot*) = 0;
 
     };
+
+
 }
 
 
-namespace waavs {
+namespace waavs 
+{
 
 
     // SVGVisualProperty
@@ -121,7 +133,7 @@ namespace waavs {
         bool set(const bool value) { fIsSet = value; return value; }
         bool isSet() const { return fIsSet; }
 
-        void autoDraw(bool value) { fAutoDraw = value; }
+        void setAutoDraw(bool value) { fAutoDraw = value; }
         bool autoDraw() const { return fAutoDraw; }
 
         void setRawValue(const ByteSpan& value) { fRawValue = value; }
@@ -184,7 +196,7 @@ namespace waavs {
 
     //===================================================
     // Handling attribute conversion to properties
-    // 
+    // ================================================
     // Collection of property constructors
     using SVGAttributeToPropertyConverter = std::function<std::shared_ptr<SVGVisualProperty>(const XmlAttributeCollection& attrs)>;    
     using SVGPropertyConstructorMap = std::unordered_map<InternedKey, SVGAttributeToPropertyConverter, InternedKeyHash, InternedKeyEquivalent>;
@@ -234,7 +246,7 @@ namespace waavs {
 
 
 namespace waavs {
-    // Interface Am Graphics Root (IAmGroot) 
+    // I Am Graphics Root (IAmGroot) 
     // Core interface to hold document level state, primarily
     // for the purpose of looking up nodes, but also for style sheets
     struct IAmGroot
@@ -264,9 +276,9 @@ namespace waavs {
         // Load a URL Reference
         virtual std::shared_ptr<IViewable> findNodeByHref(const ByteSpan& inChunk)
         {
-            ByteSpan str = inChunk;
+            //ByteSpan str = inChunk;
 
-            auto id = chunk_trim(str, chrWspChars);
+            auto id = chunk_trim(inChunk, chrWspChars);
 
             // The first character could be '.' or '#'
             // so we need to skip past that
@@ -340,14 +352,15 @@ namespace waavs {
 namespace waavs {
     struct ISVGElement : public IViewable 
     {
-        bool fIsStructural{ true };
+
 		XmlElement fSourceElement{};
         
        virtual  std::shared_ptr<SVGVisualProperty> getVisualProperty(InternedKey key) = 0;
 
-       bool isStructural() const { return fIsStructural; }
-       void setIsStructural(bool aStructural) { fIsStructural = aStructural; }
-       
+       bool getRawAttributeBySpan(const ByteSpan & name, ByteSpan &value) const
+       {
+           return fSourceElement.getRawAttributeValue(name, value);
+       }
     };
 }
 
@@ -408,8 +421,7 @@ namespace waavs {
         getSVGContainerCreationMap()[key] = std::move(creator);
     }
 
-    static void registerContainerNodeByName(const char* name,
-        std::function<std::shared_ptr<ISVGElement>(IAmGroot*, XmlPull&)> creator)
+    static void registerContainerNodeByName(const char* name, std::function<std::shared_ptr<ISVGElement>(IAmGroot*, XmlPull&)> creator)
     {
         InternedKey key = PSNameTable::INTERN(name);
         return registerContainerNode(key, std::move(creator));
@@ -459,15 +471,17 @@ namespace waavs {
         BLVar fVar{};
 
         XmlAttributeCollection fPresentationAttributes{};
-        XmlAttributeCollection fAttributes;
+        XmlAttributeCollection fAttributes{};
 
         ByteSpan fAttributeSpan{};
         ByteSpan fStyleAttribute{};
         ByteSpan fClassAttribute{};
-
+        bool fStyleResolved{ false };
         
-        std::unordered_map<InternedKey, std::shared_ptr<SVGVisualProperty>, InternedKeyHash, InternedKeyEquivalent> fVisualProperties{};
+        //BLMatrix2D fTransform{};
+        //bool fHasTransform{ false };
 
+        std::unordered_map<InternedKey, std::shared_ptr<SVGVisualProperty>, InternedKeyHash, InternedKeyEquivalent> fVisualProperties{};
         std::vector<std::shared_ptr<IViewable>> fNodes{};
 
 
@@ -497,11 +511,12 @@ namespace waavs {
             return fVar;
         }
 
-        // The viewport is what the graphics report as their extent
-        // This is NOT the viewBox, which determines their internal coordinate system
+        // Viewport is where the graphic wants to be displayed
+        // in the parent's coordinate system
         BLRect viewPort() const override
         {
-            BLRect extent{};
+            return BLRect{};
+/*            BLRect extent{};
             bool firstOne = true;
 
             // traverse the graphics
@@ -518,16 +533,20 @@ namespace waavs {
             }
 
             return extent;
-        }
-        BLRect getBBox() const override { return BLRect{}; }
-        
+            */
+        }        
 
 
 
-        bool hasAttribute(const ByteSpan& name) const noexcept 
+        bool hasAttribute(InternedKey key) const noexcept
         { 
-            InternedKey key = PSNameTable::INTERN(name);
             return fAttributes.hasValue(key); 
+        }
+
+        bool hasAttributeByName(const char * name) const noexcept
+        {
+            InternedKey key = PSNameTable::INTERN(name);
+            return fAttributes.hasValue(key);
         }
 
         ByteSpan getAttribute(InternedKey key) const noexcept
@@ -542,10 +561,18 @@ namespace waavs {
             return getAttribute(PSNameTable::INTERN(name));
         }
 
-        void setAttribute(const ByteSpan& name, const ByteSpan& value) noexcept
-		{
-			fAttributes.addValueBySpan(name,value);
-		}
+        // setting attributes
+        void setAttribute(InternedKey name, const ByteSpan& value)  noexcept
+        {
+            fAttributes.addValue(name, value);
+        }
+
+        void setAttributeByName(const char* name, const ByteSpan& value) noexcept
+        {
+            InternedKey key = PSNameTable::INTERN(name);
+            setAttribute(key, value);
+        }
+
 
 
         // Property management
@@ -565,7 +592,7 @@ namespace waavs {
 
         
         // Adding nodes to our tree
-        virtual bool addNode(std::shared_ptr < ISVGElement > node, IAmGroot* groot)
+        virtual bool addNodeToIndex(std::shared_ptr < IViewable > node, IAmGroot* groot)
         {
             if (node == nullptr || groot == nullptr)
                 return false;
@@ -574,10 +601,26 @@ namespace waavs {
             ByteSpan nodeId = node->id();
             if (!nodeId.empty())
                 groot->addElementReference(nodeId, node);
+            return true;
+        }
 
+        virtual bool addNodeToSubtree(std::shared_ptr < IViewable > node, IAmGroot* groot)
+        {
+            if (node == nullptr || groot == nullptr)
+                return false;
             if (node->isStructural()) {
                 fNodes.push_back(node);
             }
+            return true;
+        }
+
+        virtual bool addNode(std::shared_ptr < IViewable > node, IAmGroot* groot)
+        {
+            if (node == nullptr || groot == nullptr)
+                return false;
+
+            addNodeToIndex(node, groot);
+            addNodeToSubtree(node, groot);
 
             return true;
         }
@@ -737,6 +780,13 @@ namespace waavs {
 
         }
         
+        virtual void onEndTag(IAmGroot* groot)
+        {
+            // This is called after we've loaded the element and all its children from the XML
+            // so, at this point, we should have a full tree of nodes built out, and we can do any 
+            // post processing that requires having the full tree available.
+        }
+
         virtual void loadFromXmlPull(XmlPull& iter, IAmGroot* groot)
         {
             this->loadFromXmlElement(*iter, groot);
@@ -751,6 +801,7 @@ namespace waavs {
                         break;
                     case XML_ELEMENT_TYPE_END_TAG:                      // </tag>
                         this->loadEndTag(elem, groot);
+                        onEndTag(groot);
                         return;
                     case XML_ELEMENT_TYPE_SELF_CLOSING:                 // <tag/>
                         this->loadSelfClosingNode(elem, groot);
@@ -776,21 +827,32 @@ namespace waavs {
                     break;
                 }
             }
+
+            // If we're here, we've run off the end of the document without finding a matching end tag
+            // Maybe an assert would be appropriate here, but for now we'll just call the 'onLoadedFromXmlPull' 
+            // to allow any post processing to happen
+            //onEndTag(groot);
         }
 
-
-
-        virtual void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*) 
+        virtual void fixupSelfStyleAttributes(/*IRenderSVG*,*/ IAmGroot*)
         {
            // printf("fixupSelfStyleAttributes\n");
         }
 
-
-        void fixupStyleAttributes(IRenderSVG* ctx, IAmGroot* groot) override
+        void fixupStyleAttributes(IAmGroot* groot) override
         {
-            // First, lookup CSS based on tagname
-            // See if there's an element selector for the current element
-            if (groot != nullptr) {
+            fAttributes.clear();
+
+            // First, do the presentation attributes
+            // which the author specified directly on the element.
+            fAttributes.mergeAttributes(fPresentationAttributes);
+
+            // Then apply various other attributes with increasing specificity
+            // which will override the original presentation attributes if they exist.
+            
+             if (groot != nullptr) 
+             {
+                // CSS based on tagname
                 if (!name().empty())
                 {
                     auto esel = groot->styleSheet()->getSelector(CSS_SELECTOR_ELEMENT, name());
@@ -800,24 +862,12 @@ namespace waavs {
                     }
                 }
 
-                // Check for id selector if we have one
-                if (id())
-                {
-                    auto idsel = groot->styleSheet()->getSelector(CSS_SELECTOR_ID, id());
-                    if (idsel != nullptr)
-                    {
-                        fAttributes.mergeAttributes(idsel->attributes());
-                    }
-                }
-
-                // Lookup any attributes based on the class, if specified
+                // CSS class list specifier
                 ByteSpan classChunk = fClassAttribute;
                 while (classChunk)
                 {
                     // peel a word off the front
                     auto classId = chunk_token(classChunk, chrWspChars);
-
-
                     auto csel = groot->styleSheet()->getSelector(CSS_SELECTOR_CLASS, classId);
                     if (csel != nullptr)
                     {
@@ -827,17 +877,31 @@ namespace waavs {
                         //printf("SVGVisualNode::bindPropertiesToGroot, ERROR - NO CLASS SELECTOR FOR %s\n", toString(classId).c_str());
                     }
                 }
+
+                // ID based selector if we have one
+                if (id())
+                {
+                    auto idsel = groot->styleSheet()->getSelector(CSS_SELECTOR_ID, id());
+                    if (idsel != nullptr)
+                    {
+                        fAttributes.mergeAttributes(idsel->attributes());
+                    }
+                }
             }
 
+
+            // Highest presedence is the inline 'style' attribute, 
+            // which can contain multiple attributes in it, so we need to parse it
             // Upsert any of the attributes associated with 'style' attribute if they exist
             if (fStyleAttribute) {
                 parseStyleAttribute(fStyleAttribute, fAttributes);
             }
 
-            // Finally, override any of the attributes already set with the 
-            // presentation attributes of the current element, if any
-            fAttributes.mergeAttributes(fPresentationAttributes);
-            this->fixupSelfStyleAttributes(ctx, groot);
+
+
+            // Give a chance for a sub-class to do any additional processing 
+            // of the attributes, or to set up any properties based on the attributes
+            this->fixupSelfStyleAttributes(groot);
 
             // Use up some of the attributes
             ByteSpan displayAttr{};
@@ -846,23 +910,49 @@ namespace waavs {
                 displayAttr = chunk_trim(displayAttr, chrWspChars);
                 InternedKey dv = PSNameTable::INTERN(displayAttr);
 
-                if (displayAttr == svgval::none())
-                    visible(false);
+                if (dv == svgval::none())
+                    setIsVisible(false);
             }
-
-            // Get transformation matrix if it exists as early as possible
-            // but after attributes have been set.
-            //fHasTransform = parseTransform(getAttribute("transform"), fTransform);
-
+            
         }
-        
-        // IViewable
+
+        void resolveStyleAttributes(IAmGroot* groot)
+        {
+            fixupStyleAttributes(groot);
+            fStyleResolved = true;
+        }
+
+        // This is called after the document is fully loaded
+        // and nodes available through groot, but before any
+        // drawing has occured.
+
+        void resolveStyleSubtree(IAmGroot* groot)
+        {
+            // First resolve our own style attributes, if we haven't already
+            if (!fStyleResolved)
+                resolveStyleAttributes(groot);
+
+            // Then resolve the subtree
+            for (auto& node : fNodes)
+            {
+                if (!node)
+                    continue;
+
+                // Only GraphicsElements have a style attributes and fNodes
+                auto ge = std::dynamic_pointer_cast<SVGGraphicsElement>(node);
+                if (ge) {
+                    ge->resolveStyleSubtree(groot);
+                }
+                else {
+
+                }
+            }
+        }
 
 
 
-        
-
-
+        //========================================
+        // Animation support
         // signal all properties they should
         // update themselves
         virtual void updateProperties(IAmGroot* groot)
@@ -881,9 +971,7 @@ namespace waavs {
             }
         }
 
-        virtual void updateSelf(IAmGroot* groot) {
-
-        }
+        virtual void updateSelf(IAmGroot* groot) {}
         
         void update(IAmGroot* groot) override
         {
@@ -891,7 +979,7 @@ namespace waavs {
             this->updateSelf(groot);
             this->updateChildren(groot);
         }
-        
+        //========================================
 
 
         
@@ -928,7 +1016,8 @@ namespace waavs {
         {
             // First, find any style attributes that might apply
             // to this element
-            this->fixupStyleAttributes(ctx, groot);
+            if (!fStyleResolved)
+                this->resolveStyleAttributes(groot);
 
 
             // Convert the attributes that have a property registration 
@@ -938,28 +1027,13 @@ namespace waavs {
             // Tell the structure to bind the rest of its stuff
             this->bindSelfToContext(ctx, groot);
 
-            // Set the object frame, because some attributes
-            // will need that when binding
-            // ctx->setObjectFrame(getBBox());
-
             setNeedsBinding(false);
         }
 
         virtual void applyProperties(IRenderSVG* ctx, IAmGroot* groot)
         {
-            // BUGBUG - need to apply transform appropriately here
-            //if (fHasTransform)  //fTransform.type() != BL_MATRIX2D_TYPE_IDENTITY)
-            //    ctx->applyTransform(fTransform);
-			auto tform = getVisualProperty(svgattr::transform());
-			if (tform)
-				tform->applyToContext(ctx, groot);
-
-            for (auto& prop : fVisualProperties) {
-                // We've already applied the transform, so skip
-                // applying it again.
-                if (prop.first == svgattr::transform())
-                    continue;
-
+            for (auto& prop : fVisualProperties) 
+            {
                 if (prop.second->autoDraw() && prop.second->isSet())
                 {
                     prop.second->applyToContext(ctx, groot);
@@ -969,11 +1043,14 @@ namespace waavs {
 
         virtual void drawChildren(IRenderSVG* ctx, IAmGroot* groot)
         {
-            for (auto& node : fNodes) {
-                // Restore our context before drawing each child
-                //ctx->setObjectFrame(getBBox());
-
-                node->draw(ctx, groot);
+            for (auto& node : fNodes) 
+            {
+                // should we check to see if the node
+                // is visible before drawing it?
+                if (node->visible())
+                {
+                    node->draw(ctx, groot);
+                }
             }
         }
         
@@ -986,36 +1063,42 @@ namespace waavs {
         
         void draw(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            if (!visible())
-                return;
+            //if (!visible())
+            //    return;
 
             ctx->push();
-
-            // Should have valid bounding box by now
-            // so set objectFrame on the context
-            BLRect bbox = getBBox();
-            if (bbox.w && bbox.h)
-                ctx->setObjectFrame(bbox);
 
             if (needsBinding())
                 this->bindToContext(ctx, groot);
             
-            this->applyProperties(ctx, groot);
-            this->drawSelf(ctx, groot);
+            // Apply transform first, since it will affect the 
+            // bounding box
+            auto tform = getVisualProperty(svgattr::transform());
+            if (tform)
+                tform->applyToContext(ctx, groot);
 
-            this->drawChildren(ctx, groot);
+
+            // Now, compute bbox in the same user space as paints
+            BLRect bbox = objectBoundingBox();
+
+            // If objectBoundingBox() is local, it must be
+            // transformed by the current transformation
+            BLMatrix2D ctm = ctx->getTransform();
+            //BLRect bboxUser = mapRectAABB(ctm, bbox);
+
+            //ctx->setObjectFrame(bboxUser);
+
+            //applyNonTransformProperties(ctx, groot);
+            applyProperties(ctx, groot);
+            
+            
+            drawSelf(ctx, groot);
+            drawChildren(ctx, groot);
 
             ctx->pop();
         }
     };
 }
-
-
-
-
-
-
-
 
 
 #endif

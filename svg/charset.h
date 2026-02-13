@@ -138,8 +138,20 @@ namespace waavs {
 		// get an inverse of the set
 		constexpr charset operator~() const noexcept
 		{
-            charset copy(*this);
-            return copy.invert();
+			return inversion();
+            //charset copy(*this);
+            //return copy.invert();
+		}
+
+		constexpr charset inversion() const noexcept
+		{
+			charset copy(*this);
+			for (size_t i = 0; i < 256; ++i)
+			{
+				copy.bits[i] = copy.bits[i] ? 0 : 1;
+
+				return std::move(copy);
+			}
 		}
 
 		charset& invert() noexcept

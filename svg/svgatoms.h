@@ -65,14 +65,16 @@ namespace waavs::svgattr
 
     // Paint & stroke
     inline InternedKey color() { static InternedKey k = PSNameTable::INTERN("color");    return k; }
+    inline InternedKey solid_color() { static InternedKey k = PSNameTable::INTERN("solid-color");    return k; }
+    inline InternedKey solid_opacity() { static InternedKey k = PSNameTable::INTERN("solid-opacity");    return k; }
 
     inline InternedKey fill() { static InternedKey k = PSNameTable::INTERN("fill");          return k; }
     inline InternedKey fill_opacity() { static InternedKey k = PSNameTable::INTERN("fill-opacity");  return k; }
     inline InternedKey fill_rule() { static InternedKey k = PSNameTable::INTERN("fill-rule");     return k; }
 
     inline InternedKey stroke() { static InternedKey k = PSNameTable::INTERN("stroke");        return k; }
-    inline InternedKey stroke_width() { static InternedKey k = PSNameTable::INTERN("stroke-width");  return k; }
     inline InternedKey stroke_opacity() { static InternedKey k = PSNameTable::INTERN("stroke-opacity"); return k; }
+    inline InternedKey stroke_width() { static InternedKey k = PSNameTable::INTERN("stroke-width");  return k; }
     inline InternedKey stroke_linecap() { static InternedKey k = PSNameTable::INTERN("stroke-linecap"); return k; }
     inline InternedKey stroke_linecap_start() { static InternedKey k = PSNameTable::INTERN("stroke-linecap-start"); return k; }
     inline InternedKey stroke_linecap_end() { static InternedKey k = PSNameTable::INTERN("stroke-linecap-end"); return k; }
@@ -121,6 +123,7 @@ namespace waavs::svgattr
 
     // Pattern attributes
     inline InternedKey patternUnits() { static InternedKey k = PSNameTable::INTERN("patternUnits");  return k; }
+    inline InternedKey patternContentUnits() { static InternedKey k = PSNameTable::INTERN("patternContentUnits");  return k; }
     inline InternedKey patternTransform(){static InternedKey k = PSNameTable::INTERN("patternTransform"); return k;}
 
     // Markers
@@ -128,6 +131,12 @@ namespace waavs::svgattr
     inline InternedKey marker_start() { static InternedKey k = PSNameTable::INTERN("marker-start");  return k; }
     inline InternedKey marker_mid() { static InternedKey k = PSNameTable::INTERN("marker-mid");    return k; }
     inline InternedKey marker_end() { static InternedKey k = PSNameTable::INTERN("marker-end");    return k; }
+    inline InternedKey markerUnits() { static InternedKey k = PSNameTable::INTERN("markerUnits");  return k; }
+    inline InternedKey markerWidth() { static InternedKey k = PSNameTable::INTERN("markerWidth");  return k; }
+    inline InternedKey markerHeight() { static InternedKey k = PSNameTable::INTERN("markerHeight");  return k; }
+    inline InternedKey refX() { static InternedKey k = PSNameTable::INTERN("refX");  return k; }
+    inline InternedKey refY() { static InternedKey k = PSNameTable::INTERN("refY");  return k; }
+    inline InternedKey orient() { static InternedKey k = PSNameTable::INTERN("orient");  return k; }
 
     // ------------------------------------------------------------
     // SVG2 / modern additions you may see
@@ -404,7 +413,7 @@ namespace waavs::svgtag
     inline InternedKey tag_stop() { static InternedKey k = PSNameTable::INTERN("stop");         return k; }
     inline InternedKey tag_pattern() { static InternedKey k = PSNameTable::INTERN("pattern");      return k; }
     inline InternedKey tag_marker() { static InternedKey k = PSNameTable::INTERN("marker");       return k; }
-
+    inline InternedKey SVGSolidColorElement() { static InternedKey k = PSNameTable::INTERN("solidColor");       return k; }
     // Filters
     inline InternedKey tag_filter() { static InternedKey k = PSNameTable::INTERN("filter");       return k; }
     inline InternedKey tag_feBlend() { static InternedKey k = PSNameTable::INTERN("feBlend");      return k; }

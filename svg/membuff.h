@@ -153,9 +153,10 @@ namespace waavs {
 		constexpr uint8_t* begin() const noexcept { return fData; }
 		constexpr uint8_t* end() const noexcept { return fData + fSize; }
 		
+        uint8_t* data() noexcept { return fData; }
 		constexpr uint8_t* data() const noexcept { return fData; }
 		constexpr size_t size() const noexcept { return fSize; }
-
+        constexpr bool empty() const noexcept { return fSize == 0; }
 
 
 
@@ -167,6 +168,6 @@ namespace waavs {
 		// from the data() and size() functions.
 		// The lifetime of the ByteSpan that is returned it not governed
 		// by the MemBuff object.  This is something the caller must manage.
-		ByteSpan span() const noexcept { return ByteSpan(begin(), end()); }
+		ByteSpan span() const noexcept { return ByteSpan::fromPointers(begin(), end()); }
 	};
 }

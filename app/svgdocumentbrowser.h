@@ -41,7 +41,7 @@ namespace waavs {
 			fNavigator.setFrame(BLRect(0, 0, aframe.w, aframe.h));
 			fNavigator.setBounds(BLRect(0, 0, aframe.w, aframe.h));
 
-			auto dbox = fDocument->getBBox();
+			auto dbox = fDocument->viewPort();
 			fNavigator.setBounds(dbox);
 			
 			const BLMatrix2D & tform = fNavigator.sceneToSurfaceTransform();

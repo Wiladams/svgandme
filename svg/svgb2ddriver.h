@@ -116,12 +116,13 @@ namespace waavs
         void onTransform(const BLMatrix2D& value) override
         {
             fDrawingContext->setTransform(value);
-            //setTransform(fDrawingContext->userTransform());
+            setTransform(fDrawingContext->userTransform());
         }
 
         void onApplyTransform(const BLMatrix2D& value) override
         {
             fDrawingContext->applyTransform(value);
+            setTransform(fDrawingContext->userTransform());
         }
 
         void onScale(double x, double y) override
@@ -197,7 +198,11 @@ namespace waavs
         // paint for filling shapes
         void onFill() override
         {
-            fDrawingContext->setFillStyle(getFillPaint());
+            if (!fDrawingContext)
+                return;
+
+            BLVar fPaint = getFillPaint();
+            fDrawingContext->setFillStyle(fPaint);
         }
 
 

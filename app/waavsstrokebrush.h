@@ -58,12 +58,12 @@ namespace waavs {
 		WaavsStrokeProfile()
 			:SVGGraphicsElement() 
 		{
-			setIsStructural(false);
+			setIsStructural(true);
 
 		}
 
 
-		void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*) override
+		void fixupSelfStyleAttributes(IAmGroot*) override
 		{
 			// The id has already been grabbed separately
 
