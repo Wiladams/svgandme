@@ -37,8 +37,6 @@ namespace waavs {
 
 		BLPoint fSymbolContentTranslation{};
 
-
-
 		SVGSymbolNode(IAmGroot* root)
 			: SVGGraphicsElement()
 		{

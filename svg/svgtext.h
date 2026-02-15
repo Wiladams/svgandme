@@ -231,11 +231,11 @@ namespace waavs
             }
 
             //uint8_t* buf = fOwned.data();
-            uint8_t* buf = const_cast<uint8_t*>(fExpanded.data()); // we know we have an owned buffer, so this is safe
+            ByteSpan tfl = textForLayout();
+            uint8_t* buf = const_cast<uint8_t*>(tfl.data()); // we know we have an owned buffer, so this is safe
             uint8_t* r = buf;
             uint8_t* w = buf;
-            //uint8_t* e = buf + fOwned.size();
-            uint8_t* e = const_cast<uint8_t*>(fExpanded.end()); // we know we have an owned buffer, so this is safe
+            uint8_t* e = const_cast<uint8_t*>(tfl.end()); // we know we have an owned buffer, so this is safe
 
             // 1) trim leading XML ws
             while (r < e && is_space(*r)) ++r;

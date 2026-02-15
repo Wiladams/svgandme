@@ -295,10 +295,11 @@ namespace waavs
  //
     static constexpr charset chrNotAlpha = ~chrAlphaChars;
 
-    static INLINE bool parseLengthValue(ByteSpan& s, SVGLengthValue& out) noexcept
+    static INLINE bool parseLengthValue(const ByteSpan& inChunk, SVGLengthValue& out) noexcept
     {
         // Preserve 'out' on failure
         SVGLengthValue tmp = out;
+        ByteSpan s = inChunk;
 
         // 1) Trim leading whitespace
         s = chunk_ltrim(s, chrWspChars);

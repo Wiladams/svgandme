@@ -97,19 +97,6 @@ namespace waavs {
 
             }
 
-            // Get the stop opacity
-            double opacity = 1.0;
-            ByteSpan stopOpacityAttr{};
-
-            if (attrs.getValue(svgattr::stop_opacity(), stopOpacityAttr))
-            {
-                SVGNumberOrPercent op{};
-                ByteSpan s = stopOpacityAttr;
-                if (readSVGNumberOrPercent(s, op))
-                {
-                    opacity = waavs::clamp(op.calculatedValue(), 0.0, 1.0);
-                }
-            }
 
             // Get the stop color, and incorporate the opacity
             SVGPaint paint(groot);
@@ -125,7 +112,25 @@ namespace waavs {
                 paint.loadFromChunk("black");
             }
 
-            paint.setOpacity(opacity);
+            // If a stop-opacity is specified, then apply that to the paint
+            // regardless of how it was constructed.
+            ByteSpan stopOpacityAttr{};
+            if (attrs.getValue(svgattr::stop_opacity(), stopOpacityAttr))
+            {
+                stopOpacityAttr = chunk_ltrim(stopOpacityAttr, chrWspChars);
+                if (!stopOpacityAttr.empty())
+                {
+                    double opacity = 1.0;
+                    SVGNumberOrPercent op{};
+                    ByteSpan s = stopOpacityAttr;
+                    if (readSVGNumberOrPercent(s, op))
+                    {
+                        opacity = waavs::clamp(op.calculatedValue(), 0.0, 1.0);
+                    }
+
+                    paint.setOpacity(opacity);
+                }
+            }
 
             BLVar aVar = paint.getVariant(nullptr, groot);
             uint32_t colorValue = 0;
@@ -192,11 +197,6 @@ namespace waavs {
             bindToContext(ctx, groot);
 
             return fGradientVar;
-
-            //BLVar tmpVar{};
-            //tmpVar = fGradient;
-
-            //return tmpVar;
         }
 
         //
@@ -358,15 +358,6 @@ namespace waavs {
                 fTemplateReference = getAttributeByName(svgattr::xlink_href());
         }
 
-        /*
-        void fixupSelfStyleAttributes(IAmGroot *groot) override
-        {
-            // we should be able resolve any inheritance
-            // at this point
-            resolveReferenceChain(groot);
-        }
-        */
-
     };
 
     //=======================================
@@ -398,12 +389,6 @@ namespace waavs {
         }
 
 
-        // defaults per SVG:
-        // x1 = 0%, y1 = 0%,, x2 = 100%, y2 = 0%
-        SVGLengthValue x1{ 0.0, SVG_LENGTHTYPE_PERCENTAGE, false };
-        SVGLengthValue y1{ 0.0, SVG_LENGTHTYPE_PERCENTAGE, false };
-        SVGLengthValue x2{ 100.0, SVG_LENGTHTYPE_PERCENTAGE, false };
-        SVGLengthValue y2{ 0.0, SVG_LENGTHTYPE_PERCENTAGE, false };
 
 
         SVGLinearGradient(IAmGroot* aroot) :SVGGradient(aroot)
@@ -433,13 +418,6 @@ namespace waavs {
         {
             fixupCommonAttributes(groot);
 
-            // Parse attributes if present
-            ByteSpan s;
-            if ((s = getAttribute(svgattr::x1()))) { ByteSpan t = s; parseLengthValue(t, x1); }
-            if ((s = getAttribute(svgattr::y1()))) { ByteSpan t = s; parseLengthValue(t, y1); }
-            if ((s = getAttribute(svgattr::x2()))) { ByteSpan t = s; parseLengthValue(t, x2); }
-            if ((s = getAttribute(svgattr::y2()))) { ByteSpan t = s; parseLengthValue(t, y2); }
-
             resolveReferenceChain(groot);
         }
 
@@ -448,11 +426,26 @@ namespace waavs {
         {
             double dpi = groot ? groot->dpi() : 96.0;
 
-
-
             // Start setting up the gradient
             BLLinearGradientValues values{ 0,0,1,0 };
             BLMatrix2D xform = BLMatrix2D::makeIdentity();
+
+            // Parse attributes if present
+            // defaults per SVG:
+            // x1 = 0%, y1 = 0%,, x2 = 100%, y2 = 0%
+            SVGLengthValue x1{ 0.0, SVG_LENGTHTYPE_PERCENTAGE, false };
+            SVGLengthValue y1{ 0.0, SVG_LENGTHTYPE_PERCENTAGE, false };
+            SVGLengthValue x2{ 100.0, SVG_LENGTHTYPE_PERCENTAGE, false };
+            SVGLengthValue y2{ 0.0, SVG_LENGTHTYPE_PERCENTAGE, false };
+
+
+            ByteSpan s;
+            if ((s = getAttribute(svgattr::x1()))) { ByteSpan t = s; parseLengthValue(t, x1); }
+            if ((s = getAttribute(svgattr::y1()))) { ByteSpan t = s; parseLengthValue(t, y1); }
+            if ((s = getAttribute(svgattr::x2()))) { ByteSpan t = s; parseLengthValue(t, x2); }
+            if ((s = getAttribute(svgattr::y2()))) { ByteSpan t = s; parseLengthValue(t, y2); }
+
+
 
             if (fGradientUnits == SVG_SPACE_USER)
             {
@@ -473,7 +466,7 @@ namespace waavs {
             }
             else // SVG_SPACE_OBJECT (objectBoundingBox)
             {
-                const BLRect b = ctx->getObjectFrame();
+                const BLRect objFrame = ctx->getObjectFrame();
 
                 // resolve into bbox space (0..1),
                 // then use transform to map bbox -> user
@@ -482,13 +475,12 @@ namespace waavs {
                 values.x1 = resolveLengthBBoxUnits(x2, 1.0);
                 values.y1 = resolveLengthBBoxUnits(y2, 0.0);
 
-                xform = composeGradientTransformBBox(b, fHasGradientTransform, fGradientTransform);
+                xform = composeGradientTransformBBox(objFrame, fHasGradientTransform, fGradientTransform);
             }
 
             fGradient.setValues(values);
             fGradient.setTransform(xform);
             fGradientVar = fGradient;
-
         }
 
     };
@@ -505,9 +497,12 @@ namespace waavs {
     // 
     // To calculate distances when using a percentage value on a radius of something
     //
-    static INLINE double calculateDistance(const double percentage, const double width, const double height) noexcept
+    static INLINE double calculateDistance(const double fraction, const double width, const double height) noexcept
     {
-        return percentage / 100.0 * std::sqrt((width * width) + (height * height));
+        return fraction  * std::sqrt((width * width) + (height * height));
+        
+        // What the browsers do
+        //return fraction * width;
     }
 
 
@@ -535,15 +530,24 @@ namespace waavs {
             registerSingularNode();
         }
 
+        // Attributes as authored
+        SVGLengthValue fCx{ };
+        SVGLengthValue fCy{};
+        SVGLengthValue fR{};
+        SVGLengthValue fFx{};
+        SVGLengthValue fFy{};
+        SVGLengthValue fFr{};
+
+
         SVGRadialGradient(IAmGroot* groot) :SVGGradient(groot)
         {
             fGradient.setType(BL_GRADIENT_TYPE_RADIAL);
         }
 
         // Attributes to inherit
-        // cx, cy
-        // r
-        // fx, fy
+        // cx, cy, r
+        // fx, fy, focal-radius
+        //
         void inheritSameKindProperties(const SVGGradient* elem) override
         {
             if (!elem)
@@ -554,48 +558,64 @@ namespace waavs {
             setAttributeIfAbsent(elem, svgattr::r());
             setAttributeIfAbsent(elem, svgattr::fx());
             setAttributeIfAbsent(elem, svgattr::fy());
+            setAttributeIfAbsent(elem, svgattr::fr());
         }
 
         void fixupSelfStyleAttributes(IAmGroot* groot) override
         {
             fixupCommonAttributes(groot);
 
-            // Parse attributes if present
-
             resolveReferenceChain(groot);
+
+            // Parse our own attributes after they've been 
+            // inherited and resolved.
+            parseLengthValue(getAttribute(svgattr::cx()), fCx);
+            parseLengthValue(getAttribute(svgattr::cy()), fCy);
+            parseLengthValue(getAttribute(svgattr::r()), fR);
+            
+            parseLengthValue(getAttribute(svgattr::fx()), fFx);
+            parseLengthValue(getAttribute(svgattr::fy()), fFy);
+            parseLengthValue(getAttribute(svgattr::fr()), fFr);
+        }
+
+        //Available if we want to be spec 1.1 compliant
+        // The focal point will be clamped to the outer circle
+
+        static INLINE void clampFocalPointToOuterCircle(BLRadialGradientValues& v) noexcept
+        {
+            // Only makes sense if r0 is positive.
+            if (!(v.r0 > 0.0))
+                return;
+
+            const double dx = v.x1 - v.x0;
+            const double dy = v.y1 - v.y0;
+            const double d2 = dx * dx + dy * dy;
+            const double r2 = v.r0 * v.r0;
+
+            // If focal is outside outer circle, clamp it onto the circle boundary.
+            if (d2 > r2) {
+                const double d = std::sqrt(d2);
+                // d can't be 0 here because d2 > r2 and r0 > 0
+                const double s = v.r0 / d;
+                v.x1 = v.x0 + dx * s;
+                v.y1 = v.y0 + dy * s;
+            }
         }
 
         void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) override
         {
-            
             double dpi = groot ? groot->dpi() : 96.0;
 
             BLRadialGradientValues values = fGradient.radial();
-
-            SVGDimension fCx;	// { 50, SVG_LENGTHTYPE_PERCENTAGE };
-            SVGDimension fCy;	//  { 50, SVG_LENGTHTYPE_PERCENTAGE };
-            SVGDimension fR;	// { 50, SVG_LENGTHTYPE_PERCENTAGE };
-            SVGDimension fFx;	// { 50, SVG_LENGTHTYPE_PERCENTAGE, false };
-            SVGDimension fFy;	// { 50, SVG_LENGTHTYPE_PERCENTAGE, false };
             
-            fCx.loadFromChunk(getAttributeByName("cx"));
-            fCy.loadFromChunk(getAttributeByName("cy"));
-            fR.loadFromChunk(getAttributeByName("r"));
-            fFx.loadFromChunk(getAttributeByName("fx"));
-            fFy.loadFromChunk(getAttributeByName("fy"));
-            
-
             // Before we go any further, get our current gradientUnits
-            // this should override whatever was set if we had referred to a template
-            // if there is NOT a gradientUnits attribute, then we'll either
-            // be using the one that came from a template (if there was one)
-            // or we'll just be sticking with the default value
+            // default is objectBoundingBox
+            getEnumValue(SVGSpaceUnits, getAttributeByName("gradientUnits"), (uint32_t&)fGradientUnits);
+
             if (getEnumValue(SVGSpreadMethod, getAttributeByName("spreadMethod"), (uint32_t&)fSpreadMethod))
             {
                 fGradient.setExtendMode((BLExtendMode)fSpreadMethod);
             }
-
-            getEnumValue(SVGSpaceUnits, getAttributeByName("gradientUnits"), (uint32_t&)fGradientUnits);
 
             fHasGradientTransform = parseTransform(getAttributeByName("gradientTransform"), fGradientTransform);
 
@@ -603,88 +623,29 @@ namespace waavs {
             // the parameters are relative to the size of that box
             if (fGradientUnits == SVG_SPACE_OBJECT)
             {
-                BLRect oFrame = ctx->getObjectFrame();
-                auto w = oFrame.w;
-                auto h = oFrame.h;
-                auto x = oFrame.x;
-                auto y = oFrame.y;
+                BLRect objFrame = ctx->getObjectFrame();
+                auto w = objFrame.w;
+                auto h = objFrame.h;
+                auto x = objFrame.x;
+                auto y = objFrame.y;
                 
-                if (fCx.isSet()) {
-                    if (fCx.fUnits == SVG_LENGTHTYPE_NUMBER) {
-                        if (fCx.value() <= 1.0)
-                            values.x0 = x + (fCx.value() * w);
-                        else
-                            values.x0 = x + fCx.value();
-                    }
-                    else
-                        values.x0 = x + fCx.calculatePixels(w, 0, dpi);
+                const double cxN = resolveLengthBBoxUnits(fCx, 0.5);
+                const double cyN = resolveLengthBBoxUnits(fCy, 0.5);
+                const double crN = resolveLengthBBoxUnits(fR, 0.5);
 
-                }
-                else
-                    values.x0 = x + (w*0.50);	// default to center of object
+                const double fxN = resolveLengthBBoxUnits(fFx, cxN);
+                const double fyN = resolveLengthBBoxUnits(fFy, cyN);
+                const double frN = resolveLengthBBoxUnits(fFr, 0.0);
 
-                if (fCy.isSet()) {
-                    if (fCy.fUnits == SVG_LENGTHTYPE_NUMBER) {
-                        if (fCy.value() <= 1.0)
-                            values.y0 = y + (fCy.value() * h);
-                        else
-                            values.y0 = y + fCy.value();
-                    }
-                    else
-                        values.y0 = y + fCy.calculatePixels(h, 0, dpi);
+                values.x0 = x + cxN * w;
+                values.y0 = y + cyN* h;
+                values.r0 = calculateDistance(crN, w, h);
 
-                }
-                else
-                    values.y0 = y + (h * 0.50);	// default to center of object
-                
-                
-                if (fR.isSet()) {
-                    if (fR.fUnits == SVG_LENGTHTYPE_NUMBER) {
-                        if (fR.value() <= 1.0) {
-                            values.r0 = calculateDistance(fR.value() * 100, w, h);
-                        }
-                        else
-                            values.r0 = fR.value();
-                    }
-                    else
-                        values.r0 = fR.calculatePixels(w, 0, dpi);
 
-                }
-                else
-                    values.r0 = (w * 0.50);	// default to half width of object
+                values.x1 = x + fxN * w;
+                values.y1 = y + fyN * h;
+                values.r1 = calculateDistance(frN, w, h);
 
-                values.x1 = values.x0;
-                values.y1 = values.y0;
-                values.r1 = 0;
-
-                
-                if (fFx.isSet()) {
-                    if (fFx.fUnits == SVG_LENGTHTYPE_NUMBER) {
-                        if (fFx.value() <= 1.0)
-                            values.x1 = x + (fFx.value() * w);
-                        else
-                            values.x1 = x + fFx.value();
-                    }
-                    else
-                        values.x1 = x + fFx.calculatePixels(w, 0, dpi);
-                }
-                else
-                    values.x1 = values.x0;
-
-                
-                if (fFy.isSet()) {
-                    if (fFy.fUnits == SVG_LENGTHTYPE_NUMBER) {
-                        if (fFy.value() <= 1.0)
-                            values.y1 = y + (fFy.value() * h);
-                        else
-                            values.y1 = y + fFy.value();
-                    }
-                    else
-                        values.y1 = y + fFy.calculatePixels(h, 0, dpi);
-
-                }
-                else
-                    values.y1 = values.y0;
             }
             else if (fGradientUnits == SVG_SPACE_USER)
             {
@@ -692,19 +653,27 @@ namespace waavs {
                 double w = lFrame.w;
                 double h = lFrame.h;
                 
-                values.x0 = fCx.calculatePixels(w, 0, dpi);
-                values.y0 = fCy.calculatePixels(h, 0, dpi);
-                values.r0 = fR.calculatePixels(w, 0, dpi);
+                LengthResolveCtx wCtx{ dpi, nullptr, w, 0.0, SpaceUnitsKind::SVG_SPACE_USER };
+                LengthResolveCtx hCtx{ dpi, nullptr, h, 0.0, SpaceUnitsKind::SVG_SPACE_USER };
+                LengthResolveCtx rCtx{ dpi, nullptr, calculateDistance(1.0, w, h), 0.0, SpaceUnitsKind::SVG_SPACE_USER };
 
-                if (fFx.isSet())
-                    values.x1 = fFx.calculatePixels(w, 0, dpi);
-                else
-                    values.x1 = values.x0;
+                values.x0 = resolveLengthUserUnits(fCx, wCtx);
+                values.y0 = resolveLengthUserUnits(fCy, hCtx);
+                values.r0 = resolveLengthUserUnits(fR,  rCtx);
                 
-                if (fFy.isSet())
-                    values.y1 = fFy.calculatePixels(h, 0, dpi);
-                else
-                    values.y1 = values.y0;
+                values.x1 = values.x0;
+                values.y1 = values.y0;
+                values.r1 = 0;
+
+                LengthResolveCtx fwCtx{ dpi, nullptr, w, 0.0, SpaceUnitsKind::SVG_SPACE_USER };
+                LengthResolveCtx fhCtx{ dpi, nullptr, h, 0.0, SpaceUnitsKind::SVG_SPACE_USER };
+                LengthResolveCtx frCtx{ dpi, nullptr, calculateDistance(1.0, w, h), 0.0, SpaceUnitsKind::SVG_SPACE_USER };
+
+                values.x1 = resolveLengthOr(fFx, fwCtx,values.x0);
+                values.y1 = resolveLengthOr(fFy, fhCtx, values.y0);
+                values.r1 = resolveLengthOr(fFr, frCtx, 0.0);
+                
+                //clampFocalPointToOuterCircle(values);
             }
             
             fGradient.setValues(values);
@@ -771,8 +740,6 @@ namespace waavs {
             setAttributeIfAbsent(elem, svgattr::y1());
             setAttributeIfAbsent(elem, svgattr::angle());
             setAttributeIfAbsent(elem, svgattr::repeat());
-
-
         }
         
         void fixupSelfStyleAttributes(IAmGroot* groot) override

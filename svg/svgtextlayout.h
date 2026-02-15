@@ -1,5 +1,11 @@
 #pragma once
 
+//
+// References for text layout and measurement
+// https://jenkov.com/tutorials/svg/text-element.html#text-definitions
+// https://www.w3.org/TR/SVG11/text.html#TextLayout
+// https://www.w3.org/TR/SVG11/text.html#TextAnchorProperty
+
 #include "svgstructuretypes.h"
 #include "svgattributes.h"
 #include "twobitpu.h"

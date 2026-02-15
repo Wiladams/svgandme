@@ -124,6 +124,7 @@ namespace waavs::svgattr
     inline InternedKey repeat() { static InternedKey k = PSNameTable::INTERN("repeat");  return k; }
     inline InternedKey fx() { static InternedKey k = PSNameTable::INTERN("fx");  return k; }
     inline InternedKey fy() { static InternedKey k = PSNameTable::INTERN("fy");  return k; }
+    inline InternedKey fr() { static InternedKey k = PSNameTable::INTERN("fr");  return k; }
 
     // Pattern attributes
     inline InternedKey patternUnits() { static InternedKey k = PSNameTable::INTERN("patternUnits");  return k; }
