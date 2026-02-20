@@ -88,6 +88,148 @@ namespace waavs
 // - out.viewBox: authored viewBox or default {0,0,w,h}
 // - out.contentToInstance: viewBox->viewport + refX/refY shift baked in
 //
+	
+	static INLINE bool resolveMarkerState(
+		const DocMarkerState& doc,
+		const BLRect& nearestVP,
+		double strokeWidth,
+		double dpi,
+		const BLFont* fontOpt,
+		ResolvedMarkerState& out) noexcept
+	{
+		out = ResolvedMarkerState{};
+
+		// ----------------------------
+		// 1) Resolve markerWidth/Height in TWO spaces:
+		//    - "units"  : marker content units (strokeWidth units if markerUnits=strokeWidth)
+		//    - "user"   : parent user space units (actual instance size)
+		//
+		// Key fix:
+		//   When markerUnits=strokeWidth and there is NO viewBox specified,
+		//   the default content coordinate system must be in *strokeWidth units*
+		//   (i.e. w_units/h_units), while the viewport is w_user/h_user.
+		// ----------------------------
+
+		// Percentage reference policy (keep your original intent):
+		// - userSpaceOnUse: % uses nearest viewport w/h
+		// - strokeWidth  : % uses strokeWidth
+		const double percentRefW =
+			(doc.markerUnits == SpaceUnitsKind::SVG_SPACE_USER) ? nearestVP.w : strokeWidth;
+		const double percentRefH =
+			(doc.markerUnits == SpaceUnitsKind::SVG_SPACE_USER) ? nearestVP.h : strokeWidth;
+
+		// Resolve markerWidth/Height to "base" scalar (pre-markerUnits scaling).
+		// We do this explicitly so we can preserve "units space" even when we later
+		// multiply by strokeWidth for the actual instance size.
+		//
+		// NOTE: resolveLengthOr expects a context where percentRef makes sense.
+		// For SVG_SPACE_STROKEWIDTH, our percentRef is strokeWidth (policy).
+		LengthResolveCtx mwCtx = makeLengthCtxUser(percentRefW, 0.0, dpi, fontOpt);
+		LengthResolveCtx mhCtx = makeLengthCtxUser(percentRefH, 0.0, dpi, fontOpt);
+
+		double w_units = resolveLengthOr(doc.markerWidth, mwCtx, 0.0);
+		double h_units = resolveLengthOr(doc.markerHeight, mhCtx, 0.0);
+
+		// Clamp invalid sizes
+		if (w_units < 0.0) w_units = 0.0;
+		if (h_units < 0.0) h_units = 0.0;
+
+		// Convert to user space instance size
+		double w_user = w_units;
+		double h_user = h_units;
+		if (doc.markerUnits == SpaceUnitsKind::SVG_SPACE_STROKEWIDTH) {
+			w_user *= strokeWidth;
+			h_user *= strokeWidth;
+		}
+
+		out.viewport = BLRect{ 0.0, 0.0, w_user, h_user };
+		if (out.viewport.w <= 0.0 || out.viewport.h <= 0.0)
+			return false;
+
+		// ----------------------------
+		// 2) Establish the marker content viewBox (content user space)
+		// ----------------------------
+		out.hasViewBox = doc.vp.hasViewBox;
+		if (doc.vp.hasViewBox) {
+			out.viewBox = doc.vp.viewBox;
+		}
+		else {
+			// KEY FIX:
+			// If no authored viewBox:
+			// - markerUnits=userSpaceOnUse: content space == viewport in user units
+			// - markerUnits=strokeWidth  : content space == marker units (unscaled)
+			out.viewBox = (doc.markerUnits == SpaceUnitsKind::SVG_SPACE_STROKEWIDTH)
+				? BLRect{ 0.0, 0.0, w_units, h_units }
+			: BLRect{ 0.0, 0.0, w_user,  h_user };
+		}
+
+		if (out.viewBox.w <= 0.0 || out.viewBox.h <= 0.0)
+			return false;
+
+		// ----------------------------
+		// 3) Resolve refX/refY in marker content space (viewBox space)
+		// ----------------------------
+		{
+			const double refRefW = out.viewBox.w;
+			const double refRefH = out.viewBox.h;
+
+			LengthResolveCtx rxCtx = makeLengthCtxUser(refRefW, 0.0, dpi, fontOpt);
+			LengthResolveCtx ryCtx = makeLengthCtxUser(refRefH, 0.0, dpi, fontOpt);
+
+			const double refX = resolveLengthOr(doc.refX, rxCtx, 0.0);
+			const double refY = resolveLengthOr(doc.refY, ryCtx, 0.0);
+
+			// ----------------------------
+			// 4) Build content->instance mapping:
+			//    (viewBox -> viewport) + alignment + ref shift
+			// ----------------------------
+			const BLRect& viewport = out.viewport; // in USER space
+			const BLRect& viewBox = out.viewBox;  // in CONTENT space
+			const PreserveAspectRatio& par = doc.vp.par;
+
+			const double sx0 = viewport.w / viewBox.w;
+			const double sy0 = viewport.h / viewBox.h;
+
+			double sx = sx0, sy = sy0;
+			double ax = 0.0, ay = 0.0;
+
+			if (par.align() != AspectRatioAlignKind::SVG_ASPECT_RATIO_NONE) {
+				double s = sx0;
+				if (par.meetOrSlice() == AspectRatioMeetOrSliceKind::SVG_ASPECT_RATIO_SLICE)
+					s = waavs::max(sx0, sy0);
+				else
+					s = waavs::min(sx0, sy0);
+
+				sx = sy = s;
+
+				const double fitW = viewBox.w * s;
+				const double fitH = viewBox.h * s;
+
+				SVGAlignment xA{}, yA{};
+				PreserveAspectRatio::splitAlignment(par.align(), xA, yA);
+
+				if (xA == SVGAlignment::SVG_ALIGNMENT_MIDDLE) ax = (viewport.w - fitW) * 0.5;
+				else if (xA == SVGAlignment::SVG_ALIGNMENT_END) ax = (viewport.w - fitW);
+
+				if (yA == SVGAlignment::SVG_ALIGNMENT_MIDDLE) ay = (viewport.h - fitH) * 0.5;
+				else if (yA == SVGAlignment::SVG_ALIGNMENT_END) ay = (viewport.h - fitH);
+			}
+
+			BLMatrix2D m = BLMatrix2D::makeIdentity();
+			m.translate(viewport.x, viewport.y);
+			m.translate(ax, ay);
+			m.scale(sx, sy);
+			m.translate(-(viewBox.x + refX), -(viewBox.y + refY)); // ref baked here
+
+			out.contentToInstance = m;
+		}
+
+		out.resolved = true;
+		return true;
+	}
+	
+
+	/*
 	static INLINE bool resolveMarkerState(
 		const DocMarkerState& doc,
 		const BLRect& nearestVP,
@@ -191,6 +333,7 @@ namespace waavs
 		out.resolved = true;
 		return true;
 	}
+	*/
 
 		// Load DocMarkerState from styled attributes (no binding).
 		static INLINE void loadDocMarkerState(DocMarkerState& d, const XmlAttributeCollection& attrs) noexcept
@@ -345,6 +488,7 @@ namespace waavs {
 			// Establish nearest viewport for marker children (percent lengths inside marker)
 			// Use the marker's content user space viewport (viewBox).
 			ctx->setViewport(fRes.viewBox);
+            //ctx->setViewport(fRes.viewport);
 		}
 
 		void drawChildren(IRenderSVG* ctx, IAmGroot* groot) override

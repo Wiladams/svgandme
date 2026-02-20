@@ -40,12 +40,19 @@ namespace waavs {
         void fixupSelfStyleAttributes(IAmGroot* groot) override
         {
             // Get the color and opacity attributes, and set up the paint
-            fPaint.loadFromChunk(getAttributeByName(svgattr::solid_color()));
-            auto solidopa = getAttributeByName(svgattr::solid_opacity());
-            double opa{ 0 };
-            if (readNumber(solidopa, opa))
+            ByteSpan solidColorAttr{}, solidOpacityAttr{};
+
+            getAttribute(svgattr::solid_color(), solidColorAttr);
+            getAttribute(svgattr::solid_opacity(), solidOpacityAttr);
+
+            fPaint.loadFromChunk(solidColorAttr);
+            if (!solidOpacityAttr.empty())
             {
-                fPaint.setOpacity(opa);
+                double opa{ 1.0 };
+                if (readNumber(solidOpacityAttr, opa))
+                {
+                    fPaint.setOpacity(opa);
+                }
             }
         }
 

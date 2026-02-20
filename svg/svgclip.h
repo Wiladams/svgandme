@@ -15,76 +15,76 @@
 
 namespace waavs {
 
-	//============================================================
-	// SVGClipPath
-	// Create a SVGSurface that we can draw into
-	// get the size by asking for the extent of the enclosed
-	// visuals.
-	// 
-	// At render time, use the clip path in a pattern and fill
-	// based on that.
-	//============================================================
-	struct SVGClipPathElement : public SVGGraphicsElement
-	{
-		// Static constructor to register factory method in map
-		static void registerFactory()
-		{
-			registerContainerNodeByName("clipPath", [](IAmGroot * groot, XmlPull & iter) {
-				auto node = std::make_shared<SVGClipPathElement>(groot);
-				node->loadFromXmlPull(iter, groot);
+    //============================================================
+    // SVGClipPath
+    // Create a SVGSurface that we can draw into
+    // get the size by asking for the extent of the enclosed
+    // visuals.
+    // 
+    // At render time, use the clip path in a pattern and fill
+    // based on that.
+    //============================================================
+    struct SVGClipPathElement : public SVGGraphicsElement
+    {
+        // Static constructor to register factory method in map
+        static void registerFactory()
+        {
+            registerContainerNodeByName("clipPath", [](IAmGroot * groot, XmlPull & iter) {
+                auto node = std::make_shared<SVGClipPathElement>(groot);
+                node->loadFromXmlPull(iter, groot);
 
-				return node;
-			});
-			
-		}
+                return node;
+            });
+            
+        }
 
-		BLImage fImage;		// Where we'll render the mask
+        BLImage fImage;		// Where we'll render the mask
 
-		// Instance Constructor
-		SVGClipPathElement(IAmGroot* )
-			: SVGGraphicsElement()
-		{
-			setIsStructural(true);
-		}
+        // Instance Constructor
+        SVGClipPathElement(IAmGroot* )
+            : SVGGraphicsElement()
+        {
+            setIsStructural(true);
+        }
 
-		// 
-		// BUGBUG - this needs to happen in resolvePaint, or bingToGroot()
-		//
-		const BLVar getVariant(IRenderSVG*, IAmGroot*) noexcept override
-		{
-			if (!fVar.isNull())
-				return fVar;
+        // 
+        // BUGBUG - this needs to happen in resolvePaint, or bingToGroot()
+        //
+        const BLVar getVariant(IRenderSVG*, IAmGroot*groot) noexcept override
+        {
+            if (!fVar.isNull())
+                return fVar;
 
-			// get our extent
-			BLRect extent = objectBoundingBox();
+            // get our extent
+            BLRect extent = objectBoundingBox();
 
-			// create a surface of that size
-			// if it's valid
-			if (extent.w > 0 && extent.h > 0)
-			{
-				fImage.create((int)floor((float)extent.w + 0.5f), (int)floor((float)extent.h + 0.5f), BL_FORMAT_A8);
+            // create a surface of that size
+            // if it's valid
+            if (extent.w > 0 && extent.h > 0)
+            {
+                fImage.create((int)floor((float)extent.w + 0.5f), (int)floor((float)extent.h + 0.5f), BL_FORMAT_A8);
 
-				// Draw our content into the image
-				{
-					SVGB2DDriver rctx;
-					rctx.attach(fImage);
+                // Draw our content into the image
+                {
+                    SVGB2DDriver rctx;
+                    rctx.attach(fImage);
 
-					rctx.blendMode(BL_COMP_OP_SRC_COPY);
-					rctx.clear();
-					rctx.fill(BLRgba32(0xffffffff));
-					rctx.translate(-extent.x, -extent.y);
-					draw(&rctx, nullptr);
-					rctx.flush();
-					rctx.detach();
-				}
+                    rctx.blendMode(BL_COMP_OP_SRC_OVER);
+                    rctx.clear();
+                    rctx.fill(BLRgba32(0xffffffff));
+                    rctx.translate(-extent.x, -extent.y);
+                    draw(&rctx, groot);
+                    rctx.flush();
+                    rctx.detach();
+                }
 
-				// bind our image to fVar for later retrieval
-				fVar.assign(fImage);
-			}
+                // bind our image to fVar for later retrieval
+                fVar.assign(fImage);
+            }
 
-			return fVar;
-		}
+            return fVar;
+        }
 
 
-	};
+    };
 }

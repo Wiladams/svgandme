@@ -143,7 +143,7 @@ namespace waavs {
         
         uint32_t fExtendMode{ BL_EXTEND_MODE_REPEAT };      // repeat by default
 
-        SVGPatternExtendMode(IAmGroot* iMap) : SVGVisualProperty(iMap) 
+        SVGPatternExtendMode(IAmGroot* groot) : SVGVisualProperty(groot) 
         {
             setName(svgattr::extendMode());
             //setAutoDraw(false);
@@ -312,65 +312,6 @@ namespace waavs {
             ctx->setPaintOrder(fInstruct);
         }
 
-        /*
-        static uint32_t createPaintOrderInstruction(const ByteSpan& bs)
-        {
-            uint32_t ins = 0;
-            ByteSpan porder = bs;
-
-            if (!porder || porder == "normal") {
-                // default order is fill, stroke, markers
-                ins = PaintOrderKind::SVG_PAINT_ORDER_NORMAL;
-            }
-            else {
-                std::list<ByteSpan> alist = {
-                    ByteSpan("fill"),
-                    ByteSpan("stroke"),
-                    ByteSpan("markers")
-                };
-
-                // get paint order tokens one at a time
-                size_t slot = 0;
-
-                while (porder) {
-                    auto ptoken = chunk_token(porder, chrWspChars);
-                    if (ptoken.empty())
-                        break;
-
-                    uint32_t tokValue = 0;
-                    if (getEnumValue(SVGPaintOrderEnum, ptoken, tokValue))
-                    {
-                        // shift to the right slot
-                        tokValue = tokValue << (2*slot);
-
-                        // add the value to the instructions
-                        ins |= tokValue;
-                    }
-                    slot++;
-
-                    alist.remove(ptoken);
-                }
-
-                // If there's anything still in the list, add that to the instructions
-                for (auto& ptoken : alist) {
-                    uint32_t tokValue = 0;
-
-                    if (getEnumValue(SVGPaintOrderEnum, ptoken, tokValue))
-                    {
-                        // shift to the right slot
-                        tokValue = tokValue << (2*slot);
-
-                        // add the value to the instructions
-                        ins |= tokValue;
-                    }
-                    slot++;
-                }
-
-            }
-
-            return ins;
-        }
-        */
     };
 }
 
@@ -772,6 +713,9 @@ namespace waavs {
                 newColor.setA((uint32_t)(opacity * 255));
                 fPaintVar = newColor;
             }
+            else {
+                printf("Unable to set opacity on paint, not a color value\n");
+            }
         }
 
         // load a color from a ByteSpan
@@ -945,10 +889,25 @@ namespace waavs {
 
         SVGFillPaint(IAmGroot* root) : SVGPaint(root) { setName(svgattr::fill()); }
 
-        
+        /*
+        void bindToContext(IRenderSVG *ctx, IAmGroot*) noexcept override
+        {
+            // set an opacity value if the context
+            // has it.
+            double opa = ctx->getFillOpacity();
+            if (opa < 1.0)
+            {
+                setOpacity(opa);
+            }
+
+            setNeedsBinding(false);
+        }
+        */
+
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->fill(getVariant(ctx, groot));
+            BLVar aVar = getVariant(ctx, groot);
+            ctx->fill(aVar);
         }
 
     };

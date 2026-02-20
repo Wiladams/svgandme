@@ -83,7 +83,7 @@ namespace waavs {
         // return it to the user
         uint32_t loadFontFace(const char* filename, BLFontFace &ff)
         {
-            //printf("FontHandler.loadFontFace(%-40s) ", filename);
+            //printf("FontHandler.loadFontFace(%-40s) \n", filename);
 
             //BLResult err = ff.createFromFile(filename, BL_FILE_READ_MMAP_AVOID_SMALL);
             BLResult err = ff.createFromFile(filename, BL_FILE_READ_MMAP_ENABLED);

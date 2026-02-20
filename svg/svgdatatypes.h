@@ -159,14 +159,15 @@ namespace waavs
     static INLINE LengthResolveCtx makeLengthCtxUser(double ref,
         double origin,
         double dpi,
-        const BLFont* font) noexcept
+        const BLFont* font,
+        SpaceUnitsKind spc = SpaceUnitsKind::SVG_SPACE_USER) noexcept
     {
         LengthResolveCtx c{};
         c.ref = ref;
         c.origin = origin;
         c.dpi = dpi;
         c.font = font;
-        c.space = SpaceUnitsKind::SVG_SPACE_USER;
+        c.space = spc;
         return c;
     }
 
@@ -178,7 +179,7 @@ namespace waavs
 // - em/ex depend on font metrics; if ctx.font is null, you must choose a fallback
 //   (I recommend treating em/ex as unresolved -> return raw number, or use a default em).
 //
-    static INLINE double resolveLengthUserUnits(const SVGLengthValue& L, const LengthResolveCtx& ctx) noexcept
+    static double resolveLengthUserUnits(const SVGLengthValue& L, const LengthResolveCtx& ctx) noexcept
     {
         if (!L.isSet())
             return ctx.origin;

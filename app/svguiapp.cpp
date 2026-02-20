@@ -72,13 +72,15 @@ bool loadFontDirectory(const char* dir) noexcept
 	{
 		if (dir_entry.is_regular_file())
 		{
-			if ((dir_entry.path().extension() == ".ttf") ||
-				(dir_entry.path().extension() == ".otf") ||
-				(dir_entry.path().extension() == ".TTF"))
+			auto& dirpath = dir_entry.path();
+			if ((dirpath.extension() == ".ttf") ||
+				(dirpath.extension() == ".otf") ||
+				(dirpath.extension() == ".TTF"))
 			{
 				BLFontFace ff{};
 				//const char* filename = dir_entry.path().generic_string().c_str();
-				if (fh->loadFontFace(dir_entry.path().generic_string().c_str(), ff) != BL_SUCCESS)
+                auto filename = dirpath.generic_string();
+				if (fh->loadFontFace(filename.c_str(), ff) != BL_SUCCESS)
 				{
                     // If a single font fails to load, continue to the next one
 					//printf("loadFontFace failed: %s\n", filename);

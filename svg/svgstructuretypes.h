@@ -353,7 +353,6 @@ namespace waavs {
 namespace waavs {
     struct ISVGElement : public IViewable 
     {
-
 		XmlElement fSourceElement{};
         
        virtual  std::shared_ptr<SVGVisualProperty> getVisualProperty(InternedKey key) = 0;
@@ -574,7 +573,21 @@ namespace waavs {
             setAttribute(key, value);
         }
 
+        // The way the inheritance works is, if we don't currently have
+        // a value for a particular attribute, but the referred to element does
+        // then we should take that value from the referred to gradient.
+        void setAttributeIfAbsent(const SVGGraphicsElement* elem, InternedKey key)
+        {
+            if (!elem)
+                return;
 
+            if (!hasAttribute(key))
+            {
+                ByteSpan candidateAttr{};
+                if (elem->getAttribute(key, candidateAttr))
+                    setAttribute(key, candidateAttr);
+            }
+        }
 
         // Property management
         void addVisualProperty(InternedKey key, std::shared_ptr<SVGVisualProperty> prop)
@@ -976,7 +989,7 @@ namespace waavs {
         
         void update(IAmGroot* groot) override
         {
-            this->updateProperties(groot);
+            //this->updateProperties(groot);
             this->updateSelf(groot);
             this->updateChildren(groot);
         }

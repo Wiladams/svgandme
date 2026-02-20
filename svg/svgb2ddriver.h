@@ -23,6 +23,7 @@ namespace waavs
             fDrawingContext = std::make_unique<BLContext>();
 
             initState();
+            //fDrawingContext->setCompOp(BLCompOp::BL_COMP_OP_SRC_OVER);
         }
 
 
@@ -149,7 +150,8 @@ namespace waavs
 
         void onBlendMode() override
         {
-            fDrawingContext->setCompOp((BLCompOp)getCompositeMode());
+            BLCompOp compOp = (BLCompOp)getCompositeMode();
+            fDrawingContext->setCompOp(compOp);
         }
 
         void onGlobalOpacity() override
@@ -202,6 +204,9 @@ namespace waavs
                 return;
 
             BLVar fPaint = getFillPaint();
+            if (fPaint.isNull())
+                printf("NULL Paint\n");
+            
             fDrawingContext->setFillStyle(fPaint);
         }
 
@@ -214,7 +219,8 @@ namespace waavs
 
         void onFillOpacity() override
         {
-            fDrawingContext->setFillAlpha(getFillOpacity());
+            double opa = getFillOpacity();
+            fDrawingContext->setFillAlpha(opa);
         }
 
         // Geometry

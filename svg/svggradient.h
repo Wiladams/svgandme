@@ -127,6 +127,9 @@ namespace waavs {
                     {
                         opacity = waavs::clamp(op.calculatedValue(), 0.0, 1.0);
                     }
+                    else {
+                        printf("Invalid stop-opacity value: '%.*s'\n", (int)stopOpacityAttr.size(), stopOpacityAttr.data());
+                    }
 
                     paint.setOpacity(opacity);
                 }
@@ -206,22 +209,9 @@ namespace waavs {
         //   gradientTransform
         //   spreadMethod
         //
-        void setAttributeIfAbsent(const SVGGradient* elem, InternedKey key)
-        {
-            if (!elem)
-                return;
-            if (!hasAttribute(key))
-            {
-                ByteSpan candidateAttr{};
-                if (elem->getAttribute(key, candidateAttr))
-                    setAttributeByName(key, candidateAttr);
-            }
-        }
 
 
-        // The way the inheritance works is, if we don't currently have
-        // a value for a particular attribute, but the referred to gradient does
-        // then we should take that value from the referred to gradient.
+
         // 
         // Inherit the raw attributes that are common to all gradients,
         // if we don't already have them.
@@ -499,10 +489,14 @@ namespace waavs {
     //
     static INLINE double calculateDistance(const double fraction, const double width, const double height) noexcept
     {
-        return fraction  * std::sqrt((width * width) + (height * height));
+        // SVG spec says that percentage values for radial gradient radius should 
+        // be interpreted as a fraction of the distance from the center to the 
+        // hypotenuse of the objectBoundingBox.  So we calculate that distance here.
+        //return fraction  * std::sqrt((width * width) + (height * height));
         
-        // What the browsers do
-        //return fraction * width;
+        // But, what the browsers do, is to treat percentage values for radial 
+        // gradient radius as a fraction of the width or height (unit 1)
+        return fraction * width;
     }
 
 

@@ -95,7 +95,7 @@ namespace waavs
 			fCurrentDrawingState = fStateStack.currentState();
             setDrawingState(fCurrentDrawingState);
 
-            background(BLRgba32(0xFFFFFFFF));
+            background(BLRgba32(0x00000000));
             lineJoin(BL_STROKE_JOIN_MITER_CLIP);
             strokeMiterLimit(4);
             fillRule(BL_FILL_RULE_NON_ZERO);
@@ -140,7 +140,7 @@ namespace waavs
 
             // Setup the default drawing state
             // to conform to what SVG expects
-            //blendMode(BL_COMP_OP_SRC_OVER);
+            blendMode(BL_COMP_OP_SRC_OVER);
             //strokeMiterLimit(4.0);
             //lineJoin(BL_STROKE_JOIN_MITER_CLIP);
             //fillRule(BL_FILL_RULE_NON_ZERO);

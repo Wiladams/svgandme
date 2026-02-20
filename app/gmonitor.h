@@ -2,12 +2,14 @@
 
 #pragma comment(lib, "Dxva2.lib")
 
-#include "apphost.h"
-
-
 #include <memory>
 #include <lowlevelmonitorconfigurationapi.h>
 #include <physicalmonitorenumerationapi.h>
+
+#include "apphost.h"
+
+
+
 
 // A graphical Representation of a display monitor
 // References

@@ -8,8 +8,7 @@
 // desc
 // title
 // metadata
-// symbol
-// use
+
 
 #include <array>
 #include <functional>
@@ -209,6 +208,16 @@ namespace waavs {
 		SVGGElement(IAmGroot* )
 			: SVGGraphicsElement()
 		{
+		}
+
+		void applyProperties(IRenderSVG* ctx, IAmGroot* groot) override
+		{
+			SVGGraphicsElement::applyProperties(ctx, groot);
+		}
+
+		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+		{
+			//printf("<g>: bindToContext()\n");
 		}
 	};
 

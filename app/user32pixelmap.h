@@ -24,32 +24,9 @@
 #include "pixelaccessor.h"
 
 
-namespace waavs {
-    // Used to rapidly copy 32 bit values 
-    static void memset_l(void* adr, int32_t val, size_t count) 
-    {
-		int32_t v;
-		size_t i, n;
-		uint32_t* p;
-		p = static_cast<uint32_t *>(adr);
-		v = val;
+namespace waavs 
+{
 
-		// Do 4 at a time
-		n = count >> 2;
-		for (i = 0; i < n; i++) 
-		{
-			p[0] = v;
-			p[1] = v;
-			p[2] = v;
-			p[3] = v;
-			p += 4;
-		}
-
-		// Copy the last remaining values
-		n = count & 3;
-		for (i = 0; i < n; i++)
-			*p++ = val;
-}
 
     class User32PixelMap : public PixelAccessor<vec4b>
     {

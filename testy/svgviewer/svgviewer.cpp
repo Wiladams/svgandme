@@ -66,6 +66,8 @@ static void drawBackground()
 {
     // We need to clear the context first
 	getDrawingContext()->renew();
+	getDrawingContext()->background(BLRgba32(0xffffffff));
+	getDrawingContext()->clear();
 }
 
 static void drawForeground()
@@ -114,7 +116,7 @@ static void handleViewChange(const bool& changeOccured)
 	if (gDoc == nullptr)
 		return;
 
-	printf("svgviewer::handleChange\n");
+	//printf("svgviewer::handleChange\n");
 	draw();
 
 	// we do this screenRefresh here because mouse dragging
@@ -195,7 +197,7 @@ static void onFrameEvent(const FrameCountEvent& fe)
 	//printf("Actual Frame Rate: %d\n", (int)(fe.frameCount / seconds()));
 	
 	//handleChange(true);
-	if (gAnimate)
+	if (gAnimate && gDoc)
 	{
 		gDoc->update(gDoc.get());
 		draw();
@@ -214,8 +216,8 @@ static void onResizeEvent(const ResizeEvent& re)
 	
 	//printf("onResizeEvent: %d x %d\n", re.width, re.height);
 	BLContextCreateInfo ctxInfo{};
-	ctxInfo.threadCount = 4;
-	//ctxInfo.threadCount = 0;
+	//ctxInfo.threadCount = 4;
+	ctxInfo.threadCount = 0;
 
 	getDrawingContext()->attach(getAppFrameBuffer()->getBlend2dImage(), &ctxInfo);
 	handleChange(true);
@@ -314,7 +316,7 @@ void setup()
 	// register to receive various events
 	subscribe(onFileDrop);
 	subscribe(onResizeEvent);
-	//subscribe(onFrameEvent);
+	subscribe(onFrameEvent);
 	subscribe(onMouseEvent);
 	subscribe(onKeyboardEvent);
 
@@ -339,4 +341,6 @@ void setup()
 	// Load extension elements
 	DisplayCaptureElement::registerFactory();
 	//SVGScriptElement::registerFactory();
+
+	getDrawingContext()->background(BLRgba32(0xffffffff));
 }

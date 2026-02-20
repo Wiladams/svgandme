@@ -167,6 +167,16 @@ namespace waavs::svgattr
     inline InternedKey onclick() { static InternedKey k = PSNameTable::INTERN("onclick");      return k; }
     inline InternedKey onmouseover() { static InternedKey k = PSNameTable::INTERN("onmouseover");  return k; }
     inline InternedKey onmouseout() { static InternedKey k = PSNameTable::INTERN("onmouseout");   return k; }
+
+    // -------------------------------------------
+    // Screen Capture
+    // -------------------------------------------
+    inline InternedKey src() { static InternedKey k = PSNameTable::INTERN("src"); return k; }
+    inline InternedKey capX() { static InternedKey k = PSNameTable::INTERN("capX"); return k; }
+    inline InternedKey capY() { static InternedKey k = PSNameTable::INTERN("capY"); return k; }
+    inline InternedKey capWidth() { static InternedKey k = PSNameTable::INTERN("capWidth"); return k; }
+    inline InternedKey capHeight() { static InternedKey k = PSNameTable::INTERN("capHeight"); return k; }
+
 }
 
 

@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <profileapi.h>
 #include <cstdint>
+#include <chrono>
 
 /*
     A simple stopwatch.
