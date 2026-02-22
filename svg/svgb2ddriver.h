@@ -204,9 +204,17 @@ namespace waavs
                 return;
 
             BLVar fPaint = getFillPaint();
-            if (fPaint.isNull())
-                printf("NULL Paint\n");
-            
+            if (fPaint.isNull()) {
+                // BUGBUG - setting a null paint should be ok
+                // but, it doesn't seem like it is, so return
+                // if there is a situation where 'noFill' is required
+                // then noFill() should be called instead of fill(BLVar::null())
+                //printf("NULL Paint\n");
+                fDrawingContext->disableFillStyle();
+
+                return;
+            }
+
             fDrawingContext->setFillStyle(fPaint);
         }
 

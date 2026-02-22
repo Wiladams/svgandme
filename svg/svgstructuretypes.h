@@ -76,7 +76,6 @@ namespace waavs {
         void setIsStructural(bool aStructural) { fIsStructural = aStructural; }
         
         bool visible() const { return fIsVisible; }
-        void visible(bool visible) = delete; // { fIsVisible = visible; }
         void setIsVisible(bool visible) { fIsVisible = visible; }
 
         virtual BLRect viewPort() const noexcept = delete; // { return {}; }
@@ -478,8 +477,6 @@ namespace waavs {
         ByteSpan fClassAttribute{};
         bool fStyleResolved{ false };
         
-        //BLMatrix2D fTransform{};
-        //bool fHasTransform{ false };
 
         std::unordered_map<InternedKey, std::shared_ptr<SVGVisualProperty>, InternedKeyHash, InternedKeyEquivalent> fVisualProperties{};
         std::vector<std::shared_ptr<IViewable>> fNodes{};

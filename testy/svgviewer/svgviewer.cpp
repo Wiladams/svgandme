@@ -14,8 +14,12 @@
 
 using namespace waavs;
 
-static constexpr int canvasWidth = 2560;
-static constexpr int canvasHeight = 1440;
+// Assuming Mac Studio display,  which is 5120 x 2880
+// One quarter of a apple studio display is 2560 x 1440
+static constexpr int canvasWidth = 2560, canvasHeight = 1440;
+// 3380x1900 - two thirds
+//static constexpr int canvasWidth = 3880, canvasHeight = 1900;
+
 
 
 // Reference to currently active document
@@ -216,8 +220,8 @@ static void onResizeEvent(const ResizeEvent& re)
 	
 	//printf("onResizeEvent: %d x %d\n", re.width, re.height);
 	BLContextCreateInfo ctxInfo{};
-	//ctxInfo.threadCount = 4;
-	ctxInfo.threadCount = 0;
+	ctxInfo.threadCount = 4;
+	//ctxInfo.threadCount = 0;
 
 	getDrawingContext()->attach(getAppFrameBuffer()->getBlend2dImage(), &ctxInfo);
 	handleChange(true);

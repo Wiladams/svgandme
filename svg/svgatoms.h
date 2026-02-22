@@ -176,7 +176,7 @@ namespace waavs::svgattr
     inline InternedKey capY() { static InternedKey k = PSNameTable::INTERN("capY"); return k; }
     inline InternedKey capWidth() { static InternedKey k = PSNameTable::INTERN("capWidth"); return k; }
     inline InternedKey capHeight() { static InternedKey k = PSNameTable::INTERN("capHeight"); return k; }
-
+    inline InternedKey displayUnits() { static InternedKey k = PSNameTable::INTERN("displayUnits"); return k; }
 }
 
 

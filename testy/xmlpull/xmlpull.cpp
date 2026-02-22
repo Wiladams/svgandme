@@ -97,7 +97,7 @@ static void printToken(const XmlToken& tok)
 {
 	ByteSpan kindname{};
 	getEnumKey(XML_TOKEN_TYPE_WSEnum, tok.type, kindname);
-	printf("Token [%d] %.*s : [%.*s]\n",
+	printf("Token [%d]  %.*s : [%.*s]\n",
 		tok.type, (int)kindname.size(), kindname.data(),
 		(int)tok.value.size(), tok.value.data());
 }
@@ -192,10 +192,11 @@ int main(int argc, char** argv)
     waavs::ByteSpan s;
     s.resetFromSize(mapped->data(), mapped->size());
     
-    //testTokenizer(s);
+    //testTokenizer("<svg><rect width='100' height='150' /></svg>");
 	//testTokenGenerator(s);
 
-    testXmlElementScan(s);
+    testXmlElementScan("<svg><!-- comment --> <rect width='100' height='150' /></svg>");
+    //testXmlElementScan(s);
     //testXmlElementGenerator(s);
 
     //testXmlIter(s);

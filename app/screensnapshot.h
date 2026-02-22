@@ -115,8 +115,8 @@ namespace waavs
             //    fSourceDC = srcDC;
 
             //fScreenDevice.reset(fSourceDC);
-            printf("ScreenSnapper::reset(), device: %s, pixel size: %dx%d\n", 
-                deviceName, fScreenDevice.pixelWidth(), fScreenDevice.pixelHeight());
+            //printf("ScreenSnapper::reset(), device: %s, pixel size: %dx%d\n", 
+            //    deviceName, fScreenDevice.pixelWidth(), fScreenDevice.pixelHeight());
 
             fCapX = capX;
             fCapY = capY;
@@ -135,6 +135,8 @@ namespace waavs
 
             setMaxFrameRate(15);
             fLastCaptureTime = 0;
+
+            update();
 
             return true;
         }

@@ -42,6 +42,7 @@ namespace waavs {
         // Stuff that can be resolved at fixupStyle time
         ScreenSnapper fSnapper{};
         ByteSpan fSrcSpan{};
+        bool fIsValidSource{ false };
 
         // The parameters for the capture area
         // if the width or height are zero, then it
@@ -57,7 +58,7 @@ namespace waavs {
         double fY{ 0 };
         double fWidth{ 0 };
         double fHeight{ 0 };
-
+        SpaceUnitsKind fDisplayUnits{ SpaceUnitsKind::SVG_SPACE_USER };
 
         BLPattern fPatternForVariant{};
 
@@ -76,13 +77,9 @@ namespace waavs {
 
         const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
         {
-            if (fVar.isNull())
+            if (needsBinding())
             {
                 bindToContext(ctx, groot);
-
-                fSnapper.update();
-                fPatternForVariant.setImage(fSnapper.image());
-                fVar = fPatternForVariant;
             }
 
             return fVar;
@@ -118,10 +115,11 @@ namespace waavs {
                 return;
 
             // The capture area MUST be a number or percent.
-            // if it's a percent, it's of the available capture area 
-            // (e.g. the screen size, or the size of the display specified in src)
+            // captureUnits determines what a percentage number is
+            // relative to.  It is always objectBoundingBox, where
+            // that object is the captured screen device.  So, percentages
+            // are relative to the size of the chosen sceen device.
             // captureUnits - default to physical pixels
-            // displayUnits - Object bounding box, user space, or physical pixels (default)
             // 
             // Setup a GraphicsDeviceContext so we can get the size
             // of the intended device.
@@ -135,27 +133,60 @@ namespace waavs {
                 return;
             }
 
-            
+            fIsValidSource = true;
+
             fCapX = (int64_t)getNumberOrPercent(svgattr::capX(), device.pixelWidth(), 0);
             fCapY = (int64_t)getNumberOrPercent(svgattr::capY(), device.pixelHeight(), 0);
             fCapWidth = (int64_t)getNumberOrPercent(svgattr::capWidth(), device.pixelWidth(), 0);
             fCapHeight = (int64_t)getNumberOrPercent(svgattr::capHeight(), device.pixelHeight(), 0);
 
+            ByteSpan duA;
+            if (fAttributes.getValue(svgattr::displayUnits(), duA)) {
+                uint32_t v{};
+                if (getEnumValue(SVGSpaceUnits, duA, v)) 
+                    fDisplayUnits = (SpaceUnitsKind)v;
+            }
+
         }
 
         void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
+            if (!fIsValidSource)
+                return;
+
             // We need to resolve the size of the user space
             // start out with some information from groot
             double dpi = groot ? groot->dpi() : 96.0;
             const BLFont* fontOpt = groot ? &ctx->getFont() : nullptr;
 
-
-
-            // For now, we're just going to assume captureUnits == CaptureSpace
-            //BLRect cFrame = ctx->viewport();
+            // default display width and height to user space
+            // defined by pixel width and height of capture
             double w = fCapWidth;
             double h = fCapHeight;
+            BLMatrix2D pattMatrix = BLMatrix2D::makeIdentity();
+
+            // displayUnits - Object bounding box, user space, or physical pixels (default)
+            if (fDisplayUnits == SpaceUnitsKind::SVG_SPACE_USER)
+            {
+                // do nothing, we're already set
+                // it should perhaps be relative to the viewport
+                // as that's how other things operate
+            }
+            else if (fDisplayUnits == SpaceUnitsKind::SVG_SPACE_OBJECT)
+            {
+                // We're drawing in objectFrame units
+                // so get current object frame
+                BLRect objFrame = ctx->getObjectFrame();
+                w = objFrame.w;
+                h = objFrame.h;
+
+                double sx = objFrame.w / (double)fCapWidth;
+                double sy = objFrame.h / (double)fCapHeight;
+
+                pattMatrix.translate(objFrame.x, objFrame.y);
+                pattMatrix.scale(sx, sy);
+            }
+
 
             // BUGBUG - need to get the dpi and canvas size to calculate these properly
             LengthResolveCtx wCtx = makeLengthCtxUser(w, 0, dpi, fontOpt);
@@ -187,12 +218,15 @@ namespace waavs {
                 fHasCapture = true;
             }
 
-            if (!fDimWidth.isSet())
-                fWidth = (double)fSnapper.width();
-            if (!fDimHeight.isSet())
-                fHeight = (double)fSnapper.height();
 
-            fSnapper.update();
+            // set a pattern transform
+            // to accomodate where it's going to be displayed
+            fPatternForVariant.setImage(fSnapper.image());
+            fPatternForVariant.setTransform(pattMatrix);
+
+
+            fVar = fPatternForVariant;
+
         }
 
 
