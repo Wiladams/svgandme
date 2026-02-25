@@ -1343,7 +1343,7 @@ static void run()
 
     showAppWindow();
 
-    gAppClock.reset();
+    gAppClock.start();
 
     // Do a typical Windows message pump
     MSG msg{};

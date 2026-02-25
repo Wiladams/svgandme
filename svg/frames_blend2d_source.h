@@ -27,8 +27,6 @@ namespace waavs
         // Output pixels (what SVGFramesElement will render)
         PixelArray fPixels{};
 
-        // Name of file we're displaying
-        InternedKey fSourceKey{ nullptr };
 
         // Blend2D codec for decoding the image file
         BLImageCodec fCodec;
@@ -38,16 +36,6 @@ namespace waavs
         size_t fCurrentFrame = 0;
         size_t fFrameCount = 0;
 
-
-        int64_t fCropX = 0;
-        int64_t fCropY = 0;
-        int64_t fCropWidth = 0;
-        int64_t fCropHeight = 0;
-
-        // Capture throttling
-        StopWatch fTimer;
-        double fMinInterval = 0.0;
-        double fLastCaptureTime = 0;
 
 
     public:
@@ -119,7 +107,7 @@ namespace waavs
             fCropX = (int64_t)bindNumberOrPercent(desc.cropX, fImageInfo.size.w, 0);
             fCropY = (int64_t)bindNumberOrPercent(desc.cropY, fImageInfo.size.h, 0);
             fCropWidth = (int64_t)bindNumberOrPercent(desc.cropW, fImageInfo.size.w, fImageInfo.size.w);
-            fCropHeight = (int64_t)bindNumberOrPercent(desc.cropH, fImageInfo.size.w, fImageInfo.size.w);
+            fCropHeight = (int64_t)bindNumberOrPercent(desc.cropH, fImageInfo.size.h, fImageInfo.size.h);
 
             clampCropToImageBounds();
             if (fCropWidth <= 0 || fCropHeight <= 0)

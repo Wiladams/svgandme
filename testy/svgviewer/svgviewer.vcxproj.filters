@@ -32,9 +32,6 @@
     <ClInclude Include="..\..\svg\fonthandler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\app\pixelaccessor.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\svg\svgdrawingcontext.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -191,9 +188,6 @@
     <ClInclude Include="..\..\svg\svgsymbol.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\app\stopwatch.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\app\d3dsnapshot.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -236,9 +230,6 @@
     <ClInclude Include="..\..\app\waavsdisplaycapture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\app\waavsstrokebrush.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\svg\framechain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -278,10 +269,19 @@
     <ClInclude Include="..\..\svg\framesource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\waavsframe.h">
+    <ClInclude Include="..\..\svg\frames_blend2d_source.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\blend2dimagesource.h">
+    <ClInclude Include="..\..\svg\stopwatch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\app\frames_ffmpeg_source.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\app\waavsframe.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\pixelaccessor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

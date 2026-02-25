@@ -271,7 +271,8 @@ static void setup()
 	gFileListView.Topic<bool>::subscribe(portalChanged);
 	gFileListView.Topic<FileIcon>::subscribe(fileSelected);
 
-	DisplayCaptureElement::registerFactory();
-	
+	//DisplayCaptureElement::registerFactory();
+	SVGFramesElement::registerFactory();
+
 	refreshDoc();
 }

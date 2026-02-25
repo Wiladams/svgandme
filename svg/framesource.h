@@ -1,10 +1,9 @@
 #pragma once
 
-//#include "blend2d.h"
 #include "bspan.h"
 #include "pixelaccessor.h"
 #include "svgdatatypes.h"
-
+#include "stopwatch.h"
 
 namespace waavs 
 {
@@ -36,8 +35,26 @@ namespace waavs
         double maxFps{ 0.0 };
     };
 
-
+    //
+    // Interface for a source of pixel frames.
+    // This could be a video file, a camera, a screen capture, etc.
+    //
     struct IFrameSource {
+        // Name of file we're displaying
+        InternedKey fSourceKey{ nullptr };
+
+        int64_t fCropX = 0;
+        int64_t fCropY = 0;
+        int64_t fCropWidth = 0;
+        int64_t fCropHeight = 0;
+
+        // Capture throttling
+        StopWatch fTimer;
+        double fMinInterval = 0.0;
+        double fLastCaptureTime = 0;
+
+
+
         virtual ~IFrameSource() = default;
 
         virtual bool reset(const FrameSourceDesc& desc) noexcept = 0;
@@ -47,5 +64,6 @@ namespace waavs
         virtual const PixelArray& pixels() const noexcept = 0;
 
     };
+
 
 } // namespace waavs

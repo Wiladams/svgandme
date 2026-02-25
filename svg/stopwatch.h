@@ -24,10 +24,13 @@ namespace waavs
         report number of seconds ellapsed since the last call
         to 'reset', and not wall clock time.
     */
+    using TimePoint = std::chrono::high_resolution_clock::time_point;
+
     class StopWatch
     {
-        double fStartTime;
+        TimePoint fStartTime;
 
+        /*
         // These are convenience functions that wrap up the 
     // various Windows APIs needed for a high precision timer
         static int64_t GetPerfFrequency()
@@ -62,11 +65,11 @@ namespace waavs
 
             return seconds;
         }
-
+        */
     public:
         StopWatch()
         {
-            reset();
+            start();
         }
 
         // return the time as a number of seconds
@@ -74,14 +77,16 @@ namespace waavs
         // seconds can be reported.
         double seconds() const
         {
-            double currentTime = GetCurrentTickTime();
-            return currentTime - fStartTime;
+            std::chrono::duration<double> elapsed = std::chrono::high_resolution_clock::now() - fStartTime;
+            return elapsed.count() * 1000;
         }
 
         // Return the time as number of milliseconds instead of seconds
         double millis() const
         {
-            return seconds() * 1000;
+            std::chrono::duration<double> elapsed = std::chrono::high_resolution_clock::now() - fStartTime;
+            return elapsed.count();
+
         }
 
         // You can reset the clock, which will cause
@@ -89,10 +94,9 @@ namespace waavs
         // if you specify an amount for 'alreadydone', then
         // you ask how much time has passed, that amount will 
         // be added to the total.
-        void reset(const double alreadyDone = 0)
+        void start()
         {
-            fStartTime = GetCurrentTickTime();
-            fStartTime = fStartTime - alreadyDone;
+            fStartTime = std::chrono::high_resolution_clock::now();
         }
     };
 }

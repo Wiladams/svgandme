@@ -16,11 +16,12 @@
 using namespace waavs;
 
 // Assuming Mac Studio display,  which is 5120 x 2880
+static constexpr int canvasWidth = 1024, canvasHeight = 768;
 // One quarter of a apple studio display is 2560 x 1440
-static constexpr int canvasWidth = 2560, canvasHeight = 1440;
+//static constexpr int canvasWidth = 2560, canvasHeight = 1440;
 // 3380x1900 - two thirds
 //static constexpr int canvasWidth = 3880, canvasHeight = 1900;
-
+static constexpr float kFrameRate = 30.0f;
 
 
 // Reference to currently active document
@@ -328,7 +329,7 @@ void setup()
 
     setupFonts();
     
-    setFrameRate(30);
+    setFrameRate(kFrameRate);
     
     dropFiles();
     

@@ -9,8 +9,8 @@
 #include "svgstructuretypes.h"
 
 #include "screensnapshot.h"
-#include "blend2dimagesource.h"
-
+#include "frames_blend2d_source.h"
+#include "frames_ffmpeg_source.h"
 
 namespace waavs
 {
@@ -433,6 +433,7 @@ namespace waavs
                 break;
             
                 case waavs::FramesSourceKind::FFmpeg:
+                    fSource = std::make_unique<FFmpegFrameSource>();
                 break;
                 
                 default:
