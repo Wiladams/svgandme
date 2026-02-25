@@ -59,8 +59,12 @@ namespace waavs
         }
 
         bool isValid() const noexcept { return fIsValid; }
-        void* data() const noexcept { return fData; }
-        size_t size() const noexcept { return fSize; }
+        void* data() const noexcept { 
+            return fData; 
+        }
+        size_t size() const noexcept { 
+            return fSize; 
+        }
 
         bool close() noexcept
         {

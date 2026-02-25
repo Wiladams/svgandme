@@ -1011,7 +1011,8 @@ namespace waavs {
 
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->stroke(getVariant(ctx, groot));
+            BLVar aVar = getVariant(ctx, groot);
+            ctx->stroke(aVar);
         }
 
     };

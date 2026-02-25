@@ -280,6 +280,11 @@ namespace waavs
             onClear();
         }
 
+        virtual void onClearToBackground() {}
+        void clearToBackground()
+        {
+            onClearToBackground();
+        }
 
 
 

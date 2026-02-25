@@ -7,7 +7,6 @@
 #include "svgstructuretypes.h"
 
 #include "screensnapshot.h"
-#include "gmonitor.h"
 #include "converters.h"
 
 
@@ -40,7 +39,8 @@ namespace waavs {
         SVGLengthValue fDimHeight{};
 
         // Stuff that can be resolved at fixupStyle time
-        ScreenSnapper fSnapper{};
+        //ScreenSnapper fSnapper{};
+        std::unique_ptr<IFrameSource> fSource;
         ByteSpan fSrcSpan{};
         bool fIsValidSource{ false };
 
@@ -115,14 +115,14 @@ namespace waavs {
                 return;
 
             // The capture area MUST be a number or percent.
-            // captureUnits determines what a percentage number is
-            // relative to.  It is always objectBoundingBox, where
-            // that object is the captured screen device.  So, percentages
-            // are relative to the size of the chosen sceen device.
-            // captureUnits - default to physical pixels
-            // 
-            // Setup a GraphicsDeviceContext so we can get the size
-            // of the intended device.
+// captureUnits determines what a percentage number is
+// relative to.  It is always objectBoundingBox, where
+// that object is the captured screen device.  So, percentages
+// are relative to the size of the chosen sceen device.
+// captureUnits - default to physical pixels
+// 
+// Setup a GraphicsDeviceContext so we can get the size
+// of the intended device.
             GraphicsDeviceContext device{};
             InternedKey deviceName = PSNameTable::INTERN(fSrcSpan);
 
@@ -206,14 +206,22 @@ namespace waavs {
 
             if (fSrcSpan && fCapWidth > 0.0 && fCapHeight > 0.0)
             {
-                InternedKey displayKey = PSNameTable::INTERN(fSrcSpan);
+                //InternedKey displayKey = PSNameTable::INTERN(fSrcSpan);
 
                 // If we can't reset the snapper, then we can't capture, 
                 // so just return and don't draw anything
                 // The reset could also fail if the device does not have
                 // enough size the accomodate the request.
-                if (!fSnapper.reset((int)fCapX, (int)fCapY, (int)fCapWidth, (int)fCapHeight, displayKey))
-                    return ;
+                // Construct a snapper for the chosen device and capture area
+                fSource = std::make_unique<ScreenSnapper>();
+                FrameSourceDesc desc{};
+                desc.src = fSrcSpan;
+                desc.cropX = fCapX;
+                desc.cropY = fCapY;
+                desc.cropW = fCapWidth;
+                desc.cropH = fCapHeight;
+                if (!fSource->reset(desc))
+                    return;
 
                 fHasCapture = true;
             }
@@ -221,7 +229,7 @@ namespace waavs {
 
             // set a pattern transform
             // to accomodate where it's going to be displayed
-            fPatternForVariant.setImage(fSnapper.image());
+            fPatternForVariant.setImage(fSource->pixels().image());
             fPatternForVariant.setTransform(pattMatrix);
 
 
@@ -232,7 +240,10 @@ namespace waavs {
 
         void updateSelf(IAmGroot*) override
         {
-            fSnapper.update();
+            if (!fSource)
+                return;
+
+            fSource->update();
         }
 
         void drawSelf(IRenderSVG* ctx, IAmGroot*) override
@@ -240,10 +251,9 @@ namespace waavs {
             if (!fHasCapture)
                 return;
 
-            int lWidth = (int)fSnapper.width();
-            int lHeight = (int)fSnapper.height();
+            auto& px = fSource->pixels();
 
-            ctx->scaleImage(this->fSnapper.image(), 0, 0, lWidth, lHeight, fX, fY, fWidth, fHeight);
+            ctx->scaleImage(px.image(), 0, 0, (int)px.width(), (int)px.height(), fX, fY, fWidth, fHeight);
             ctx->flush();
         }
 

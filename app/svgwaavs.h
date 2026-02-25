@@ -3,6 +3,7 @@
 
 
 
-#include "waavsdisplaycapture.h"
-#include "waavsstrokebrush.h"
+//#include "waavsdisplaycapture.h"
+//#include "waavsstrokebrush.h"
+#include "waavsframe.h"
 

@@ -255,9 +255,9 @@ namespace waavs
     // ==============================================================================
     struct SVGNumberOrPercent
     {
-        double fValue;
-        bool fIsPercent;
-        bool fIsSet;
+        double fValue{ 0 };
+        bool fIsPercent{ false };
+        bool fIsSet{ false };
 
         bool isSet() const noexcept { return fIsSet; }
         bool isPercent() const noexcept { return fIsPercent; }
@@ -375,6 +375,17 @@ namespace waavs
         out.fIsPercent = isPct;
         out.fIsSet = true;
 
+        return true;
+    }
+
+    static INLINE bool parseNumberOrPercent(const ByteSpan& inChunk, SVGNumberOrPercent& out) noexcept
+    {
+        SVGNumberOrPercent tmp = out;
+        ByteSpan s = inChunk;
+        if (!readSVGNumberOrPercent(s, tmp))
+            return false;
+
+        out = tmp;
         return true;
     }
 }

@@ -36,20 +36,30 @@
 #include "User32PixelMap.h"
 #include "stopwatch.h"
 #include "nametable.h"
+#include "framesource.h"
 
 
 namespace waavs
 {
-    // Convenience class for managing the screen device context
-    struct GraphicsDeviceContext
+    // Convenience class for managing a Windows 
+    // Graphics Device Interface Context
+    // This object owns the context, so it will be 
+    // deleted when the object is destroyed.
+    struct GraphicsDeviceContext final
     {
         HDC fDC{ nullptr };
     
         GraphicsDeviceContext() = default;
         
-        bool resetByName(const char *deviceName)
+        ~GraphicsDeviceContext()
         {
-            HDC dc = CreateDCA(deviceName, nullptr, nullptr, nullptr);
+            if (fDC != nullptr)
+                ::DeleteDC(fDC);
+        }
+
+        bool resetByName(InternedKey key)
+        {
+            HDC dc = CreateDCA(key, nullptr, nullptr, nullptr);
             if (dc == nullptr)
                 return false;
 
@@ -69,108 +79,115 @@ namespace waavs
 
     };
 
-    class ScreenSnapper : public User32PixelMap
+    /*
+    static INLINE double getNumberOrPercent(const SVGNumberOrPercent& norp, const double range, const double fallback) noexcept
     {
-        bool fHasCaptureSource = false;
+        if (norp.isSet())
+        {
+            if (norp.isPercent())
+                return norp.calculatedValue() * range;
+
+            return norp.calculatedValue();
+        }
+
+        return fallback;
+    }
+    */
+
+    class ScreenSnapper final : public User32PixelMap, public IFrameSource
+    {
+        static constexpr double kDefaultFrameRate = 15.0;
+
+        InternedKey fDeviceKey{ nullptr };
         GraphicsDeviceContext fScreenDevice{};
 
-        int fCapX = 0;
-        int fCapY = 0;
-        int fCapWidth = 0;
-        int fCapHeight = 0;
+        int64_t fCapX = 0;
+        int64_t fCapY = 0;
+        int64_t fCapWidth = 0;
+        int64_t fCapHeight = 0;
 
         // Capture throttling
-        waavs::StopWatch fTimer;
+        StopWatch fTimer;
         double fMinInterval = 0.0;
         double fLastCaptureTime = 0;
+
 
     public:
         ScreenSnapper() = default;
 
-        bool resetDevice(const char *deviceName)
+        void setMaxFrameRate(double fps)
         {
-            if (!fScreenDevice.resetByName(deviceName))
-                return false;
-
-            return true;
+            fMinInterval = (fps > 0.0) ? (1.0 / fps) : 0.0;
         }
 
-        bool reset(int capX, int capY, int capWidth, int capHeight, const char *deviceName)
+        bool reset(const FrameSourceDesc& desc) noexcept override
         {
-            // First, delete current DC if it exists
-            // But really, we don't know whether this is
-            // the right thing to do.  Instead, the srcDC should
-            // be a unique_ptr, so we don't have to make
-            // the decision of its lifetime
-            // For now, we'll just leave it alone, as we don't expect
-            // this to be reset very frequently
-            //if (nullptr != fSourceDC)
-            //    ::DeleteDC(fSourceDC);
-            if (!resetDevice(deviceName))
+            if (desc.src.empty())
                 return false;
 
-            //if (srcDC == nullptr)
-            //    fSourceDC = CreateDCA("DISPLAY", nullptr, nullptr, nullptr);
-            //else
-            //    fSourceDC = srcDC;
+            // Need to turn the deviceName into something we can actuall open
+            // Need to construct a small key name to hold the Windows
+            // specific key for the device.  
+            // This is typically something like "\\\\.\\DISPLAY1" for the default display, 
+            // but it could be other things if you have multiple displays or want to capture 
+            // a specific monitor.
+            fDeviceKey = PSNameTable::INTERN(desc.src);
+            if (!fScreenDevice.resetByName(fDeviceKey))
+                return false;
 
-            //fScreenDevice.reset(fSourceDC);
-            //printf("ScreenSnapper::reset(), device: %s, pixel size: %dx%d\n", 
-            //    deviceName, fScreenDevice.pixelWidth(), fScreenDevice.pixelHeight());
 
-            fCapX = capX;
-            fCapY = capY;
-            fCapWidth = capWidth;
-            fCapHeight = capHeight;
+            fCapX = (int64_t)bindNumberOrPercent(desc.cropX, fScreenDevice.pixelWidth(), 0);
+            fCapY = (int64_t)bindNumberOrPercent(desc.cropY, fScreenDevice.pixelHeight(), 0);
+            fCapWidth = (int64_t)bindNumberOrPercent(desc.cropW, fScreenDevice.pixelWidth(), fScreenDevice.pixelWidth());
+            fCapHeight = (int64_t)bindNumberOrPercent(desc.cropH, fScreenDevice.pixelHeight(), fScreenDevice.pixelHeight());
 
-            init(capWidth, capHeight);
+            // Initialize the backing store
+            if (!init(fCapWidth, fCapHeight))
+                return false;
 
-            // Bind the fImage to the pixel map
-            // so we can use both blend2d and GDI on the same
-            // pixel buffer.
-            int lWidth = (int)width();
-            int lHeight = (int)height();
-            intptr_t lStride = (intptr_t)stride();
-            blImageInitAsFromData(&fImage, lWidth, lHeight, BL_FORMAT_PRGB32, data(), lStride, BLDataAccessFlags::BL_DATA_ACCESS_RW, nullptr, nullptr);
+            if (desc.maxFps > 0.0)
+                setMaxFrameRate(desc.maxFps);
+            else
+                setMaxFrameRate(kDefaultFrameRate);  // default to 15 fps if not specified
 
-            setMaxFrameRate(15);
             fLastCaptureTime = 0;
-
             update();
 
             return true;
         }
 
-        void setMaxFrameRate(double fps)
-        {
-            fMinInterval = (1.0 / fps);
-        }
+
 
         // take a snapshot
-        bool update()
+        bool update() noexcept override
         {
-            // get current time
+            // Peform rudimentary frame rate throttling
+            // If the time since the last capture is less than the minimum interval, skip this capture
             double currentTime = fTimer.seconds();
             double currentInterval = currentTime - fLastCaptureTime;
             if (currentInterval < fMinInterval)
                 return false;
 
             // Capture from the screen device into the local bitmap
-            auto bResult = ::StretchBlt(bitmapDC(), 0, 0, width(), height(), 
+            BOOL ok = ::StretchBlt(bitmapDC(), 0, 0, width(), height(), 
                 fScreenDevice.hdc(), fCapX, fCapY, fCapWidth, fCapHeight, 
                 SRCCOPY | CAPTUREBLT);
 
-            if (bResult == 0)
+            // make not of current time as last capture time
+            fLastCaptureTime = fTimer.seconds();
+
+            if (ok == 0)
             {
-                DWORD err = ::GetLastError();
+                int err = ::GetLastError();
                 printf("ScreenSnapper::next(), ERROR: 0x%x\n", err);
             }
 
-            // Update the capture time to ensure we don't capture
-            // faster than the specified frame rate
-            fLastCaptureTime = currentTime;
 
-            return (bResult != 0);
+            return (ok != 0);
         }
+
+        PixelArray& pixels() noexcept override { return *this; }
+        const PixelArray& pixels() const noexcept override { return *this; }
+
     };
 }

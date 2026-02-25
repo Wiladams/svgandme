@@ -84,32 +84,25 @@ namespace waavs
 
 
         // Canvas management
+        // Clear the canvas to be fully transparent
         void onClear() override
         {
-			const BLVar &bgpaint = getBackgroundPaint();
-			if (!bgpaint.isNull())
-			{
-				fDrawingContext->fillAll(bgpaint);
-			}
-			else
-			{
-				fDrawingContext->clearAll();
-			}
+            fDrawingContext->clearAll();
         }
 
-
-        // Call this before each frame to be drawn
-        void onRenew() override
+        // Clear the canvas to the background style specified
+        // by the user.
+        void onClearToBackground() override
         {
-            // Clear the canvas first
-            fDrawingContext->clearAll();
-
-            // If a background paint is set, use it
-            if (!getBackgroundPaint().isNull())
+            const BLVar &bgpaint = getBackgroundPaint();
+            if (!bgpaint.isNull())
             {
-                fDrawingContext->fillAll(getBackgroundPaint());
+            	fDrawingContext->fillAll(bgpaint);
             }
-
+            else
+            {
+            	fDrawingContext->clearAll();
+            }
         }
 
 
@@ -203,19 +196,13 @@ namespace waavs
             if (!fDrawingContext)
                 return;
 
-            BLVar fPaint = getFillPaint();
-            if (fPaint.isNull()) {
-                // BUGBUG - setting a null paint should be ok
-                // but, it doesn't seem like it is, so return
-                // if there is a situation where 'noFill' is required
-                // then noFill() should be called instead of fill(BLVar::null())
-                //printf("NULL Paint\n");
+            BLVar paint = getFillPaint();
+            if (paint.isNull()) {
                 fDrawingContext->disableFillStyle();
-
                 return;
             }
 
-            fDrawingContext->setFillStyle(fPaint);
+            fDrawingContext->setFillStyle(paint);
         }
 
 
@@ -241,7 +228,14 @@ namespace waavs
         // paint for stroking lines
         void onStroke() override
         {
-            fDrawingContext->setStrokeStyle(getStrokePaint());
+            BLVar paint = getStrokePaint();
+            if (paint.isNull()) {
+                fDrawingContext->disableStrokeStyle();
+                return;
+            }
+
+            fDrawingContext->setStrokeStyle(paint);
+
         }
 
 

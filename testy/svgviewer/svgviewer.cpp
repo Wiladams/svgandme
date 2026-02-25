@@ -12,6 +12,7 @@
 #include "viewnavigator.h"
 #include "svgb2ddriver.h"
 
+
 using namespace waavs;
 
 // Assuming Mac Studio display,  which is 5120 x 2880
@@ -36,9 +37,9 @@ double gRecordingStart{ 0 };
 // retrieve a pointer to a unique drawing context
 static IRenderSVG *getDrawingContext()
 {
-	static std::unique_ptr<SVGB2DDriver> sDrawingContext = std::make_unique<SVGB2DDriver>();
+    static std::unique_ptr<SVGB2DDriver> sDrawingContext = std::make_unique<SVGB2DDriver>();
 
-	return sDrawingContext.get();
+    return sDrawingContext.get();
 }
 
 // docFromFilename
@@ -48,20 +49,20 @@ static IRenderSVG *getDrawingContext()
 //
 static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 {
-	auto mapped = waavs::MappedFile::create_shared(filename);
-	
-	// if the mapped file does not exist, return
-	if (mapped == nullptr)
-	{
-		printf("File not found: %s\n", filename);
-		return nullptr;
-	}
+    auto mapped = waavs::MappedFile::create_shared(filename);
+    
+    // if the mapped file does not exist, return
+    if (mapped == nullptr)
+    {
+        printf("File not found: %s\n", filename);
+        return nullptr;
+    }
 
-	ByteSpan aspan;
-	aspan.resetFromSize(mapped->data(), mapped->size());
-	std::shared_ptr<SVGDocument> aDoc = SVGFactory::createFromChunk(aspan, appFrameWidth, appFrameHeight, physicalDpi);
-	
-	return aDoc;
+    ByteSpan aspan;
+    aspan.resetFromSize(mapped->data(), mapped->size());
+    std::shared_ptr<SVGDocument> aDoc = SVGFactory::createFromChunk(aspan, appFrameWidth, appFrameHeight, physicalDpi);
+    
+    return aDoc;
 }
 
 
@@ -69,9 +70,9 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 static void drawBackground()
 {
     // We need to clear the context first
-	getDrawingContext()->renew();
-	getDrawingContext()->background(BLRgba32(0xffffffff));
-	getDrawingContext()->clear();
+    getDrawingContext()->renew();
+    getDrawingContext()->background(BLRgba32(0xffffffff));
+    getDrawingContext()->clearToBackground();
 }
 
 static void drawForeground()
@@ -81,155 +82,155 @@ static void drawForeground()
 static void drawDocument()
 {
     // First apply the transform as tracked by the navigator
-	if (gPerformTransform)
-	{
-		const BLMatrix2D & m = gNavigator.sceneToSurfaceTransform();
-		getDrawingContext()->transform(m);
-	}
+    if (gPerformTransform)
+    {
+        const BLMatrix2D & m = gNavigator.sceneToSurfaceTransform();
+        getDrawingContext()->transform(m);
+    }
 
 
-	// draw the document into the ctx
-	if (gDoc != nullptr)
-	{
-		gDoc->draw(getDrawingContext(), gDoc.get());
-	}
+    // draw the document into the ctx
+    if (gDoc != nullptr)
+    {
+        gDoc->draw(getDrawingContext(), gDoc.get());
+    }
 
-	getDrawingContext()->flush();
+    getDrawingContext()->flush();
 }
 
 
 
 static void draw()
 {	
-	//double startTime = seconds();
+    //double startTime = seconds();
 
-	drawBackground();
-	drawDocument();
-	drawForeground();
+    drawBackground();
+    drawDocument();
+    drawForeground();
 }
 
 static void resetView(const BLRect &bd, const BLRect &fr)
 {
-	gNavigator.resetNavigator();
-	gNavigator.setFrame(fr);
-	gNavigator.setBounds(bd);
+    gNavigator.resetNavigator();
+    gNavigator.setFrame(fr);
+    gNavigator.setBounds(bd);
 }
 
 static void handleViewChange(const bool& changeOccured)
 {
-	if (gDoc == nullptr)
-		return;
+    if (gDoc == nullptr)
+        return;
 
-	//printf("svgviewer::handleChange\n");
-	draw();
+    //printf("svgviewer::handleChange\n");
+    draw();
 
-	// we do this screenRefresh here because mouse dragging
-	// runs the window in a modal way, starving us of regular
-	// redraw messages, based on timing, so we force a redraw
-	// message through the message queue
-	refreshScreenNow();
+    // we do this screenRefresh here because mouse dragging
+    // runs the window in a modal way, starving us of regular
+    // redraw messages, based on timing, so we force a redraw
+    // message through the message queue
+    refreshScreenNow();
 }
 
 static void handleChange(const bool& changeOccured)
 {
-	if (gDoc == nullptr)
+    if (gDoc == nullptr)
         return;
 
-	if (gAnimate)
-	{
-		gDoc->update(gDoc.get());
-	}
-	
-	//printf("svgviewer::handleChange\n");
-	draw();
-	
-	// we do this screenRefresh here because mouse dragging
-	// runs the window in a modal way, starving us of regular
-	// redraw messages, based on timing, so we force a redraw
-	// message through the message queue
-	refreshScreenNow();
+    if (gAnimate)
+    {
+        gDoc->update(gDoc.get());
+    }
+    
+    //printf("svgviewer::handleChange\n");
+    draw();
+    
+    // we do this screenRefresh here because mouse dragging
+    // runs the window in a modal way, starving us of regular
+    // redraw messages, based on timing, so we force a redraw
+    // message through the message queue
+    refreshScreenNow();
 
 }
 
 
 static void onFileDrop(const FileDropEvent& fde)
 {
-	// assuming there's at least one file that 
-	// has been dropped.
-	for (int i = 0; i < fde.filenames.size(); i++)
-	{
-		// Create a new SVGDocument for each file
-		// And create a window to display each document
-		double startTime = seconds();
+    // assuming there's at least one file that 
+    // has been dropped.
+    for (int i = 0; i < fde.filenames.size(); i++)
+    {
+        // Create a new SVGDocument for each file
+        // And create a window to display each document
+        double startTime = seconds();
         
-		// BUGBUG - may need to explicityly unload previous document
-		gDoc = docFromFilename(fde.filenames[i].c_str());
+        // BUGBUG - may need to explicityly unload previous document
+        gDoc = docFromFilename(fde.filenames[i].c_str());
 
 
-		double endTime = seconds();
-		//printf("== fileDrop: SVGDocument::createFromFilename took %f seconds\n", endTime - startTime);
+        double endTime = seconds();
+        //printf("== fileDrop: SVGDocument::createFromFilename took %f seconds\n", endTime - startTime);
 
-		if (gDoc != nullptr)
-		{
-			BLRect viewFr = { 0,0,canvasWidth, canvasHeight };	// gDoc->viewPort();
+        if (gDoc != nullptr)
+        {
+            BLRect viewFr = { 0,0,canvasWidth, canvasHeight };	// gDoc->viewPort();
             BLRect docFr = viewFr;
 
-			// If there is a documentElement, we can use its viewport
-			// for the object frame
+            // If there is a documentElement, we can use its viewport
+            // for the object frame
             auto rootElem = gDoc->documentElement();
-			if (rootElem != nullptr)
-			{
-				docFr = rootElem->objectBoundingBox();
+            if (rootElem != nullptr)
+            {
+                docFr = rootElem->objectBoundingBox();
             }
 
-			// Set the initial viewport
-			resetView(docFr, viewFr);
-			
-			handleChange(true);
+            // Set the initial viewport
+            resetView(docFr, viewFr);
+            
+            handleChange(true);
 
-			break;
-		}
+            break;
+        }
 
-	}
+    }
 }
 
 // Create a routine to respond to frameevents
 // which are sent at the frame rate specified
 static void onFrameEvent(const FrameCountEvent& fe)
 {
-	//printf("frameEvent: %d\n", (int)fe.frameCount);
-	//printf("Actual Frame Rate: %d\n", (int)(fe.frameCount / seconds()));
-	
-	//handleChange(true);
-	if (gAnimate && gDoc)
-	{
-		gDoc->update(gDoc.get());
-		draw();
-		refreshScreenNow();
-	}
+    //printf("frameEvent: %d\n", (int)fe.frameCount);
+    //printf("Actual Frame Rate: %d\n", (int)(fe.frameCount / seconds()));
+    
+    //handleChange(true);
+    if (gAnimate && gDoc)
+    {
+        gDoc->update(gDoc.get());
+        draw();
+        refreshScreenNow();
+    }
 
 
-	getRecorder()->saveFrame();
+    getRecorder()->saveFrame();
 }
 
 
 
 static void onResizeEvent(const ResizeEvent& re)
 {
-	//gNavigator.setFrame(BLRect(0, 0, appFrameWidth, appFrameHeight));
-	
-	//printf("onResizeEvent: %d x %d\n", re.width, re.height);
-	BLContextCreateInfo ctxInfo{};
-	ctxInfo.threadCount = 4;
-	//ctxInfo.threadCount = 0;
+    //gNavigator.setFrame(BLRect(0, 0, appFrameWidth, appFrameHeight));
+    
+    //printf("onResizeEvent: %d x %d\n", re.width, re.height);
+    BLContextCreateInfo ctxInfo{};
+    ctxInfo.threadCount = 4;
+    //ctxInfo.threadCount = 0;
 
-	getDrawingContext()->attach(getAppFrameBuffer()->getBlend2dImage(), &ctxInfo);
-	handleChange(true);
+    getDrawingContext()->attach(getAppFrameBuffer()->getBlend2dImage(), &ctxInfo);
+    handleChange(true);
 }
 
 static void onMouseEvent(const MouseEvent& e)
 {
-	gNavigator.onMouseEvent(e);
+    gNavigator.onMouseEvent(e);
 }
 
 
@@ -237,76 +238,76 @@ static void onMouseEvent(const MouseEvent& e)
 
 static void onKeyboardEvent(const KeyboardEvent& ke)
 {
-	//printf("SVGViewer::onKeyboardEvent: %d\n", ke.key);
-	if (ke.activity == KEYRELEASED)
-	{
-		switch (ke.keyCode)
-		{
-			case 'G':
-				gAutoGrow = !gAutoGrow;
-			break;
-			
-			case VK_PLAY:
-			case VK_PAUSE:
-			case 'R':
-				getRecorder()->toggleRecording();
-				if (getRecorder()->isRecording())
-				{
-					gRecordingStart = seconds();
-				}
-				else
-				{
-					double duration = seconds() - gRecordingStart;
-					printf("Recording Frames: %d  Duration: %3.2f  FPS: %f\n", getRecorder()->frameCount(), duration, getRecorder()->frameCount() / duration);
-				}
-			break;			
+    //printf("SVGViewer::onKeyboardEvent: %d\n", ke.key);
+    if (ke.activity == KEYRELEASED)
+    {
+        switch (ke.keyCode)
+        {
+            case 'G':
+                gAutoGrow = !gAutoGrow;
+            break;
+            
+            case VK_PLAY:
+            case VK_PAUSE:
+            case 'R':
+                getRecorder()->toggleRecording();
+                if (getRecorder()->isRecording())
+                {
+                    gRecordingStart = seconds();
+                }
+                else
+                {
+                    double duration = seconds() - gRecordingStart;
+                    printf("Recording Frames: %d  Duration: %3.2f  FPS: %f\n", getRecorder()->frameCount(), duration, getRecorder()->frameCount() / duration);
+                }
+            break;			
 
-			case 'A':
-				gAnimate = !gAnimate;
-			break;
+            case 'A':
+                gAnimate = !gAnimate;
+            break;
 
-			case 'T':
-				gPerformTransform = !gPerformTransform;
-				handleChange(true);
+            case 'T':
+                gPerformTransform = !gPerformTransform;
+                handleChange(true);
 
-			break;
-		}
-	}
+            break;
+        }
+    }
 }
 
 static void setupFonts()
 {
-	//loadDefaultFonts();
-	
-	loadFontDirectory("c:\\windows\\fonts");
-	loadFontDirectory("x:\\Fonts\\commonfonts");
-	//loadFontDirectory("x:\\Fonts\\Fonts");
+    //loadDefaultFonts();
+    
+    loadFontDirectory("c:\\windows\\fonts");
+    loadFontDirectory("x:\\Fonts\\commonfonts");
+    //loadFontDirectory("x:\\Fonts\\Fonts");
 
 
 
-	//loadFontDirectory("..\\resources");
+    //loadFontDirectory("..\\resources");
 
-	/*
-	// stragglers
-	// Load in some fonts to start
-	std::vector<const char*> fontNames{
-		"x:\\Fonts\\NotoColorEmoji-Regular.ttf",
-		"x:\\Fonts\\NotoEmoji-Regular.ttf",
-		"x:\\Fonts\\NotoMono-Regular.ttf",
-		"x:\\Fonts\\NotoSansBengaliUI-Regular.ttf",
-		"x:\\Fonts\\NotoSans-Black.ttf",
-		"x:\\Fonts\\NotoSans-Bold.ttf",
-		"x:\\Fonts\\NotoSans-Regular.ttf",
-		"x:\\Fonts\\NotoSansDevanagari-Regular.ttf",
-		//"x:\\Fonts\\Fonts\\Walkway Bold.ttf",
-		//"x:\\Fonts\\Fonts\\Walkway.ttf",
-	};
+    /*
+    // stragglers
+    // Load in some fonts to start
+    std::vector<const char*> fontNames{
+        "x:\\Fonts\\NotoColorEmoji-Regular.ttf",
+        "x:\\Fonts\\NotoEmoji-Regular.ttf",
+        "x:\\Fonts\\NotoMono-Regular.ttf",
+        "x:\\Fonts\\NotoSansBengaliUI-Regular.ttf",
+        "x:\\Fonts\\NotoSans-Black.ttf",
+        "x:\\Fonts\\NotoSans-Bold.ttf",
+        "x:\\Fonts\\NotoSans-Regular.ttf",
+        "x:\\Fonts\\NotoSansDevanagari-Regular.ttf",
+        //"x:\\Fonts\\Fonts\\Walkway Bold.ttf",
+        //"x:\\Fonts\\Fonts\\Walkway.ttf",
+    };
 
-	auto fh = FontHandler::getFontHandler();
+    auto fh = FontHandler::getFontHandler();
 
-	if (nullptr != fh)
-		fh->loadFonts(fontNames);
-	*/
+    if (nullptr != fh)
+        fh->loadFonts(fontNames);
+    */
 
 }
 
@@ -317,34 +318,37 @@ void setup()
 {
     //printf("setup()\n");
 
-	// register to receive various events
-	subscribe(onFileDrop);
-	subscribe(onResizeEvent);
-	subscribe(onFrameEvent);
-	subscribe(onMouseEvent);
-	subscribe(onKeyboardEvent);
+    // register to receive various events
+    subscribe(onFileDrop);
+    subscribe(onResizeEvent);
+    subscribe(onFrameEvent);
+    subscribe(onMouseEvent);
+    subscribe(onKeyboardEvent);
 
 
-	setupFonts();
-	
-	setFrameRate(30);
-	
+    setupFonts();
+    
+    setFrameRate(30);
+    
     dropFiles();
-	
-	// set app window size and title
-	createAppWindow(canvasWidth, canvasHeight, "SVGViewer");
-	
-	getRecorder()->reset(&getAppFrameBuffer()->getBlend2dImage(), "frame", 15, 0);
-	
-	
-	// Set the initial viewport
-	//gViewPort.surfaceFrame({0, 0, (double)canvasWidth, (double)canvasHeight});
-	gNavigator.setFrame({ 0, 0, (double)appFrameWidth, (double) appFrameHeight });
-	gNavigator.subscribe(handleViewChange);
-	
-	// Load extension elements
-	DisplayCaptureElement::registerFactory();
-	//SVGScriptElement::registerFactory();
+    
+    // set app window size and title
+    createAppWindow(canvasWidth, canvasHeight, "SVGViewer");
+    
+    getRecorder()->reset(&getAppFrameBuffer()->getBlend2dImage(), "frame", 15, 0);
+    
+    
+    // Set the initial viewport
+    //gViewPort.surfaceFrame({0, 0, (double)canvasWidth, (double)canvasHeight});
+    gNavigator.setFrame({ 0, 0, (double)appFrameWidth, (double) appFrameHeight });
+    gNavigator.subscribe(handleViewChange);
+    
+    // Load extension elements
+    //SVGScriptElement::registerFactory();
+   // DisplayCaptureElement::registerFactory();
+    SVGFramesElement::registerFactory();
 
-	getDrawingContext()->background(BLRgba32(0xffffffff));
+
+
+    getDrawingContext()->background(BLRgba32(0xffffffff));
 }

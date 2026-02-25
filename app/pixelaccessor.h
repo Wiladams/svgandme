@@ -109,7 +109,29 @@ namespace waavs
         uint8_t* data() noexcept { return fData; }              // this one allows for editing
         const uint8_t* data() const noexcept { return fData; }  // this one's not editable
 
-        // take the specified parameters as our own
+        // Create an image without external data
+        bool reset(const size_t w, const size_t h)
+        {
+            fWidth = w;
+            fHeight = h;
+            fOrientation = PixelOrientation::TopToBottom;
+
+            // Create blend2d image
+            BLResult br = fImage.create(static_cast<int>(w), static_cast<int>(h), BL_FORMAT_PRGB32);
+            if (br != BLResultCode::BL_SUCCESS)
+                return false;
+
+            BLImageData data;
+            br = fImage.getData(& data);
+            if (br != BLResultCode::BL_SUCCESS)
+                return false;
+
+            fData = (uint8_t*)data.pixelData;
+            fStride = data.stride;
+
+            return true;
+        }
+
         bool reset(void* d, const size_t w, const size_t h, const ptrdiff_t s, const PixelOrientation o = PixelOrientation::TopToBottom)
         {
             fData = (uint8_t*)d;

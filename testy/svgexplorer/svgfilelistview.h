@@ -7,6 +7,8 @@
 #include "svgcacheddocument.h"
 #include "viewnavigator.h"
 #include "svgicons.h"
+#include "svgfactory.h"
+
 
 namespace waavs {
 
@@ -385,6 +387,7 @@ namespace waavs {
 		void drawBackground(IRenderSVG* ctx) override
 		{
 			ctx->background(BLRgba32(0xffffffff));
+            ctx->clearToBackground();
 		}
 
 		void drawForeground(IRenderSVG* ctx) override

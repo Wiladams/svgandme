@@ -172,10 +172,17 @@ namespace waavs::svgattr
     // Screen Capture
     // -------------------------------------------
     inline InternedKey src() { static InternedKey k = PSNameTable::INTERN("src"); return k; }
+
+    inline InternedKey cropX() { static InternedKey k = PSNameTable::INTERN("cropX"); return k; }
+    inline InternedKey cropY() { static InternedKey k = PSNameTable::INTERN("cropY"); return k; }
+    inline InternedKey cropWidth() { static InternedKey k = PSNameTable::INTERN("cropWidth"); return k; }
+    inline InternedKey cropHeight() { static InternedKey k = PSNameTable::INTERN("cropHeight"); return k; }
+
     inline InternedKey capX() { static InternedKey k = PSNameTable::INTERN("capX"); return k; }
     inline InternedKey capY() { static InternedKey k = PSNameTable::INTERN("capY"); return k; }
     inline InternedKey capWidth() { static InternedKey k = PSNameTable::INTERN("capWidth"); return k; }
     inline InternedKey capHeight() { static InternedKey k = PSNameTable::INTERN("capHeight"); return k; }
+
     inline InternedKey displayUnits() { static InternedKey k = PSNameTable::INTERN("displayUnits"); return k; }
 }
 

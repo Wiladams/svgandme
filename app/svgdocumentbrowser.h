@@ -59,6 +59,7 @@ namespace waavs {
 			}
 			else {
 				ctx->background(BLRgba32(0xffffffff));
+                ctx->clearToBackground();
 			}
 		}
 
