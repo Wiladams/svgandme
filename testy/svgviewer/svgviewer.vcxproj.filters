@@ -104,9 +104,6 @@
     <ClInclude Include="..\..\app\svguiapp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\collections.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\app\screensnapshot.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -179,16 +176,7 @@
     <ClInclude Include="..\..\svg\wsenum.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\svgportal.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\svg\svgcontainer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\svg\svgsymbol.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\app\d3dsnapshot.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\app\viewnavigator.h">
@@ -228,9 +216,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\app\waavsdisplaycapture.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\svg\framechain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\nametable.h">
@@ -282,6 +267,42 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\pixelaccessor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\filterprogram.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\filterprogramexec.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\filterprogrambuilder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\b2dfilterexec.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\imageproc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\svggraphicselement.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\pixeleffects.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\pixeling.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\coloring.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\wggeometry.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\surface.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\blend2d_connect.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

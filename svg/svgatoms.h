@@ -162,16 +162,19 @@ namespace waavs::svgattr
     }
 
     // ------------------------------------------------------------
-    // Event / interactivity attributes (still appear)
-    // ------------------------------------------------------------
-    inline InternedKey onclick() { static InternedKey k = PSNameTable::INTERN("onclick");      return k; }
-    inline InternedKey onmouseover() { static InternedKey k = PSNameTable::INTERN("onmouseover");  return k; }
-    inline InternedKey onmouseout() { static InternedKey k = PSNameTable::INTERN("onmouseout");   return k; }
+    // Filters & effects
+    // -------------------------------------------------------------
+    inline InternedKey filterUnits() { static InternedKey k = PSNameTable::INTERN("filterUnits"); return k; }
+    inline InternedKey primitiveUnits() { static InternedKey k = PSNameTable::INTERN("primitiveUnits"); return k; }
+
+
+    
 
     // -------------------------------------------
     // Screen Capture
     // -------------------------------------------
     inline InternedKey src() { static InternedKey k = PSNameTable::INTERN("src"); return k; }
+    inline InternedKey frame_rate() { static InternedKey k = PSNameTable::INTERN("frame-rate"); return k; }
 
     inline InternedKey cropX() { static InternedKey k = PSNameTable::INTERN("cropX"); return k; }
     inline InternedKey cropY() { static InternedKey k = PSNameTable::INTERN("cropY"); return k; }
@@ -184,6 +187,14 @@ namespace waavs::svgattr
     inline InternedKey capHeight() { static InternedKey k = PSNameTable::INTERN("capHeight"); return k; }
 
     inline InternedKey displayUnits() { static InternedKey k = PSNameTable::INTERN("displayUnits"); return k; }
+
+    // ------------------------------------------------------------
+// Event / interactivity attributes (still appear)
+// ------------------------------------------------------------
+    inline InternedKey onclick() { static InternedKey k = PSNameTable::INTERN("onclick");      return k; }
+    inline InternedKey onmouseover() { static InternedKey k = PSNameTable::INTERN("onmouseover");  return k; }
+    inline InternedKey onmouseout() { static InternedKey k = PSNameTable::INTERN("onmouseout");   return k; }
+
 }
 
 

@@ -16,7 +16,7 @@ namespace waavs
     {
 
         // Measure how big a piece of text will be with a given font
-        static BLPoint textMeasure(const BLFont& font, const ByteSpan& txt) noexcept
+        static WGPointD textMeasure(const BLFont& font, const ByteSpan& txt) noexcept
         {
             BLTextMetrics tm;
             BLGlyphBuffer gb;
@@ -33,16 +33,16 @@ namespace waavs
             float advanceX = tm.advance.x;
             float cy = fm.ascent + fm.descent;
 
-            return BLPoint(advanceX, cy);
+            return { advanceX, cy };
         }
 
 
         // calcTextPosition
         // Given a piece of text, and a coordinate
         // calculate its baseline given the a specified alignment
-        static BLRect calcTextPosition(BLFont font, const ByteSpan& txt, double x, double y, SVGAlignment hAlignment = SVGAlignment::SVG_ALIGNMENT_START, TXTALIGNMENT vAlignment = TXTALIGNMENT::BASELINE, DOMINANTBASELINE baseline = DOMINANTBASELINE::AUTO)
+        static WGRectD calcTextPosition(BLFont font, const ByteSpan& txt, double x, double y, SVGAlignment hAlignment = SVGAlignment::SVG_ALIGNMENT_START, TXTALIGNMENT vAlignment = TXTALIGNMENT::BASELINE, DOMINANTBASELINE baseline = DOMINANTBASELINE::AUTO)
         {
-            BLPoint txtSize = textMeasure(font, txt);
+            WGPointD txtSize = textMeasure(font, txt);
             double cx = txtSize.x;
             double cy = txtSize.y;
 

@@ -8,11 +8,13 @@
 namespace waavs
 {
 
+
     // A specialization of state management, connected to a BLContext
     // This is used when rendering a tree of SVG elements
     struct SVGB2DDriver : public IRenderSVG
     {
         std::unique_ptr<BLContext> fDrawingContext;
+        BLImage fTargetImage;  // the image we are currently drawing to.
 
     public:
         SVGB2DDriver()
@@ -29,10 +31,18 @@ namespace waavs
 
         virtual ~SVGB2DDriver() = default;
 
-
-        void onAttach(BLImageCore& image, const BLContextCreateInfo* createInfo) override
+        BLImage* currentTarget() const noexcept override
         {
-            BLResult res = fDrawingContext->begin(image, createInfo);
+            return fDrawingContext->targetImage();
+        }
+
+        void onAttach(Surface& surf, int threadCount) override
+        {
+            BLContextCreateInfo ctxInfo{};
+            ctxInfo.threadCount = threadCount;
+            fTargetImage.createFromData((int)surf.info().width, (int)surf.info().height, BL_FORMAT_PRGB32, surf.info().data, surf.info().stride);
+
+            BLResult res = fDrawingContext->begin(fTargetImage, ctxInfo);
             applyToContext(fDrawingContext.get());
         }
 
@@ -122,17 +132,20 @@ namespace waavs
         void onScale(double x, double y) override
         {
             fDrawingContext->scale(x, y);
+            setTransform(fDrawingContext->userTransform());
         }
 
         void onTranslate(double x, double y) override
         {
             fDrawingContext->translate(x, y);
+            setTransform(fDrawingContext->userTransform());
         }
 
 
         void onRotate(double angle, double cx, double cy) override
         {
             fDrawingContext->rotate(angle);
+            setTransform(fDrawingContext->userTransform());
         }
 
         // Drawing attributes
@@ -254,7 +267,10 @@ namespace waavs
 
         // Set a background that will be used
         // to fill the canvas before any drawing
-        void onBackground() override {}
+        void onBackground() override 
+        {
+            
+        }
 
 
 
@@ -268,7 +284,7 @@ namespace waavs
             //fDrawingContext->fillMask(origin, mask, maskArea);
         }
 
-		//virtual void onFillMask(BLImage& mask, const BLRectI& maskArea) override
+		//virtual void onFillMask(BLImage& mask, const WGRectI& maskArea) override
 		//{
 		//	BLPointI origin(maskArea.x, maskArea.y);
 		//	fDrawingContext->fillMask(origin, mask, maskArea);
@@ -278,7 +294,9 @@ namespace waavs
         // Clipping
         void onClipRect() override
         {
-            fDrawingContext->clipToRect(getClipRect());
+            WGRectD cRect = getClipRect();
+            BLRect blr{ cRect.x, cRect.y, cRect.w, cRect.h };
+            fDrawingContext->clipToRect(blr);
         }
 
         void onNoClip() override
@@ -342,19 +360,22 @@ namespace waavs
 
 
         // Bitmap drawing
-        void onImage(const BLImage& img, double x, double y) override
+        void onImage(const Surface& surf, double x, double y) override
         {
-            fDrawingContext->blitImage(BLPoint(x, y), img);
+            BLImage blImg = blImageFromSurface(surf);
+            fDrawingContext->blitImage(BLPoint(x, y), blImg);
         }
 
-        void onScaleImage(const BLImage& src,
+        void onScaleImage(const Surface& surf,
             int srcX, int srcY, int srcWidth, int srcHeight,
             double dstX, double dstY, double dstWidth, double dstHeight) override
         {
+            BLImage blImg = blImageFromSurface(surf);
+
             BLRect dst{ dstX,dstY,dstWidth,dstHeight };
             BLRectI srcArea{ srcX,srcY,srcWidth,srcHeight };
 
-            fDrawingContext->blitImage(dst, src, srcArea);
+            fDrawingContext->blitImage(dst, blImg, srcArea);
         }
 
         // example in your concrete BLContext-backed renderer:

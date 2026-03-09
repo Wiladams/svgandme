@@ -115,7 +115,7 @@ namespace waavs
         void setAllPixels(const vec4b& c) override
         {
             for (size_t row = 0; row < fHeight; row++)
-                waavs::memset_l((uint8_t*)(fData)+(row * stride()), c.value, fWidth);
+                memset_l((uint8_t*)(fData)+(row * stride()), c.value, fWidth);
         }
 
     };

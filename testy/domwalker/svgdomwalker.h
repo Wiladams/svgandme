@@ -85,7 +85,7 @@ namespace waavs {
             convertAttributesToProperties(ctx, groot);
 
             this->bindSelfToContext(ctx, groot);
-            this->bindChildrenToContext(ctx, groot);
+           // this->bindChildrenToContext(ctx, groot);
 
             ctx->pop();
         }

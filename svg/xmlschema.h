@@ -1,7 +1,6 @@
 #pragma once
 
-//#include "charset.h"
-//#include "bspan.h"
+
 #include "xmltoken.h"
 
 // Forward declarations for convenience

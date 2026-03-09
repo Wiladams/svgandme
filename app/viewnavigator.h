@@ -24,7 +24,7 @@ namespace waavs {
 		ViewportTransformer fPortal{};
 
 		bool fIsDragging = false;
-		BLPoint fDragPos{ 0,0 };
+		WGPointD fDragPos{ 0,0 };
 		
 		double fBaseAngle = 2.0;
 		double fZoomFactor = 0.1;
@@ -62,30 +62,30 @@ namespace waavs {
 		
 		// Setting scene and surface frames
 		// setting and getting surface frame
-		void setFrame(const BLRect& fr) { fPortal.setViewportFrame(fr); }
-		const BLRect frame() const 
+		void setFrame(const WGRectD& fr) { fPortal.setViewportFrame(fr); }
+		const WGRectD frame() const 
 		{ 
-			BLRect vpFrame;
+			WGRectD vpFrame;
 			fPortal.getViewportFrame(vpFrame);
 			return vpFrame;
 		}
 
 		// setting and getting viewbox frame
-		void setBounds(const BLRect& fr) { fPortal.setViewBoxFrame(fr); }
-		const BLRect bounds() const 
+		void setBounds(const WGRectD& fr) { fPortal.setViewBoxFrame(fr); }
+		const WGRectD bounds() const 
 		{ 
-			BLRect vbFrame;
+			WGRectD vbFrame;
             fPortal.getViewBoxFrame(vbFrame);
             return vbFrame;
 		}
 
 
-		BLPoint sceneToSurface(double x, double y) const
+		WGPointD sceneToSurface(double x, double y) const
 		{
 			return fPortal.mapViewBoxToViewport(x, y);
 		}
 
-		BLPoint surfaceToScene(double x, double y) const
+		WGPointD surfaceToScene(double x, double y) const
 		{
 			return fPortal.mapViewportToViewBox(x, y);
 		}

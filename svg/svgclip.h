@@ -10,8 +10,7 @@
 
 #include "svgb2ddriver.h"
 #include "svgattributes.h"
-#include "svgstructuretypes.h"
-
+#include "svggraphicselement.h"
 
 namespace waavs {
 
@@ -50,13 +49,13 @@ namespace waavs {
         // 
         // BUGBUG - this needs to happen in resolvePaint, or bingToGroot()
         //
-        const BLVar getVariant(IRenderSVG*, IAmGroot*groot) noexcept override
+        const BLVar getVariant(IRenderSVG * ctx, IAmGroot *groot) noexcept override
         {
             if (!fVar.isNull())
                 return fVar;
 
             // get our extent
-            BLRect extent = objectBoundingBox();
+            BLRect extent = calculateObjectBoundingBox(ctx, groot);
 
             // create a surface of that size
             // if it's valid
@@ -67,7 +66,7 @@ namespace waavs {
                 // Draw our content into the image
                 {
                     SVGB2DDriver rctx;
-                    rctx.attach(fImage);
+                    rctx.attach(fImage, 1);
 
                     rctx.blendMode(BL_COMP_OP_SRC_OVER);
                     rctx.clear();

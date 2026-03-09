@@ -10,8 +10,9 @@
 #include <cmath>
 #include <cstdint>
 
-#include "svgstructuretypes.h"
 #include "viewport.h"
+#include "svggraphicselement.h"
+
 #include "svgb2ddriver.h"
 
 
@@ -27,7 +28,6 @@ namespace waavs
 
     struct SVGPatternElement : public SVGGraphicsElement
     {
-        static constexpr size_t kMaxHrefDepth = 16; // guard against cycles; arbitrary limit
 
         static void registerSingularNode()
         {
@@ -50,7 +50,6 @@ namespace waavs
         }
 
         // Document authored State
-        ByteSpan fHref{};
 
         // Geometry attributes (lengths, with units)
         SVGLengthValue fX{};         // default 0
@@ -69,15 +68,16 @@ namespace waavs
 
         // viewBox/par
         bool fHasViewBox{ false };
-        BLRect fViewBox;
+        WGRectD fViewBox;
         PreserveAspectRatio fPar;
 
 
         // resolved
         std::shared_ptr<SVGPatternElement> fContentSource;
-        BLRect fTileRect{};
+        WGRectD fTileRect{};
         int fTilePxW{ 0 };
         int fTilePxH{ 0 };
+        Surface fTileSurface{};
         BLImage  fTileImage{};
         BLPattern fPattern{};
 
@@ -92,8 +92,15 @@ namespace waavs
         }
 
 
-        bool hasHref() const { return !fHref.empty(); }
-        ByteSpan href() const { return fHref; }
+        bool hasHref() const { return !href().empty(); }
+        ByteSpan href() const { 
+            ByteSpan svgHref{};
+            svgHref = getAttribute(svgattr::href());
+            if (!svgHref)
+                svgHref = getAttribute(svgattr::xlink_href());    // support legacy xlink:href for compatibility
+
+            return svgHref;
+        }
 
         // Pattern is used as a paint server: return variant
         const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
@@ -113,7 +120,7 @@ namespace waavs
         }
 
         // Not a geometry bbox; return something stable
-        BLRect objectBoundingBox() const override
+        const WGRectD calculateObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot) const noexcept override
         {
             return fTileRect;
         }
@@ -157,7 +164,7 @@ namespace waavs
             if (!hasHref()) return;     // if no href, nothing to do
 
             const SVGPatternElement * cur = this;
-            ByteSpan hrefSpan = fHref;
+            ByteSpan hrefSpan = href();
 
             // Keep a simple visited list to detect cycles
             const SVGPatternElement* visited[kMaxHrefDepth]{};
@@ -193,6 +200,11 @@ namespace waavs
 
                 if (visitedCount < kMaxHrefDepth)
                     visited[visitedCount++] = ref;
+
+                // Make sure the referredTo pattern has already been resolved.
+                // This is required because the pattern being referred to might be later
+                // in document order, and thus has NOT been resolved yet.
+                gnode->resolveStyleSubtree(groot);
 
                 // Merge from nearest first: direct reference wins.
                 inheritProperties(ref);
@@ -264,7 +276,7 @@ namespace waavs
 
             // viewBox
             ByteSpan vbA{};
-            BLRect vb{};
+            WGRectD vb{};
             if (fAttributes.getValue(svgattr::viewBox(), vbA) && parseViewBox(vbA, vb)) {
                 fHasViewBox = true;
                 fViewBox = vb;
@@ -276,6 +288,8 @@ namespace waavs
         {
             fContentSource.reset();
 
+            // We need to read the href so we can resolve inheritance
+            
             // We already have our attributes (unresolved) sitting on our
             // element.  Since resolving references depends on attributes
             // it's safe to do that first.
@@ -297,8 +311,8 @@ namespace waavs
             }
 
 
-            const BLRect paintVP = ctx->viewport();
-            const BLRect objBBox = ctx->getObjectFrame();
+            const WGRectD paintVP = ctx->viewport();
+            const WGRectD objBBox = ctx->getObjectFrame();
             const double dpi = groot ? groot->dpi() : 96.0;
             const BLFont* fontOpt = &ctx->getFont();
 
@@ -328,7 +342,7 @@ namespace waavs
             if (w <= 0.0 || h <= 0.0)
                 return ;
 
-            fTileRect = BLRect{ x, y, w, h };
+            fTileRect = { x, y, w, h };
 
             // Decide tile pixel size
             fTilePxW = std::max(1, int(std::ceil(fTileRect.w)));
@@ -349,10 +363,11 @@ namespace waavs
 
 
             // Now, ensure the bitmap is the size we specified
-            fTileImage.create(fTilePxW, fTilePxH, BL_FORMAT_PRGB32);
+            fTileSurface.reset(fTilePxW, fTilePxH);
             if (!renderTile(groot, objBBox))
                 return;
 
+            fTileImage = blImageFromSurface(fTileSurface);
             fPattern.create(fTileImage, fExtendMode, T);
 
             //BLMatrix2D tform = fPattern.transform();
@@ -363,26 +378,25 @@ namespace waavs
 
 
 
-        bool renderTile(IAmGroot* groot, const BLRect &objBBox) noexcept
+        bool renderTile(IAmGroot* groot, const WGRectD &objBBox) noexcept
         {
             // Create a drawing context and attach it to our image
             // Clear out the image
             SVGB2DDriver ictx;
-            ictx.attach(fTileImage);
+            ictx.attach(fTileSurface, 1);
             ictx.renew();
-            //ictx.background(BLVar::null());
             ictx.clear();
 
             // Nearest viewport for pattern children is the TILE USER RECT.
-            ictx.setViewport(BLRect{ 0.0, 0.0, fTileRect.w, fTileRect.h });
+            ictx.setViewport({ 0.0, 0.0, fTileRect.w, fTileRect.h });
 
             // Object frame for children:
             // - If patternContentUnits==objectBoundingBox and no viewBox: children content space is 0..1
             // - Otherwise: treat like tile user space
             if (fPatternContentUnits == SpaceUnitsKind::SVG_SPACE_OBJECT && !fHasViewBox)
-                ictx.setObjectFrame(BLRect{ 0.0, 0.0, 1.0, 1.0 });
+                ictx.setObjectFrame({ 0.0, 0.0, 1.0, 1.0 });
             else
-                ictx.setObjectFrame(BLRect{ 0.0, 0.0, fTileRect.w, fTileRect.h });
+                ictx.setObjectFrame({ 0.0, 0.0, fTileRect.w, fTileRect.h });
 
             // Need to construct the matrix that maps from patternContentUnits
             // to the pixel units of the tile bitmap
@@ -396,7 +410,7 @@ namespace waavs
             {
                 BLMatrix2D vb2tile = BLMatrix2D::makeIdentity();
                 // viewport is tile-local [0..w, 0..h]
-                computeViewBoxToViewport(BLRect{ 0,0,fTileRect.w, fTileRect.h }, fViewBox, fPar, vb2tile);
+                computeViewBoxToViewport({ 0,0,fTileRect.w, fTileRect.h }, fViewBox, fPar, vb2tile);
                 C.postTransform(vb2tile);
             }
             else if (fPatternContentUnits == SpaceUnitsKind::SVG_SPACE_USER)

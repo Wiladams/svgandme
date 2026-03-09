@@ -237,7 +237,6 @@
   <ItemGroup>
     <ClInclude Include="..\..\app\apphost.h" />
     <ClInclude Include="..\..\app\appmodule.h" />
-    <ClInclude Include="..\..\app\d3dsnapshot.h" />
     <ClInclude Include="..\..\app\framebuffer.h" />
     <ClInclude Include="..\..\app\frames_ffmpeg_source.h" />
     <ClInclude Include="..\..\app\mappedfile.h" />
@@ -250,17 +249,22 @@
     <ClInclude Include="..\..\app\viewnavigator.h" />
     <ClInclude Include="..\..\app\waavsdisplaycapture.h" />
     <ClInclude Include="..\..\app\waavsframe.h" />
+    <ClInclude Include="..\..\svg\b2dfilterexec.h" />
     <ClInclude Include="..\..\svg\base64.h" />
     <ClInclude Include="..\..\svg\bithacks.h" />
+    <ClInclude Include="..\..\svg\blend2d_connect.h" />
+    <ClInclude Include="..\..\svg\coloring.h" />
+    <ClInclude Include="..\..\svg\filterprogram.h" />
+    <ClInclude Include="..\..\svg\filterprogrambuilder.h" />
+    <ClInclude Include="..\..\svg\filterprogramexec.h" />
     <ClInclude Include="..\..\svg\frames_blend2d_source.h" />
     <ClInclude Include="..\..\svg\bspan.h" />
     <ClInclude Include="..\..\svg\charset.h" />
-    <ClInclude Include="..\..\svg\collections.h" />
     <ClInclude Include="..\..\svg\converters.h" />
     <ClInclude Include="..\..\svg\definitions.h" />
     <ClInclude Include="..\..\svg\fonthandler.h" />
-    <ClInclude Include="..\..\svg\framechain.h" />
     <ClInclude Include="..\..\svg\framesource.h" />
+    <ClInclude Include="..\..\svg\imageproc.h" />
     <ClInclude Include="..\..\svg\imanagesvgstate.h" />
     <ClInclude Include="..\..\svg\irendersvg.h" />
     <ClInclude Include="..\..\svg\maths.h" />
@@ -269,9 +273,12 @@
     <ClInclude Include="..\..\svg\pathpu.h" />
     <ClInclude Include="..\..\svg\pathsegmenter.h" />
     <ClInclude Include="..\..\svg\pixelaccessor.h" />
+    <ClInclude Include="..\..\svg\pixeleffects.h" />
+    <ClInclude Include="..\..\svg\pixeling.h" />
     <ClInclude Include="..\..\svg\pubsub.h" />
     <ClInclude Include="..\..\svg\smildatatypes.h" />
     <ClInclude Include="..\..\svg\stopwatch.h" />
+    <ClInclude Include="..\..\svg\surface.h" />
     <ClInclude Include="..\..\svg\svg.h" />
     <ClInclude Include="..\..\svg\svgatoms.h" />
     <ClInclude Include="..\..\svg\svgattributes.h" />
@@ -280,7 +287,6 @@
     <ClInclude Include="..\..\svg\svgclip.h" />
     <ClInclude Include="..\..\svg\svgcolors.h" />
     <ClInclude Include="..\..\svg\svgconditional.h" />
-    <ClInclude Include="..\..\svg\svgcontainer.h" />
     <ClInclude Include="..\..\svg\svgcss.h" />
     <ClInclude Include="..\..\svg\svgdatatypes.h" />
     <ClInclude Include="..\..\svg\svgdefs.h" />
@@ -294,6 +300,7 @@
     <ClInclude Include="..\..\svg\svgflowroot.h" />
     <ClInclude Include="..\..\svg\svgfont.h" />
     <ClInclude Include="..\..\svg\svggradient.h" />
+    <ClInclude Include="..\..\svg\svggraphicselement.h" />
     <ClInclude Include="..\..\svg\svghyperlink.h" />
     <ClInclude Include="..\..\svg\svgimage.h" />
     <ClInclude Include="..\..\svg\svgmarker.h" />
@@ -308,13 +315,13 @@
     <ClInclude Include="..\..\svg\svgstyle.h" />
     <ClInclude Include="..\..\svg\svgsymbol.h" />
     <ClInclude Include="..\..\svg\svgtext.h" />
-    <ClInclude Include="..\..\svg\svgportal.h" />
     <ClInclude Include="..\..\svg\svgtextlayout.h" />
     <ClInclude Include="..\..\svg\svgunits.h" />
     <ClInclude Include="..\..\svg\svguse.h" />
     <ClInclude Include="..\..\svg\twobitpu.h" />
     <ClInclude Include="..\..\svg\utf8.h" />
     <ClInclude Include="..\..\svg\viewport.h" />
+    <ClInclude Include="..\..\svg\wggeometry.h" />
     <ClInclude Include="..\..\svg\wsenum.h" />
     <ClInclude Include="..\..\svg\xmlentity.h" />
     <ClInclude Include="..\..\svg\xmlscan.h" />

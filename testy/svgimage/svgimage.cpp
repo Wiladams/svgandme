@@ -117,7 +117,7 @@ static void renderImage(SVGDocumentHandle gDoc, const char* outfilename)
 	// getBBox() will not return a proper size.  So, the document
 	// must be well formed in that way for this to work.
 	// This is the extent of the document, in user units
-	BLRect sceneFrame = gDoc->getBBox();
+	WGRectD sceneFrame = gDoc->objectBoundingBox();
 	printf("viewport: %3.0f %3.0f %3.0f %3.0f\n", sceneFrame.x, sceneFrame.y, sceneFrame.w, sceneFrame.h);
 
 

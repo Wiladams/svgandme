@@ -16,6 +16,7 @@
 #include "svgatoms.h"
 #include "svgunits.h"
 #include "xmlscan.h"
+#include "wggeometry.h"
 
 //
 // Parsing routines for the core SVG data types
@@ -45,11 +46,11 @@
 
 namespace waavs
 {
-    static INLINE BLRect mapRectAABB(const BLMatrix2D& m, const BLRect& r) noexcept
+    static INLINE WGRectD mapRectAABB(const BLMatrix2D& m, const WGRectD& r) noexcept
     {
         // Treat empty/degenerate as-is (or return empty).
         if (!(r.w > 0.0) || !(r.h > 0.0))
-            return BLRect(r.x, r.y, r.w, r.h);
+            return WGRectD{ r.x, r.y, r.w, r.h };
 
         const double x0 = r.x;
         const double y0 = r.y;
@@ -76,7 +77,7 @@ namespace waavs
         expand(p2);
         expand(p3);
 
-        return BLRect(minX, minY, maxX - minX, maxY - minY);
+        return WGRectD{ minX, minY, maxX - minX, maxY - minY };
     }
 
 }
@@ -119,6 +120,83 @@ namespace waavs
 }
 
 
+namespace waavs
+{
+    // ==============================================================================
+    // SVGNumberOrPercent
+    // Representation of a number or percentage value.
+    //   Reference:  https://svgwg.org/svg2-draft/types.html#InterfaceSVGNumber
+    // ==============================================================================
+    struct SVGNumberOrPercent
+    {
+        double fValue{ 0 };
+        bool fIsPercent{ false };
+        bool fIsSet{ false };
+
+        bool isSet() const noexcept { return fIsSet; }
+        bool isPercent() const noexcept { return fIsPercent; }
+        double value() const noexcept { return fValue; }
+
+        double calculatedValue() const noexcept
+        {
+            if (fIsPercent)
+                return fValue / 100.0;
+            else
+                return fValue;
+        }
+    };
+
+    static INLINE bool readSVGNumberOrPercent(ByteSpan& s, SVGNumberOrPercent& out) noexcept
+    {
+        // leading wsp
+        s = chunk_ltrim(s, chrWspChars);
+        if (!s)
+            return false;
+
+        // number
+        double v = 0.0;
+
+        if (!readNumber(s, v))
+            return false;
+
+        // optional '%'
+        bool isPct = false;
+        if (!s.empty() && *s == '%') {
+            isPct = true;
+            ++s;
+        }
+
+        out.fValue = v;
+        out.fIsPercent = isPct;
+        out.fIsSet = true;
+
+        return true;
+    }
+
+    static INLINE bool parseNumberOrPercent(const ByteSpan& inChunk, SVGNumberOrPercent& out) noexcept
+    {
+        SVGNumberOrPercent tmp = out;
+        ByteSpan s = inChunk;
+        if (!readSVGNumberOrPercent(s, tmp))
+            return false;
+
+        out = tmp;
+        return true;
+    }
+
+    static INLINE double resolveNumberOrPercent(const SVGNumberOrPercent& norp, const double range, const double fallback) noexcept
+    {
+        if (norp.isSet())
+        {
+            if (norp.isPercent())
+                return norp.calculatedValue() * range;
+
+            return norp.calculatedValue();
+        }
+
+        return fallback;
+    }
+}
 
 namespace waavs
 {
@@ -248,29 +326,8 @@ namespace waavs
 
 
 
-    // ==============================================================================
-    // SVGNumberOrPercent
-    // Representation of a number or percentage value.
-    //   Reference:  https://svgwg.org/svg2-draft/types.html#InterfaceSVGNumber
-    // ==============================================================================
-    struct SVGNumberOrPercent
-    {
-        double fValue{ 0 };
-        bool fIsPercent{ false };
-        bool fIsSet{ false };
 
-        bool isSet() const noexcept { return fIsSet; }
-        bool isPercent() const noexcept { return fIsPercent; }
-        double value() const noexcept { return fValue; }
 
-        double calculatedValue() const noexcept
-        {
-            if (fIsPercent)
-                return fValue / 100.0;
-            else
-                return fValue;
-        }
-    };
 }
 
 namespace waavs
@@ -350,45 +407,119 @@ namespace waavs
         out = tmp;
         return true;
     }
+}
 
-    static INLINE bool readSVGNumberOrPercent(ByteSpan& s, SVGNumberOrPercent& out) noexcept
+namespace waavs
+{
+    // Convert an SVGLengthValue into SVGNumberOrPercent.
+    //
+    // Rules:
+    // - NUMBER stays NUMBER
+    // - PERCENTAGE stays PERCENTAGE
+    // - PX stays NUMBER
+    // - absolute units (in, cm, mm, pt, pc) are converted to NUMBER using dpi
+    // - em/ex are converted to NUMBER if font is available
+    // - if em/ex are used and font is null:
+    //     * fail if fontFallbackToRaw == false
+    //     * otherwise treat raw value as NUMBER
+    //
+    // This is intended for compact storage in places where you only want
+    // number-or-percent rather than carrying the larger burden.
+    static INLINE bool lengthValueToNumberOrPercent(const SVGLengthValue& inVal,
+        SVGNumberOrPercent& outVal,
+        double dpi = 96.0,
+        const BLFont* font = nullptr,
+        bool fontFallbackToRaw = true) noexcept
     {
-        // leading wsp
-        s = chunk_ltrim(s, chrWspChars);
-        if (!s)
+        if (!inVal.isSet())
             return false;
 
-        // number
-        double v = 0.0;
+        SVGNumberOrPercent tmp{};
+        tmp.fIsSet = true;
 
-        if (!readNumber(s, v))
+        switch (inVal.unitType())
+        {
+        case SVG_LENGTHTYPE_NUMBER:
+            tmp.fValue = inVal.value();
+            tmp.fIsPercent = false;
+            break;
+
+        case SVG_LENGTHTYPE_PERCENTAGE:
+            tmp.fValue = inVal.value();
+            tmp.fIsPercent = true;
+            break;
+
+        case SVG_LENGTHTYPE_PX:
+            tmp.fValue = inVal.value();
+            tmp.fIsPercent = false;
+            break;
+
+        case SVG_LENGTHTYPE_IN:
+            tmp.fValue = inVal.value() * dpi;
+            tmp.fIsPercent = false;
+            break;
+
+        case SVG_LENGTHTYPE_CM:
+            tmp.fValue = inVal.value() * (dpi / 2.54);
+            tmp.fIsPercent = false;
+            break;
+
+        case SVG_LENGTHTYPE_MM:
+            tmp.fValue = inVal.value() * (dpi / 25.4);
+            tmp.fIsPercent = false;
+            break;
+
+        case SVG_LENGTHTYPE_PT:
+            tmp.fValue = inVal.value() * (dpi / 72.0);
+            tmp.fIsPercent = false;
+            break;
+
+        case SVG_LENGTHTYPE_PC:
+            tmp.fValue = inVal.value() * (dpi / 6.0);
+            tmp.fIsPercent = false;
+            break;
+
+        case SVG_LENGTHTYPE_EMS:
+            if (font != nullptr)
+            {
+                const auto& fm = font->metrics();
+                tmp.fValue = inVal.value() * fm.size;
+                tmp.fIsPercent = false;
+                break;
+            }
+
+            if (!fontFallbackToRaw)
+                return false;
+
+            tmp.fValue = inVal.value();
+            tmp.fIsPercent = false;
+            break;
+
+        case SVG_LENGTHTYPE_EXS:
+            if (font != nullptr)
+            {
+                const auto& fm = font->metrics();
+                tmp.fValue = inVal.value() * fm.xHeight;
+                tmp.fIsPercent = false;
+                break;
+            }
+
+            if (!fontFallbackToRaw)
+                return false;
+
+            tmp.fValue = inVal.value();
+            tmp.fIsPercent = false;
+            break;
+
+        default:
             return false;
-
-        // optional '%'
-        bool isPct = false;
-        if (!s.empty() && *s == '%') {
-            isPct = true;
-            ++s;
         }
 
-        out.fValue = v;
-        out.fIsPercent = isPct;
-        out.fIsSet = true;
-
-        return true;
-    }
-
-    static INLINE bool parseNumberOrPercent(const ByteSpan& inChunk, SVGNumberOrPercent& out) noexcept
-    {
-        SVGNumberOrPercent tmp = out;
-        ByteSpan s = inChunk;
-        if (!readSVGNumberOrPercent(s, tmp))
-            return false;
-
-        out = tmp;
+        outVal = tmp;
         return true;
     }
 }
+
 
 namespace waavs
 {
@@ -1080,59 +1211,7 @@ namespace waavs {
 
 
 
-namespace waavs {
-    //
-    // parseFont()
-    // Turn a base64 encoded inlined font into a BLFontFace
-    // This will typically be created in a style sheet with 
-    // a @font-face rule
-    //
-    static bool parseFont(const ByteSpan& inChunk, BLFontFace& face)
-    {
-        bool success{ false };
-        ByteSpan value = inChunk;;
 
-        // figure out what kind of encoding we're dealing with
-        // value starts with: 'data:imaxsge/png;base64,<base64 encoded image>
-        //
-        ByteSpan data = chunk_token(value, ":");
-        auto mime = chunk_token(value, ";");
-        auto encoding = chunk_token(value, ",");
-
-
-        if (value) {
-            if (encoding == "base64" && mime == "base64")
-            {
-                unsigned int outBuffSize = base64::getDecodeOutputSize(value.size());
-                MemBuff outBuff(outBuffSize);
-                
-                auto decodedSize = base64::decode(value.data(), value.size(), outBuff.data(), outBuffSize);
-
-                if (decodedSize > 0)
-                {
-                    BLDataView dataView{};
-                    dataView.reset(outBuff.data(), decodedSize);
-                    
-                    // create a BLFontData
-                    BLFontData fontData;
-                    fontData.createFromData(outBuff.data(), decodedSize);
-
-                    
-                    BLResult result = face.createFromData(fontData, 0);
-                    if (result == BL_SUCCESS)
-                    {
-                        success = true;
-                    }
-                }
-                else {
-                    printf("parseFont() - Error base64 decoding font data\n");
-                }
-            }
-        }
-
-        return success;
-    }
-}
 
 namespace waavs {
 
@@ -1410,67 +1489,11 @@ namespace waavs
 
 
 //
-// These are various routines that help manipulate the BLRect
+// These are various routines that help manipulate the WGRectD
 // structure.  Finding corners, moving, query containment
 // scaling, merging, expanding, and the like
 
-namespace waavs {
-    static inline double right(const BLRect& r) { return r.x + r.w; }
-    static inline double left(const BLRect& r) { return r.x; }
-    static inline double top(const BLRect& r) { return r.y; }
-    static inline double bottom(const BLRect& r) { return r.y + r.h; }
-    static inline BLPoint center(const BLRect& r) { return { r.x + (r.w / 2),r.y + (r.h / 2) }; }
 
-    static inline void moveBy(BLRect& r, double dx, double dy) { r.x += dx; r.y += dy; }
-    static inline void moveBy(BLRect& r, const BLPoint& dxy) { r.x += dxy.x; r.y += dxy.y; }
-
-
-    static inline bool containsRect(const BLRect& a, double x, double y)
-    {
-        return (x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h);
-    }
-
-    static inline bool containsRect(const BLRect& a, const BLPoint& pt)
-    {
-        return containsRect(a, pt.x, pt.y);
-    }
-
-    // mergeRect()
-    // 
-    // Perform a union operation between a BLRect and a BLPoint
-    // Return a new BLRect that represents the union.
-    static inline BLRect rectMerge(const BLRect& a, const BLPoint& b)
-    {
-        // return a BLRect that is the union of BLRect a 
-        // and BLPoint b using local temporary variables
-        double x1 = std::min(a.x, b.x);
-        double y1 = std::min(a.y, b.y);
-        double x2 = std::max(a.x + a.w, b.x);
-        double y2 = std::max(a.y + a.h, b.y);
-
-        return { x1, y1, x2 - x1, y2 - y1 };
-    }
-
-    // mergeRect()
-    // 
-    // Expand the size of the rectangle such that the new rectangle
-    // firts the original (a) as well as the new one (b)
-    // this is a union operation.
-    static inline BLRect rectMerge(const BLRect& a, const BLRect& b)
-    {
-        // return a BLRect that is the union of BLRect a
-        // and BLRect b, using local temporary variables
-        double x1 = std::min(a.x, b.x);
-        double y1 = std::min(a.y, b.y);
-        double x2 = std::max(a.x + a.w, b.x + b.w);
-        double y2 = std::max(a.y + a.h, b.y + b.h);
-
-        return { x1, y1, x2 - x1, y2 - y1 };
-    }
-
-    static inline void expandRect(BLRect& a, const BLPoint& b) { a = rectMerge(a, b); }
-    static inline void expandRect(BLRect& a, const BLRect& b) { a = rectMerge(a, b); }
-}
 
 
 namespace waavs {
@@ -1523,8 +1546,8 @@ namespace waavs {
         while (view.nextLengthToken(tok))
         {
             SVGLengthValue dim{};
-            //if (!dim.loadFromChunk(tok))
-            //    return false;
+            if (!parseLengthValue(tok, dim))
+                return false;
 
             // SVG disallows negative dash lengths
             if (dim.value() < 0.0)

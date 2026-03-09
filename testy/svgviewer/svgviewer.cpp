@@ -16,9 +16,11 @@
 using namespace waavs;
 
 // Assuming Mac Studio display,  which is 5120 x 2880
-static constexpr int canvasWidth = 1024, canvasHeight = 768;
+//static constexpr int canvasWidth = 1024, canvasHeight = 768;
+// HD size?
+//static constexpr int canvasWidth = 1920, canvasHeight = 1024;
 // One quarter of a apple studio display is 2560 x 1440
-//static constexpr int canvasWidth = 2560, canvasHeight = 1440;
+static constexpr int canvasWidth = 2560, canvasHeight = 1440;
 // 3380x1900 - two thirds
 //static constexpr int canvasWidth = 3880, canvasHeight = 1900;
 static constexpr float kFrameRate = 30.0f;
@@ -78,6 +80,7 @@ static void drawBackground()
 
 static void drawForeground()
 {
+    //getAppSurface()->fillRect(WGRectD(0,0,100,100),0xffff0000);
 }
 
 static void drawDocument()
@@ -110,7 +113,7 @@ static void draw()
     drawForeground();
 }
 
-static void resetView(const BLRect &bd, const BLRect &fr)
+static void resetView(const WGRectD &bd, const WGRectD &fr)
 {
     gNavigator.resetNavigator();
     gNavigator.setFrame(fr);
@@ -173,16 +176,12 @@ static void onFileDrop(const FileDropEvent& fde)
 
         if (gDoc != nullptr)
         {
-            BLRect viewFr = { 0,0,canvasWidth, canvasHeight };	// gDoc->viewPort();
-            BLRect docFr = viewFr;
+            WGRectD viewFr = { 0,0,canvasWidth, canvasHeight };
+            WGRectD docFr = viewFr;
 
             // If there is a documentElement, we can use its viewport
             // for the object frame
-            auto rootElem = gDoc->documentElement();
-            if (rootElem != nullptr)
-            {
-                docFr = rootElem->objectBoundingBox();
-            }
+            docFr = gDoc->viewPort();
 
             // Set the initial viewport
             resetView(docFr, viewFr);
@@ -221,11 +220,13 @@ static void onResizeEvent(const ResizeEvent& re)
     //gNavigator.setFrame(BLRect(0, 0, appFrameWidth, appFrameHeight));
     
     //printf("onResizeEvent: %d x %d\n", re.width, re.height);
-    BLContextCreateInfo ctxInfo{};
-    ctxInfo.threadCount = 4;
-    //ctxInfo.threadCount = 0;
 
-    getDrawingContext()->attach(getAppFrameBuffer()->getBlend2dImage(), &ctxInfo);
+    //ctxInfo.threadCount = 0;
+    Surface* s = getAppSurface();
+    if (!s)
+        return;
+
+    getDrawingContext()->attach(*s, 4);
     handleChange(true);
 }
 
@@ -336,7 +337,8 @@ void setup()
     // set app window size and title
     createAppWindow(canvasWidth, canvasHeight, "SVGViewer");
     
-    getRecorder()->reset(&getAppFrameBuffer()->getBlend2dImage(), "frame", 15, 0);
+    Surface* s = getAppSurface();
+    getRecorder()->reset(s, "frame", 15, 0);
     
     
     // Set the initial viewport
@@ -352,4 +354,5 @@ void setup()
 
 
     getDrawingContext()->background(BLRgba32(0xffffffff));
+    getDrawingContext()->clearToBackground();
 }

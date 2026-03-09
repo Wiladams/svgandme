@@ -161,7 +161,7 @@ void setup()
 	// set app window size and title
 	createAppWindow(1024, 768, "DOM Walker");
 
-	getRecorder()->reset(&getAppFrameBuffer()->getBlend2dImage(), "frame", 15, 0);
+	getRecorder()->reset(getAppSurface(), "frame", 15, 0);
 
 	// register to receive various events
 	subscribe(onFileDrop);
@@ -170,12 +170,9 @@ void setup()
 	//subscribe(onResizeEvent);
 	//subscribe(onKeyboardEvent);
 
-	// clear the buffer to white to start
-	//appFrameBuffer()->setAllPixels(vec4b{ 0xFF,0xff,0xff,0x00 });
-	BLContextCreateInfo ctxInfo{};
-	ctxInfo.threadCount = 4;
-	//ctxInfo.threadCount = 0;
-	gDrawingContext.attach(getAppFrameBuffer()->getBlend2dImage(), &ctxInfo);
+	// set a background color to start
+
+	gDrawingContext.attach(*getAppSurface(), 4);
 	gDrawingContext.background(BLRgba32(0xff00ffff));
 	
 	// Set the initial viewport

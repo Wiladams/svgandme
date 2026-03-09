@@ -33,7 +33,7 @@
 */
 
 
-#include "User32PixelMap.h"
+#include "user32pixelmap.h"
 #include "stopwatch.h"
 #include "nametable.h"
 #include "framesource.h"
@@ -79,27 +79,16 @@ namespace waavs
 
     };
 
-    /*
-    static INLINE double getNumberOrPercent(const SVGNumberOrPercent& norp, const double range, const double fallback) noexcept
-    {
-        if (norp.isSet())
-        {
-            if (norp.isPercent())
-                return norp.calculatedValue() * range;
 
-            return norp.calculatedValue();
-        }
 
-        return fallback;
-    }
-    */
-
-    class ScreenSnapper final : public User32PixelMap, public IFrameSource
+    class ScreenSnapper final : public IFrameSource
     {
         static constexpr double kDefaultFrameRate = 15.0;
 
         InternedKey fDeviceKey{ nullptr };
         GraphicsDeviceContext fScreenDevice{};
+        User32PixelMap fCaptureBitmap{};
+        Surface fCaptureSurface{};
 
         int64_t fCapX = 0;
         int64_t fCapY = 0;
@@ -136,14 +125,16 @@ namespace waavs
                 return false;
 
 
-            fCapX = (int64_t)bindNumberOrPercent(desc.cropX, fScreenDevice.pixelWidth(), 0);
-            fCapY = (int64_t)bindNumberOrPercent(desc.cropY, fScreenDevice.pixelHeight(), 0);
-            fCapWidth = (int64_t)bindNumberOrPercent(desc.cropW, fScreenDevice.pixelWidth(), fScreenDevice.pixelWidth());
-            fCapHeight = (int64_t)bindNumberOrPercent(desc.cropH, fScreenDevice.pixelHeight(), fScreenDevice.pixelHeight());
+            fCapX = (int64_t)resolveNumberOrPercent(desc.cropX, fScreenDevice.pixelWidth(), 0);
+            fCapY = (int64_t)resolveNumberOrPercent(desc.cropY, fScreenDevice.pixelHeight(), 0);
+            fCapWidth = (int64_t)resolveNumberOrPercent(desc.cropW, fScreenDevice.pixelWidth(), fScreenDevice.pixelWidth());
+            fCapHeight = (int64_t)resolveNumberOrPercent(desc.cropH, fScreenDevice.pixelHeight(), fScreenDevice.pixelHeight());
 
             // Initialize the backing store
-            if (!init(fCapWidth, fCapHeight))
+            if (!fCaptureBitmap.init(fCapWidth, fCapHeight))
                 return false;
+
+            fCaptureSurface.createFromData((size_t)fCapWidth, (size_t)fCapHeight, fCaptureBitmap.stride(), fCaptureBitmap.data());
 
             if (desc.maxFps > 0.0)
                 setMaxFrameRate(desc.maxFps);
@@ -151,11 +142,28 @@ namespace waavs
                 setMaxFrameRate(kDefaultFrameRate);  // default to 15 fps if not specified
 
             fLastCaptureTime = 0;
-            update();
+            nextFrame();
 
             return true;
         }
 
+
+        bool nextFrame()
+        {
+            // Capture from the screen device into the local bitmap
+            BOOL ok = ::StretchBlt(fCaptureBitmap.bitmapDC(), 0, 0, (int)fCaptureSurface.width(), (int)fCaptureSurface.height(),
+                fScreenDevice.hdc(), fCapX, fCapY, fCapWidth, fCapHeight,
+                SRCCOPY | CAPTUREBLT);
+            
+            if (ok == 0)
+            {
+                int err = ::GetLastError();
+                printf("ScreenSnapper::next(), ERROR: 0x%x\n", err);
+                return false;
+            }
+
+            return true;
+        }
 
 
         // take a snapshot
@@ -168,26 +176,16 @@ namespace waavs
             if (currentInterval < fMinInterval)
                 return false;
 
-            // Capture from the screen device into the local bitmap
-            BOOL ok = ::StretchBlt(bitmapDC(), 0, 0, width(), height(), 
-                fScreenDevice.hdc(), fCapX, fCapY, fCapWidth, fCapHeight, 
-                SRCCOPY | CAPTUREBLT);
+            bool success = nextFrame();
 
             // make not of current time as last capture time
             fLastCaptureTime = fTimer.seconds();
 
-            if (ok == 0)
-            {
-                int err = ::GetLastError();
-                printf("ScreenSnapper::next(), ERROR: 0x%x\n", err);
-            }
-
-
-            return (ok != 0);
+            return success;
         }
 
-        PixelArray& pixels() noexcept override { return *this; }
-        const PixelArray& pixels() const noexcept override { return *this; }
+        Surface& pixels() noexcept override { return fCaptureSurface; }
+        const Surface& pixels() const noexcept override { return fCaptureSurface; }
 
     };
 }

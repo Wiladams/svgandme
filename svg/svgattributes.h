@@ -649,7 +649,13 @@ namespace waavs {
         {
             // If our raw value is 'currentColor', then we need to get the current color
             // from the context
-            if (ctx!=nullptr && rawValue() == "currentColor")
+            if (fPaintVar.isRgba32() || fPaintVar.isNull())
+            {
+                 // if it's a color, or it's 'none', then we can just return it
+                return fPaintVar;
+            }
+
+            if (rawValue() == "currentColor" || rawValue() == "inherit" && ctx != nullptr)
             {
                 return ctx->getDefaultColor();
             }
@@ -1201,7 +1207,7 @@ namespace waavs {
 
 
 namespace waavs {
-    
+
     //================================================
     // SVGTransform
     // Transformation matrix
@@ -1209,14 +1215,14 @@ namespace waavs {
     struct SVGTransform : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute(svgattr::transform(), [](const XmlAttributeCollection& attrs) 
+            registerSVGAttribute(svgattr::transform(), [](const XmlAttributeCollection& attrs)
                 {auto node = std::make_shared<SVGTransform>(); node->loadFromAttributes(attrs);  return node; });
         }
 
         BLMatrix2D fMatrix{ BLMatrix2D::makeIdentity() };
 
-        SVGTransform() : SVGVisualProperty(nullptr) 
-        { 
+        SVGTransform() : SVGVisualProperty(nullptr)
+        {
             setName(svgattr::transform());
             setAutoDraw(false);
         }
@@ -1233,18 +1239,20 @@ namespace waavs {
 
             set(true);
             setNeedsBinding(false);
-            
+
             return true;
         }
 
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            if ((fMatrix.type() != BLTransformType::BL_TRANSFORM_TYPE_INVALID) && 
+            if ((fMatrix.type() != BLTransformType::BL_TRANSFORM_TYPE_INVALID) &&
                 (fMatrix.type() != BLTransformType::BL_TRANSFORM_TYPE_IDENTITY))
                 ctx->applyTransform(fMatrix);
         }
     };
-    
+}
+
+namespace waavs {
     //======================================================
     // SVGViewbox
     // A document may or may not have this property
@@ -1258,7 +1266,7 @@ namespace waavs {
         }
 
         
-        BLRect fRect{};
+        WGRect fRect{};
         
         SVGViewbox() :SVGVisualProperty(nullptr) { id("viewBox"); }
         SVGViewbox(IAmGroot* iMap) :SVGVisualProperty(iMap) {}

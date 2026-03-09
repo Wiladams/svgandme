@@ -22,9 +22,9 @@ namespace waavs {
         bool fHasViewbox{ false };
 
 
-        BLRect getBBox() const
+        WGRectD getBBox() const
         {
-            BLRect vpFrame{};
+            WGRectD vpFrame{};
             getViewportFrame(vpFrame);
 
             return vpFrame;
@@ -55,7 +55,7 @@ namespace waavs {
             setPreserveAspectRatio(aspect);
 
 			// viewBox
-            BLRect vbFrame{};
+            WGRectD vbFrame{};
             ByteSpan viewBoxAttr{};
             if (attrs.getValue(svgattr::viewBox(), viewBoxAttr))
             {
@@ -88,8 +88,8 @@ namespace waavs {
         void bindToContext(IRenderSVG *ctx, IAmGroot *groot) noexcept override
         {
             double origin = 0;
-            BLRect viewport = ctx->viewport();
-            BLRect srfFrame = viewport;
+            WGRectD viewport = ctx->viewport();
+            WGRectD srfFrame = viewport;
 
             double dpi = 96;
             if (groot != nullptr)
@@ -107,7 +107,7 @@ namespace waavs {
             
 			// If a viewbox was set, then we use that to create the transformation
 			// matrix between the scene, and the surface
-            BLRect scnFrame = srfFrame;
+            WGRectD scnFrame = srfFrame;
 			if (!fHasViewbox)
 			{
                 setViewBoxFrame(srfFrame);

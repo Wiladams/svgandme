@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "blend2d.h"
+//#include "blend2d.h"
 
 #include "charset.h"
 #include "maths.h"
@@ -157,7 +157,7 @@ namespace waavs {
 
 	};
 
-	static bool parseViewBox(const ByteSpan& inChunk, BLRect& r) noexcept
+	static bool parseViewBox(const ByteSpan& inChunk, WGRectD& r) noexcept
 	{
 		if (!inChunk)
 			return false;
@@ -170,7 +170,7 @@ namespace waavs {
 		if (!view.readANumber(w) || (w <= 0.0)) return false;
 		if (!view.readANumber(h) || (h <= 0.0)) return false;
 
-		r.reset(x, y, w, h);
+		r = { x,y,w,h };
 
 		return true;
 	}
@@ -192,15 +192,15 @@ namespace waavs {
 		PreserveAspectRatio par{};
 
         bool hasViewBox{ false };
-		BLRect viewBox{};
+		WGRectD viewBox{};
 	};
 
 	struct SVGViewportState
 	{
-		BLRect fViewport;   // The viewport rectangle
+		WGRectD fViewport;   // The viewport rectangle
 
 		bool fHasViewBox{ false };
-		BLRect fViewBox;    // The viewBox rectangle
+		WGRectD fViewBox;    // The viewBox rectangle
 
 		PreserveAspectRatio fPreserveAspect{};
 
@@ -248,7 +248,7 @@ namespace waavs {
 
 		// viewBox (structural)
 		ByteSpan vbAttr{};
-		BLRect vbFrame{};
+		WGRectD vbFrame{};
 		if (attrs.getValue(svgattr::viewBox(), vbAttr) && parseViewBox(vbAttr, vbFrame))
 		{
 			vps.hasViewBox = true;
@@ -265,8 +265,8 @@ namespace waavs
 {
 
 	static bool computeViewBoxToViewport(
-		const BLRect& viewport,
-		const BLRect& viewBox,
+		const WGRectD& viewport,
+		const WGRectD& viewBox,
 		const PreserveAspectRatio& par,
 		BLMatrix2D& out)
 	{
@@ -317,45 +317,50 @@ namespace waavs
 // - isTopLevel: top-level <svg> ignores x/y; nested honors x/y
 // - dpi/font: only needed for em/ex; pass nullptr font if you want
 	static bool resolveViewState(
-		const BLRect& containingVP,
+		const WGRectD& containingVP,
 		const DocViewportState& authored,
 		bool isTopLevel,
 		double dpi,
 		const BLFont* fontOpt,
 		SVGViewportState& out) noexcept
 	{
+        static constexpr double DEFAULT_CANVAS_WIDTH = 300.0;
+        static constexpr double DEFAULT_CANVAS_HEIGHT = 150.0;
+
 		out = SVGViewportState{}; // reset
 
 		// If containingVP is not meaningful, fall back to SVG defaults.
-		const double containW = (containingVP.w > 0.0) ? containingVP.w : 300.0;
-		const double containH = (containingVP.h > 0.0) ? containingVP.h : 150.0;
+        // 300x150 is the default viewport size per SVG spec, 
+		// but it can be overridden by the document's root <svg> element
+		const double containW = (containingVP.w > 0.0) ? containingVP.w : DEFAULT_CANVAS_WIDTH;
+		const double containH = (containingVP.h > 0.0) ? containingVP.h : DEFAULT_CANVAS_HEIGHT;
 
 		// Defaults:
 		// - nested <svg>: width/height default 100% of containingVP
 		// - top-level <svg>: if containingVP is meaningful, use it; else 300x150
-		const double defaultW = isTopLevel ? containW : containW;
-		const double defaultH = isTopLevel ? containH : containH;
+		//const double defaultW = isTopLevel ? containW : containW;
+		//const double defaultH = isTopLevel ? containH : containH;
 
-		// Percent references for x/y/w/h are the containing viewport width/height.
-		const LengthResolveCtx ctxX = makeLengthCtxUser(containW, /*origin*/0.0, dpi, fontOpt);
-		const LengthResolveCtx ctxY = makeLengthCtxUser(containH, /*origin*/0.0, dpi, fontOpt);
-		const LengthResolveCtx ctxW = makeLengthCtxUser(containW, /*origin*/0.0, dpi, fontOpt);
-		const LengthResolveCtx ctxH = makeLengthCtxUser(containH, /*origin*/0.0, dpi, fontOpt);
+		// If the viewport has relative units (%), they are relative to 
+        // the containing viewport dimensions (containW, containH).
+		const LengthResolveCtx ctxX = makeLengthCtxUser(containW, 0.0, dpi, fontOpt);
+		const LengthResolveCtx ctxY = makeLengthCtxUser(containH, 0.0, dpi, fontOpt);
+		const LengthResolveCtx ctxW = ctxX, ctxH = ctxY;
 
 		// x/y:
-		// Your rule: top-level ignores x/y; nested honors them.
-		double x = isTopLevel ? containingVP.x : (resolveLengthOr(authored.x, ctxX, 0.0) + containingVP.x);
-		double y = isTopLevel ? containingVP.y : (resolveLengthOr(authored.y, ctxY, 0.0) + containingVP.y);
+		// top-level ignores x/y; nested honors them.
+		double x = isTopLevel ? 0.0 : (resolveLengthOr(authored.x, ctxX, 0.0) + containingVP.x);
+		double y = isTopLevel ? 0.0 : (resolveLengthOr(authored.y, ctxY, 0.0) + containingVP.y);
 
 		// width/height:
-		double w = resolveLengthOr(authored.width, ctxW, defaultW);
-		double h = resolveLengthOr(authored.height, ctxH, defaultH);
+		double w = resolveLengthOr(authored.width, ctxW, containW);
+		double h = resolveLengthOr(authored.height, ctxH, containH);
 
 		// Clamp negatives => non-renderable viewport (minimal policy)
 		if (w < 0.0) w = 0.0;
 		if (h < 0.0) h = 0.0;
 
-		out.fViewport = BLRect{ x, y, w, h };
+		out.fViewport = { x, y, w, h };
 
 		if (out.fViewport.w <= 0.0 || out.fViewport.h <= 0.0) {
 			out.fResolved = false;
@@ -365,24 +370,22 @@ namespace waavs
 		// viewBox:
 		out.fPreserveAspect = authored.par;
 
-		if (authored.hasViewBox) {
+		if (authored.hasViewBox)
+		{
 			out.fHasViewBox = true;
-			out.fViewBox = authored.viewBox;
+            out.fViewBox = authored.viewBox;
+			if (!computeViewBoxToViewport(out.fViewport, out.fViewBox, out.fPreserveAspect, out.viewBoxToViewportXform))
+			{
+				out.fResolved = false;
+				return false;
+            }
 		}
 		else {
-			out.fHasViewBox = false;
-			out.fViewBox = BLRect{ 0.0, 0.0, out.fViewport.w, out.fViewport.h };
-		}
+            out.fHasViewBox = false;
+            out.fViewBox = { 0.0, 0.0, out.fViewport.w, out.fViewport.h };
 
-		if (out.fViewBox.w <= 0.0 || out.fViewBox.h <= 0.0) {
-			out.fResolved = false;
-			return false;
-		}
-
-		// viewBox -> viewport mapping
-		if (!computeViewBoxToViewport(out.fViewport, out.fViewBox, out.fPreserveAspect, out.viewBoxToViewportXform)) {
-			out.fResolved = false;
-			return false;
+            // no viewBox means, no aspect fit transform, so viewBoxToViewportXform is identity
+            out.viewBoxToViewportXform = BLMatrix2D::makeIdentity();
 		}
 
 		out.fResolved = true;

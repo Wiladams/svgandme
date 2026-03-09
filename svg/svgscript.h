@@ -10,7 +10,7 @@
 
 
 #include "svgattributes.h"
-#include "svgstructuretypes.h"
+#include "svggraphicselement.h"
 
 
 

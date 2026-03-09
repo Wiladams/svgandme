@@ -77,16 +77,15 @@ namespace waavs
         // seconds can be reported.
         double seconds() const
         {
-            std::chrono::duration<double> elapsed = std::chrono::high_resolution_clock::now() - fStartTime;
-            return elapsed.count() * 1000;
+            auto elapsed = std::chrono::high_resolution_clock::now() - fStartTime;
+            return std::chrono::duration<double>(elapsed).count();
         }
 
         // Return the time as number of milliseconds instead of seconds
         double millis() const
         {
-            std::chrono::duration<double> elapsed = std::chrono::high_resolution_clock::now() - fStartTime;
-            return elapsed.count();
-
+            auto elapsed = std::chrono::high_resolution_clock::now() - fStartTime;
+            return std::chrono::duration<double, std::milli>(elapsed).count();
         }
 
         // You can reset the clock, which will cause

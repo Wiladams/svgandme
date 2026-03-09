@@ -60,7 +60,7 @@
 
 
 
-#include "blend2d.h"
+
 
 #include "maths.h"
 #include "pubsub.h"
@@ -68,9 +68,9 @@
 #include "uievent.h"
 #include "joystick.h"
 #include "network.h"
-#include "framebuffer.h"
+//#include "framebuffer.h"
 
-
+#include "blend2d_connect.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -126,7 +126,7 @@ APP_EXPORT extern size_t appFrameStride;
 // 
 // The control the lifetime of the environment, creation of primary window
 // and whether various parts of the IO system are present
-APP_EXPORT waavs::AFrameBuffer* getAppFrameBuffer();
+APP_EXPORT waavs::Surface* getAppSurface();
 APP_EXPORT waavs::User32Window * getAppWindow();
 
 

@@ -10,6 +10,7 @@
 
 #include "svgattributes.h"
 #include "svgstructuretypes.h"
+#include "maths.h"
 
 
 namespace waavs {
@@ -31,15 +32,16 @@ namespace waavs {
         return L.fValue;
     }
 
-    static INLINE BLMatrix2D makeBBoxToUserTransform(const BLRect& b) noexcept
+    static INLINE BLMatrix2D makeBBoxToUserTransform(const WGRectD& b) noexcept
     {
         BLMatrix2D m = BLMatrix2D::makeIdentity();
         m.translate(b.x, b.y);
         m.scale(b.w, b.h);
+
         return m;
     }
 
-    static INLINE BLMatrix2D composeGradientTransformBBox(const BLRect& b, bool hasGT, const BLMatrix2D& GT) noexcept
+    static INLINE BLMatrix2D composeGradientTransformBBox(const WGRectD& b, bool hasGT, const BLMatrix2D& GT) noexcept
     {
         BLMatrix2D m = makeBBoxToUserTransform(b);
         if (hasGT)
@@ -160,7 +162,7 @@ namespace waavs {
 
         BLGradient fGradient{};
         BLVar fGradientVar{};
-        ByteSpan fTemplateReference{};
+        //ByteSpan fTemplateReference{};
 
         // Some common attributes
         BLExtendMode fSpreadMethod{ BL_EXTEND_MODE_PAD };
@@ -184,8 +186,16 @@ namespace waavs {
 
         BLGradientType gradientType() const { return fGradient.type(); }
 
-        ByteSpan href() const { return fTemplateReference; }
-        bool hasHref() const { return !fTemplateReference.empty(); }
+        bool hasHref() const { return !href().empty(); }
+        ByteSpan href() const {
+            ByteSpan svgHref{};
+            svgHref = getAttribute(svgattr::href());
+            if (!svgHref)
+                svgHref = getAttribute(svgattr::xlink_href());    // support legacy xlink:href for compatibility
+
+            return svgHref;
+        }
+
 
         // getVariant()
         //
@@ -197,12 +207,14 @@ namespace waavs {
         // only called as part of a drawing chain.
         const BLVar getVariant(IRenderSVG *ctx, IAmGroot *groot) noexcept override
         {
-            bindToContext(ctx, groot);
+            if (needsBinding())
+                bindToContext(ctx, groot);
 
             return fGradientVar;
         }
 
-        //
+        // Inherit the raw attributes that are common to all gradients,
+        // if we don't already have them.
         // Properties to inherit:
         // Common properties to inherit
         //   gradientUnits
@@ -210,11 +222,6 @@ namespace waavs {
         //   spreadMethod
         //
 
-
-
-        // 
-        // Inherit the raw attributes that are common to all gradients,
-        // if we don't already have them.
         void inheritCommonAttributesRaw(const SVGGradient* elem)
         {
             if (!elem)
@@ -301,6 +308,10 @@ namespace waavs {
                 if (visitedCount < kMaxGradientHrefDepth)
                     visited[visitedCount++] = ref;
 
+                // Make sure the referredTo gradient has already
+                // resolved it's attributes first
+                gnode->resolveStyleSubtree(groot);
+
                 // Merge from nearest first: direct reference wins.
                 inheritProperties(ref);
 
@@ -341,11 +352,6 @@ namespace waavs {
 
             fHasGradientTransform = parseTransform(getAttribute(svgattr::gradientTransform()), fGradientTransform);
 
-            // See if we have a template reference
-            if (getAttribute(svgattr::href()))
-                fTemplateReference = getAttribute(svgattr::href());
-            else if (getAttributeByName(svgattr::xlink_href()))
-                fTemplateReference = getAttributeByName(svgattr::xlink_href());
         }
 
     };
@@ -378,9 +384,6 @@ namespace waavs {
             registerSingularNode();
         }
 
-
-
-
         SVGLinearGradient(IAmGroot* aroot) :SVGGradient(aroot)
         {
             fGradient.setType(BL_GRADIENT_TYPE_LINEAR);
@@ -406,9 +409,13 @@ namespace waavs {
 
         void fixupSelfStyleAttributes(IAmGroot* groot) override
         {
-            fixupCommonAttributes(groot);
-
+            // We have our own attributes already set, so 
+            // try to inherit any missing attributes from the
+            // chain of references, if we have an href.
             resolveReferenceChain(groot);
+         
+            // Convert the non-variant attributes
+            fixupCommonAttributes(groot);
         }
 
 
@@ -439,7 +446,7 @@ namespace waavs {
 
             if (fGradientUnits == SVG_SPACE_USER)
             {
-                const BLRect vp = ctx->viewport();
+                const WGRectD vp = ctx->viewport();
 
                 LengthResolveCtx rx{ dpi, nullptr, vp.w, 0.0, SpaceUnitsKind::SVG_SPACE_USER };
                 LengthResolveCtx ry{ dpi, nullptr, vp.h, 0.0, SpaceUnitsKind::SVG_SPACE_USER };
@@ -456,7 +463,7 @@ namespace waavs {
             }
             else // SVG_SPACE_OBJECT (objectBoundingBox)
             {
-                const BLRect objFrame = ctx->getObjectFrame();
+                const WGRectD objFrame = ctx->getObjectFrame();
 
                 // resolve into bbox space (0..1),
                 // then use transform to map bbox -> user
@@ -557,9 +564,10 @@ namespace waavs {
 
         void fixupSelfStyleAttributes(IAmGroot* groot) override
         {
-            fixupCommonAttributes(groot);
 
             resolveReferenceChain(groot);
+
+            fixupCommonAttributes(groot);
 
             // Parse our own attributes after they've been 
             // inherited and resolved.
@@ -600,24 +608,25 @@ namespace waavs {
         {
             double dpi = groot ? groot->dpi() : 96.0;
 
-            BLRadialGradientValues values = fGradient.radial();
+            BLRadialGradientValues values{};
+
             
             // Before we go any further, get our current gradientUnits
             // default is objectBoundingBox
-            getEnumValue(SVGSpaceUnits, getAttributeByName("gradientUnits"), (uint32_t&)fGradientUnits);
+            //getEnumValue(SVGSpaceUnits, getAttributeByName("gradientUnits"), (uint32_t&)fGradientUnits);
 
-            if (getEnumValue(SVGSpreadMethod, getAttributeByName("spreadMethod"), (uint32_t&)fSpreadMethod))
-            {
-                fGradient.setExtendMode((BLExtendMode)fSpreadMethod);
-            }
+            //if (getEnumValue(SVGSpreadMethod, getAttributeByName("spreadMethod"), (uint32_t&)fSpreadMethod))
+            //{
+            //    fGradient.setExtendMode((BLExtendMode)fSpreadMethod);
+            //}
 
-            fHasGradientTransform = parseTransform(getAttributeByName("gradientTransform"), fGradientTransform);
+            //fHasGradientTransform = parseTransform(getAttributeByName("gradientTransform"), fGradientTransform);
 
             // If the gradientUnits are ObjectBoundingBox, then 
             // the parameters are relative to the size of that box
             if (fGradientUnits == SVG_SPACE_OBJECT)
             {
-                BLRect objFrame = ctx->getObjectFrame();
+                WGRectD objFrame = ctx->getObjectFrame();
                 auto w = objFrame.w;
                 auto h = objFrame.h;
                 auto x = objFrame.x;
@@ -643,7 +652,7 @@ namespace waavs {
             }
             else if (fGradientUnits == SVG_SPACE_USER)
             {
-                BLRect lFrame = ctx->viewport();
+                WGRectD lFrame = ctx->viewport();
                 double w = lFrame.w;
                 double h = lFrame.h;
                 
@@ -738,11 +747,9 @@ namespace waavs {
         
         void fixupSelfStyleAttributes(IAmGroot* groot) override
         {
-            fixupCommonAttributes(groot);
-
-            // Parse attributes if present
-
             resolveReferenceChain(groot);
+
+            fixupCommonAttributes(groot);
         }
 
 

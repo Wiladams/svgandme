@@ -7,9 +7,8 @@
 #include <unordered_map>
 
 #include "svgattributes.h"
-#include "svgstructuretypes.h"
+#include "svggraphicselement.h"
 #include "b2dpathbuilder.h"
-#include "svgtext.h"
 #include "viewport.h"
 #include "svgmarker.h"
 
@@ -156,22 +155,23 @@ namespace waavs
         //
         // The bounding box of the shape, in the shape's own user space.  
         // This is used for percentage sizing, and marker placement.
+       const WGRectD objectBoundingBox() const noexcept override
+       {
+            return calculateObjectBoundingBox(nullptr, nullptr);
+       }
 
-        BLRect objectBoundingBox() const noexcept override
+        const WGRectD calculateObjectBoundingBox(IRenderSVG *ctx, IAmGroot *groot) const noexcept override
         {
-            //double x{}, y{}, width{}, height{};
-            //getBoundingBox(fProg, x, y, width, height);
-
-            //return BLRect(x, y, width, height);
-
-            BLBox bbox{};
             auto& path = getFillPath();
 
-            path.getBoundingBox(&bbox);
+            BLBox pathBox{};
+            path.getBoundingBox(&pathBox);
 
-            return BLRect(bbox.x0, bbox.y0, (bbox.x1 - bbox.x0), (bbox.y1 - bbox.y0));
+            WGRectD bbox = { pathBox.x0, pathBox.y0, pathBox.x1 - pathBox.x0, pathBox.y1 - pathBox.y0 };
+
+            return bbox;
         }
-
+       
         bool contains(double x, double y) override
         {
             BLPoint localPoint(x, y);
@@ -287,7 +287,7 @@ namespace waavs {
             double dpi = groot ? groot->dpi() : 96;
 
             const BLFont* fontOpt = nullptr;    // font not relevant here
-            const BLRect paintVP = ctx->viewport();
+            WGRectD paintVP = ctx->viewport();
 
             
             LengthResolveCtx cx{}, cy{};
@@ -480,7 +480,7 @@ return true;
             double h = 1.0;
 
             const BLFont* fontOpt = nullptr;    // font not relevant here
-            const BLRect paintVP = ctx->viewport();
+            const WGRectD paintVP = ctx->viewport();
 
             LengthResolveCtx cx{}, cy{};
             cx = makeLengthCtxUser(paintVP.w, 0.0, dpi, fontOpt);
@@ -594,7 +594,7 @@ return true;
             }
             
 
-            BLRect cFrame = ctx->viewport();
+            WGRectD cFrame = ctx->viewport();
                 w = cFrame.w;
                 h = cFrame.h;
 
@@ -687,7 +687,7 @@ return true;
             }
             
 
-            BLRect cFrame = ctx->viewport();
+            WGRectD cFrame = ctx->viewport();
             w = cFrame.w;
             h = cFrame.h;
 

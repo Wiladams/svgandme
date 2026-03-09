@@ -107,10 +107,10 @@ namespace waavs {
         bool fCropIsFull = true;
 
         // Output pixels used by renderer (crop-sized)
-        PixelArray fPixels{};
+        Surface fPixels{};
 
         // Optional full-frame staging buffer (only used when crop is not full)
-        PixelArray fFullPixels{};
+        Surface fFullPixels{};
 
         // Throttling
         StopWatch fTimer;
@@ -133,8 +133,8 @@ namespace waavs {
             fMinInterval = (fps > 0.0) ? (1.0 / fps) : 0.0;
         }
 
-        PixelArray& pixels() noexcept override { return fPixels; }
-        const PixelArray& pixels() const noexcept override { return fPixels; }
+        Surface& pixels() noexcept override { return fPixels; }
+        const Surface& pixels() const noexcept override { return fPixels; }
 
     private:
         void clampCropToBounds() noexcept
@@ -307,7 +307,7 @@ namespace waavs {
             }
         }
 
-        static INLINE void blitCropBGRA(const PixelArray& src, PixelArray& dst, int64_t x, int64_t y, int64_t w, int64_t h) noexcept
+        static INLINE void blitCropBGRA(const Surface& src, Surface& dst, int64_t x, int64_t y, int64_t w, int64_t h) noexcept
         {
             // Both are BGRA 4 bytes per pixel in a BLImage backing store.
             const int64_t bpp = 4;
@@ -315,8 +315,8 @@ namespace waavs {
 
             for (int64_t row = 0; row < h; ++row)
             {
-                const uint8_t* s = src.rowPointer((size_t)(y + row)) + (size_t)(x * bpp);
-                uint8_t* d = dst.rowPointer((size_t)row);
+                const uint32_t* s = src.rowPointer((size_t)(y + row)) + (size_t)(x * bpp);
+                uint32_t* d = dst.rowPointer((size_t)row);
                 std::memcpy(d, s, (size_t)rowBytes);
             }
         }
@@ -338,10 +338,10 @@ namespace waavs {
                 return false;
 
             // Resolve crop against decoded dimensions
-            fCropX = (int64_t)bindNumberOrPercent(desc.cropX, (double)fSrcW, 0.0);
-            fCropY = (int64_t)bindNumberOrPercent(desc.cropY, (double)fSrcH, 0.0);
-            fCropW = (int64_t)bindNumberOrPercent(desc.cropW, (double)fSrcW, (double)fSrcW);
-            fCropH = (int64_t)bindNumberOrPercent(desc.cropH, (double)fSrcH, (double)fSrcH);
+            fCropX = (int64_t)resolveNumberOrPercent(desc.cropX, (double)fSrcW, 0.0);
+            fCropY = (int64_t)resolveNumberOrPercent(desc.cropY, (double)fSrcH, 0.0);
+            fCropW = (int64_t)resolveNumberOrPercent(desc.cropW, (double)fSrcW, (double)fSrcW);
+            fCropH = (int64_t)resolveNumberOrPercent(desc.cropH, (double)fSrcH, (double)fSrcH);
 
             clampCropToBounds();
             if (fCropW <= 0 || fCropH <= 0)
@@ -360,7 +360,7 @@ namespace waavs {
             else
             {
                 // Ensure staging buffer is cleared
-                fFullPixels = PixelArray{};
+                fFullPixels = Surface{};
             }
 
             // Build sws for conversion to BGRA.
@@ -413,7 +413,7 @@ namespace waavs {
                         return false;
                 }
                 else {
-                    fFullPixels = PixelArray{};
+                    fFullPixels = Surface{};
                 }
 
                 if (!ensureSws(fSrcW, fSrcH, AV_PIX_FMT_BGRA))
@@ -424,12 +424,11 @@ namespace waavs {
             // Use fast path when crop is full-frame: write directly into fPixels.
             if (fCropIsFull)
             {
-                BLImageData out{};
-                if (fPixels.image().getData(&out) != BL_SUCCESS)
+                if (!fPixels.data())
                     return false;
 
-                uint8_t* dstData[4] = { (uint8_t*)out.pixelData, nullptr, nullptr, nullptr };
-                int dstLinesize[4] = { (int)out.stride, 0, 0, 0 };
+                uint8_t* dstData[4] = { (uint8_t*)fPixels.data(), nullptr, nullptr, nullptr};
+                int dstLinesize[4] = { (int)fPixels.stride(), 0, 0, 0};
 
                 const uint8_t* srcData[4] = {
                     fFrame->data[0], fFrame->data[1], fFrame->data[2], fFrame->data[3]
@@ -443,12 +442,11 @@ namespace waavs {
             else
             {
                 // Convert full frame into fFullPixels, then crop-copy into fPixels.
-                BLImageData full{};
-                if (fFullPixels.image().getData(&full) != BL_SUCCESS)
+                if (!fFullPixels.data())
                     return false;
 
-                uint8_t* dstData[4] = { (uint8_t*)full.pixelData, nullptr, nullptr, nullptr };
-                int dstLinesize[4] = { (int)full.stride, 0, 0, 0 };
+                uint8_t* dstData[4] = { (uint8_t*)fFullPixels.data(), nullptr, nullptr, nullptr};
+                int dstLinesize[4] = { (int)fFullPixels.stride(), 0, 0, 0};
 
                 const uint8_t* srcData[4] = {
                     fFrame->data[0], fFrame->data[1], fFrame->data[2], fFrame->data[3]

@@ -100,19 +100,19 @@ namespace waavs {
 
 
             // Filter node registrations
-            //SVGFilterElement::registerFactory();            // 'filter'
-            //SVGFeBlendElement::registerFactory();           // 'feBlend'
-            //SVGFeColorMatrixElement::registerFactory();     // 'feColorMatrix'
-            //SVGFeCompositeElement::registerFactory();       // 'feComposite'
-            //SVGFeComponentTransferElement::registerFactory();       // 'feComponentTransfer'
-            //SVGFeConvolveMatrixElement::registerFactory();  // 'feConvolveMatrix'
-            //SVGFeDiffuseLightingElement::registerFactory(); // 'feDiffuseLighting'
-            //SVGFeDisplacementMapElement::registerFactory(); // 'feDisplacementMap'
-            //SVGFeDistantLightElement::registerFactory();    // 'feDistantLightMap'
-            //SVGFeFloodElement::registerFactory();           // 'feFlood'
-            //SVGFeGaussianBlurElement::registerFactory();    // 'feGaussianBlur'
-            //SVGFeOffsetElement::registerFactory();          // 'feOffset'
-            //SVGFeTurbulenceElement::registerFactory();      // 'feTurbulence'
+            SVGFilterElement::registerFactory();                // 'filter'
+            SVGFeBlendElement::registerFactory();             // 'feBlend'
+            //SVGFeColorMatrixElement::registerFactory();       // 'feColorMatrix'
+            SVGFeCompositeElement::registerFactory();         // 'feComposite'
+            SVGFeComponentTransferElement::registerFactory(); // 'feComponentTransfer'
+            SVGFeConvolveMatrixElement::registerFactory();    // 'feConvolveMatrix'
+            SVGFeDiffuseLightingElement::registerFactory();   // 'feDiffuseLighting'
+            SVGFeDisplacementMapElement::registerFactory();   // 'feDisplacementMap'
+            SVGFeDistantLightElement::registerFactory();      // 'feDistantLightMap'
+            SVGFeFloodElement::registerFactory();             // 'feFlood'
+            SVGFeGaussianBlurElement::registerFactory();        // 'feGaussianBlur'
+            SVGFeOffsetElement::registerFactory();              // 'feOffset'
+            SVGFeTurbulenceElement::registerFactory();        // 'feTurbulence'
 
 
             // Font node registrations

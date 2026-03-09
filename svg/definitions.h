@@ -15,6 +15,7 @@
 
 #include <cstdint>		// uint8_t, etc
 #include <cstddef>		// nullptr_t, ptrdiff_t, size_t
+#include <cstring>
 #include <cctype>
 #include <type_traits>
 #include <cmath>        // for fmaf

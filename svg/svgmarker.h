@@ -4,9 +4,11 @@
 // Feature String: http://www.w3.org/TR/SVG11/feature#Marker
 //
 
-#include "svgstructuretypes.h"
-#include "svgattributes.h"
+
 #include "viewport.h"
+
+#include "svgattributes.h"
+#include "svggraphicselement.h"
 
 namespace waavs
 {
@@ -18,10 +20,10 @@ namespace waavs
     {
         // Marker viewport in the *parent user space of the marker instance*
         // We keep it local at origin because MarkerProgramExec already translates to the vertex.
-        BLRect viewport{ 0,0,0,0 };
+        WGRectD viewport{ 0,0,0,0 };
 
         // The viewBox in marker content user space (children see this as nearest viewport)
-        BLRect viewBox{ 0,0,0,0 };
+        WGRectD viewBox{ 0,0,0,0 };
         bool hasViewBox{ false };
 
         // Final mapping to apply before drawing marker children:
@@ -101,10 +103,10 @@ namespace waavs {
         // Cached resolved (optional, but pragmatic)
         ResolvedMarkerState fRes{};
         double fResStrokeWidth{ -1.0 }; // track strokeWidth used for resolution so we know when to re-resolve
-        BLRect fResNearestVP{};         // track nearest viewport used for resolution so we know when to re-resolve
+        WGRectD fResNearestVP{};         // track nearest viewport used for resolution so we know when to re-resolve
         double fResDpi{ -1.0 };         // track dpi used for resolution so we know when to re-resolve
         bool fHasResolved{ false };
-        BLRect fBBox{};
+        WGRectD fBBox{};
 
 
 
@@ -118,10 +120,10 @@ namespace waavs {
         const SVGOrient& orientation() const { return orient; }
     
         // For markers, the viewport is the marker tile size
-        BLRect objectBoundingBox() const override
-        {
-            return fBBox;
-        }
+        //BLRect objectBoundingBox() const override
+        //{
+        //    return fBBox;
+        //}
         
 
 
@@ -138,7 +140,7 @@ namespace waavs {
         //
 
         bool resolveMarkerState(
-            const BLRect& nearestVP,
+            const WGRectD& nearestVP,
             double strokeWidth,
             double dpi,
             const BLFont* fontOpt,
@@ -189,7 +191,7 @@ namespace waavs {
                 h_user *= strokeWidth;
             }
 
-            out.viewport = BLRect{ 0.0, 0.0, w_user, h_user };
+            out.viewport = { 0.0, 0.0, w_user, h_user };
             if (out.viewport.w <= 0.0 || out.viewport.h <= 0.0)
                 return false;
 
@@ -206,8 +208,8 @@ namespace waavs {
                 // - markerUnits=userSpaceOnUse: content space == viewport in user units
                 // - markerUnits=strokeWidth  : content space == marker units (unscaled)
                 out.viewBox = (markerUnits == SpaceUnitsKind::SVG_SPACE_STROKEWIDTH)
-                    ? BLRect{ 0.0, 0.0, w_units, h_units }
-                : BLRect{ 0.0, 0.0, w_user,  h_user };
+                    ? WGRectD{ 0.0, 0.0, w_units, h_units }
+                : WGRectD{ 0.0, 0.0, w_user,  h_user };
             }
 
             if (out.viewBox.w <= 0.0 || out.viewBox.h <= 0.0)
@@ -230,8 +232,8 @@ namespace waavs {
                 // 4) Build content->instance mapping:
                 //    (viewBox -> viewport) + alignment + ref shift
                 // ----------------------------
-                const BLRect& viewport = out.viewport; // in USER space
-                const BLRect& viewBox = out.viewBox;  // in CONTENT space
+                const WGRectD viewport = out.viewport; // in USER space
+                const WGRectD viewBox = out.viewBox;  // in CONTENT space
                 const PreserveAspectRatio& par = vp.par;
 
                 const double sx0 = viewport.w / viewBox.w;
@@ -306,7 +308,7 @@ namespace waavs {
             fHasResolved = false;
             fResStrokeWidth = -1.0;
             fResDpi = -1.0;
-            fResNearestVP.reset();
+            rectD_reset(fResNearestVP);
         }
 
 
@@ -321,7 +323,7 @@ namespace waavs {
             const BLFont* fontOpt = &ctx->getFont();
 
             const double sw = ctx->getStrokeWidth();
-            const BLRect nearestVP = ctx->viewport();
+            const WGRectD nearestVP = ctx->viewport();
 
             // Tiny cache: reuse if same parameters
             if (fHasResolved &&

@@ -200,7 +200,6 @@
     <ClInclude Include="..\..\svg\pathsegmenter.h" />
     <ClInclude Include="..\..\svg\pipeline.h" />
     <ClInclude Include="..\..\svg\pixeling.h" />
-    <ClInclude Include="..\..\svg\pixeling_simd.h" />
     <ClInclude Include="..\..\svg\pixel_surface.h" />
     <ClInclude Include="..\..\svg\waavsgraph.h" />
     <ClInclude Include="..\..\svg\waavs_mem.h" />

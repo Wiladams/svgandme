@@ -2,7 +2,7 @@
 #define PIXELING_SIMD_H_INCLUDED
 
 /*
- * pixeling_simd.h — SIMD-accelerated pixel ops for WAAVS
+ * pixeling_simd.h  SIMD-accelerated pixel ops for WAAVS
  *
  * Accuracy note:
  *   Functions here that operate *entirely in 8-bit sRGB premultiplied*

@@ -36,9 +36,6 @@
     <ClInclude Include="..\..\svg\pixeling.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\pixeling_simd.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\svg\pixel_surface.h">
       <Filter>Header Files</Filter>
     </ClInclude>

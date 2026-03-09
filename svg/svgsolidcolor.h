@@ -4,7 +4,7 @@
 //#include <unordered_map>
 
 //#include "svgattributes.h"
-#include "svgstructuretypes.h"
+#include "svggraphicselement.h"
 
 namespace waavs {
     //============================================================

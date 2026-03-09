@@ -4,7 +4,7 @@
 #include <vector>
 
 
-#include "svgstructuretypes.h"
+#include "svggraphicselement.h"
 
 #include "screensnapshot.h"
 #include "converters.h"
@@ -176,7 +176,7 @@ namespace waavs {
             {
                 // We're drawing in objectFrame units
                 // so get current object frame
-                BLRect objFrame = ctx->getObjectFrame();
+                WGRectD objFrame = ctx->getObjectFrame();
                 w = objFrame.w;
                 h = objFrame.h;
 

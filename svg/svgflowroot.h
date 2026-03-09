@@ -373,7 +373,7 @@ namespace waavs {
         std::vector<OwnedSpan> fParas{};
 
         // resolved
-        BLRect fFlowBox{};
+        WGRectD fFlowBox{};
         bool fPreserveSpace{ false };
 
         // line height
@@ -386,7 +386,7 @@ namespace waavs {
             setNeedsBinding(true);
         }
 
-        BLRect objectBoundingBox() const override { return fFlowBox; }
+        //BLRect objectBoundingBox() const override { return fFlowBox; }
 
         // Parse <rect ...> attributes (x,y,width,height) from element.data()
         void parseRectFromElement(const XmlElement& elem)
@@ -547,7 +547,7 @@ namespace waavs {
             {
                 // You use viewport() and/or object frame in other places.
                 // We'll use ctx->viewport() for percentage resolution.
-                BLRect vp = ctx->viewport();
+                WGRectD vp = ctx->viewport();
                 const double vw = vp.w;
                 const double vh = vp.h;
 
@@ -558,7 +558,7 @@ namespace waavs {
                 const double w = fW.isSet() ? fW.calculatePixels(ctx->getFont(), vw, 0, dpi) : 0.0;
                 const double h = fH.isSet() ? fH.calculatePixels(ctx->getFont(), vh, 0, dpi) : 0.0;
 
-                fFlowBox = BLRect(x, y, w, h);
+                fFlowBox = { x, y, w, h };
             }
         }
 
@@ -592,7 +592,7 @@ namespace waavs {
             if (fFlowBox.w <= 0.0 || fFlowBox.h <= 0.0) return;
 
             // keep global text cursor unchanged
-            const BLPoint savedCursor = ctx->textCursor();
+            const WGPointD savedCursor = ctx->textCursor();
 
             // clip to flow box
             ctx->clipRect(fFlowBox);

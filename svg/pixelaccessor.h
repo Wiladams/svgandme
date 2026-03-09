@@ -1,36 +1,13 @@
 #pragma once
 
-#include <stdint.h>
+#include "definitions.h"
+
+#include "pixeling.h"
 #include "blend2d.h"
+
 
 namespace waavs
 {
-    // Used to rapidly copy 32 bit values 
-    static void memset_l(void* adr, int32_t val, size_t count)
-    {
-        int32_t v;
-        size_t i, n;
-        uint32_t* p;
-        p = static_cast<uint32_t*>(adr);
-        v = val;
-
-        // Do 4 at a time
-        n = count >> 2;
-        for (i = 0; i < n; i++)
-        {
-            p[0] = v;
-            p[1] = v;
-            p[2] = v;
-            p[3] = v;
-            p += 4;
-        }
-
-        // Copy the last remaining values
-        n = count & 3;
-        for (i = 0; i < n; i++)
-            *p++ = val;
-    }
-
 
     enum class PixelOrientation
     {
@@ -57,8 +34,14 @@ namespace waavs
         constexpr void orientation(PixelOrientation orient) { fOrientation = orient; }
         constexpr PixelOrientation orientation() const noexcept { return fOrientation; }
 
-        constexpr size_t width() const noexcept { return fWidth; }
-        constexpr size_t height() const noexcept { return fHeight; }
+        constexpr size_t width() const noexcept 
+        { 
+            return fWidth; 
+        }
+        constexpr size_t height() const noexcept 
+        { 
+            return fHeight; 
+        }
         constexpr ptrdiff_t stride() const noexcept { return fStride; }   // number of bytes to advance between rows
 
         virtual uint8_t* rowPointer(const size_t y) = 0;

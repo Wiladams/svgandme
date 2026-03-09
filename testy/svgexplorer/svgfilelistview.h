@@ -23,11 +23,11 @@ namespace waavs {
 		bool fIsHover{ false };
 		bool fIsSelected{ false };
 		
-		FileIcon(const std::string& name, SVGDocumentHandle doc, size_t iconSize=24, const BLRect& rect={0,0,128,24})
+		FileIcon(const std::string& name, SVGDocumentHandle doc, size_t iconSize=24, const WGRectD& rect={0,0,128,24})
 			: GraphicView(rect)
 			, fFullPath(name)
 			, fDocument(doc)
-			, fDocIcon(BLRect(0,0, iconSize, iconSize))
+			, fDocIcon(WGRectD(0,0, iconSize, iconSize))
 			, fIconSize(iconSize)
 		{
 			const std::filesystem::path filePath(name);
@@ -39,9 +39,10 @@ namespace waavs {
 			ViewNavigator nav;
 
 			
-			BLRect bbox = doc->objectBoundingBox();
-			nav.setFrame(BLRect(2, 1, iconSize, iconSize));
-			nav.setBounds(bbox);
+			WGRectD bounds = doc->viewPort();
+
+			nav.setFrame(WGRectD(2, 1, iconSize, iconSize));
+			nav.setBounds(bounds);
 
 			// set the scene to surface transform
 			// on the doc icon so it will have the alignment we want
@@ -73,12 +74,12 @@ namespace waavs {
 
 		void drawBackground(IRenderSVG* ctx) override 
 		{
-			BLRect fr = frame();
+			WGRectD fr = frame();
 			ctx->strokeWidth(3);
 
 			BLPath apath;
-			BLRect rect(0, 0, fr.w, fr.h);
-			apath.addRect(rect);
+			//WGRectD rect(0, 0, fr.w, fr.h);
+			apath.addRect(0,0,fr.w,fr.h);
 
 			if (isSelected())
 				ctx->stroke(BLRgba32(0xff7f2f2f));
@@ -97,7 +98,7 @@ namespace waavs {
 			
 			// Draw Draw the icon's filename
 
-			BLRect fr = frame();
+			WGRectD fr = frame();
 			ctx->fill(BLRgba32(0xff000000));
 			ctx->fillText(fFilename.c_str(), 4 + fIconSize, fr.h - 6);
 			
@@ -128,13 +129,13 @@ namespace waavs {
 	{
 		static constexpr int sSmallIconSize = 24;
 		
-		FileIconSmall(const std::string& name, SVGDocumentHandle doc, const BLRect& fr = { 0,0,128,24 })
-			: FileIcon(name, doc, sSmallIconSize, BLRect(fr.x, fr.y, fr.w, sSmallIconSize))
+		FileIconSmall(const std::string& name, SVGDocumentHandle doc, const WGRectD& fr = { 0,0,128,24 })
+			: FileIcon(name, doc, sSmallIconSize, WGRectD(fr.x, fr.y, fr.w, sSmallIconSize))
 		{
 		}
 
 		// Create an instance
-		static std::shared_ptr<FileIcon> create(const std::string& name, SVGDocumentHandle doc, const BLRect& fr)
+		static std::shared_ptr<FileIcon> create(const std::string& name, SVGDocumentHandle doc, const WGRectD& fr)
 		{
 			auto icon = std::make_shared<FileIconSmall>(name, doc, fr);
 			return icon;
@@ -148,13 +149,13 @@ namespace waavs {
 	{
 		static size_t iconSize() { static constexpr size_t sIconSize=64;  return sIconSize; }
 		
-		FileIconLarge(const std::string& name, SVGDocumentHandle doc, const BLRect& fr = { 0,0,128,24 })
-			: FileIcon(name, doc, iconSize(), BLRect(fr.x, fr.y, fr.w, iconSize()))
+		FileIconLarge(const std::string& name, SVGDocumentHandle doc, const WGRectD& fr = { 0,0,128,24 })
+			: FileIcon(name, doc, iconSize(), WGRectD(fr.x, fr.y, fr.w, iconSize()))
 		{
 		}
 		
 		// Create an instance
-		static std::shared_ptr<FileIcon> create(const std::string& name, SVGDocumentHandle doc, const BLRect& fr)
+		static std::shared_ptr<FileIcon> create(const std::string& name, SVGDocumentHandle doc, const WGRectD& fr)
 		{
 			auto icon = std::make_shared<FileIconLarge>(name, doc, fr);
 			return icon;
@@ -176,12 +177,12 @@ namespace waavs {
 		SVGFileIconHandle fHoverIcon{};
 		SVGFileIconHandle fSelectedIcon{};
 
-		SVGFileListView(const BLRect& aframe)
+		SVGFileListView(const WGRectD& aframe)
 			:SVGCachedView(aframe)
 		{
 
-			fNavigator.setFrame(BLRect(0, 0, aframe.w, aframe.h));
-			fNavigator.setBounds(BLRect(0, 0, aframe.w, aframe.h));
+			fNavigator.setFrame(WGRectD(0, 0, aframe.w, aframe.h));
+			fNavigator.setBounds(WGRectD(0, 0, aframe.w, aframe.h));
 			fNavigator.subscribe([this](const bool& e) {this->handleViewChange(e); });
 
 			fCacheContext.background(BLRgba32(0xffffff00));
@@ -226,8 +227,8 @@ namespace waavs {
 			auto doc = SVGFactory::createFromChunk(aspan, appFrameWidth, appFrameHeight, physicalDpi);
 
 			int nFiles = fFileList.size();
-			//auto anItem = FileIconSmall::create(filename, doc, BLRect(3,nFiles*(sCellHeight),250,24));
-			auto anItem = FileIconLarge::create(filename, doc, BLRect(3,nFiles*(cellHeight()),250,24));
+			//auto anItem = FileIconSmall::create(filename, doc, WGRectD(3,nFiles*(sCellHeight),250,24));
+			auto anItem = FileIconLarge::create(filename, doc, WGRectD(3,nFiles*(cellHeight()),250,24));
 			anItem->subscribe([this](const FileIcon& fIcon) {this->handleFileSelected(fIcon); });
 
 			fFileList.push_back(anItem);
@@ -332,7 +333,7 @@ namespace waavs {
 				{
 					// Perform vertical scrolling 
 					//printf("DELTA: %f\n", le.delta);
-					BLRect b = fNavigator.bounds();
+					WGRectD b = fNavigator.bounds();
 					if (le.delta < 0)
 					{
 						// roll wheel towards user
@@ -402,7 +403,7 @@ namespace waavs {
 			// get the frame of the hover icon
 			//if (fHoverIcon != nullptr)
 			//{
-			//	BLRect iconFrame = fHoverIcon->frame();
+			//	WGRectD iconFrame = fHoverIcon->frame();
 			//	ctx->fillRect(iconFrame, BLRgba32(0x80A0A0A0));
 			//}
 		}

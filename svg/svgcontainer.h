@@ -1,7 +1,7 @@
 #pragma once
 
-#include "svgstructuretypes.h"
 
+#include "svggraphicselement.h"
 
 namespace waavs {
     //

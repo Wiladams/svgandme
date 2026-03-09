@@ -4,13 +4,14 @@
 
 #include <functional>
 
-#include "blend2d.h"
+
+#include "blend2d_connect.h"
 
 #include "fonthandler.h"
 #include "svgenums.h"
 #include "svgdrawingstate.h"
 #include "imanagesvgstate.h"
-
+#include "surface.h"
 
 namespace waavs
 {
@@ -58,6 +59,9 @@ namespace waavs
         SVGTextPosStream eff{};
     };
 }
+
+
+
 
 namespace waavs
 {
@@ -109,12 +113,12 @@ namespace waavs
             resetFont();
         }
         
-        virtual void onAttach(BLImageCore& image, const BLContextCreateInfo* createInfo)
+        virtual void onAttach(Surface& surf, int threadCount)
         {}
 
-        void attach(BLImageCore& image, const BLContextCreateInfo* createInfo = nullptr) noexcept
+        void attach(Surface& surf, int threadCount) noexcept
         {
-            onAttach(image, createInfo);
+            onAttach(surf, threadCount);
         }
         
         virtual void onDetach() {}
@@ -126,7 +130,7 @@ namespace waavs
         }
         
 
-        
+        virtual BLImage* currentTarget() const noexcept { return nullptr; }
 
         // Call this before each frame to be drawn
         virtual void onRenew() {}
@@ -252,7 +256,7 @@ namespace waavs
         void pop()
         {
             //printf("IRenderSVG.pop()\n");
-            const BLPoint tCursor = textCursor();
+            const WGPointD tCursor = textCursor();
 
             fStateStack.pop();
 			setDrawingState(fStateStack.currentState());
@@ -296,7 +300,7 @@ namespace waavs
         virtual void onTransform(const BLMatrix2D& value) {}
         void transform(const BLMatrix2D& value)
         {
-            setTransform(value);
+            //setTransform(value);
             onTransform(value);
         }
 
@@ -309,9 +313,9 @@ namespace waavs
         virtual void onScale(double sx, double sy) {}
 		void scale(double x, double y)
 		{
-            auto t = getTransform();
-            t.scale(x, y);
-			setTransform(t);
+            //auto t = getTransform();
+            //t.scale(x, y);
+			//setTransform(t);
 
             onScale(x,y);
 		}
@@ -328,10 +332,10 @@ namespace waavs
         virtual void onRotate(double angle, double cx, double xy) {}
         void rotate(double angle, double cx, double cy)
 		{
-            auto t = getTransform();
-            t.rotate(angle, cx, cy);
+            //auto t = getTransform();
+            //t.rotate(angle, cx, cy);
 
-            setTransform(t);
+            //setTransform(t);
 
             onRotate(angle, cx, cy);
 		}
@@ -345,11 +349,11 @@ namespace waavs
         void translate(double x, double y)
         {
             // get current transform
-            auto t = getTransform();
-            t.translate(x, y);
+            //auto t = getTransform();
+            //t.translate(x, y);
 
             // apply the translation to it
-            setTransform(t);
+            //setTransform(t);
 
             // call onTranslate
             onTranslate(x, y);
@@ -508,8 +512,8 @@ namespace waavs
 
         // Typography
         virtual void onTextCursor() {}
-        BLPoint textCursor() const { return getTextCursor(); }
-        void textCursor(const BLPoint& cursor)
+        WGPointD textCursor() const { return getTextCursor(); }
+        void textCursor(const WGPointD& cursor)
         {
             setTextCursor(cursor);
             onTextCursor();
@@ -517,7 +521,7 @@ namespace waavs
 
         // BUGBUG - this should become a part of the state management
         virtual void onFillMask() {}
-        void setFillMask(BLImage& mask, const BLRectI& maskArea)
+        void setFillMask(BLImage& mask, const WGRectI& maskArea)
         {
             BLPointI origin(maskArea.x, maskArea.y);
             onFillMask();
@@ -525,7 +529,7 @@ namespace waavs
 
         // Clipping
         virtual void onClipRect() {}
-        void clipRect(const BLRect& cRect)
+        void clipRect(const WGRectD& cRect)
         {
             setClipRect(cRect);
             onClipRect();
@@ -534,7 +538,7 @@ namespace waavs
         virtual void onNoClip() {}
         virtual void noClip()
         {
-            setClipRect(BLRect());
+            setClipRect(WGRectD{});
             onNoClip();
         }
 
@@ -579,22 +583,22 @@ namespace waavs
         
         
         // Bitmap drawing
-        virtual void onImage(const BLImage& img, double x, double y)
+        virtual void onImage(const Surface& img, double x, double y)
         {
         }
 
-        void image(const BLImage& img, double x, double y)
+        void image(const Surface& img, double x, double y)
         {
             onImage(img, x, y);
         }
         
-        virtual void onScaleImage(const BLImage& src,
+        virtual void onScaleImage(const Surface& src,
             int srcX, int srcY, int srcWidth, int srcHeight,
             double dstX, double dstY, double dstWidth, double dstHeight)
         {
         }
 
-        void scaleImage(const BLImage& src,
+        void scaleImage(const Surface& src,
             int srcX, int srcY, int srcWidth, int srcHeight,
             double dstX, double dstY, double dstWidth, double dstHeight) 
         {

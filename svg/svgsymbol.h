@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "svgstructuretypes.h"
+#include "svggraphicselement.h"
 
 namespace waavs {
 	//===========================================
@@ -72,7 +72,7 @@ namespace waavs {
 
 			// Instance viewport should already be established by <use>.
 			// In your current <use> pattern, this is typically {0,0,w,h}.
-			const BLRect instanceVP = ctx->viewport();
+			const WGRectD instanceVP = ctx->viewport();
 			if (instanceVP.w <= 0.0 || instanceVP.h <= 0.0)
 				return;
 

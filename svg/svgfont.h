@@ -344,3 +344,57 @@ namespace waavs {
 	
 
 }
+
+namespace waavs {
+	//
+	// parseFont()
+	// Turn a base64 encoded inlined font into a BLFontFace
+	// This will typically be created in a style sheet with 
+	// a @font-face rule
+	//
+	static bool parseFont(const ByteSpan& inChunk, BLFontFace& face)
+	{
+		bool success{ false };
+		ByteSpan value = inChunk;;
+
+		// figure out what kind of encoding we're dealing with
+		// value starts with: 'data:imaxsge/png;base64,<base64 encoded image>
+		//
+		ByteSpan data = chunk_token(value, ":");
+		auto mime = chunk_token(value, ";");
+		auto encoding = chunk_token(value, ",");
+
+
+		if (value) {
+			if (encoding == "base64" && mime == "base64")
+			{
+				unsigned int outBuffSize = base64::getDecodeOutputSize(value.size());
+				MemBuff outBuff(outBuffSize);
+
+				auto decodedSize = base64::decode(value.data(), value.size(), outBuff.data(), outBuffSize);
+
+				if (decodedSize > 0)
+				{
+					BLDataView dataView{};
+					dataView.reset(outBuff.data(), decodedSize);
+
+					// create a BLFontData
+					BLFontData fontData;
+					fontData.createFromData(outBuff.data(), decodedSize);
+
+
+					BLResult result = face.createFromData(fontData, 0);
+					if (result == BL_SUCCESS)
+					{
+						success = true;
+					}
+				}
+				else {
+					printf("parseFont() - Error base64 decoding font data\n");
+				}
+			}
+		}
+
+		return success;
+	}
+}

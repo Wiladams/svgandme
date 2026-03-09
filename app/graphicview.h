@@ -36,7 +36,7 @@ namespace waavs {
 		{
 		}
 
-		GraphicView(const BLRect& aframe)
+		GraphicView(const WGRectD& aframe)
 		{
             fPortalView.setViewportFrame(aframe);
             fPortalView.setViewBoxFrame({ 0,0,aframe.w, aframe.h });
@@ -50,26 +50,26 @@ namespace waavs {
 		void setSceneToSurfaceTransform(const BLMatrix2D& tform) { fSceneToSurfaceTransform = tform; }
 
 
-		const BLRect frame() const 
+		const WGRectD frame() const 
 		{ 
-			BLRect vpFrame{};
+			WGRectD vpFrame{};
             fPortalView.getViewportFrame(vpFrame);
 
 			return vpFrame; 
 		}
-		virtual void setFrame(const BLRect& arect) 
+		virtual void setFrame(const WGRectD& arect) 
 		{ 
             fPortalView.setViewportFrame(arect);
 		}
 
 
-		const BLRect bounds() const 
+		const WGRectD bounds() const 
 		{ 
-			BLRect vbFrame{};
+			WGRectD vbFrame{};
             fPortalView.getViewBoxFrame(vbFrame);
 			return vbFrame; 
 		}
-		virtual void setBounds(const BLRect& arect) { fPortalView.setViewBoxFrame(arect); }
+		virtual void setBounds(const WGRectD& arect) { fPortalView.setViewBoxFrame(arect); }
 
 		virtual bool contains(double x, double y) {
 			const auto & fr = frame();
@@ -94,12 +94,12 @@ namespace waavs {
 
 		virtual void draw(IRenderSVG* ctx)
 		{
-			BLRect fr = frame();
+			WGRectD fr = frame();
 
 
 			ctx->push();
 			ctx->translate(fr.x, fr.y);
-			ctx->clipRect(BLRect(0,0,fr.w, fr.h));
+			ctx->clipRect(WGRectD(0,0,fr.w, fr.h));
 			drawBackground(ctx);
 			ctx->noClip();
 			ctx->pop();
@@ -107,7 +107,7 @@ namespace waavs {
 			// Apply viewport transformation
 			ctx->push();
 			ctx->translate(fr.x, fr.y);
-			ctx->clipRect(BLRect(0, 0, fr.w, fr.h));
+			ctx->clipRect(WGRectD(0, 0, fr.w, fr.h));
 			//ctx->setTransform(sceneToSurfaceTransform());
 			drawSelf(ctx);
 			ctx->noClip();
@@ -115,7 +115,7 @@ namespace waavs {
 
 			ctx->push();
 			ctx->translate(frame().x, frame().y);
-			ctx->clipRect(BLRect(0, 0, fr.w, fr.h));
+			ctx->clipRect(WGRectD(0, 0, fr.w, fr.h));
 			drawForeground(ctx);
 			ctx->noClip();
 			ctx->pop();
@@ -127,12 +127,12 @@ namespace waavs {
 namespace waavs {
 	struct SVGCachedView : public GraphicView
 	{
-		BLImage fCachedImage{};
+		Surface fCachedImage{};
 		SVGB2DDriver fCacheContext;
         int fDrawingThreads{ 0 };
 		bool fNeedsRedraw{ true };
 
-		SVGCachedView(const BLRect& aframe, int drawingThreads=0)
+		SVGCachedView(const WGRectD& aframe, int drawingThreads=0)
 			:GraphicView(aframe)
             , fDrawingThreads(drawingThreads)
 		{
@@ -144,16 +144,13 @@ namespace waavs {
 		void setNeedsRedraw(const bool needsIt) { fNeedsRedraw = needsIt; }
 		bool needsRedraw() const { return fNeedsRedraw; }
 
-		void setFrame(const BLRect& arect) override
+		void setFrame(const WGRectD& arect) override
 		{
 			GraphicView::setFrame(arect);
 
-			fCachedImage.reset();
-			fCachedImage.create(static_cast<int>(arect.w), static_cast<int>(arect.h), BL_FORMAT_PRGB32);
+			fCachedImage.reset(arect.w, arect.h);
 			
-			BLContextCreateInfo ctxInfo{};
-			ctxInfo.threadCount = fDrawingThreads;
-			fCacheContext.attach(fCachedImage, &ctxInfo);
+			fCacheContext.attach(fCachedImage, fDrawingThreads);
 			fCacheContext.setViewport(arect);
 			
 			setNeedsRedraw(true);
@@ -167,7 +164,7 @@ namespace waavs {
 				fCacheContext.renew();
 				fCacheContext.clear();
 
-				BLRect fr = frame();
+				WGRectD fr = frame();
 				
 				//ctx->clipToRect(fr);
 
@@ -200,7 +197,7 @@ namespace waavs {
 			}
 
 			// just do a blt of the cached image
-			BLRect fr = frame();
+			WGRectD fr = frame();
 			ctx->image(fCachedImage, static_cast<int>(fr.x), static_cast<int>(fr.y));
 		}
 	};

@@ -8,7 +8,7 @@ namespace waavs {
 
 	struct BackgroundSelector : public GraphicView
 	{
-		BackgroundSelector(const BLRect& fr)
+		BackgroundSelector(const WGRectD& fr)
 			:GraphicView(fr)
 		{
 

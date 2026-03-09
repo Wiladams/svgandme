@@ -6,8 +6,8 @@
 
 
 #include "converters.h"
-#include "svgstructuretypes.h"
 
+#include "svggraphicselement.h"
 #include "screensnapshot.h"
 #include "frames_blend2d_source.h"
 #include "frames_ffmpeg_source.h"
@@ -306,10 +306,9 @@ namespace waavs
 {
     //
     // DisplayCaptureElement
-    // This is a source of paint, just like a SVGImage
-    // It captures from the user's screen
-    // Return value as variant(), and it can be used in all 
-    // the same places a SVGImage can be used 
+    // This is a base for video sequence frames.
+    // It can be used standalone, like SVGImage, and also as
+    // a paint source for fills and patterns (support getVariant())
     //
     struct SVGFramesElement : public SVGGraphicsElement
     {
@@ -349,6 +348,7 @@ namespace waavs
 
 
         bool fHasCapture = false;
+        double fFrameRate{ 15.0 }; // default to 15 fps if not specified
 
         // Resolved location where we are drawing
         double fX{ 0 };
@@ -357,6 +357,7 @@ namespace waavs
         double fHeight{ 0 };
         SpaceUnitsKind fDisplayUnits{ SpaceUnitsKind::SVG_SPACE_USER };
 
+        BLImage fPatternImage{};
         BLPattern fPatternForVariant{};
 
 
@@ -400,6 +401,12 @@ namespace waavs
             parseNumberOrPercent(getAttribute(svgattr::cropHeight()), fCropHeightAuth);
 
             
+            ByteSpan fpsA;
+            if (fAttributes.getValue(svgattr::frame_rate(), fpsA)) {
+                double v{};
+                if (parseNumber(fpsA, v))
+                    fFrameRate = v;
+            }
 
             ByteSpan duA;
             if (fAttributes.getValue(svgattr::displayUnits(), duA)) {
@@ -444,6 +451,8 @@ namespace waavs
             if (!fSource)
                 return;
 
+            fSource->setFrameRate(fFrameRate);
+
             // 2) Prepare descripto using srcRest + authored crop values
             // if no scheme, rest is the whole thing
             ByteSpan srcRest = fSourceRest ? fSourceRest : fSrcSpan; 
@@ -454,6 +463,8 @@ namespace waavs
             desc.cropY = fCropYAuth;
             desc.cropW = fCropWidthAuth;
             desc.cropH = fCropHeightAuth;
+            desc.maxFps = fFrameRate;
+
             //desc.hasCrop = fCropWidthAuth.isSet() && fCropHeightAuth.isSet();
 
             // if we define maxFps as an attribute, we'll pass that as well
@@ -495,7 +506,7 @@ namespace waavs
             {
                 // We're drawing in objectFrame units
                 // so get current object frame
-                BLRect objFrame = ctx->getObjectFrame();
+                WGRectD objFrame = ctx->getObjectFrame();
                 w = objFrame.w;
                 h = objFrame.h;
 
@@ -528,7 +539,8 @@ namespace waavs
             // 5) - Provide variant pattern
             // set a pattern transform
             // to accomodate where it's going to be displayed
-            fPatternForVariant.setImage(fSource->pixels().image());
+            fPatternImage = blImageFromSurface(fSource->pixels());
+            fPatternForVariant.setImage(fPatternImage);
             fPatternForVariant.setTransform(pattMatrix);
 
 
@@ -552,7 +564,7 @@ namespace waavs
 
             auto& px = fSource->pixels();
 
-            ctx->scaleImage(px.image(), 0, 0, (int)px.width(), (int)px.height(), fX, fY, fWidth, fHeight);
+            ctx->scaleImage(px, 0, 0, (int)px.width(), (int)px.height(), fX, fY, fWidth, fHeight);
             ctx->flush();
         }
 

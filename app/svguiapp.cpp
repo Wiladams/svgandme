@@ -1,4 +1,4 @@
-#pragma comment(lib, "blend2d.lib")
+
 
 #include <filesystem>
 

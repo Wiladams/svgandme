@@ -1,18 +1,14 @@
 #pragma once
 
 
-#include "svgstructuretypes.h"
-#include "svgattributes.h"
 #include "xmlentity.h"
 #include "twobitpu.h"
+
+#include "svgattributes.h"
+#include "svggraphicselement.h"
+
+
 #include "svgtextlayout.h"
-
-
-
-
-
-
-
 
 
 //
@@ -50,7 +46,7 @@ namespace waavs
         MemBuff fOwned{};
 
         // ObjectBounding box
-        BLRect fBBox{};
+        WGRectD fBBox{};
 
 
         SVGTextRun() = default;
@@ -67,8 +63,8 @@ namespace waavs
         void fixupStyleAttributes(IAmGroot*) override {}
 
         const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override { return BLVar{}; }
-        BLRect objectBoundingBox() const override { return fBBox; }
-        void setBBox(const BLRect& box) { fBBox = box; }
+        //WGRectD objectBoundingBox() const override { return fBBox; }
+        void setBBox(const WGRectD& box) { fBBox = box; }
 
         // no-op
         void update(IAmGroot* ) override {}
@@ -317,7 +313,7 @@ namespace waavs {
 
         // For dx: percent is relative to viewport width; for dy: viewport height.
         // But SVGVariableSize::calculatePixels already takes "relativeTo" input.
-        BLRect vp = ctx->viewport();
+        WGRectD vp = ctx->viewport();
         const double rel = isDx ? vp.w : vp.h;
 
         const double px = dim.calculatePixels(ctx->getFont(), rel, 0.0, dpi);
@@ -348,7 +344,7 @@ namespace waavs {
         const ByteSpan& txt,
         TXTALIGNMENT vAlign,
         DOMINANTBASELINE domBase,
-        BLRect& ioBBox) noexcept
+        WGRectD& ioBBox) noexcept
     {
         //=============== TEST =================
         const bool hasPS = ctx->hasTextPosStream();
@@ -374,16 +370,16 @@ namespace waavs {
 
         // 2) Resolve baseline origin using your existing alignment policy
         const SVGAlignment anchor = ctx->getTextAnchor();
-        const BLPoint pos = ctx->textCursor();
+        const WGPointD pos = ctx->textCursor();
 
-        const BLRect pRect = Fontography::calcTextPosition(font, txt, pos.x, pos.y, anchor, vAlign, domBase);
+        const WGRectD pRect = Fontography::calcTextPosition(font, txt, pos.x, pos.y, anchor, vAlign, domBase);
         expandRect(ioBBox, pRect);
 
         // 3) Access glyph run
         BLGlyphRun grun = gb.glyphRun();
         const size_t n = size_t(grun.size);
         if (!n) {
-            ctx->textCursor(BLPoint(pRect.x, pRect.y));
+            ctx->textCursor({ pRect.x, pRect.y });
             return;
         }
 
@@ -393,7 +389,7 @@ namespace waavs {
             grun = gb.glyphRun();
             if (!grun.placementData) {
                 ctx->fillText(txt, pRect.x, pRect.y);
-                ctx->textCursor(BLPoint(pRect.x + pRect.w, pRect.y));
+                ctx->textCursor({ pRect.x + pRect.w, pRect.y });
                 return;
             }
         }
@@ -538,7 +534,7 @@ namespace waavs {
         const double endX = originX + tm.advance.x + cumDxUser;
         const double endY = originY + tm.advance.y + cumDyUser;
 
-        ctx->textCursor(BLPoint(endX, endY));
+        ctx->textCursor({ endX, endY });
     }
 
 
@@ -572,7 +568,7 @@ namespace waavs
         TXTALIGNMENT fTextVAlignment = TXTALIGNMENT::BASELINE;
         DOMINANTBASELINE fDominantBaseline = DOMINANTBASELINE::AUTO;
 
-        BLRect fBBox{};
+        WGRectD fBBox{};
 
         double fX{ 0 }, fY{ 0 };
 
@@ -594,10 +590,10 @@ namespace waavs
         }
 
         // --- initial position policy hooks ---
-        virtual BLPoint defaultCursor(IRenderSVG* ctx) const noexcept = 0;
+        virtual WGPointD defaultCursor(IRenderSVG* ctx) const noexcept = 0;
 
 
-        BLRect objectBoundingBox() const override { return fBBox; }
+        const WGRectD calculateObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot) const override { return fBBox; }
 
         // child loading shared between 'text' and 'tspan'
         void loadContentNode(const XmlElement& elem, IAmGroot* groot) override
@@ -803,7 +799,9 @@ namespace waavs
                 }
                 else {
                     node->draw(ctx, groot);
-                    expandRect(fBBox, node->objectBoundingBox());
+                    WGRectD nodeBox{};
+                    //nodeBox = node->objectBoundingBox();
+                    //expandRect(fBBox, nodeBox);
                 }
             }
 
@@ -841,11 +839,11 @@ namespace waavs
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
             const double dpi = groot ? groot->dpi() : 96.0;
-            const BLRect cFrame = ctx->viewport();
+            const WGRectD cFrame = ctx->viewport();
             const double w = cFrame.w;
             const double h = cFrame.h;
 
-            BLPoint base = defaultCursor(ctx);
+            WGPointD base = defaultCursor(ctx);
             fX = base.x;
             fY = base.y;
 
@@ -860,7 +858,7 @@ namespace waavs
                 fY += evalSingleLengthPx(ctx, groot, fDySpan, /*rel*/h);
 
             // Establish initial cursor (this is what accumulates across tspans)
-            ctx->textCursor(BLPoint(fX, fY));
+            ctx->textCursor({ fX, fY });
 
             fPushedTextPosition = false;
 
@@ -882,52 +880,6 @@ namespace waavs
                 fPushedTextPosition = true;
             }
         }
-
-
-
-        /*
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
-        {
-            double dpi = groot ? groot->dpi() : 96.0;
-            BLRect cFrame = ctx->viewport();
-            double w = cFrame.w;
-            double h = cFrame.h;
-
-            // Base cursor policy: <text> defaults (0,0), <tspan> defaults current cursor
-            BLPoint base = defaultCursor(ctx);
-            fX = base.x;
-            fY = base.y;
-
-            // Absolute x/y override
-            if (fDimX.isSet())
-                fX = fDimX.calculatePixels(ctx->getFont(), w, 0, dpi);
-
-            if (fDimY.isSet())
-                fY = fDimY.calculatePixels(ctx->getFont(), h, 0, dpi);
-
-
-            // Set initial cursor before children draw
-            ctx->textCursor(BLPoint(fX, fY));
-
-            fPushedTextPosition = false;
-
-
-            // Push list streams if present
-            if (fHasDxStream || fHasDyStream || fHasRotStream)
-            {
-                SVGTextPosStream local{};
-
-                // works for single OR list
-                if (fHasDxStream) {local.hasDx = true;local.dx.reset(fDxSpan);}
-                if (fHasDyStream) {local.hasDy = true;local.dy.reset(fDySpan);}
-                if (fHasRotStream) {local.hasRotate = true;local.rotate.reset(fRotateSpan);	}
-
-                ctx->pushTextPosStream(local);
-                fPushedTextPosition = true;
-            }
-        }
-        */
-
 
     };
 }
@@ -959,7 +911,7 @@ namespace waavs {
 
         SVGTSpanNode(IAmGroot* groot) : SVGTextContainerNode(groot) {}
 
-        BLPoint defaultCursor(IRenderSVG* ctx) const noexcept override {
+        WGPointD defaultCursor(IRenderSVG* ctx) const noexcept override {
             return ctx->textCursor();
         }
     };
@@ -980,9 +932,9 @@ namespace waavs {
 
         SVGTextNode(IAmGroot* groot) : SVGTextContainerNode(groot) {}
 
-        BLPoint defaultCursor(IRenderSVG* ctx) const noexcept override
+        WGPointD defaultCursor(IRenderSVG* ctx) const noexcept override
         {
-            return BLPoint(0, 0);
+            return { 0, 0 };
         }
     };
 

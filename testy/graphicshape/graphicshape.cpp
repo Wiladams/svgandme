@@ -10,7 +10,6 @@
 
 #include "viewnavigator.h"
 #include "b2dpath.h"
-#include "ocspan.h"
 #include "wsenum.h"
 
 using namespace waavs;
@@ -382,10 +381,10 @@ static void quickDraw3(IRenderSVG* ctx)
 
 
 
-// Test OcSpan
+// Test ByteSpan
 static void quickDraw5(IRenderSVG* ctx)
 {
-	OcSpan span1("Hello, World!");
+	ByteSpan span1("Hello, World!");
 	for (auto c : span1)
 	{
 		printf("%c", c);
@@ -468,8 +467,10 @@ static SVGDocumentHandle DOMFromFilename(const char* filename)
 		return nullptr;
 	}
 
-	ByteSpan aspan(mapped->data(), mapped->size());
-	auto aDoc = SVGFactory::createDOM(aspan, FontHandler::getFontHandler());
+	ByteSpan aspan{};
+    aspan.resetFromSize(mapped->data(), mapped->size());
+
+	auto aDoc = SVGFactory::createFromChunk(aspan, 100, 100, 96.0);
 
 	return aDoc;
 }

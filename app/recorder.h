@@ -12,12 +12,14 @@
 #include <string>
 #include <cstdio>
 
-#include "blend2d.h"
+#include "blend2d_connect.h"
+#include "surface.h"
 
 namespace waavs {
     class Recorder
     {
-        BLImage * fSurface;
+        Surface* fSurface{ nullptr };
+        BLImage fImage{};
         BLImageCodec fCodec;
         
         std::string fBasename;
@@ -30,7 +32,7 @@ namespace waavs {
         Recorder() = delete;    // Don't want default constructor
 
     public:
-        Recorder(BLImage * surf, const char* basename = "frame", int fps = 30, int maxFrames = 0)
+        Recorder(Surface * surf, const char* basename = "frame", int fps = 30, int maxFrames = 0)
             : fSurface(surf)
             , fBasename(basename)
             , fFrameRate(fps)
@@ -38,20 +40,27 @@ namespace waavs {
             , fCurrentFrame(0)
             , fMaxFrames(maxFrames)
         {
+            if (surf != nullptr)
+                fImage.createFromData((int)surf->width(), (int)surf->height(), BL_FORMAT_PRGB32, surf->data(), surf->stride());
+            
             fCodec.findByName("QOI");
         }
 
-		void reset(BLImage* surf, const char* basename = "frame", int fps = 30, int maxFrames = 0)
-		{
-			fSurface = surf;
-			fBasename = basename;
-			fFrameRate = fps;
-			fIsRecording = false;
-			fCurrentFrame = 0;
-			fMaxFrames = maxFrames;
+        void reset(Surface* surf, const char* basename = "frame", int fps = 30, int maxFrames = 0)
+        {
+            fSurface = surf;
 
-            fCodec.findByName("QOI");
-		}
+            if (surf != nullptr)
+            {
+                fImage.createFromData((int)surf->width(), (int)surf->height(), BL_FORMAT_PRGB32, surf->data(), surf->stride());
+            }
+
+            fBasename = basename;
+            fFrameRate = fps;
+            fIsRecording = false;
+            fCurrentFrame = 0;
+            fMaxFrames = maxFrames;
+        }
 
         int frameCount() const { return fCurrentFrame; }
 
@@ -65,7 +74,7 @@ namespace waavs {
 
         void saveFrame()
         {
-            if (!fIsRecording)
+            if (!fIsRecording || !fSurface)
                 return;
 
             if (fMaxFrames > 0) {
@@ -78,7 +87,7 @@ namespace waavs {
             sprintf_s(frameName, 255, "%s%06d.qoi", fBasename.c_str(), fCurrentFrame);
             //BLImageCodec codec;
             //codec.findByName("QOI");
-            fSurface->writeToFile(frameName, fCodec);
+            fImage.writeToFile(frameName, fCodec);
 
             fCurrentFrame = fCurrentFrame + 1;
         }

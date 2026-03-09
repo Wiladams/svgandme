@@ -3,9 +3,10 @@
 #include <memory>
 
 #include "blend2d.h"
+
 #include "framesource.h"
 #include "stopwatch.h"
-#include "pixelaccessor.h"   // PixelArray
+#include "surface.h"
 #include "nametable.h"
 #include "charset.h"
 #include "bspan.h"
@@ -25,10 +26,10 @@ namespace waavs
         std::shared_ptr<MappedFile> fMappedFile{};
 
         // Output pixels (what SVGFramesElement will render)
-        PixelArray fPixels{};
-
+        Surface fPixels{};
 
         // Blend2D codec for decoding the image file
+        BLImage fCaptureImage{};
         BLImageCodec fCodec;
         BLImageDecoder fDecoder;
         BLImageInfo fImageInfo{};
@@ -100,14 +101,16 @@ namespace waavs
 
             // hold onto the frame count
             fFrameCount = fImageInfo.frameCount;
+            //fCaptureWidth = fImageInfo.size.w;
+            //fCaptureHeight = fImageInfo.size.h;
 
             // If we've gotten to here, we have successfully decoded the image info.  
             // We can use this to determine how many frames there are and what the dimensions are.
             
-            fCropX = (int64_t)bindNumberOrPercent(desc.cropX, fImageInfo.size.w, 0);
-            fCropY = (int64_t)bindNumberOrPercent(desc.cropY, fImageInfo.size.h, 0);
-            fCropWidth = (int64_t)bindNumberOrPercent(desc.cropW, fImageInfo.size.w, fImageInfo.size.w);
-            fCropHeight = (int64_t)bindNumberOrPercent(desc.cropH, fImageInfo.size.h, fImageInfo.size.h);
+            fCropX = (int64_t)resolveNumberOrPercent(desc.cropX, fImageInfo.size.w, 0);
+            fCropY = (int64_t)resolveNumberOrPercent(desc.cropY, fImageInfo.size.h, 0);
+            fCropWidth = (int64_t)resolveNumberOrPercent(desc.cropW, fImageInfo.size.w, fImageInfo.size.w);
+            fCropHeight = (int64_t)resolveNumberOrPercent(desc.cropH, fImageInfo.size.h, fImageInfo.size.h);
 
             clampCropToImageBounds();
             if (fCropWidth <= 0 || fCropHeight <= 0)
@@ -128,6 +131,8 @@ namespace waavs
 
             fLastCaptureTime = 0;
 
+            // initialize the surface with the first frame of the image, 
+            // so that we have something to draw immediately.
             // Get at least the first frame
             update();
 
@@ -151,7 +156,12 @@ namespace waavs
 
             // Get the next frame in sequence
             fCurrentFrame = fDecoder.frameIndex();
-            BLResult res = fDecoder.readFrame(fPixels.image(), (const uint8_t*)fMappedFile->data(), fMappedFile->size());
+            BLResult res = fDecoder.readFrame(fCaptureImage, (const uint8_t*)fMappedFile->data(), fMappedFile->size());
+            BLImageData imgData{};
+            res = fCaptureImage.getData(&imgData);
+            fPixels.createFromData((size_t)fCropWidth, (size_t)fCropHeight, 
+                (size_t)imgData.stride, 
+                (uint8_t *)imgData.pixelData);
 
             // make not of current time as last capture time
             fLastCaptureTime = fTimer.seconds();
@@ -163,8 +173,8 @@ namespace waavs
             return true;
         }
 
-        PixelArray& pixels() noexcept override { return fPixels; }
-        const PixelArray& pixels() const noexcept override { return fPixels; }
+        Surface& pixels() noexcept override { return fPixels; }
+        const Surface& pixels() const noexcept override { return fPixels; }
 
     };
 

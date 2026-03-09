@@ -27,7 +27,7 @@
 
 #include "layeredwindow.h"
 #include "stopwatch.h"
-
+#include "pixeling.h"
 
 
 
@@ -145,10 +145,10 @@ APP_EXPORT bool getScreenInches(double& scrWidth, double& scrHeight)
     return true;
 }
 
-AFrameBuffer* getAppFrameBuffer()
+Surface * getAppSurface()
 {
-    static std::unique_ptr<AFrameBuffer> gAppFrameBuffer = std::make_unique<AFrameBuffer>();
-    return gAppFrameBuffer.get();
+    static std::unique_ptr<Surface> gAppSurface = std::make_unique<Surface>();
+    return gAppSurface.get();
 }
 
 
@@ -222,8 +222,8 @@ void refreshScreenNow()
         // This is the workhorse of displaying directly
         // to the screen.  Everything to be displayed
         // must be in the FrameBuffer, even window chrome
-        LayeredWindowInfo lw(appFrameWidth, appFrameHeight);
-        lw.display(getAppWindow()->windowHandle(), getAppFrameBuffer()->getGDIContext());
+        //LayeredWindowInfo lw(appFrameWidth, appFrameHeight);
+        //lw.display(getAppWindow()->windowHandle(), getAppFrameBuffer()->getGDIContext());
     }
 }
 
@@ -684,6 +684,9 @@ static LRESULT HandlePointerMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
 
 // HandlePaintMessage()
 //
+// Takes care of putting the appFrameBuffer onto the screen in response
+// to a Windows paint message.
+//
 static LRESULT HandlePaintMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     //printf("HandlePaintMessage\n");
@@ -693,8 +696,8 @@ static LRESULT HandlePaintMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
 
 	HDC hdc = BeginPaint(hWnd, &ps);
         
-    int xDest = 0;
-    int yDest = 0;
+    int Destx = 0;
+    int Desty = 0;
     int DestWidth = appFrameWidth;
     int DestHeight = appFrameHeight;
     int xSrc = 0;
@@ -703,12 +706,23 @@ static LRESULT HandlePaintMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
     int SrcHeight = appFrameHeight;
     UINT StartScan = 0;
     UINT cLines = appFrameHeight;
-    
-    BITMAPINFO info = getAppFrameBuffer()->bitmapInfo();
-    
-    // Make sure we sync all current drawing
-    // BUGBUG - we don't have a way to guarantee this
-    // so, we'll leave it up to the app
+
+    Surface* s = getAppSurface();
+
+    BITMAPINFO bminfo{};
+    bminfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bminfo.bmiHeader.biWidth = (LONG)s->width();
+    bminfo.bmiHeader.biHeight = -(LONG)s->height();	// top-down DIB Section
+    bminfo.bmiHeader.biPlanes = 1;
+    bminfo.bmiHeader.biClrImportant = 0;
+    bminfo.bmiHeader.biClrUsed = 0;
+    bminfo.bmiHeader.biCompression = BI_RGB;
+    bminfo.bmiHeader.biBitCount = 32;
+    bminfo.bmiHeader.biSizeImage = DWORD(s->stride() * s->height());
+
+
+    // We are assuming the affFrameBuffer is free to be
+    // drawn at this moment
 
     //int pResult = StretchDIBits(hdc,
     //    xDest,yDest,
@@ -720,16 +734,16 @@ static LRESULT HandlePaintMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
     //    SRCCOPY);
     int pResult = SetDIBitsToDevice(
         hdc,
-        xDest,
-        yDest,
+        Destx,
+        Desty,
         DestWidth,
         DestHeight,
         xSrc,
         ySrc,
         StartScan,
         cLines,
-        getAppFrameBuffer()->data(),
-        &info,
+        s->data(),
+        &bminfo,
         DIB_RGB_COLORS
     );
 
@@ -1100,13 +1114,18 @@ void setCanvasPosition(int x, int y)
 
 bool setAppFrameSize(long aWidth, long aHeight)
 {
-    getAppFrameBuffer()->reset(aWidth, aHeight);
+    Surface* s = getAppSurface();
+    if (!s) {
+        return false;
+    }
+
+    s->reset(aWidth, aHeight);
 
     appFrameWidth = aWidth;
     appFrameHeight = aHeight;
 
-    appFramePixelData = (uint8_t *)getAppFrameBuffer()->data();
-    appFrameStride = getAppFrameBuffer()->stride();
+    appFramePixelData = (uint8_t *)s->data();
+    appFrameStride = s->stride();
 
     return true;
 }

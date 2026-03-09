@@ -8,19 +8,19 @@
 //==================================================
 
 #include <functional>
-#include <unordered_map>
-#include <string>
+//#include <string>
 
-#include "svgattributes.h"
-#include "svgstructuretypes.h"
 #include "converters.h"
+#include "svgattributes.h"
+#include "svggraphicselement.h"
+
 #include "viewport.h"
 
 namespace waavs {
     //
     // parseImage()
     // 
-    // Turn a base64 encoded inlined image into a BLImage
+    // Turn a base64 encoded inlined image into a Surface
     // We are handed the attribute, typically coming from a 
     // href of an <image> tag, or as a lookup for a fill, or stroke, 
     // paint attribute.
@@ -152,6 +152,7 @@ namespace waavs
         DocImageState fDocState{};
 
         // Resolved state of the image
+        Surface fSurface{};
         BLImage fImage{};
         BLVar fImageVar{};
 
@@ -174,9 +175,9 @@ namespace waavs
         }
 
 
-        BLRect objectBoundingBox() const override
+        const WGRectD objectBoundingBox() const noexcept override
         {
-            return BLRect(fX, fY, fWidth, fHeight);
+            return { fX, fY, fWidth, fHeight };
         }
         
         const BLVar getVariant(IRenderSVG *ctx, IAmGroot *groot) noexcept override
@@ -209,8 +210,11 @@ namespace waavs
                 // First, see if it's embedded data
                 if (chunk_starts_with_cstr(fDocState.href, "data:"))
                 {
-                    if (parseImage(fDocState.href, fImage))
-                        fImageVar = fImage;
+                    if (!parseImage(fDocState.href, fImage))
+                        return;
+
+                    fSurface = surfaceFromBLImage(fImage);
+                    fImageVar = fImage;
                 }
                 else {
                     // Otherwise, assume it's a file reference
@@ -233,7 +237,7 @@ namespace waavs
             double w = 1.0;
             double h = 1.0;
 
-            const BLRect paintVP = ctx->viewport();
+            const WGRectD paintVP = ctx->viewport();
 
             w = paintVP.w;
             h = paintVP.h;
@@ -267,21 +271,14 @@ namespace waavs
 
             // We want to apply the preserveAspectRatio rules to determine 
             // how to fit the image into the specified width/height.
-            const BLRect viewport{ fX, fY, fWidth, fHeight };
-            const BLRect viewBox{ 0, 0, iw, ih };
+            const WGRectD viewport{ fX, fY, fWidth, fHeight };
+            const WGRectD viewBox{ 0, 0, iw, ih };
 
             BLMatrix2D xform{};
             if (!computeViewBoxToViewport(viewport, viewBox, fPAR, xform))
                 return;
 
             ctx->push();
-            
-            //if (fHasTransform)
-            //{
-                // Apply the image's own transform, if it has one, 
-                // on top of the preserveAspectRatio transform
-            //    ctx->applyTransform(fTransform);
-            //}
 
             // for SLICE, we need to crop to the viewport, so we set a clip
             if (fPAR.align() != AspectRatioAlignKind::SVG_ASPECT_RATIO_NONE &&
@@ -295,7 +292,7 @@ namespace waavs
             ctx->applyTransform(xform);
 
             //draw at (0,0) in image pixel space
-            ctx->image(fImage, 0, 0);
+            ctx->image(fSurface, 0, 0);
             ctx->pop();
         }
 

@@ -2,12 +2,16 @@
 
 
 
-#include <string>
+//#include <string>
 #include <array>
 #include <functional>
 #include <unordered_map>
+#include <memory>
 
-#include "svgstructuretypes.h"
+#include "svggraphicselement.h"
+#include "svgattributes.h"
+#include "filterprogrambuilder.h"
+
 
 
 // Elements related to filters
@@ -43,535 +47,1730 @@
 // feFuncA			- single
 //
 
+
+namespace waavs
+{
+    struct SVGComponentTransferFunc
+    {
+        FilterTransferFuncType fType{ FILTER_TRANSFER_IDENTITY };
+        float fP0{ 0.0f };
+        float fP1{ 0.0f };
+        float fP2{ 0.0f };
+        std::vector<float> fTable{};
+    };
+
+    static INLINE bool lengthToFilterNumberOrPercent(const SVGLengthValue& inVal,
+        SVGNumberOrPercent& outVal,
+        double dpi = 96.0,
+        const BLFont* font = nullptr) noexcept
+    {
+        return lengthValueToNumberOrPercent(inVal, outVal, dpi, font, true);
+    }
+
+
+}
+
+// Helpers to make parsing various filter attributes easier
+//
+namespace waavs
+{
+    static INLINE bool parseF32Attr(const ByteSpan& s, float& out) noexcept
+    {
+        double v = 0.0;
+        if (!parseNumber(s, v))
+            return false;
+        out = (float)v;
+        return true;
+    }
+
+    static INLINE bool parseU32Attr(const ByteSpan& s, uint32_t& out) noexcept
+    {
+        double v = 0.0;
+        if (!parseNumber(s, v))
+            return false;
+
+        if (v < 0.0)
+            v = 0.0;
+
+        out = (uint32_t)v;
+        return true;
+    }
+
+    static INLINE bool parseFloatPairAttr(const ByteSpan& s, float& a, float& b) noexcept
+    {
+        SVGTokenListView tv(s);
+        double x = 0.0;
+        double y = 0.0;
+
+        if (!tv.readANumber(x))
+            return false;
+
+        if (!tv.readANumber(y))
+            y = x;
+
+        a = (float)x;
+        b = (float)y;
+        return true;
+    }
+
+    static INLINE bool parseU32PairAttr(const ByteSpan& s, uint32_t& a, uint32_t& b) noexcept
+    {
+        SVGTokenListView tv(s);
+        double x = 0.0;
+        double y = 0.0;
+
+        if (!tv.readANumber(x))
+            return false;
+
+        if (!tv.readANumber(y))
+            y = x;
+
+        if (x < 1.0) x = 1.0;
+        if (y < 1.0) y = 1.0;
+
+        a = (uint32_t)x;
+        b = (uint32_t)y;
+        return true;
+    }
+
+    static INLINE bool parseFloatListAttr(const ByteSpan& s, std::vector<float>& out) noexcept
+    {
+        out.clear();
+
+        SVGTokenListView tv(s);
+        double v = 0.0;
+        while (tv.readANumber(v))
+            out.push_back((float)v);
+
+        return !out.empty();
+    }
+
+    static INLINE bool parseFloatListExact(const ByteSpan& s, float* dst, size_t n) noexcept
+    {
+        SVGTokenListView tv(s);
+        double v = 0.0;
+
+        for (size_t i = 0; i < n; ++i)
+        {
+            if (!tv.readANumber(v))
+                return false;
+            dst[i] = (float)v;
+        }
+
+        return true;
+    }
+
+    static INLINE bool parseBoolAttr(const ByteSpan& s, bool& out) noexcept
+    {
+        if (!s)
+            return false;
+
+        static InternedKey kTrue = PSNameTable::INTERN("true");
+        static InternedKey kFalse = PSNameTable::INTERN("false");
+        InternedKey k = PSNameTable::INTERN(s);
+
+        if (k == kTrue) {
+            out = true;
+            return true;
+        }
+
+        if (k == kFalse) {
+            out = false;
+            return true;
+        }
+
+        uint32_t v = 0;
+        if (!parseU32Attr(s, v))
+            return false;
+
+        out = (v != 0);
+        return true;
+    }
+
+    static INLINE bool parseStitchTilesAttr(const ByteSpan& s, bool& out) noexcept
+    {
+        if (!s)
+            return false;
+
+        static InternedKey kStitch = PSNameTable::INTERN("stitch");
+        static InternedKey kNoStitch = PSNameTable::INTERN("noStitch");
+        InternedKey k = PSNameTable::INTERN(s);
+
+        if (k == kStitch) {
+            out = true;
+            return true;
+        }
+
+        if (k == kNoStitch) {
+            out = false;
+            return true;
+        }
+
+        return false;
+    }
+
+    static INLINE bool parseLightColorAttr(IAmGroot* groot, const ByteSpan& s, uint32_t& rgba32) noexcept
+    {
+        if (!s)
+            return false;
+
+        SVGPaint paint(groot);
+        paint.loadFromChunk(s);
+
+        BLVar c = paint.getVariant(nullptr, groot);
+        return blVarToRgba32(&c, &rgba32) == BL_SUCCESS;
+    }
+
+    static INLINE void parseComponentTransferFuncNode(const std::shared_ptr<IViewable>& n, SVGComponentTransferFunc& out) noexcept
+    {
+        out = {};
+
+        auto g = std::dynamic_pointer_cast<SVGGraphicsElement>(n);
+        if (!g)
+            return;
+
+        ByteSpan typeAttr{};
+        if (g->getAttribute(filter::type_(), typeAttr))
+            out.fType = parseFilterTransferFuncType(PSNameTable::INTERN(typeAttr));
+        else
+            out.fType = FILTER_TRANSFER_IDENTITY;
+
+        switch (out.fType)
+        {
+        case FILTER_TRANSFER_LINEAR:
+            parseF32Attr(g->getAttribute(filter::slope()), out.fP0);
+            parseF32Attr(g->getAttribute(filter::intercept()), out.fP1);
+            break;
+
+        case FILTER_TRANSFER_GAMMA:
+            parseF32Attr(g->getAttribute(filter::amplitude()), out.fP0);
+            parseF32Attr(g->getAttribute(filter::exponent()), out.fP1);
+            parseF32Attr(g->getAttribute(filter::offset()), out.fP2);
+            break;
+
+        case FILTER_TRANSFER_TABLE:
+        case FILTER_TRANSFER_DISCRETE:
+            parseFloatListAttr(g->getAttribute(filter::tableValues()), out.fTable);
+            break;
+
+        case FILTER_TRANSFER_IDENTITY:
+        default:
+            break;
+        }
+    }
+}
+
+
+
+// All the filter primitives
+namespace waavs
+{
+    // Base class for filter primitives.
+    struct SVGFilterPrimitiveElement : public SVGGraphicsElement
+    {
+        FilterOpId fOperator{ FOP_END };
+
+        // Common attributes
+        InternedKey fIn{nullptr};
+        InternedKey fIn2{nullptr};
+        InternedKey fResult{nullptr};  // optional
+
+        SVGNumberOrPercent fX{};
+        SVGNumberOrPercent fY{};
+        SVGNumberOrPercent fWidth{};
+        SVGNumberOrPercent fHeight{};
+
+
+        SVGFilterPrimitiveElement(FilterOpId op) 
+            : SVGGraphicsElement() 
+            , fOperator(op)
+        {
+            setIsVisible(false);
+        }
+
+        virtual bool hasIn2() const noexcept { return fIn2 != nullptr; }
+        virtual bool hasOut() const noexcept { return fResult != nullptr; }
+        virtual bool hasSubregion() const noexcept
+        {
+            return fX.isSet() || fY.isSet() || fWidth.isSet() || fHeight.isSet();
+        }
+
+
+        uint8_t flagsForIO() const noexcept
+        {
+            uint8_t f = 0;
+            if (hasOut())       f |= FOPF_HAS_OUT;
+            if (hasIn2())       f |= FOPF_HAS_IN2;
+            if (hasSubregion()) f |= FOPF_HAS_SUBR;
+
+            return f;
+        }
+
+        // Implement this on each filter primitive to build up 
+        // the filter program.
+        virtual bool emitSelf(FilterProgramStream& fps, InternedKey& last) const noexcept
+        {
+            (void)fps;
+            (void)last;
+
+            return true;
+        }
+
+        // Given the last resolved key, resolve the 'in' key for this op.
+        // If the op states an explicit 'in' key, use that
+        // Otherwise, if last is non-null, use last
+        // Otherwise, default to SourceGraphic
+        InternedKey resolveIn1(InternedKey last) const noexcept
+        {
+            if (fIn) 
+                return fIn;
+
+            return last ? last : kFilter_SourceGraphic();
+        }
+
+
+        InternedKey resolveIn2(InternedKey last) const noexcept
+        {
+            if (fIn2) 
+                return fIn2;
+
+            return kFilter_SourceGraphic();
+        }
+
+        // -------------------------------------------
+        void emitCommonIO(FilterProgramStream& out,const InternedKey in1,const InternedKey in2, const uint8_t flags) const noexcept
+        {
+            out.mem.push_back(u64_from_key(in1));
+            if (flags & FOPF_HAS_IN2) 
+                out.mem.push_back(u64_from_key(in2));
+
+            if (flags & FOPF_HAS_OUT) 
+                out.mem.push_back(u64_from_key(fResult));
+
+            if (flags & FOPF_HAS_SUBR)
+            {
+                out.mem.push_back(packNumberOrPercent(fX));
+                out.mem.push_back(packNumberOrPercent(fY));
+                out.mem.push_back(packNumberOrPercent(fWidth));
+                out.mem.push_back(packNumberOrPercent(fHeight));
+            }
+        }
+
+
+        void emitCommon(FilterProgramStream& prog, InternedKey& last) const noexcept
+        {
+            const uint8_t flags = flagsForIO();
+            prog.ops.push_back(packOp(fOperator, flags));
+
+            const InternedKey in1 = resolveIn1(last);
+            const InternedKey in2 = resolveIn2(last);
+            emitCommonIO(prog, in1, in2, flags);
+        }
+
+        bool emitProgram(FilterProgramStream& prog, InternedKey& last) const noexcept
+        {
+            emitCommon(prog, last);
+            emitSelf(prog, last);
+
+            last = finishLast(fResult);
+
+            return true;
+        }
+
+        virtual void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept
+        {
+        }
+
+        // Here we grap the attributes that are common to all filter
+        // primitives.  we convert the subregion to NumberOrPercent
+        // for easier serialization
+        void fixupSelfStyleAttributes(IAmGroot* groot) override
+        {
+            double dpi = groot ? groot->dpi() : 96.0;
+            BLFont* fontOpt = nullptr;
+
+            ByteSpan fInAttr{}, fIn2Attr{}, fResultAttr{};
+            if (getAttribute(filter::in(), fInAttr)) { fIn = PSNameTable::INTERN(fInAttr);}
+            if (getAttribute(filter::in2(), fIn2Attr)) { fIn2 = PSNameTable::INTERN(fIn2Attr); }
+            if (getAttribute(filter::result(), fResultAttr)) { fResult = PSNameTable::INTERN(fResultAttr); }
+
+
+            // Subregion (optional)
+            SVGLengthValue x{};
+            SVGLengthValue y{};
+            SVGLengthValue w{};
+            SVGLengthValue h{};
+
+            parseLengthValue(getAttribute(svgattr::x()), x);
+            parseLengthValue(getAttribute(svgattr::y()), y);
+            parseLengthValue(getAttribute(svgattr::width()), w);
+            parseLengthValue(getAttribute(svgattr::height()), h);
+
+            lengthValueToNumberOrPercent(x, fX, dpi, fontOpt, true);
+            lengthValueToNumberOrPercent(y, fY, dpi, fontOpt, true);
+            lengthValueToNumberOrPercent(w, fWidth, dpi, fontOpt, true);
+            lengthValueToNumberOrPercent(h, fHeight, dpi, fontOpt, true);
+
+
+            fixupFilterSpecificAttributes(groot);
+        }
+    };
+
+    //
+    // feBlend
+    //
+    struct SVGFeBlendElement : public SVGFilterPrimitiveElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName("feBlend", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeBlendElement>(groot);
+                node->loadFromXmlElement(elem, groot);
+
+                return node;
+                });
+        }
+
+        static void registerFactory()
+        {
+            registerContainerNodeByName("feBlend", [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFeBlendElement>(groot);
+                node->loadFromXmlPull(iter, groot);
+                
+                return node;
+                });
+
+            registerSingularNode();
+        }
+
+        //-----------------------------------
+        FilterBlendMode fMode{ FilterBlendMode::FILTER_BLEND_NORMAL };
+
+        SVGFeBlendElement(IAmGroot* )
+            : SVGFilterPrimitiveElement(FOP_BLEND)
+        {
+
+        }
+
+
+        bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
+        {
+            emit_u32(out, (uint32_t)fMode);
+
+            return true;
+        }
+
+        void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
+        {
+            (void)groot;
+            ByteSpan modeAttr{};
+            if (getAttribute(filter::mode(), modeAttr)) 
+                fMode = parseFilterBlendMode(PSNameTable::INTERN(modeAttr));
+            else
+                fMode = FilterBlendMode::FILTER_BLEND_NORMAL;
+        }
+    };
+    
+    //
+    // feComponentTransfer
+    //
+
+
+    struct SVGFeComponentTransferElement : public SVGFilterPrimitiveElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName("feComponentTransfer", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeComponentTransferElement>(groot);
+                node->loadFromXmlElement(elem, groot);
+
+                return node;
+                });
+        }
+
+        static void registerFactory()
+        {
+            registerContainerNodeByName("feComponentTransfer", [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFeComponentTransferElement>(groot);
+                node->loadFromXmlPull(iter, groot);
+                return node;
+                });
+
+            registerSingularNode();
+        }
+
+        // ----------------------------------------------
+        SVGComponentTransferFunc fR{};
+        SVGComponentTransferFunc fG{};
+        SVGComponentTransferFunc fB{};
+        SVGComponentTransferFunc fA{};
+
+
+        SVGFeComponentTransferElement(IAmGroot* )
+            : SVGFilterPrimitiveElement(FOP_COMPONENT_TRANSFER)
+        {
+        }
+
+        static INLINE void emitTransferFunc(FilterProgramStream& out, const SVGComponentTransferFunc& f) noexcept
+        {
+            emit_u32(out, (uint32_t)f.fType);
+            emit_f32(out, f.fP0);
+            emit_f32(out, f.fP1);
+            emit_f32(out, f.fP2);
+            emit_counted_f32_list(out, f.fTable.empty() ? nullptr : f.fTable.data(), (uint32_t)f.fTable.size());
+        }
+
+        bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
+        {
+            emitTransferFunc(out, fR);
+            emitTransferFunc(out, fG);
+            emitTransferFunc(out, fB);
+            emitTransferFunc(out, fA);
+
+            return true;
+        }
+
+
+        void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
+        {
+            (void)groot;
+
+            fR = {};
+            fG = {};
+            fB = {};
+            fA = {};
+
+            for (auto& n : fNodes)
+            {
+                if (!n)
+                    continue;
+
+                auto g = std::dynamic_pointer_cast<SVGGraphicsElement>(n);
+                if (!g)
+                    continue;
+
+                auto nm = g->nameAtom();
+
+                if (nm == PSNameTable::INTERN("feFuncR"))
+                    parseComponentTransferFuncNode(n, fR);
+                else if (nm == PSNameTable::INTERN("feFuncG"))
+                    parseComponentTransferFuncNode(n, fG);
+                else if (nm == PSNameTable::INTERN("feFuncB"))
+                    parseComponentTransferFuncNode(n, fB);
+                else if (nm == PSNameTable::INTERN("feFuncA"))
+                    parseComponentTransferFuncNode(n, fA);
+            }
+        }
+
+    };
+    
+    
+    //
+    // feComposite
+    //
+    struct SVGFeCompositeElement : public SVGFilterPrimitiveElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName("feComposite", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeCompositeElement>(groot);
+                node->loadFromXmlElement(elem, groot);
+                
+                return node;
+            });
+        }
+
+        static void registerFactory()
+        {
+            registerContainerNodeByName("feComposite", [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFeCompositeElement>(groot);
+                node->loadFromXmlPull(iter, groot);
+                
+                return node;
+            });
+            
+            registerSingularNode();
+        }
+
+        // -------------------------------------------------
+        FilterCompositeOp fCompOp{ FILTER_COMPOSITE_OVER };
+        float fK1{ 0.0f };
+        float fK2{ 0.0f };
+        float fK3{ 0.0f };
+        float fK4{ 0.0f };
+
+
+        SVGFeCompositeElement(IAmGroot* )
+            : SVGFilterPrimitiveElement(FOP_COMPOSITE)
+        {
+            setIsVisible(false);
+        }
+
+        bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
+        {
+
+
+            emit_u32(out, (uint32_t)fOperator);
+
+            if (compositeOpNeedsArithmeticCoeffs(fCompOp)) {
+                emit_f32(out, fK1);
+                emit_f32(out, fK2);
+                emit_f32(out, fK3);
+                emit_f32(out, fK4);
+            }
+
+            return true;
+        }
+
+        void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
+        {
+            (void)groot;
+
+            ByteSpan opAttr{};
+            if (getAttribute(filter::operator_(), opAttr))
+                fCompOp = parseFilterCompositeOp(PSNameTable::INTERN(opAttr));
+            else
+                fCompOp = FILTER_COMPOSITE_OVER;
+
+            double v = 0.0;
+            if (parseNumber(getAttribute(filter::k1()), v)) fK1 = (float)v;
+            if (parseNumber(getAttribute(filter::k2()), v)) fK2 = (float)v;
+            if (parseNumber(getAttribute(filter::k3()), v)) fK3 = (float)v;
+            if (parseNumber(getAttribute(filter::k4()), v)) fK4 = (float)v;
+        }
+    };
+
+    //
+    // feColorMatrix
+    //
+    struct SVGFeColorMatrixElement : public SVGFilterPrimitiveElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName("feColorMatrix", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeColorMatrixElement>(groot);
+                node->loadFromXmlElement(elem, groot);
+                
+                return node;
+            });
+        }
+
+        static void registerFactory()
+        {
+            registerContainerNodeByName("feColorMatrix", [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFeColorMatrixElement>(groot);
+                node->loadFromXmlPull(iter, groot);
+                
+                return node;
+            });
+
+            registerSingularNode();
+        }
+
+        // -------------------------------------------------
+        
+        FilterColorMatrixType fType{ FILTER_COLOR_MATRIX_MATRIX };
+        float fValue{ 1.0f };
+        std::array<float, 20> fMatrix{
+            1,0,0,0,0,
+            0,1,0,0,0,
+            0,0,1,0,0,
+            0,0,0,1,0
+        };
+
+        SVGFeColorMatrixElement(IAmGroot* )
+            : SVGFilterPrimitiveElement(FOP_COLOR_MATRIX)
+        {
+        }
+
+        bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
+        {
+            emit_u32(out, (uint32_t)fType);
+
+            switch (fType)
+            {
+            case FILTER_COLOR_MATRIX_MATRIX:
+                emit_f32_list(out, fMatrix.data(), 20);
+                break;
+
+            case FILTER_COLOR_MATRIX_SATURATE:
+            case FILTER_COLOR_MATRIX_HUE_ROTATE:
+                emit_f32(out, fValue);
+                break;
+
+            case FILTER_COLOR_MATRIX_LUMINANCE_TO_ALPHA:
+            default:
+                break;
+            }
+
+            return true;
+        }
+
+        void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
+        {
+            (void)groot;
+
+            ByteSpan typeAttr{};
+            if (getAttribute(filter::type_(), typeAttr))
+                fType = parseFilterColorMatrixType(PSNameTable::INTERN(typeAttr));
+            else
+                fType = FILTER_COLOR_MATRIX_MATRIX;
+
+            ByteSpan valuesAttr{};
+            if (!getAttribute(filter::values(), valuesAttr))
+                return;
+
+            switch (fType)
+            {
+            case FILTER_COLOR_MATRIX_MATRIX:
+            {
+                float tmp[20]{};
+                if (parseFloatListExact(valuesAttr, tmp, 20))
+                {
+                    for (size_t i = 0; i < 20; ++i)
+                        fMatrix[i] = tmp[i];
+                }
+            } break;
+
+            case FILTER_COLOR_MATRIX_SATURATE:
+            case FILTER_COLOR_MATRIX_HUE_ROTATE:
+                parseF32Attr(valuesAttr, fValue);
+                break;
+
+            case FILTER_COLOR_MATRIX_LUMINANCE_TO_ALPHA:
+            default:
+                break;
+            }
+        }
+    };
+
+    //
+    // feConvolveMatrix
+    //
+    struct SVGFeConvolveMatrixElement : public SVGFilterPrimitiveElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName("feConvolveMatrix", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeConvolveMatrixElement>(groot);
+                node->loadFromXmlElement(elem, groot);
+
+                return node;
+                });
+        }
+
+        static void registerFactory()
+        {
+            registerContainerNodeByName("feConvolveMatrix", [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFeConvolveMatrixElement>(groot);
+                node->loadFromXmlPull(iter, groot);
+                return node;
+                });
+
+            registerSingularNode();
+        }
+
+        // -------------------------------------------------
+        uint32_t fOrderX{ 3 };
+        uint32_t fOrderY{ 3 };
+        std::vector<float> fKernel{};
+        float fDivisor{ 1.0f };
+        float fBias{ 0.0f };
+        uint32_t fTargetX{ 1 };
+        uint32_t fTargetY{ 1 };
+        FilterEdgeMode fEdgeMode{ FILTER_EDGE_DUPLICATE };
+        float fKernelUnitLengthX{ 0.0f };
+        float fKernelUnitLengthY{ 0.0f };
+        bool fPreserveAlpha{ false };
+
+
+        SVGFeConvolveMatrixElement(IAmGroot* )
+            : SVGFilterPrimitiveElement(FOP_CONVOLVE_MATRIX)
+        {
+            setIsVisible(false);
+        }
+
+        bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
+        {
+            //const uint8_t flags = flagsForIO(*this, false);
+            //out.ops.push_back(packOp(FOP_CONVOLVE_MATRIX, flags));
+
+            //const InternedKey in1 = resolveIn1(*this, last);
+            //emitCommonIO(out, *this, in1, {}, flags);
+
+            emit_u32x2(out, fOrderX, fOrderY);
+
+            if (!fKernel.empty())
+                emit_f32_list(out, fKernel.data(), (uint32_t)fKernel.size());
+
+            emit_f32(out, fDivisor);
+            emit_f32(out, fBias);
+            emit_u32x2(out, fTargetX, fTargetY);
+            emit_u32(out, (uint32_t)fEdgeMode);
+            emit_f32(out, fKernelUnitLengthX);
+            emit_f32(out, fKernelUnitLengthY);
+            emit_u32(out, fPreserveAlpha ? 1u : 0u);
+
+            //last = finishLast(fResult);
+            return true;
+        }
+
+
+        void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
+        {
+            (void)groot;
+
+            ByteSpan orderAttr{};
+            if (getAttribute(filter::order(), orderAttr))
+                parseU32PairAttr(orderAttr, fOrderX, fOrderY);
+            else
+                fOrderX = fOrderY = 3;
+
+            parseFloatListAttr(getAttribute(filter::kernelMatrix()), fKernel);
+
+            ByteSpan divisorAttr{};
+            if (getAttribute(filter::divisor(), divisorAttr))
+            {
+                parseF32Attr(divisorAttr, fDivisor);
+            }
+            else
+            {
+                if (!fKernel.empty())
+                {
+                    double sum = 0.0;
+                    for (float v : fKernel)
+                        sum += v;
+
+                    fDivisor = (sum == 0.0) ? 1.0f : (float)sum;
+                }
+                else
+                {
+                    fDivisor = 1.0f;
+                }
+            }
+
+            parseF32Attr(getAttribute(filter::bias()), fBias);
+
+            ByteSpan targetXAttr{};
+            ByteSpan targetYAttr{};
+            if (getAttribute(filter::targetX(), targetXAttr))
+                parseU32Attr(targetXAttr, fTargetX);
+            else
+                fTargetX = fOrderX / 2;
+
+            if (getAttribute(filter::targetY(), targetYAttr))
+                parseU32Attr(targetYAttr, fTargetY);
+            else
+                fTargetY = fOrderY / 2;
+
+            ByteSpan edgeAttr{};
+            if (getAttribute(filter::edgeMode(), edgeAttr))
+                fEdgeMode = parseFilterEdgeMode(PSNameTable::INTERN(edgeAttr));
+            else
+                fEdgeMode = FILTER_EDGE_DUPLICATE;
+
+            ByteSpan kulAttr{};
+            if (getAttribute(filter::kernelUnitLength(), kulAttr))
+                parseFloatPairAttr(kulAttr, fKernelUnitLengthX, fKernelUnitLengthY);
+
+            ByteSpan paAttr{};
+            if (getAttribute(filter::preserveAlpha(), paAttr))
+                parseBoolAttr(paAttr, fPreserveAlpha);
+            else
+                fPreserveAlpha = false;
+        }
+    };
+
+
+    //
+    // feDiffuseLighting
+    //
+    struct SVGFeDiffuseLightingElement : public SVGFilterPrimitiveElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName("feDiffuseLighting", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeDiffuseLightingElement>(groot);
+                node->loadFromXmlElement(elem, groot);
+
+                return node;
+                });
+        }
+
+        static void registerFactory()
+        {
+            registerContainerNodeByName("feDiffuseLighting", [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFeDiffuseLightingElement>(groot);
+                node->loadFromXmlPull(iter, groot);
+                return node;
+                });
+
+            registerSingularNode();
+        }
+
+        // -------------------------------------------------
+        uint32_t fLightingColorRGBA32{ 0xFFFFFFFFu };
+        float fSurfaceScale{ 1.0f };
+        float fDiffuseConstant{ 1.0f };
+        float fKernelUnitLengthX{ 0.0f };
+        float fKernelUnitLengthY{ 0.0f };
+        FilterLightType fLightType{ FILTER_LIGHT_DISTANT };
+        float fLight[8]{};
+
+
+        SVGFeDiffuseLightingElement(IAmGroot* )
+            : SVGFilterPrimitiveElement(FOP_DIFFUSE_LIGHTING)
+        {
+            setIsVisible(false);
+        }
+
+        bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
+        {
+            //const uint8_t flags = flagsForIO(*this, false);
+            //out.ops.push_back(packOp(FOP_DIFFUSE_LIGHTING, flags));
+
+            //const InternedKey in1 = resolveIn1(*this, last);
+            //emitCommonIO(out, *this, in1, {}, flags);
+
+            emit_u32(out, fLightingColorRGBA32);
+            emit_f32(out, fSurfaceScale);
+            emit_f32(out, fDiffuseConstant);
+            emit_f32(out, fKernelUnitLengthX);
+            emit_f32(out, fKernelUnitLengthY);
+            emit_u32(out, (uint32_t)fLightType);
+            emit_f32_list(out, fLight, 8);
+
+            //last = finishLast(fResult);
+            return true;
+        }
+
+
+
+        void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
+        {
+            parseF32Attr(getAttribute(filter::surfaceScale()), fSurfaceScale);
+            parseF32Attr(getAttribute(filter::diffuseConstant()), fDiffuseConstant);
+
+            ByteSpan kulAttr{};
+            if (getAttribute(filter::kernelUnitLength(), kulAttr))
+                parseFloatPairAttr(kulAttr, fKernelUnitLengthX, fKernelUnitLengthY);
+
+            ByteSpan lcAttr{};
+            if (getAttribute(filter::lighting_color(), lcAttr))
+            {
+                if (!parseLightColorAttr(groot, lcAttr, fLightingColorRGBA32))
+                    fLightingColorRGBA32 = 0xFFFFFFFFu;
+            }
+            else
+            {
+                fLightingColorRGBA32 = 0xFFFFFFFFu;
+            }
+
+            fLightType = FILTER_LIGHT_DISTANT;
+            for (int i = 0; i < 8; ++i)
+                fLight[i] = 0.0f;
+
+            for (auto& n : fNodes)
+            {
+                if (!n)
+                    continue;
+
+                auto g = std::dynamic_pointer_cast<SVGGraphicsElement>(n);
+                if (!g)
+                    continue;
+
+                ByteSpan nm = g->name();
+
+                if (nm == "feDistantLight")
+                {
+                    fLightType = FILTER_LIGHT_DISTANT;
+                    parseF32Attr(g->getAttribute(filter::azimuth()), fLight[0]);
+                    parseF32Attr(g->getAttribute(filter::elevation()), fLight[1]);
+                    break;
+                }
+                else if (nm == "fePointLight")
+                {
+                    fLightType = FILTER_LIGHT_POINT;
+                    parseF32Attr(g->getAttribute(filter::x()), fLight[0]);
+                    parseF32Attr(g->getAttribute(filter::y()), fLight[1]);
+                    parseF32Attr(g->getAttribute(filter::z()), fLight[2]);
+                    break;
+                }
+                else if (nm == "feSpotLight")
+                {
+                    fLightType = FILTER_LIGHT_SPOT;
+                    parseF32Attr(g->getAttribute(filter::x()), fLight[0]);
+                    parseF32Attr(g->getAttribute(filter::y()), fLight[1]);
+                    parseF32Attr(g->getAttribute(filter::z()), fLight[2]);
+                    parseF32Attr(g->getAttribute(filter::pointsAtX()), fLight[3]);
+                    parseF32Attr(g->getAttribute(filter::pointsAtY()), fLight[4]);
+                    parseF32Attr(g->getAttribute(filter::pointsAtZ()), fLight[5]);
+                    parseF32Attr(g->getAttribute(filter::specularExponent()), fLight[6]);
+                    parseF32Attr(g->getAttribute(filter::limitingConeAngle()), fLight[7]);
+                    break;
+                }
+            }
+        }
+    };
+    
+    
+    //
+    // feDisplacementMap
+    //
+    struct SVGFeDisplacementMapElement : public SVGFilterPrimitiveElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName("feDisplacementMap", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeDisplacementMapElement>(groot);
+                node->loadFromXmlElement(elem, groot);
+
+                return node;
+                });
+        }
+
+        static void registerFactory()
+        {
+            registerContainerNodeByName("feDisplacementMap", [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFeDisplacementMapElement>(groot);
+                node->loadFromXmlPull(iter, groot);
+                return node;
+                });
+
+            registerSingularNode();
+        }
+
+        // -------------------------------------------------
+        float fScale{ 0.0f };
+        FilterChannelSelector fXChannel{ FILTER_CHANNEL_A };
+        FilterChannelSelector fYChannel{ FILTER_CHANNEL_A };
+
+
+        SVGFeDisplacementMapElement(IAmGroot* )
+            : SVGFilterPrimitiveElement(FOP_DISPLACEMENT_MAP)
+        {
+            setIsVisible(false);
+        }
+
+        bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
+        {
+            //const uint8_t flags = flagsForIO(*this, true);
+            //out.ops.push_back(packOp(FOP_DISPLACEMENT_MAP, flags));
+
+            //const InternedKey in1 = resolveIn1(*this, last);
+            //const InternedKey in2 = resolveIn2(*this, last);
+            //emitCommonIO(out, *this, in1, in2, flags);
+
+            emit_f32(out, fScale);
+            emit_u32(out, (uint32_t)fXChannel);
+            emit_u32(out, (uint32_t)fYChannel);
+
+            //last = finishLast(fResult);
+            return true;
+        }
+
+        void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
+        {
+            (void)groot;
+
+            parseF32Attr(getAttribute(filter::scale()), fScale);
+
+            ByteSpan xSelAttr{};
+            ByteSpan ySelAttr{};
+
+            if (getAttribute(filter::xChannelSelector(), xSelAttr))
+                fXChannel = parseFilterChannelSelector(PSNameTable::INTERN(xSelAttr));
+            else
+                fXChannel = FILTER_CHANNEL_A;
+
+            if (getAttribute(filter::yChannelSelector(), ySelAttr))
+                fYChannel = parseFilterChannelSelector(PSNameTable::INTERN(ySelAttr));
+            else
+                fYChannel = FILTER_CHANNEL_A;
+        }
+    };
+
+    //
+    // feDistantLight
+    // This is a sub-component of other lighting components
+    // so don't emit a program for it.
+    //
+    struct SVGFeDistantLightElement : public SVGFilterPrimitiveElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName("feDistantLight", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeDistantLightElement>(groot);
+                node->loadFromXmlElement(elem, groot);
+
+                return node;
+                });
+        }
+
+        static void registerFactory()
+        {
+            registerContainerNodeByName("feDistantLight", [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFeDistantLightElement>(groot);
+                node->loadFromXmlPull(iter, groot);
+                
+                return node;
+                });
+
+            registerSingularNode();
+        }
+
+
+        SVGFeDistantLightElement(IAmGroot* )
+            : SVGFilterPrimitiveElement(FOP_END)
+        {
+            setIsVisible(false);
+        }
+
+        bool emitSelf(FilterProgramStream& fps, InternedKey& last) const noexcept override
+        {
+            (void)fps;
+            (void)last;
+            // Handled as child payload of feDiffuseLighting / feSpecularLighting.
+            return false;
+        }
+
+        void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
+        {
+        }
+    };
+    
+    //
+    // feFlood
+    //
+    struct SVGFeFloodElement : public SVGFilterPrimitiveElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName("feFlood", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeFloodElement>(groot);
+                node->loadFromXmlElement(elem, groot);
+
+                return node;
+                });
+        }
+
+        static void registerFactory()
+        {
+            registerContainerNodeByName("feFlood", [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFeFloodElement>(groot);
+                node->loadFromXmlPull(iter, groot);
+                
+                return node;
+                });
+
+            registerSingularNode();
+        }
+
+        // -------------------------------------------------
+
+        uint32_t fFloodRGBA32Premul{ 0xFF000000u };
+
+        SVGFeFloodElement(IAmGroot* )
+            : SVGFilterPrimitiveElement(FOP_FLOOD)
+        {
+        }
+
+        bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
+        {
+            emit_u32(out, fFloodRGBA32Premul);
+
+            return true;
+        }
+
+        void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
+        {
+            ByteSpan colorAttr{};
+            if (getAttribute(filter::flood_color(), colorAttr)) 
+            {
+                // Get the flood-opacity if specified, defaulting to 1.0
+                double opacity = 1.0f;
+                ByteSpan opacityAttr{};
+                if (getAttribute(filter::flood_opacity(), opacityAttr)) {
+                    parseNumber(opacityAttr, opacity);
+                    if (opacity < 0.0f) opacity = 0.0f;
+                    if (opacity > 1.0f) opacity = 1.0f;
+                }
+
+                SVGPaint paint(groot);
+                paint.loadFromChunk(colorAttr);
+                paint.setOpacity((float)opacity);
+
+                BLVar c = paint.getVariant(nullptr, groot);
+                if (blVarToRgba32(&c, &fFloodRGBA32Premul) != BL_SUCCESS) {
+                    fFloodRGBA32Premul = 0xFF000000u; // default black with full opacity
+                }
+            }
+        }
+    };
+
+    
+    //
+    // feGaussianBlur
+    //
+    struct SVGNumberPair
+    {
+        float a{ 0.0f };
+        float b{ 0.0f };
+        bool hasB{ false }; // if false, b is implied = a
+
+        void set(float v) { a = v; b = v; hasB = false; }
+    };
+
+    // Parse: <number> [<number>]
+    // Uses readNextNumber(), so it naturally accepts comma/space separators.
+    static INLINE bool parseNumberPair(ByteSpan s, SVGNumberPair& out) noexcept
+    {
+        s = chunk_trim(s, chrWspChars);
+        if (!s) { out.set(0.0f); return false; }
+
+        double x = 0.0;
+        if (!readNextNumber(s, x)) { out.set(0.0f); return false; }
+
+        double y = 0.0;
+        if (readNextNumber(s, y)) {
+            out.a = (float)x;
+            out.b = (float)y;
+            out.hasB = true;
+        }
+        else {
+            out.set((float)x);
+        }
+
+        // SVG behavior: negative treated as 0
+        if (out.a < 0.0f) out.a = 0.0f;
+        if (out.b < 0.0f) out.b = 0.0f;
+
+        return true;
+    }
+
+    struct SVGFeGaussianBlurElement : public SVGFilterPrimitiveElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName("feGaussianBlur", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeGaussianBlurElement>(groot);
+                node->loadFromXmlElement(elem, groot);
+                
+                return node;
+            });
+        }
+
+        static void registerFactory()
+        {
+            registerContainerNodeByName("feGaussianBlur", [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFeGaussianBlurElement>(groot);
+                node->loadFromXmlPull(iter, groot);
+                
+                return node;
+            });
+            
+            registerSingularNode();
+        }
+        
+        // -------------------------------------------------
+
+        SVGNumberPair fStdDeviation;
+        
+        SVGFeGaussianBlurElement(IAmGroot* )
+            : SVGFilterPrimitiveElement(FOP_GAUSSIAN_BLUR)
+        {
+            setIsVisible(false);
+        }
+
+        virtual bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept
+        {
+            //const uint8_t flags = flagsForIO(*this, false);
+            //out.ops.push_back(packOp(FOP_GAUSSIAN_BLUR, flags));
+
+            //const InternedKey in1 = resolveIn1(*this, last);
+            //emitCommonIO(out, *this, in1, {}, flags);
+
+            emit_f32(out, fStdDeviation.a); // stdDeviationX
+            emit_f32(out, fStdDeviation.hasB ? fStdDeviation.b : fStdDeviation.a); // stdDeviationY (if not specified, same as X)
+
+            //last = finishLast(fResult);
+            return true;
+        }
+
+
+        void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
+        {
+            parseNumberPair(getAttribute(filter::stdDeviation()), fStdDeviation);
+        }
+
+
+    };
+
+    //
+    // feOffset
+    //
+    struct SVGFeOffsetElement : public SVGFilterPrimitiveElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName("feOffset", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeOffsetElement>(groot);
+                node->loadFromXmlElement(elem, groot);
+
+                return node;
+                });
+        }
+
+        static void registerFactory()
+        {
+            registerContainerNodeByName("feOffset", [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFeOffsetElement>(groot);
+                node->loadFromXmlPull(iter, groot);
+                
+                return node;
+                });
+
+            registerSingularNode();
+        }
+
+
+        // feOffset attributes
+        float fDx{ 0.0f };
+        float fDy{ 0.0f };
+
+
+        SVGFeOffsetElement(IAmGroot* )
+            : SVGFilterPrimitiveElement(FOP_OFFSET)
+        {
+            setIsVisible(false);
+        }
+
+        bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
+        {
+            //const uint8_t flags = flagsForIO(*this, false);
+            //out.ops.push_back(packOp(FOP_OFFSET, flags));
+
+            //const InternedKey in1 = resolveIn1(*this, last);
+            //emitCommonIO(out, *this, in1, {}, flags);
+
+            emit_f32(out, fDx);
+            emit_f32(out, fDy);
+
+            //last = finishLast(fResult);
+            return true;
+        }
+
+        void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
+        {
+            ByteSpan dxAttr{}, dyAttr{};
+            if (getAttribute(svgattr::dx(), dxAttr)) {
+                double dx = 0.0;
+                if (parseNumber(dxAttr, dx))
+                    fDx = dx;
+            }
+
+            if (getAttribute(svgattr::dy(), dyAttr)) {
+                double dy = 0.0;
+                if (parseNumber(dyAttr, dy))
+                    fDy = dy;
+            }
+        }
+
+    };
+    
+    
+    //
+    // feTurbulence
+    //
+    struct SVGFeTurbulenceElement : public SVGFilterPrimitiveElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName("feTurbulence", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeTurbulenceElement>(groot);
+                node->loadFromXmlElement(elem, groot);
+
+                return node;
+            });
+        }
+
+        static void registerFactory()
+        {
+            registerContainerNodeByName("feTurbulence", [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFeTurbulenceElement>(groot);
+                node->loadFromXmlPull(iter, groot);
+                
+                return node;
+            });
+
+            registerSingularNode();
+        }
+
+        // --------------------------------------------
+        FilterTurbulenceType fType{ FILTER_TURBULENCE_TURBULENCE };
+        float fBaseFrequencyX{ 0.0f };
+        float fBaseFrequencyY{ 0.0f };
+        uint32_t fNumOctaves{ 1 };
+        float fSeed{ 0.0f };
+        bool fStitchTiles{ false };
+
+
+        SVGFeTurbulenceElement(IAmGroot* )
+            : SVGFilterPrimitiveElement(FOP_TURBULENCE)
+        {
+            setIsVisible(false);
+        }
+
+        bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
+        {
+            //const uint8_t flags = flagsForIO(*this, false);
+            //out.ops.push_back(packOp(FOP_TURBULENCE, flags));
+
+            //const InternedKey in1 = resolveIn1(*this, last);
+            //emitCommonIO(out, *this, in1, {}, flags);
+
+            emit_u32(out, (uint32_t)fType);
+            emit_f32(out, fBaseFrequencyX);
+            emit_f32(out, fBaseFrequencyY);
+            emit_u32(out, fNumOctaves);
+            emit_f32(out, fSeed);
+            emit_u32(out, fStitchTiles ? 1u : 0u);
+
+            //last = finishLast(fResult);
+            return true;
+        }
+
+        void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
+        {
+            (void)groot;
+
+            ByteSpan typeAttr{};
+            if (getAttribute(filter::type_(), typeAttr))
+                fType = parseFilterTurbulenceType(PSNameTable::INTERN(typeAttr));
+            else
+                fType = FILTER_TURBULENCE_TURBULENCE;
+
+            ByteSpan bfAttr{};
+            if (getAttribute(filter::baseFrequency(), bfAttr))
+                parseFloatPairAttr(bfAttr, fBaseFrequencyX, fBaseFrequencyY);
+
+            parseU32Attr(getAttribute(filter::numOctaves()), fNumOctaves);
+            parseF32Attr(getAttribute(filter::seed()), fSeed);
+
+            ByteSpan stAttr{};
+            if (getAttribute(filter::stitchTiles(), stAttr))
+                parseStitchTilesAttr(stAttr, fStitchTiles);
+            else
+                fStitchTiles = false;
+        }
+
+    };
+}
+
 namespace waavs {
 
-	//
-	// filter
-	//
-	struct SVGFilterElement : public SVGGraphicsElement
-	{
-		static void registerSingularNode()
-		{
-			registerSVGSingularNodeByName("filter", [](IAmGroot* groot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGFilterElement>(groot);
-				node->loadFromXmlElement(elem, groot);
-
-				return node;
-			});
-		}
-		
-		static void registerFactory()
-		{
-			registerContainerNodeByName("filter", [](IAmGroot* groot, XmlPull& iter) {
-				auto node = std::make_shared<SVGFilterElement>(groot);
-				node->loadFromXmlPull(iter, groot);
-				
-				return node;
-			});
-
-			registerSingularNode();
-		}
-
-		// filters need to setup an execution environment.  
-		SVGDimension fX{};
-		SVGDimension fY{};
-		SVGDimension fWidth{};
-		SVGDimension fHeight{};
-		
-		// dictionary of images used in the filter
-		std::unordered_map<std::string, BLImage> fFilterImages;
-		
-		
-		SVGFilterElement(IAmGroot* )
-			: SVGGraphicsElement()
-		{
-			setIsStructural(false);
-		}
-
-		bool addImage(const std::string &name, BLImage &img)
-		{
-			auto it = fFilterImages.find(name);
-			if (it != fFilterImages.end())
-				return false;
-
-			fFilterImages[name] = img;
-			return true;
-		}
-
-		bool getImage(const std::string& name, BLImage &img)
-		{
-			auto it = fFilterImages.find(name);
-			if (it == fFilterImages.end())
-				return false;
-
-			img = it->second;
-			return true;
-		}
-
-		//bool addNode(std::shared_ptr < IViewable > node, IAmGroot* groot) override
-		//{
-			// if superclass fails to add the node, then forget it
-		//	if (!SVGGraphicsElement::addNode(node, groot))
-		//		return false;
-			
-			//printf("SVGFeFilter.addNode(%s)\n", node->id().c_str());
-			
-		//	return true;
-		//}
-
-		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
-		{
-			fX.loadFromChunk(getAttributeByName("x"));
-			fY.loadFromChunk(getAttributeByName("y"));
-			fWidth.loadFromChunk(getAttributeByName("width"));
-			fHeight.loadFromChunk(getAttributeByName("height"));
-
-		}
-		
-	};
-
-	//
-	// feBlend
-	//
-	struct SVGFeBlendElement : public SVGGraphicsElement
-	{
-		static void registerSingularNode()
-		{
-			registerSVGSingularNodeByName("feBlend", [](IAmGroot* groot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGFeBlendElement>(groot);
-				node->loadFromXmlElement(elem, groot);
-
-				return node;
-				});
-		}
-
-		static void registerFactory()
-		{
-			registerContainerNodeByName("feBlend", [](IAmGroot* groot, XmlPull& iter) {
-				auto node = std::make_shared<SVGFeBlendElement>(groot);
-				node->loadFromXmlPull(iter, groot);
-				
-				return node;
-				});
-
-			registerSingularNode();
-		}
-
-
-
-		SVGFeBlendElement(IAmGroot* )
-			: SVGGraphicsElement()
-		{
-			setIsStructural(true);
-			setIsVisible(false);
-		}
-	};
-	
-	//
-	// feComponentTransfer
-	//
-	struct SVGFeComponentTransferElement : public SVGGraphicsElement
-	{
-		static void registerSingularNode()
-		{
-			registerSVGSingularNodeByName("feComponentTransfer", [](IAmGroot* groot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGFeComponentTransferElement>(groot);
-				node->loadFromXmlElement(elem, groot);
-
-				return node;
-				});
-		}
-
-		static void registerFactory()
-		{
-			registerContainerNodeByName("feComponentTransfer", [](IAmGroot* groot, XmlPull& iter) {
-				auto node = std::make_shared<SVGFeComponentTransferElement>(groot);
-				node->loadFromXmlPull(iter, groot);
-				return node;
-				});
-
-			registerSingularNode();
-		}
-
-
-
-		SVGFeComponentTransferElement(IAmGroot* )
-			: SVGGraphicsElement()
-		{
-			setIsStructural(true);
-		}
-
-	};
-	
-	
-	//
-	// feComposite
-	//
-	struct SVGFeCompositeElement : public SVGGraphicsElement
-	{
-		static void registerSingularNode()
-		{
-			registerSVGSingularNodeByName("feComposite", [](IAmGroot* groot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGFeCompositeElement>(groot);
-				node->loadFromXmlElement(elem, groot);
-				
-				return node;
-			});
-		}
-
-		static void registerFactory()
-		{
-			registerContainerNodeByName("feComposite", [](IAmGroot* groot, XmlPull& iter) {
-				auto node = std::make_shared<SVGFeCompositeElement>(groot);
-				node->loadFromXmlPull(iter, groot);
-				
-				return node;
-			});
-			
-			registerSingularNode();
-		}
-
-
-
-		SVGFeCompositeElement(IAmGroot* )
-			: SVGGraphicsElement()
-		{
-			setIsStructural(true);
-		}
-
-	};
-
-	//
-	// feColorMatrix
-	//
-	struct SVGFeColorMatrixElement : public SVGGraphicsElement
-	{
-		static void registerSingularNode()
-		{
-			registerSVGSingularNodeByName("feColorMatrix", [](IAmGroot* groot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGFeColorMatrixElement>(groot);
-				node->loadFromXmlElement(elem, groot);
-				
-				return node;
-			});
-		}
-
-		static void registerFactory()
-		{
-			registerContainerNodeByName("feColorMatrix", [](IAmGroot* groot, XmlPull& iter) {
-				auto node = std::make_shared<SVGFeColorMatrixElement>(groot);
-				node->loadFromXmlPull(iter, groot);
-				
-				return node;
-			});
-
-			registerSingularNode();
-		}
-
-
-		SVGFeColorMatrixElement(IAmGroot* )
-			: SVGGraphicsElement()
-		{
-			setIsStructural(true);
-		}
-
-	};
-
-	//
-	// feConvolveMatrix
-	//
-	struct SVGFeConvolveMatrixElement : public SVGGraphicsElement
-	{
-		static void registerSingularNode()
-		{
-			registerSVGSingularNodeByName("feConvolveMatrix", [](IAmGroot* groot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGFeConvolveMatrixElement>(groot);
-				node->loadFromXmlElement(elem, groot);
-
-				return node;
-				});
-		}
-
-		static void registerFactory()
-		{
-			registerContainerNodeByName("feConvolveMatrix", [](IAmGroot* groot, XmlPull& iter) {
-				auto node = std::make_shared<SVGFeConvolveMatrixElement>(groot);
-				node->loadFromXmlPull(iter, groot);
-				return node;
-				});
-
-			registerSingularNode();
-		}
-
-
-		SVGFeConvolveMatrixElement(IAmGroot* )
-			: SVGGraphicsElement()
-		{
-			setIsStructural(true);
-		}
-
-	};
-
-
-	//
-	// feDiffuseLighting
-	//
-	struct SVGFeDiffuseLightingElement : public SVGGraphicsElement
-	{
-		static void registerSingularNode()
-		{
-			registerSVGSingularNodeByName("feDiffuseLighting", [](IAmGroot* groot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGFeDiffuseLightingElement>(groot);
-				node->loadFromXmlElement(elem, groot);
-
-				return node;
-				});
-		}
-
-		static void registerFactory()
-		{
-			registerContainerNodeByName("feDiffuseLighting", [](IAmGroot* groot, XmlPull& iter) {
-				auto node = std::make_shared<SVGFeDiffuseLightingElement>(groot);
-				node->loadFromXmlPull(iter, groot);
-				return node;
-				});
-
-			registerSingularNode();
-		}
-
-
-		SVGFeDiffuseLightingElement(IAmGroot* )
-			: SVGGraphicsElement()
-		{
-			setIsStructural(true);
-		}
-
-	};
-	
-	
-	//
-	// feDisplacementMap
-	//
-	struct SVGFeDisplacementMapElement : public SVGGraphicsElement
-	{
-		static void registerSingularNode()
-		{
-			registerSVGSingularNodeByName("feDisplacementMap", [](IAmGroot* groot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGFeDisplacementMapElement>(groot);
-				node->loadFromXmlElement(elem, groot);
-
-				return node;
-				});
-		}
-
-		static void registerFactory()
-		{
-			registerContainerNodeByName("feDisplacementMap", [](IAmGroot* groot, XmlPull& iter) {
-				auto node = std::make_shared<SVGFeDisplacementMapElement>(groot);
-				node->loadFromXmlPull(iter, groot);
-				return node;
-				});
-
-			registerSingularNode();
-		}
-
-
-		SVGFeDisplacementMapElement(IAmGroot* )
-			: SVGGraphicsElement()
-		{
-			setIsStructural(true);
-		}
-
-	};
-
-	//
-	// feDistantLight
-	//
-	struct SVGFeDistantLightElement : public SVGGraphicsElement
-	{
-		static void registerSingularNode()
-		{
-			registerSVGSingularNodeByName("feDistantLight", [](IAmGroot* groot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGFeDistantLightElement>(groot);
-				node->loadFromXmlElement(elem, groot);
-
-				return node;
-				});
-		}
-
-		static void registerFactory()
-		{
-			registerContainerNodeByName("feDistantLight", [](IAmGroot* groot, XmlPull& iter) {
-				auto node = std::make_shared<SVGFeDistantLightElement>(groot);
-				node->loadFromXmlPull(iter, groot);
-				
-				return node;
-				});
-
-			registerSingularNode();
-		}
-
-
-		SVGFeDistantLightElement(IAmGroot* )
-			: SVGGraphicsElement()
-		{
-			setIsStructural(true);
-		}
-
-	};
-	
-	//
-	// feFlood
-	//
-	struct SVGFeFloodElement : public SVGGraphicsElement
-	{
-		static void registerSingularNode()
-		{
-			registerSVGSingularNodeByName("feFlood", [](IAmGroot* groot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGFeFloodElement>(groot);
-				node->loadFromXmlElement(elem, groot);
-
-				return node;
-				});
-		}
-
-		static void registerFactory()
-		{
-			registerContainerNodeByName("feFlood", [](IAmGroot* groot, XmlPull& iter) {
-				auto node = std::make_shared<SVGFeFloodElement>(groot);
-				node->loadFromXmlPull(iter, groot);
-				
-				return node;
-				});
-
-			registerSingularNode();
-		}
-
-
-
-		SVGFeFloodElement(IAmGroot* )
-			: SVGGraphicsElement()
-		{
-			setIsStructural(true);
-			setIsVisible(false);
-		}
-	};
-
-	
-	//
-	// feGaussianBlur
-	//
-	struct SVGFeGaussianBlurElement : public SVGGraphicsElement
-	{
-		static void registerSingularNode()
-		{
-			registerSVGSingularNodeByName("feGaussianBlur", [](IAmGroot* groot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGFeGaussianBlurElement>(groot);
-				node->loadFromXmlElement(elem, groot);
-				
-				return node;
-			});
-		}
-
-		static void registerFactory()
-		{
-			registerContainerNodeByName("feGaussianBlur", [](IAmGroot* groot, XmlPull& iter) {
-				auto node = std::make_shared<SVGFeGaussianBlurElement>(groot);
-				node->loadFromXmlPull(iter, groot);
-				
-				return node;
-			});
-			
-			registerSingularNode();
-		}
-		
-
-		SVGDimension fStdDeviation;
-		
-		SVGFeGaussianBlurElement(IAmGroot* )
-			: SVGGraphicsElement()
-		{
-			setIsStructural(true);
+    //
+    // filter
+    //
+    struct SVGFilterElement : public SVGGraphicsElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName("filter", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFilterElement>(groot);
+                node->loadFromXmlElement(elem, groot);
+
+                return node;
+                });
+        }
+
+        static void registerFactory()
+        {
+            registerContainerNodeByName("filter", [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFilterElement>(groot);
+                node->loadFromXmlPull(iter, groot);
+
+                return node;
+                });
+
+            registerSingularNode();
+        }
+
+        // Authored attributes we want to hold onto  
+        SVGLengthValue fX{};
+        SVGLengthValue fY{};
+        SVGLengthValue fWidth{};
+        SVGLengthValue fHeight{};
+
+        // filterUnits
+        SpaceUnitsKind fFilterUnits{ SpaceUnitsKind::SVG_SPACE_OBJECT };  // default is 'objectBoundingBox'
+
+        // primitiveUnits
+        SpaceUnitsKind fPrimitiveUnits{  SpaceUnitsKind::SVG_SPACE_USER}; // default is 'userSpaceOnUse'
+
+        // href
+        std::shared_ptr<SVGFilterElement> fContentSource{}; // if this filter references another filter via href, this points to the base filter
+
+        // Cached compiled program
+        FilterProgramStream fProgram{};
+        bool fProgCompiled{ false };
+
+
+        SVGFilterElement(IAmGroot*)
+            : SVGGraphicsElement()
+        {
             setIsVisible(false);
-		}
-
-		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
-		{
-			fStdDeviation.loadFromChunk(getAttributeByName("stdDeviation"));
-		}
-	};
-
-	//
-	// feOffset
-	//
-	struct SVGFeOffsetElement : public SVGGraphicsElement
-	{
-		static void registerSingularNode()
-		{
-			registerSVGSingularNodeByName("feOffset", [](IAmGroot* groot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGFeOffsetElement>(groot);
-				node->loadFromXmlElement(elem, groot);
-
-				return node;
-				});
-		}
-
-		static void registerFactory()
-		{
-			registerContainerNodeByName("feOffset", [](IAmGroot* groot, XmlPull& iter) {
-				auto node = std::make_shared<SVGFeOffsetElement>(groot);
-				node->loadFromXmlPull(iter, groot);
-				
-				return node;
-				});
-
-			registerSingularNode();
-		}
+        }
 
 
-		SVGFeOffsetElement(IAmGroot* )
-			: SVGGraphicsElement()
-		{
-			setIsStructural(true);
-            setIsVisible(false);
-		}
-	};
-	
-	
-	//
-	// feTurbulence
-	//
-	struct SVGFeTurbulenceElement : public SVGGraphicsElement
-	{
-		static void registerSingularNode()
-		{
-			registerSVGSingularNodeByName("feTurbulence", [](IAmGroot* groot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGFeTurbulenceElement>(groot);
-				node->loadFromXmlElement(elem, groot);
+        // Retrieve a filter program stream for this element
+        std::shared_ptr<FilterProgramStream> getFilterProgramStream(IAmGroot* groot) noexcept override
+        {
+            if (!fProgCompiled)
+            {
+                // Rebuild the program stream from our filter primitives
+                buildFilterProgramStream();
+                fProgCompiled = true;
+            }
 
-				return node;
-			});
-		}
+            return std::make_shared<FilterProgramStream>(fProgram);
+        }
 
-		static void registerFactory()
-		{
-			registerContainerNodeByName("feTurbulence", [](IAmGroot* groot, XmlPull& iter) {
-				auto node = std::make_shared<SVGFeTurbulenceElement>(groot);
-				node->loadFromXmlPull(iter, groot);
-				
-				return node;
-			});
+        WGRectD getFilterRegion(IRenderSVG* ctx, IAmGroot* groot, SVGGraphicsElement* subtree) const noexcept override
+        {
+            if (!ctx || !subtree)
+                return {};
 
-			registerSingularNode();
-		}
+            // The filter region is resolved against the element being filtered,
+            // not against the <filter> element itself.
+            const WGRectD bbox = subtree->calculateObjectBoundingBox(ctx, groot);
+            if (!(bbox.w > 0.0) || !(bbox.h > 0.0))
+                return {};
+
+            // Use current context info as much as is available.
+            // If you have a better DPI/font source on ctx, plug it in here.
+            const double dpi = groot? groot->dpi() : 96.0;
+            const BLFont* font = ctx ? &ctx->getFont() : nullptr;
+
+            // SVG defaults on <filter>:
+            //   x="-10%" y="-10%" width="120%" height="120%"
+            //
+            // resolveLengthOr() returns the fallback directly if the value is not set.
+            // For objectBoundingBox space, fallback values are fractions of bbox size.
+            // For user space, the spec for percentages is more subtle, but using the same
+            // bbox-relative fallback is a practical reference implementation for now.
+
+            LengthResolveCtx xCtx = makeLengthCtxUser(bbox.w, bbox.x, dpi, font, fFilterUnits);
+            LengthResolveCtx yCtx = makeLengthCtxUser(bbox.h, bbox.y, dpi, font, fFilterUnits);
+            LengthResolveCtx wCtx = makeLengthCtxUser(bbox.w, 0.0, dpi, font, fFilterUnits);
+            LengthResolveCtx hCtx = makeLengthCtxUser(bbox.h, 0.0, dpi, font, fFilterUnits);
+
+            WGRectD r{};
+            r.x = resolveLengthOr(fX, xCtx, bbox.x - 0.10 * bbox.w);
+            r.y = resolveLengthOr(fY, yCtx, bbox.y - 0.10 * bbox.h);
+            r.w = resolveLengthOr(fWidth, wCtx, 1.20 * bbox.w);
+            r.h = resolveLengthOr(fHeight, hCtx, 1.20 * bbox.h);
+
+            if (!(r.w > 0.0) || !(r.h > 0.0))
+                return {};
+
+            return r;
+        }
+
+        bool hasHref() const { return !href().empty(); }
+        ByteSpan href() const {
+            ByteSpan svgHref{};
+            svgHref = getAttribute(svgattr::href());
+            if (!svgHref)
+                svgHref = getAttribute(svgattr::xlink_href());    // support legacy xlink:href for compatibility
+
+            return svgHref;
+        }
+
+        bool filterHasPrimitiveChildren() const noexcept
+        {
+            for (auto& n : fNodes) {
+                if (!n) continue;
+                if (std::dynamic_pointer_cast<SVGFilterPrimitiveElement>(n))
+                    return true;
+            }
+            return false;
+        }
+
+        const SVGFilterElement* resolvePrimitiveSource() const noexcept
+        {
+            if (filterHasPrimitiveChildren()) return this;
+            if (fContentSource) return fContentSource.get();
+            return this;
+        }
+
+        void fixupCommonAttributes(IAmGroot* groot)
+        {
+            // Invalidate the current program
+            fProgram.clear();
+            fProgCompiled = false;
 
 
+            // filter region (optional)
+            parseLengthValue(getAttribute(svgattr::x()), fX);
+            parseLengthValue(getAttribute(svgattr::y()), fY);
+            parseLengthValue(getAttribute(svgattr::width()), fWidth);
+            parseLengthValue(getAttribute(svgattr::height()), fHeight);
 
-		SVGFeTurbulenceElement(IAmGroot* )
-			: SVGGraphicsElement()
-		{
-			setIsStructural(true);
-			setIsVisible(false);
-		}
-	};
+            ByteSpan fuA{}, puA{};
+            if (getAttribute(svgattr::filterUnits(), fuA)) {
+                uint32_t v{};
+                if (getEnumValue(SVGSpaceUnits, fuA, v))
+                    fFilterUnits = (SpaceUnitsKind)v;
+            }
+
+            if (getAttribute(svgattr::primitiveUnits(), puA)) {
+                uint32_t v{};
+                if (getEnumValue(SVGSpaceUnits, puA, v))
+                    fPrimitiveUnits = (SpaceUnitsKind)v;
+            }
+
+
+        }
+
+        // Inherit properties from a reference node
+        // only inherit the ones we don't already set
+        virtual void inheritProperties(const SVGFilterElement* elem)
+        {
+            if (!elem) return;
+
+            // Filter region
+            setAttributeIfAbsent(elem, svgattr::x());
+            setAttributeIfAbsent(elem, svgattr::y());
+            setAttributeIfAbsent(elem, svgattr::width());
+            setAttributeIfAbsent(elem, svgattr::height());
+
+            // Coordinate system controls
+            setAttributeIfAbsent(elem, svgattr::filterUnits());
+            setAttributeIfAbsent(elem, svgattr::primitiveUnits());
+
+            // Optional: commonly used in authoring tools
+            // setAttributeIfAbsent(elem, svgattr::filterRes());
+
+            // Optional, but real SVG filters often use these
+            // setAttributeIfAbsent(elem, svgattr::color_interpolation_filters());
+        }
+
+
+        // ------------------------------------------------------------
+        // Inheritance
+        // ------------------------------------------------------------
+        void resolveReferenceChain(IAmGroot* groot)
+        {
+            if (!groot) return;
+            if (!hasHref()) return;
+
+            ByteSpan hrefSpan = href();
+
+            const SVGFilterElement* visited[kMaxHrefDepth]{};
+            uint32_t visitedCount = 0;
+
+            for (uint32_t depth = 0; depth < kMaxHrefDepth; ++depth)
+            {
+                if (!hrefSpan) break;
+
+                auto node = groot->findNodeByHref(hrefSpan);
+                if (!node) break;
+
+                auto fnode = std::dynamic_pointer_cast<SVGFilterElement>(node);
+                if (!fnode) break;
+
+                const SVGFilterElement* ref = fnode.get();
+
+                // cycle detection (including self)
+                bool seen = (ref == this);
+                for (uint32_t i = 0; i < visitedCount && !seen; ++i)
+                    if (visited[i] == ref) seen = true;
+
+                if (seen) {
+                    WAAVS_ASSERT(false && "SVGFilterElement href cycle detected");
+                    break;
+                }
+
+                if (visitedCount < kMaxHrefDepth)
+                    visited[visitedCount++] = ref;
+
+                // Ensure referenced subtree has been resolved (important for forward refs)
+                fnode->resolveStyleSubtree(groot);
+
+                // Merge from nearest first: direct reference wins.
+                inheritProperties(ref);
+
+                // If we have no primitives, inherit primitive source pointer.
+                if (!filterHasPrimitiveChildren() && fnode->filterHasPrimitiveChildren() && !fContentSource)
+                    fContentSource = fnode;
+
+                // follow chain
+                hrefSpan = ref->href();
+            }
+        }
+
+
+        void fixupSelfStyleAttributes(IAmGroot* groot) override
+        {
+            fContentSource = nullptr;
+
+            // We need to read the href so we can resolve inheritance
+
+            // We already have our attributes (unresolved) sitting on our
+            // element.  Since resolving references depends on attributes
+            // it's safe to do that first.
+            resolveReferenceChain(groot);
+
+
+            // After all attributes are inherited, we can now convert them
+            // to the intermediary values that will later be bound.
+            fixupCommonAttributes(groot);
+
+            setNeedsBinding(true);
+        }
+
+        void buildFilterProgramStream() noexcept
+        {
+            fProgram.clear();
+
+            // push filter level units into program
+            fProgram.filterUnits = fFilterUnits;
+            fProgram.primitiveUnits = fPrimitiveUnits;
+
+            const SVGFilterElement* src = resolvePrimitiveSource();
+            InternedKey last = kFilter_SourceGraphic();
+
+            if (src)
+            {
+                for (auto& n : src->fNodes)
+                {
+                    if (!n) continue;
+                    auto prim = std::dynamic_pointer_cast<SVGFilterPrimitiveElement>(n);
+                    if (!prim) continue;
+
+                    // Primitive decides if it can emit; unsupported ones are skipped for now.
+                    prim->emitProgram(fProgram, last);
+                }
+            }
+
+            fProgram.ops.push_back(packOp(FOP_END));
+        }
+
+        void bindSelfToContext(IRenderSVG*, IAmGroot*) override
+        { 
+            // this is where we build the program and do anything
+            // else needed for actual use
+            // 
+            if (!fProgCompiled)
+            {
+                buildFilterProgramStream();
+                fProgCompiled = true;
+            }
+        }
+
+    };
 }
+
+
+

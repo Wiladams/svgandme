@@ -1,9 +1,11 @@
 #pragma once
 
-#include <cstdint>
+
+
 #include <cmath>
 #include <algorithm>
 #include <type_traits>
+#include <array>
 
 #include "definitions.h"
 

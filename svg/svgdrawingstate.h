@@ -51,15 +51,15 @@ namespace waavs {
         BLFontStretch fFontStretch = BL_FONT_STRETCH_NORMAL;
 
         // TextState
-        BLPoint fTextCursor{};
+        WGPointD fTextCursor{};
         SVGAlignment fTextHAlignment = SVGAlignment::SVG_ALIGNMENT_START;
         TXTALIGNMENT fTextVAlignment = BASELINE;
 
         // ViewportState
 		BLMatrix2D fTransform{};
-        BLRect fClipRect{};
-        BLRect fViewport{};
-        BLRect fObjectFrame{};
+        WGRectD fClipRect{};
+        WGRectD fViewport{};
+        WGRectD fObjectFrame{};
         
         bool modifiedSinceLastPush = false;
         int fErrorState{ 0 };
@@ -177,31 +177,31 @@ namespace waavs {
             markModified();
         }
 
-        void setViewport(const BLRect& r) {
+        void setViewport(const WGRectD& r) {
             fDrawingState->fViewport = r;
             markModified();
         }
-        BLRect viewport() const { 
+        WGRectD viewport() const {
             return fDrawingState->fViewport; 
         }
 
-        BLRect getObjectFrame() const 
+        WGRectD getObjectFrame() const
         {
             if (!fDrawingState) {
                 printf("IAccessDrawingState::getObjectFrame, ERROR: No drawing state set\n");
-                return BLRect{};
+                return WGRectD{};
             }
 
             return fDrawingState->fObjectFrame; 
         }
-        void setObjectFrame(const BLRect& r) {
+        void setObjectFrame(const WGRectD& r) {
             fDrawingState->fObjectFrame = r;
             markModified();
         }
 
 
-        const BLRect& getClipRect() const { return fDrawingState->fClipRect; }
-        virtual void setClipRect(const BLRect& aRect)
+        const WGRectD getClipRect() const { return fDrawingState->fClipRect; }
+        virtual void setClipRect(const WGRectD& aRect)
         {
             fDrawingState->fClipRect = aRect;
             markModified();
@@ -369,8 +369,8 @@ namespace waavs {
             markModified();
         }
 
-        BLPoint getTextCursor() const { return fDrawingState->fTextCursor; }
-        void setTextCursor(const BLPoint& cursor)
+        WGPointD getTextCursor() const { return fDrawingState->fTextCursor; }
+        void setTextCursor(const WGPointD& cursor)
         {
             fDrawingState->fTextCursor = cursor; markModified();
         }
@@ -431,10 +431,12 @@ namespace waavs {
         {
             // clear the clipping state
             ctx->restoreClipping();
-            const BLRect& cRect = getClipRect();
+            WGRectD cRect = getClipRect();
             if ((cRect.w > 0) && (cRect.h > 0))
-                ctx->clipToRect(cRect);
-
+            {
+                BLRect blr{ cRect.x, cRect.y, cRect.w, cRect.h };
+                ctx->clipToRect(blr);
+            }
 
             ctx->setCompOp((BLCompOp)getCompositeMode());
             ctx->setFillRule((BLFillRule)getFillRule());

@@ -2,7 +2,7 @@
 
 #include <functional>
 
-#include "svgstructuretypes.h"
+#include "svggraphicselement.h"
 #include "viewport.h"
 
 namespace waavs
@@ -90,7 +90,7 @@ namespace waavs
             const double dpi = groot ? groot->dpi() : 96.0;
             const BLFont* fontOpt = &ctx->getFont();
 
-            const BLRect vp = ctx->viewport();
+            const WGRectD vp = ctx->viewport();
             if (vp.w <= 0.0 || vp.h <= 0.0)
                 return;
 
@@ -136,7 +136,7 @@ namespace waavs
             if (!fTarget)
                 return;
 
-            const BLRect vp = ctx->viewport();
+            const WGRectD vp = ctx->viewport();
             if (vp.w <= 0.0 || vp.h <= 0.0)
                 return;
 
@@ -174,7 +174,7 @@ namespace waavs
             // Establish instance viewport for the referenced content (local coords).
             // This is CRUCIAL for <symbol>. For other targets it’s usually harmless.
             if (fPlacedRect.w > 0.0 && fPlacedRect.h > 0.0)
-                ctx->setViewport(BLRect{ 0.0, 0.0, fPlacedRect.w, fPlacedRect.h });
+                ctx->setViewport({ 0.0, 0.0, fPlacedRect.w, fPlacedRect.h });
 
             fTarget->draw(ctx, groot);
 

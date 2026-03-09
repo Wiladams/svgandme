@@ -38,9 +38,10 @@
 #include "fonthandler.h"
 #include "svgcss.h"
 
-#include "svgclip.h"
+//#include "svgclip.h"
 #include "svgconditional.h"
 #include "svgdefs.h"
+#include "svgflowroot.h"
 #include "svggradient.h"
 #include "svgimage.h"
 #include "svgmarker.h"
@@ -50,12 +51,14 @@
 #include "svgsolidcolor.h"
 #include "svgstyle.h"
 #include "svgsymbol.h"
+#include "svgtext.h"
 #include "svgpattern.h"
 #include "svgfont.h"
 #include "svgfilter.h"
 #include "svghyperlink.h"
-#include "svgflowroot.h"
+
 #include "svguse.h"
+
 
 
 
@@ -107,7 +110,7 @@ namespace waavs
         double fDocumentWidth{};
 		double fDocumentHeight{};
         
-        
+        WGRectD fPortalFrame{};  // used to set viewport and objectframe before drawing
         
         //==========================================
         // Construction / Destruction
@@ -148,17 +151,35 @@ namespace waavs
 		double canvasHeight() const override { return fCanvasHeight; }
         void canvasSize(const double w, const double h) { fCanvasWidth = w; fCanvasHeight = h; }
         
-        BLRect objectBoundingBox() const override
+        const WGRectD viewPort() const noexcept
         {
             if (fTopLevelNode != nullptr)
             {
-                return fTopLevelNode->objectBoundingBox();
+                return fTopLevelNode->viewPort();
             }
 
             if (fCanvasWidth <= 0 || fCanvasHeight <= 0)
-                return BLRect{};
+                return {};
+            
+            // Return the entire canvas as the viewport
+            WGRectD outFr = { 0, 0, fCanvasWidth, fCanvasHeight };
 
-            BLRect outFr(0, 0, fCanvasWidth, fCanvasHeight);
+            return outFr;
+        }
+
+        const WGRectD calculateObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot) const noexcept override
+        {
+            if (fTopLevelNode != nullptr)
+            {
+
+                return fTopLevelNode->calculateObjectBoundingBox(ctx, groot);
+            }
+
+            if (fCanvasWidth <= 0 || fCanvasHeight <= 0)
+                return {};
+
+            WGRectD outFr{ 0, 0, fCanvasWidth, fCanvasHeight };
+
             return outFr;
         }
 
@@ -196,17 +217,9 @@ namespace waavs
 
             // 1) Normal DOM pass to resolve styles
             this->resolveStyleSubtree(groot);
-
-            //primeResourceNodes(groot);
         }
 
-        void primeResources(IAmGroot* groot)
-        {
-            for (auto& node : fNodes)
-            {
-                //node->primeResources(groot);
-            }
-        }
+
 
         // We override this here, because we don't want to do anything with the information
         // in any of the top level xml elements
@@ -310,44 +323,42 @@ namespace waavs
             }
         }
         
-        // Binding to a context gives the document tree a chance to fixup
-        // relative sizing, as well as object references
+        // Binding to a context gives the document a chance to fixup
+        // relative sizing
         // 
         void bindToContext(IRenderSVG* ctx, IAmGroot* groot) noexcept override
         {
-            BLRect vpFrame(0, 0, fCanvasWidth, fCanvasHeight);
+            fPortalFrame = { 0, 0, fCanvasWidth, fCanvasHeight };
 
-            ctx->setViewport(vpFrame);
-            ctx->setObjectFrame(vpFrame);
+            ctx->setViewport(fPortalFrame);
+            ctx->setObjectFrame(fPortalFrame);
 
-            this->bindSelfToContext(ctx, groot);
+            //this->bindSelfToContext(ctx, groot);
             this->bindChildrenToContext(ctx, groot);
 
             setNeedsBinding(false);
         }
 
 
-        void drawSelf(IRenderSVG* ctx, IAmGroot*) override
-        {
+        //void drawSelf(IRenderSVG* ctx, IAmGroot*) override
+        //{
             // draw horizontal blue line at 10,10 for 300
             //ctx->strokeLine(10, 10, 300, 10, BLRgba32(0xff0000ff));
             //ctx->strokeLine(10, 10, 10, 300, BLRgba32(0xffff0000));
-        }
+        //}
         
         void draw(IRenderSVG* ctx, IAmGroot* groot) override
         {        
             if (needsBinding())
                 this->bindToContext(ctx, groot);
 
-            BLRect vpFrame = objectBoundingBox();
-
             ctx->push();
 
             // To start, we need to set the viewport and object frame
             // on the context, so binding can get the right sizes to start
 
-            ctx->setViewport(vpFrame);
-            ctx->setObjectFrame(vpFrame);
+            ctx->setViewport(fPortalFrame);
+            ctx->setObjectFrame(fPortalFrame);
 
             this->drawSelf(ctx, groot);
             this->drawChildren(ctx, groot);

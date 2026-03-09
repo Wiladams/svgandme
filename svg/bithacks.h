@@ -184,23 +184,23 @@ namespace waavs {
 
 // for upto 16-bit binary constants, MSB first
 #define B16(dmsb,dlsb) ((unsigned short) (B8(dmsb) << 8) \
-		| B8(dlsb))
+        | B8(dlsb))
 
 // for upto 32-bit binary constants, MSB first
 #define B32(dmsb,db2,db3,dlsb) ((unsigned long) (B8(dmsb) << 24) \
-		| (B8(db2) << 16) \
-		| (B8(db3) << 8) \
-		| B8(dlsb))
+        | (B8(db2) << 16) \
+        | (B8(db3) << 8) \
+        | B8(dlsb))
 
 // for upto 64-bit binary constants, MSB first
 #define B64(dmsb,db2,db3,db4,db5,db6,db7,dlsb) ((unsigned long long) (B8(dmsb) << 56) \
-		| (B8(db2) << 48) \
-		| (B8(db3) << 40) \
-		| (B8(db4) << 32) \
-		| (B8(db5) << 24) \
-		| (B8(db6) << 16) \
-		| (B8(db7) << 8) \
-		| B8(dlsb))
+        | (B8(db2) << 48) \
+        | (B8(db3) << 40) \
+        | (B8(db4) << 32) \
+        | (B8(db5) << 24) \
+        | (B8(db6) << 16) \
+        | (B8(db7) << 8) \
+        | B8(dlsb))
 
 
 
@@ -285,8 +285,8 @@ INLINE constexpr uint64_t bitsValueFromBytes(const uint8_t *bytes, const size_t 
             getbitbyteoffset(startbit+i, byteoffset, bitoffset);
             bool bitval = isset(bytes[byteoffset], bitoffset);
 
-		    if (bitval) {
-			    value = setbit(value, i);
+            if (bitval) {
+                value = setbit(value, i);
             }
         }
     } else {
@@ -392,36 +392,36 @@ namespace waavs {
     // http://www.isthe.com/chongo/tech/comp/fnv/
     // 
     // 32-bit FNV-1a constants
-	constexpr uint32_t FNV1A_32_INIT = 0x811c9dc5;
-	constexpr uint32_t FNV1A_32_PRIME = 0x01000193;
+    constexpr uint32_t FNV1A_32_INIT = 0x811c9dc5;
+    constexpr uint32_t FNV1A_32_PRIME = 0x01000193;
     
-	// 64-bit FNV-1a constants
-	constexpr uint64_t FNV1A_64_INIT = 0xcbf29ce484222325ULL;
-	constexpr uint64_t FNV1A_64_PRIME = 0x100000001b3ULL;
+    // 64-bit FNV-1a constants
+    constexpr uint64_t FNV1A_64_INIT = 0xcbf29ce484222325ULL;
+    constexpr uint64_t FNV1A_64_PRIME = 0x100000001b3ULL;
     
-	// 32-bit FNV-1a hash
-	INLINE constexpr uint32_t fnv1a_32(const void* data, const size_t size) noexcept
-	{
-		const uint8_t* bytes = (const uint8_t*)data;
-		uint32_t hash = FNV1A_32_INIT;
-		for (size_t i = 0; i < size; i++) {
-			hash ^= bytes[i];
-			hash *= FNV1A_32_PRIME;
-		}
-		return hash;
-	}
+    // 32-bit FNV-1a hash
+    INLINE constexpr uint32_t fnv1a_32(const void* data, const size_t size) noexcept
+    {
+        const uint8_t* bytes = (const uint8_t*)data;
+        uint32_t hash = FNV1A_32_INIT;
+        for (size_t i = 0; i < size; i++) {
+            hash ^= bytes[i];
+            hash *= FNV1A_32_PRIME;
+        }
+        return hash;
+    }
 
-	// 64-bit FNV-1a hash
-	INLINE constexpr uint64_t fnv1a_64(const void* data, const size_t size) noexcept
-	{
-		const uint8_t* bytes = (const uint8_t*)data;
-		uint64_t hash = FNV1A_64_INIT;
-		for (size_t i = 0; i < size; i++) {
-			hash ^= bytes[i];
-			hash *= FNV1A_64_PRIME;
-		}
-		return hash;
-	}
+    // 64-bit FNV-1a hash
+    INLINE constexpr uint64_t fnv1a_64(const void* data, const size_t size) noexcept
+    {
+        const uint8_t* bytes = (const uint8_t*)data;
+        uint64_t hash = FNV1A_64_INIT;
+        for (size_t i = 0; i < size; i++) {
+            hash ^= bytes[i];
+            hash *= FNV1A_64_PRIME;
+        }
+        return hash;
+    }
 
 
 

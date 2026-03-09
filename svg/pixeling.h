@@ -38,6 +38,10 @@
 typedef uint32_t Pixel_ARGB32;
 typedef uint32_t Pixel_RGBA32;
 
+typedef uint32_t Pixel_SRGBA8_ARGB32; // [A:R:G:B] straight sRGB 
+typedef uint32_t Pixel_SRGBA8_RGBA32; // [R:G:B:A] straight sRGB 
+
+
 //------------------------------------------------------------------------- 
 // Pack/unpack between PRGBA (linear floats) and ARGB32/RGBA32 (sRGB premul) 
 // ------------------------------------------------------------------------- 
@@ -124,8 +128,7 @@ static inline ColorPRGBA pixeling_RGBA32_unpack_prgba(const Pixel_RGBA32 px)
 /* Straight sRGBA8 helpers (no premultiplication; asset handling)*/
 /* ------------------------------------------------------------- */
 
-typedef uint32_t Pixel_SRGBA8_ARGB32; /* [A:R:G:B] straight sRGB */
-typedef uint32_t Pixel_SRGBA8_RGBA32; /* [R:G:B:A] straight sRGB */
+
 
 static inline Pixel_SRGBA8_ARGB32 pixeling_srgba_pack_ARGB32(const ColorSRGB s)
 {
@@ -175,10 +178,11 @@ typedef struct {
     uint8_t* data;   // base pointer
     int      width;  // in pixels
     int      height; // in pixels
-    int      stride; // in bytes between rows
+    intptr_t stride; // in bytes between rows
 } Surface_ARGB32;
 
-static inline uint32_t* pixeling_ARGB32_row_ptr(Surface_ARGB32* s, int y) {
+
+static inline uint32_t* pixeling_ARGB32_row_ptr(const Surface_ARGB32* s, int y) {
     return (uint32_t*)(s->data + (size_t)y * (size_t)s->stride);
 }
 
@@ -343,5 +347,30 @@ static inline ColorPRGBA pixeling_ARGB32_unpack_prgba_LUT(const Pixel_ARGB32 px)
     return p;
 }
 
+// Used to rapidly copy 32 bit values 
+static void memset_l(void* adr, int32_t val, size_t count)
+{
+    int32_t v;
+    size_t i, n;
+    uint32_t* p;
+    p = static_cast<uint32_t*>(adr);
+    v = val;
+
+    // Do 4 at a time
+    n = count >> 2;
+    for (i = 0; i < n; i++)
+    {
+        p[0] = v;
+        p[1] = v;
+        p[2] = v;
+        p[3] = v;
+        p += 4;
+    }
+
+    // Copy the last remaining values
+    n = count & 3;
+    for (i = 0; i < n; i++)
+        *p++ = val;
+}
 
 #endif // PIXELING_H_INCLUDED

@@ -1,24 +1,13 @@
 #pragma once
 
 #include "bspan.h"
-#include "pixelaccessor.h"
+#include "surface.h"
 #include "svgdatatypes.h"
 #include "stopwatch.h"
 
 namespace waavs 
 {
-    static INLINE double bindNumberOrPercent(const SVGNumberOrPercent& norp, const double range, const double fallback) noexcept
-    {
-        if (norp.isSet())
-        {
-            if (norp.isPercent())
-                return norp.calculatedValue() * range;
 
-            return norp.calculatedValue();
-        }
-
-        return fallback;
-    }
 
     // “Source” can be a device name, filename, URL, etc.
     struct FrameSourceDesc {
@@ -40,7 +29,7 @@ namespace waavs
     // This could be a video file, a camera, a screen capture, etc.
     //
     struct IFrameSource {
-        // Name of file we're displaying
+        // Name of thing we're displaying
         InternedKey fSourceKey{ nullptr };
 
         int64_t fCropX = 0;
@@ -50,6 +39,7 @@ namespace waavs
 
         // Capture throttling
         StopWatch fTimer;
+        double fFrameRate{ 15.0 };
         double fMinInterval = 0.0;
         double fLastCaptureTime = 0;
 
@@ -57,11 +47,18 @@ namespace waavs
 
         virtual ~IFrameSource() = default;
 
+        virtual void setFrameRate(double fps) noexcept
+        {
+            fFrameRate = fps;
+            fMinInterval = (fps > 0.0) ? (1.0 / fps) : 0.0;
+        }
+        double frameRate() const noexcept { return fFrameRate; }
+
         virtual bool reset(const FrameSourceDesc& desc) noexcept = 0;
         virtual bool update() noexcept = 0;
 
-        virtual PixelArray& pixels() noexcept = 0;
-        virtual const PixelArray& pixels() const noexcept = 0;
+        virtual Surface& pixels() noexcept = 0;
+        virtual const Surface& pixels() const noexcept = 0;
 
     };
 

@@ -3,10 +3,10 @@
 #include <list>
 #include <memory>
 
-#include "blend2d.h"
+#include "blend2d_connect.h"
 #include "svgattributes.h"
-//#include "svgpath.h"
 #include "b2dpath.h"
+#include "svgcamera.h"
 
 namespace waavs {
 
