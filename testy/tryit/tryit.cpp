@@ -9,7 +9,33 @@
 
 using namespace waavs;
 
+#if defined(_M_ARM64)
+# pragma message("_M_ARM64 defined")
+#endif
 
+#if defined(__aarch64__)
+# pragma message("__aarch64__ defined")
+#endif
+
+#if defined(_M_X64)
+# pragma message("_M_X64 defined")
+#endif
+
+#if defined(__x86_64__)
+# pragma message("__x86_64__ defined")
+#endif
+
+#if defined(__SSE2__)
+# pragma message("__SSE2__ defined")
+#endif
+
+#if defined(__SSSE3__)
+# pragma message("__SSSE3__ defined")
+#endif
+
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+# pragma message("__ARM_NEON defined")
+#endif
 
 int main(int argc, char** argv)
 {

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "svgstructuretypes.h"
-#include "b2dfilterexec.h"
+#include "filterexec_b2d.h"
 
 
 namespace waavs {
@@ -40,7 +40,7 @@ namespace waavs {
             WGRectD bbox{};
             for (auto& node : fNodes)
             {
-                if (!node || !node->visible()) continue;
+                if (!node || !node->isVisible()) continue;
 
                 WGRectD nodeBox{};
                 nodeBox = node->objectBoundingBox();
@@ -656,7 +656,8 @@ namespace waavs {
             {
                 // should we check to see if the node
                 // is visible before drawing it?
-                if (node->visible())
+                bool nodeVisible = node->isVisible();
+                if (nodeVisible)
                 {
                     node->draw(ctx, groot);
                 }

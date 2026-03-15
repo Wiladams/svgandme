@@ -8,7 +8,7 @@
 //==================================================
 
 #include <functional>
-//#include <string>
+
 
 #include "converters.h"
 #include "svgattributes.h"
@@ -66,7 +66,6 @@ namespace waavs {
             
             // See if it's a format that blend2d can deal with using its
             // own codecs
-            //BLResult res = img.readFromData(outBuff.data(), outBuff.size());
             BLResult res = img.readFromData(outBuff.data(), decodedSize);
 
             success = (res == BL_SUCCESS);
@@ -234,13 +233,13 @@ namespace waavs
         {
             const BLFont* fontOpt = nullptr;    // font not relevant here
             double dpi = groot ? groot->dpi() : 96;
-            double w = 1.0;
-            double h = 1.0;
+            //double w = 1.0;
+            //double h = 1.0;
 
             const WGRectD paintVP = ctx->viewport();
 
-            w = paintVP.w;
-            h = paintVP.h;
+            //w = paintVP.w;
+            //h = paintVP.h;
 
 
             LengthResolveCtx cx{}, cy{}, cw{}, ch{};
@@ -268,6 +267,17 @@ namespace waavs
             const double ih = double(fImage.size().h);
             if (iw <= 0.0 || ih <= 0.0)
                 return;
+
+            // don't display, if we have a display attribute of 'none'
+            ByteSpan displayAttr{};
+            if (fAttributes.getValue(svgattr::display(), displayAttr))
+            {
+                displayAttr = chunk_trim(displayAttr, chrWspChars);
+                InternedKey dv = PSNameTable::INTERN(displayAttr);
+
+                if (dv == svgval::none())
+                    return;
+            }
 
             // We want to apply the preserveAspectRatio rules to determine 
             // how to fit the image into the specified width/height.

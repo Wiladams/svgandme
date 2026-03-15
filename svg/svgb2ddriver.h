@@ -154,9 +154,9 @@ namespace waavs
             fDrawingContext->setStrokeTransformOrder(getStrokeBeforeTransform() ? BL_STROKE_TRANSFORM_ORDER_BEFORE : BL_STROKE_TRANSFORM_ORDER_AFTER);
         }
 
-        void onBlendMode() override
+        void onBlendMode(int mode) override
         {
-            BLCompOp compOp = (BLCompOp)getCompositeMode();
+            BLCompOp compOp = (BLCompOp)mode;
             fDrawingContext->setCompOp(compOp);
         }
 

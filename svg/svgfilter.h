@@ -67,7 +67,41 @@ namespace waavs
         return lengthValueToNumberOrPercent(inVal, outVal, dpi, font, true);
     }
 
+    struct SVGNumberPair
+    {
+        float a{ 0.0f };
+        float b{ 0.0f };
+        bool hasB{ false }; // if false, b is implied = a
 
+        void set(float v) { a = v; b = v; hasB = false; }
+    };
+
+    // Parse: <number> [<number>]
+    // Uses readNextNumber(), so it naturally accepts comma/space separators.
+    static INLINE bool parseNumberPair(ByteSpan s, SVGNumberPair& out) noexcept
+    {
+        s = chunk_trim(s, chrWspChars);
+        if (!s) { out.set(0.0f); return false; }
+
+        double x = 0.0;
+        if (!readNextNumber(s, x)) { out.set(0.0f); return false; }
+
+        double y = 0.0;
+        if (readNextNumber(s, y)) {
+            out.a = (float)x;
+            out.b = (float)y;
+            out.hasB = true;
+        }
+        else {
+            out.set((float)x);
+        }
+
+        // SVG behavior: negative treated as 0
+        if (out.a < 0.0f) out.a = 0.0f;
+        if (out.b < 0.0f) out.b = 0.0f;
+
+        return true;
+    }
 }
 
 // Helpers to make parsing various filter attributes easier
@@ -320,7 +354,7 @@ namespace waavs
         // If the op states an explicit 'in' key, use that
         // Otherwise, if last is non-null, use last
         // Otherwise, default to SourceGraphic
-        InternedKey resolveIn1(InternedKey last) const noexcept
+        virtual InternedKey resolveIn1(InternedKey last) const noexcept
         {
             if (fIn) 
                 return fIn;
@@ -329,7 +363,7 @@ namespace waavs
         }
 
 
-        InternedKey resolveIn2(InternedKey last) const noexcept
+        virtual InternedKey resolveIn2(InternedKey last) const noexcept
         {
             if (fIn2) 
                 return fIn2;
@@ -608,9 +642,9 @@ namespace waavs
 
         bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
         {
+            (void)last;
 
-
-            emit_u32(out, (uint32_t)fOperator);
+            emit_u32(out, (uint32_t)fCompOp);
 
             if (compositeOpNeedsArithmeticCoeffs(fCompOp)) {
                 emit_f32(out, fK1);
@@ -792,16 +826,14 @@ namespace waavs
 
         bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
         {
-            //const uint8_t flags = flagsForIO(*this, false);
-            //out.ops.push_back(packOp(FOP_CONVOLVE_MATRIX, flags));
-
-            //const InternedKey in1 = resolveIn1(*this, last);
-            //emitCommonIO(out, *this, in1, {}, flags);
+            (void)last;
 
             emit_u32x2(out, fOrderX, fOrderY);
 
+            const uint32_t kernelCount = fOrderX * fOrderY;
+
             if (!fKernel.empty())
-                emit_f32_list(out, fKernel.data(), (uint32_t)fKernel.size());
+                emit_f32_list(out, fKernel.data(), kernelCount);
 
             emit_f32(out, fDivisor);
             emit_f32(out, fBias);
@@ -811,7 +843,6 @@ namespace waavs
             emit_f32(out, fKernelUnitLengthY);
             emit_u32(out, fPreserveAlpha ? 1u : 0u);
 
-            //last = finishLast(fResult);
             return true;
         }
 
@@ -827,6 +858,15 @@ namespace waavs
                 fOrderX = fOrderY = 3;
 
             parseFloatListAttr(getAttribute(filter::kernelMatrix()), fKernel);
+
+            // Ensure kernel size matches orderX * orderY.  
+            // If too small, pad with 0s.  
+            // If too big, truncate.
+            const uint32_t kernelCount = fOrderX * fOrderY;
+            if (fKernel.size() < kernelCount)
+                fKernel.resize(kernelCount, 0.0);
+            else if (fKernel.size() > kernelCount)
+                fKernel.resize(kernelCount);
 
             ByteSpan divisorAttr{};
             if (getAttribute(filter::divisor(), divisorAttr))
@@ -926,11 +966,6 @@ namespace waavs
 
         bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
         {
-            //const uint8_t flags = flagsForIO(*this, false);
-            //out.ops.push_back(packOp(FOP_DIFFUSE_LIGHTING, flags));
-
-            //const InternedKey in1 = resolveIn1(*this, last);
-            //emitCommonIO(out, *this, in1, {}, flags);
 
             emit_u32(out, fLightingColorRGBA32);
             emit_f32(out, fSurfaceScale);
@@ -940,7 +975,6 @@ namespace waavs
             emit_u32(out, (uint32_t)fLightType);
             emit_f32_list(out, fLight, 8);
 
-            //last = finishLast(fResult);
             return true;
         }
 
@@ -979,16 +1013,16 @@ namespace waavs
                 if (!g)
                     continue;
 
-                ByteSpan nm = g->name();
+                auto nm = g->nameAtom();
 
-                if (nm == "feDistantLight")
+                if (nm == filter::feDistantLight())
                 {
                     fLightType = FILTER_LIGHT_DISTANT;
                     parseF32Attr(g->getAttribute(filter::azimuth()), fLight[0]);
                     parseF32Attr(g->getAttribute(filter::elevation()), fLight[1]);
                     break;
                 }
-                else if (nm == "fePointLight")
+                else if (nm == filter::fePointLight())
                 {
                     fLightType = FILTER_LIGHT_POINT;
                     parseF32Attr(g->getAttribute(filter::x()), fLight[0]);
@@ -996,7 +1030,7 @@ namespace waavs
                     parseF32Attr(g->getAttribute(filter::z()), fLight[2]);
                     break;
                 }
-                else if (nm == "feSpotLight")
+                else if (nm == filter::feSpotLight())
                 {
                     fLightType = FILTER_LIGHT_SPOT;
                     parseF32Attr(g->getAttribute(filter::x()), fLight[0]);
@@ -1054,12 +1088,6 @@ namespace waavs
 
         bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
         {
-            //const uint8_t flags = flagsForIO(*this, true);
-            //out.ops.push_back(packOp(FOP_DISPLACEMENT_MAP, flags));
-
-            //const InternedKey in1 = resolveIn1(*this, last);
-            //const InternedKey in2 = resolveIn2(*this, last);
-            //emitCommonIO(out, *this, in1, in2, flags);
 
             emit_f32(out, fScale);
             emit_u32(out, (uint32_t)fXChannel);
@@ -1140,8 +1168,148 @@ namespace waavs
     };
     
     //
-    // feFlood
+    // feDropShadow
     //
+    struct SVGFeDropShadowElement : public SVGFilterPrimitiveElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName("feDropShadow", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeDropShadowElement>(groot);
+                node->loadFromXmlElement(elem, groot);
+                return node;
+                });
+        }
+
+        static void registerFactory()
+        {
+            registerContainerNodeByName("feDropShadow", [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFeDropShadowElement>(groot);
+                node->loadFromXmlPull(iter, groot);
+                return node;
+                });
+
+            registerSingularNode();
+        }
+
+        float fDx{ 2.0f };
+        float fDy{ 2.0f };
+        SVGNumberPair fStdDeviation{};
+        uint32_t fFloodRGBA32Premul{ 0xFF000000u };
+
+        SVGFeDropShadowElement(IAmGroot*)
+            : SVGFilterPrimitiveElement(FOP_DROP_SHADOW)
+        {
+
+
+            // SVG default stdDeviation is 2 in common authoring practice for drop shadow?
+            // Spec default is 0 if omitted. Keep the builder literal to spec behavior.
+            fStdDeviation.set(0.0f);
+        }
+
+        bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
+        {
+            (void)last;
+
+            emit_f32(out, fDx);
+            emit_f32(out, fDy);
+            emit_f32(out, fStdDeviation.a);
+            emit_f32(out, fStdDeviation.hasB ? fStdDeviation.b : fStdDeviation.a);
+            emit_u32(out, fFloodRGBA32Premul);
+
+            return true;
+        }
+
+        void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
+        {
+            // dx / dy
+            {
+                ByteSpan dxAttr{};
+                if (getAttribute(svgattr::dx(), dxAttr))
+                {
+                    double v = 0.0;
+                    if (parseNumber(dxAttr, v))
+                        fDx = (float)v;
+                    else
+                        fDx = 2.0f;
+                }
+                else
+                {
+                    fDx = 2.0f;
+                }
+            }
+
+            {
+                ByteSpan dyAttr{};
+                if (getAttribute(svgattr::dy(), dyAttr))
+                {
+                    double v = 0.0;
+                    if (parseNumber(dyAttr, v))
+                        fDy = (float)v;
+                    else
+                        fDy = 2.0f;
+                }
+                else
+                {
+                    fDy = 2.0f;
+                }
+            }
+
+            // stdDeviation
+            {
+                ByteSpan sdAttr{};
+                if (getAttribute(filter::stdDeviation(), sdAttr))
+                    parseNumberPair(sdAttr, fStdDeviation);
+                else
+                    fStdDeviation.set(0.0f);
+            }
+
+            // flood-color + flood-opacity
+            // Same approach as feFlood.
+            fFloodRGBA32Premul = 0xFF000000u;
+
+            ByteSpan colorAttr{};
+            if (getAttribute(filter::flood_color(), colorAttr))
+            {
+                double opacity = 1.0;
+                ByteSpan opacityAttr{};
+                if (getAttribute(filter::flood_opacity(), opacityAttr))
+                {
+                    parseNumber(opacityAttr, opacity);
+                    if (opacity < 0.0) opacity = 0.0;
+                    if (opacity > 1.0) opacity = 1.0;
+                }
+
+                SVGPaint paint(groot);
+                paint.loadFromChunk(colorAttr);
+                paint.setOpacity((float)opacity);
+
+                BLVar c = paint.getVariant(nullptr, groot);
+                if (blVarToRgba32(&c, &fFloodRGBA32Premul) != BL_SUCCESS)
+                    fFloodRGBA32Premul = 0xFF000000u;
+            }
+            else
+            {
+                // If flood-color is omitted, SVG default is black.
+                // Respect flood-opacity if present.
+                double opacity = 1.0;
+                ByteSpan opacityAttr{};
+                if (getAttribute(filter::flood_opacity(), opacityAttr))
+                {
+                    parseNumber(opacityAttr, opacity);
+                    if (opacity < 0.0) opacity = 0.0;
+                    if (opacity > 1.0) opacity = 1.0;
+                }
+
+                const uint32_t a = (uint32_t)clamp_u8((int)std::lround(opacity * 255.0));
+                fFloodRGBA32Premul = (a << 24);
+            }
+        }
+    };
+
+    // -----------------------------------------------
+    // feFlood
+    // ------------------------------------------------
     struct SVGFeFloodElement : public SVGFilterPrimitiveElement
     {
         static void registerSingularNode()
@@ -1175,6 +1343,14 @@ namespace waavs
         {
         }
 
+        InternedKey resolveIn1(InternedKey last) const noexcept override
+        {
+            (void)last;
+
+            // feFlood doesn't have an input, so ignore 'last' and always return null.
+            return nullptr;
+        }
+
         bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
         {
             emit_u32(out, fFloodRGBA32Premul);
@@ -1192,8 +1368,7 @@ namespace waavs
                 ByteSpan opacityAttr{};
                 if (getAttribute(filter::flood_opacity(), opacityAttr)) {
                     parseNumber(opacityAttr, opacity);
-                    if (opacity < 0.0f) opacity = 0.0f;
-                    if (opacity > 1.0f) opacity = 1.0f;
+                    opacity = clamp(opacity, 0.0, 1.0);
                 }
 
                 SVGPaint paint(groot);
@@ -1212,41 +1387,7 @@ namespace waavs
     //
     // feGaussianBlur
     //
-    struct SVGNumberPair
-    {
-        float a{ 0.0f };
-        float b{ 0.0f };
-        bool hasB{ false }; // if false, b is implied = a
 
-        void set(float v) { a = v; b = v; hasB = false; }
-    };
-
-    // Parse: <number> [<number>]
-    // Uses readNextNumber(), so it naturally accepts comma/space separators.
-    static INLINE bool parseNumberPair(ByteSpan s, SVGNumberPair& out) noexcept
-    {
-        s = chunk_trim(s, chrWspChars);
-        if (!s) { out.set(0.0f); return false; }
-
-        double x = 0.0;
-        if (!readNextNumber(s, x)) { out.set(0.0f); return false; }
-
-        double y = 0.0;
-        if (readNextNumber(s, y)) {
-            out.a = (float)x;
-            out.b = (float)y;
-            out.hasB = true;
-        }
-        else {
-            out.set((float)x);
-        }
-
-        // SVG behavior: negative treated as 0
-        if (out.a < 0.0f) out.a = 0.0f;
-        if (out.b < 0.0f) out.b = 0.0f;
-
-        return true;
-    }
 
     struct SVGFeGaussianBlurElement : public SVGFilterPrimitiveElement
     {
@@ -1307,6 +1448,270 @@ namespace waavs
     };
 
     //
+    // feImage
+    //
+    struct SVGFeImageElement : public SVGFilterPrimitiveElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName("feImage", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeImageElement>(groot);
+                node->loadFromXmlElement(elem, groot);
+                return node;
+                });
+        }
+
+        static void registerFactory()
+        {
+            registerContainerNodeByName("feImage", [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFeImageElement>(groot);
+                node->loadFromXmlPull(iter, groot);
+                return node;
+                });
+
+            registerSingularNode();
+        }
+
+        InternedKey fImageKey{ nullptr };
+        AspectRatioAlignKind fAlign{ AspectRatioAlignKind::SVG_ASPECT_RATIO_XMIDYMID };
+        AspectRatioMeetOrSliceKind fMeetOrSlice{ AspectRatioMeetOrSliceKind::SVG_ASPECT_RATIO_MEET };
+
+
+        SVGFeImageElement(IAmGroot*)
+            : SVGFilterPrimitiveElement(FOP_IMAGE)
+        {
+            setIsVisible(false);
+        }
+
+        virtual InternedKey resolveIn1(InternedKey last) const noexcept override
+        {
+            (void)last;
+            return nullptr;
+        }
+
+        bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
+        {
+            (void)last;
+            emit_key(out, fImageKey);
+            emit_u32(out, (uint32_t)fAlign);
+            emit_u32(out, (uint32_t)fMeetOrSlice);
+
+            return true;
+        }
+
+        void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
+        {
+            (void)groot;
+
+            ByteSpan hrefAttr{};
+            hrefAttr = getAttribute(filter::href());
+            if (!hrefAttr)
+                hrefAttr = getAttribute(filter::xlink_href());
+
+            if (hrefAttr)
+                fImageKey = PSNameTable::INTERN(hrefAttr);
+            else
+                fImageKey = nullptr;
+
+            ByteSpan parAttr = getAttribute(svgattr::preserveAspectRatio());
+            if (parAttr)
+                parsePreserveAspectRatio(parAttr, fAlign, fMeetOrSlice);
+        }
+    };
+
+
+    //
+    // feMergeNode
+    // Child-only payload for feMerge
+    //
+    struct SVGFeMergeNodeElement : public SVGFilterPrimitiveElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName("feMergeNode", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeMergeNodeElement>(groot);
+                node->loadFromXmlElement(elem, groot);
+                return node;
+                });
+        }
+
+        static void registerFactory()
+        {
+            registerContainerNodeByName("feMergeNode", [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFeMergeNodeElement>(groot);
+                node->loadFromXmlPull(iter, groot);
+                return node;
+                });
+
+            registerSingularNode();
+        }
+
+        SVGFeMergeNodeElement(IAmGroot*)
+            : SVGFilterPrimitiveElement(FOP_END)
+        {
+            setIsVisible(false);
+        }
+
+        bool emitSelf(FilterProgramStream& fps, InternedKey& last) const noexcept override
+        {
+            (void)fps;
+            (void)last;
+            return false;
+        }
+
+        void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
+        {
+            (void)groot;
+            // Nothing extra needed. Its "in" is already handled by base fixup.
+        }
+    };
+
+    //
+    // feMerge
+    //
+    struct SVGFeMergeElement : public SVGFilterPrimitiveElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName("feMerge", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeMergeElement>(groot);
+                node->loadFromXmlElement(elem, groot);
+                return node;
+                });
+        }
+
+        static void registerFactory()
+        {
+            registerContainerNodeByName("feMerge", [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFeMergeElement>(groot);
+                node->loadFromXmlPull(iter, groot);
+                return node;
+                });
+
+            registerSingularNode();
+        }
+
+        std::vector<InternedKey> fInputs{};
+
+        SVGFeMergeElement(IAmGroot*)
+            : SVGFilterPrimitiveElement(FOP_MERGE)
+        {
+            setIsVisible(false);
+        }
+
+        // Generator-like wrt common "in1": ABI says it is unused.
+        InternedKey resolveIn1(InternedKey last) const noexcept
+        {
+            (void)last;
+            return nullptr;
+        }
+
+        bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
+        {
+            (void)last;
+            emit_counted_key_list(out, fInputs.empty() ? nullptr : fInputs.data(), (uint32_t)fInputs.size());
+            return true;
+        }
+
+        void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
+        {
+            (void)groot;
+
+            fInputs.clear();
+
+            for (auto& n : fNodes)
+            {
+                if (!n)
+                    continue;
+
+                auto mn = std::dynamic_pointer_cast<SVGFeMergeNodeElement>(n);
+                if (!mn)
+                    continue;
+
+                // feMergeNode "in" default is previous result if omitted.
+                // But inside feMerge, that would be surprising and not especially useful.
+                // Usually authors provide it explicitly. Still, use the same fallback rule.
+                InternedKey k = mn->fIn ? mn->fIn : kFilter_SourceGraphic();
+                fInputs.push_back(k);
+            }
+        }
+    };
+
+
+    //
+    // feMorphology
+    //
+    struct SVGFeMorphologyElement : public SVGFilterPrimitiveElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName("feMorphology", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeMorphologyElement>(groot);
+                node->loadFromXmlElement(elem, groot);
+                return node;
+                });
+        }
+
+        static void registerFactory()
+        {
+            registerContainerNodeByName("feMorphology", [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFeMorphologyElement>(groot);
+                node->loadFromXmlPull(iter, groot);
+                return node;
+                });
+
+            registerSingularNode();
+        }
+
+        FilterMorphologyOp fMorphOp{ FILTER_MORPHOLOGY_ERODE };
+        float fRadiusX{ 0.0f };
+        float fRadiusY{ 0.0f };
+
+        SVGFeMorphologyElement(IAmGroot*)
+            : SVGFilterPrimitiveElement(FOP_MORPHOLOGY)
+        {
+            setIsVisible(false);
+        }
+
+        bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
+        {
+            (void)last;
+
+            emit_u32(out, (uint32_t)fMorphOp);
+            emit_f32(out, fRadiusX);
+            emit_f32(out, fRadiusY);
+
+            return true;
+        }
+
+        void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
+        {
+            (void)groot;
+
+            ByteSpan opAttr{};
+            if (getAttribute(filter::operator_(), opAttr))
+                fMorphOp = parseFilterMorphologyOp(PSNameTable::INTERN(opAttr));
+            else
+                fMorphOp = FILTER_MORPHOLOGY_ERODE;
+
+            ByteSpan radiusAttr{};
+            if (getAttribute(filter::radius(), radiusAttr))
+            {
+                parseFloatPairAttr(radiusAttr, fRadiusX, fRadiusY);
+
+                if (fRadiusX < 0.0f) fRadiusX = 0.0f;
+                if (fRadiusY < 0.0f) fRadiusY = 0.0f;
+            }
+            else
+            {
+                fRadiusX = 0.0f;
+                fRadiusY = 0.0f;
+            }
+        }
+    };
+
+
+    //
     // feOffset
     //
     struct SVGFeOffsetElement : public SVGFilterPrimitiveElement
@@ -1342,21 +1747,13 @@ namespace waavs
         SVGFeOffsetElement(IAmGroot* )
             : SVGFilterPrimitiveElement(FOP_OFFSET)
         {
-            setIsVisible(false);
         }
 
         bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
         {
-            //const uint8_t flags = flagsForIO(*this, false);
-            //out.ops.push_back(packOp(FOP_OFFSET, flags));
-
-            //const InternedKey in1 = resolveIn1(*this, last);
-            //emitCommonIO(out, *this, in1, {}, flags);
-
             emit_f32(out, fDx);
             emit_f32(out, fDy);
 
-            //last = finishLast(fResult);
             return true;
         }
 
@@ -1378,7 +1775,178 @@ namespace waavs
 
     };
     
-    
+    //
+// feSpecularLighting
+//
+    struct SVGFeSpecularLightingElement : public SVGFilterPrimitiveElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName("feSpecularLighting", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeSpecularLightingElement>(groot);
+                node->loadFromXmlElement(elem, groot);
+                return node;
+                });
+        }
+
+        static void registerFactory()
+        {
+            registerContainerNodeByName("feSpecularLighting", [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFeSpecularLightingElement>(groot);
+                node->loadFromXmlPull(iter, groot);
+                return node;
+                });
+
+            registerSingularNode();
+        }
+
+        uint32_t fLightingColorRGBA32{ 0xFFFFFFFFu };
+        float fSurfaceScale{ 1.0f };
+        float fSpecularConstant{ 1.0f };
+        float fSpecularExponent{ 1.0f };
+        float fKernelUnitLengthX{ 0.0f };
+        float fKernelUnitLengthY{ 0.0f };
+        FilterLightType fLightType{ FILTER_LIGHT_DISTANT };
+        float fLight[8]{};
+
+        SVGFeSpecularLightingElement(IAmGroot*)
+            : SVGFilterPrimitiveElement(FOP_SPECULAR_LIGHTING)
+        {
+        }
+
+        bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
+        {
+            (void)last;
+
+            emit_u32(out, fLightingColorRGBA32);
+            emit_f32(out, fSurfaceScale);
+            emit_f32(out, fSpecularConstant);
+            emit_f32(out, fSpecularExponent);
+            emit_f32(out, fKernelUnitLengthX);
+            emit_f32(out, fKernelUnitLengthY);
+            emit_u32(out, (uint32_t)fLightType);
+            emit_f32_list(out, fLight, 8);
+
+            return true;
+        }
+
+        void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
+        {
+            parseF32Attr(getAttribute(filter::surfaceScale()), fSurfaceScale);
+            parseF32Attr(getAttribute(filter::specularConstant()), fSpecularConstant);
+            parseF32Attr(getAttribute(filter::specularExponent()), fSpecularExponent);
+
+            ByteSpan kulAttr{};
+            if (getAttribute(filter::kernelUnitLength(), kulAttr))
+                parseFloatPairAttr(kulAttr, fKernelUnitLengthX, fKernelUnitLengthY);
+
+            ByteSpan lcAttr{};
+            if (getAttribute(filter::lighting_color(), lcAttr))
+            {
+                if (!parseLightColorAttr(groot, lcAttr, fLightingColorRGBA32))
+                    fLightingColorRGBA32 = 0xFFFFFFFFu;
+            }
+            else
+            {
+                fLightingColorRGBA32 = 0xFFFFFFFFu;
+            }
+
+            fLightType = FILTER_LIGHT_DISTANT;
+            for (int i = 0; i < 8; ++i)
+                fLight[i] = 0.0f;
+
+            for (auto& n : fNodes)
+            {
+                if (!n)
+                    continue;
+
+                auto g = std::dynamic_pointer_cast<SVGGraphicsElement>(n);
+                if (!g)
+                    continue;
+
+                ByteSpan nm = g->name();
+
+                if (nm == "feDistantLight")
+                {
+                    fLightType = FILTER_LIGHT_DISTANT;
+                    parseF32Attr(g->getAttribute(filter::azimuth()), fLight[0]);
+                    parseF32Attr(g->getAttribute(filter::elevation()), fLight[1]);
+                    break;
+                }
+                else if (nm == "fePointLight")
+                {
+                    fLightType = FILTER_LIGHT_POINT;
+                    parseF32Attr(g->getAttribute(filter::x()), fLight[0]);
+                    parseF32Attr(g->getAttribute(filter::y()), fLight[1]);
+                    parseF32Attr(g->getAttribute(filter::z()), fLight[2]);
+                    break;
+                }
+                else if (nm == "feSpotLight")
+                {
+                    fLightType = FILTER_LIGHT_SPOT;
+                    parseF32Attr(g->getAttribute(filter::x()), fLight[0]);
+                    parseF32Attr(g->getAttribute(filter::y()), fLight[1]);
+                    parseF32Attr(g->getAttribute(filter::z()), fLight[2]);
+                    parseF32Attr(g->getAttribute(filter::pointsAtX()), fLight[3]);
+                    parseF32Attr(g->getAttribute(filter::pointsAtY()), fLight[4]);
+                    parseF32Attr(g->getAttribute(filter::pointsAtZ()), fLight[5]);
+                    parseF32Attr(g->getAttribute(filter::specularExponent()), fLight[6]);
+                    parseF32Attr(g->getAttribute(filter::limitingConeAngle()), fLight[7]);
+                    break;
+                }
+            }
+        }
+    };
+
+
+    //
+    // feTile
+    //
+    struct SVGFeTileElement : public SVGFilterPrimitiveElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName("feTile", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeTileElement>(groot);
+                node->loadFromXmlElement(elem, groot);
+                return node;
+                });
+        }
+
+        static void registerFactory()
+        {
+            registerContainerNodeByName("feTile", [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFeTileElement>(groot);
+                node->loadFromXmlPull(iter, groot);
+                return node;
+                });
+
+            registerSingularNode();
+        }
+
+        SVGFeTileElement(IAmGroot*)
+            : SVGFilterPrimitiveElement(FOP_TILE)
+        {
+            setIsVisible(false);
+        }
+
+        // feTile is essentially a no-op that just passes through its input, 
+        // so emitSelf doesn't need to do anything.
+        bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
+        {
+            (void)out;
+            (void)last;
+            return true;
+        }
+
+        // No additional attributes for feTile, so this is a no-op.
+        void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
+        {
+            (void)groot;
+        }
+    };
+
+
     //
     // feTurbulence
     //
@@ -1418,16 +1986,18 @@ namespace waavs
         SVGFeTurbulenceElement(IAmGroot* )
             : SVGFilterPrimitiveElement(FOP_TURBULENCE)
         {
-            setIsVisible(false);
+        }
+
+        InternedKey resolveIn1(InternedKey last) const noexcept override
+        {
+            (void)last;
+
+            // feTurbulence doesn't have an input, so ignore 'last' and always return null.
+            return nullptr;
         }
 
         bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
         {
-            //const uint8_t flags = flagsForIO(*this, false);
-            //out.ops.push_back(packOp(FOP_TURBULENCE, flags));
-
-            //const InternedKey in1 = resolveIn1(*this, last);
-            //emitCommonIO(out, *this, in1, {}, flags);
 
             emit_u32(out, (uint32_t)fType);
             emit_f32(out, fBaseFrequencyX);

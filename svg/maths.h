@@ -476,6 +476,32 @@ namespace waavs
     INLINE vec3f orthonormalize(const vec3f& a, const vec3f& b);
     INLINE vec3f reflect(const vec3f& w, const vec3f& n);
     INLINE vec3f refract(const vec3f& w, const vec3f& n, float inv_eta);
+
+    static INLINE float vec3_dot(float ax, float ay, float az,
+        float bx, float by, float bz) noexcept
+    {
+        return ax * bx + ay * by + az * bz;
+    }
+
+    static INLINE void vec3_normalize(float& x, float& y, float& z) noexcept
+    {
+        const float len2 = x * x + y * y + z * z;
+
+        if (len2 > 0.0f)
+        {
+            const float invLen = 1.0f / std::sqrt(len2);
+            x *= invLen;
+            y *= invLen;
+            z *= invLen;
+        }
+        else
+        {
+            // Degenerate vector -> default to unit Z
+            x = 0.0f;
+            y = 0.0f;
+            z = 1.0f;
+        }
+    }
 }
 
 

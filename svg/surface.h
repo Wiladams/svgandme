@@ -10,9 +10,8 @@
 
 
 #include "maths.h"
-#include "pixeling.h"
 #include "membuff.h"
-#include "wggeometry.h"
+#include "idraw.h"
 
 namespace waavs
 {
@@ -54,11 +53,15 @@ namespace waavs
             fInfo.width = w;
             fInfo.height = h;
             fInfo.stride = w * 4; // ARGB32 is 4 bytes per pixel
+            fInfo.contiguous = true;    // rows are contiguous with no padding
 
             size_t totalBytes = (size_t)fInfo.stride * (size_t)fInfo.height;
             fDataBuffer.resetFromSize(totalBytes);
             fInfo.data = fDataBuffer.begin();
             
+            // Start out with a clean slate by default
+            wg_clear_all(fInfo);
+
             return true;
         }
 
@@ -88,7 +91,7 @@ namespace waavs
         // The caller is responsible for ensuring that the data remains valid
         // for the lifetime of the surface, and that the data is properly
         // allocated with the correct stride and format.
-        int createFromData(size_t w, size_t h, size_t stride, uint8_t* data)
+        uint32_t createFromData(size_t w, size_t h, size_t stride, uint8_t* data)
         {
             if (!data || w <= 0 || h <= 0 || stride < w * 4)
                 return -1;
@@ -98,40 +101,25 @@ namespace waavs
             fInfo.height = (int)h;
             fInfo.stride = (int)stride;
             fInfo.data = data;
+            fInfo.contiguous = (stride == w * 4);
 
-            return 0;
+            return WG_SUCCESS;
         }
 
-        // getSubRegion
+        // getSubSurface
         //
         // Retrieve a sub-region of this surface as a new surface that wraps the same data.
-        INLINE bool getSubRegion(const WGRectI& r, Surface& out) const noexcept
+        bool getSubSurface(const WGRectI& r, Surface& out) const noexcept
         {
-            // Reject empty source or empty requested rect.
-            if (!fInfo.data || fInfo.width <= 0 || fInfo.height <= 0)
+            if (!wg_get_subarea(fInfo, r, out.fInfo))
                 return false;
-
-            if (r.w <= 0 || r.h <= 0)
-                return false;
-
-            // Clip requested region to this surface.
-            const WGRectI clipped = intersection(r, boundsI());
-            if (clipped.w <= 0 || clipped.h <= 0)
-                return false;
-
-            // Compute top-left of clipped region using the existing row helper.
-            const uint32_t* row = rowPointer(clipped.y);
-            if (!row)
-                return false;
-
-            uint8_t* subData = (uint8_t*)(row + clipped.x);
 
             // Wrap as a non-owning proxy with parent stride preserved.
             return out.createFromData(
-                (size_t)clipped.w,
-                (size_t)clipped.h,
+                (size_t)out.fInfo.width,
+                (size_t)out.fInfo.height,
                 stride(),
-                subData) == 0;
+                out.fInfo.data) == WG_SUCCESS;
         }
 
         // clearAll()
@@ -141,25 +129,17 @@ namespace waavs
         // of a larger surface.
         void clearAll() noexcept 
         {
-            for (int row = 0; row < height(); ++row)
-            {
-                uint32_t* rPtr = rowPointer(row);
-                memset(rPtr, 0, width() * 4);
-            }
+            (void)wg_clear_all(fInfo);
         }
+        
 
         // fillAll()
         //
         // Fill the entire surface with a single premultiplied ARGB color.
-        // This should work, even if the surface is a sub-region of a larger surface.
         //
-        void fillAll(uint32_t rgbaPremul) noexcept
+        void fillAll(Pixel_ARGB32 rgbaPremul) noexcept
         {
-            for (int row = 0; row < height(); ++row)
-            {
-                uint32_t* rPtr = rowPointer(row);
-                memset_l(rPtr, (int32_t)rgbaPremul, width());
-            }
+            wg_fill_all(fInfo, rgbaPremul);
         }
 
         //
@@ -168,16 +148,16 @@ namespace waavs
         // Fill a sub-region with a given pre-multiplied pixel value
         // This will handle clipping the rectangle to fit the bounds
         // of the surface.
-        void fillRect(const WGRectI& r, uint32_t rgbaPremul) const
+        void fillRect(const WGRectI& r, Pixel_ARGB32 rgbaPremul) const
         {
             Surface sub;
-            if (!getSubRegion(r, sub))
+            if (!getSubSurface(r, sub))
                 return;
 
-            sub.fillAll(rgbaPremul);
+            wg_fill_all(sub.fInfo, rgbaPremul);
         }
 
-        void fillRect(const WGRectD& r, uint32_t rgbaPremul) const
+        void fillRect(const WGRectD& r, Pixel_ARGB32 rgbaPremul) const
         {
             int x = (int)waavs::floor(r.x);
             int y = (int)waavs::floor(r.y);
@@ -190,54 +170,12 @@ namespace waavs
         // blit()
         //
         // Copy a source surface into this surface at the given destination coordinates.
-        // If you want a sub-region of the source, simply 'getSubRegion()' that region 
-        // into a new surface, and blit that.
         // Big caveat: This routine uses memcpy, so if the source and destination regions 
         // overlap, the behavior is undefined.
-        void blitSurface(const Surface& src, int dstX, int dstY) noexcept
+        void blit(const Surface& src, int dstX, int dstY) noexcept
         {
-            // Reject empty source or destination.
-            if (!data() || width() == 0 || height() == 0)
-                return;
-
-            if (!src.data() || src.width() == 0 || src.height() == 0)
-                return;
-
-            // Where the full source would land in destination coordinates.
-            const WGRectI dstPlacement{ dstX, dstY, (int)src.width(), (int)src.height() };
-
-            // Clip that placement against destination bounds.
-            const WGRectI dstClipped = intersection(dstPlacement, boundsI());
-            if (dstClipped.w <= 0 || dstClipped.h <= 0)
-                return;
-
-            // Compute corresponding source subregion.
-            // If dstPlacement was clipped on the left/top, shift source origin by same amount.
-            const WGRectI srcRect{
-                dstClipped.x - dstPlacement.x,
-                dstClipped.y - dstPlacement.y,
-                dstClipped.w,
-                dstClipped.h
-            };
-
-            Surface srcView;
-            if (!src.getSubRegion(srcRect, srcView))
-                return;
-
-            Surface dstView;
-            if (!getSubRegion(dstClipped, dstView))
-                return;
-
-            // Copy row by row. Since both views have same width/height now,
-            // each row is a straight memcpy.
-            const size_t rowBytes = dstView.width() * 4;
-
-            for (size_t y = 0; y < dstView.height(); ++y)
-            {
-                uint8_t* dstRow = (uint8_t*)dstView.rowPointer((int)y);
-                const uint8_t* srcRow = (const uint8_t*)srcView.rowPointer((int)y);
-                memcpy(dstRow, srcRow, rowBytes);
-            }
+            (void)wg_blit(fInfo, src.fInfo, dstX, dstY);
         }
+
     };
 }

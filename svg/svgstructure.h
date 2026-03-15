@@ -35,8 +35,6 @@ namespace waavs {
 
                     return node;
                 });
-            
-
         }
 
         // Instance fields
@@ -125,8 +123,6 @@ namespace waavs {
             // it will not transform along with the context
             //ctx->clip(viewport());
 
-
-
             // Apply mapping from this svg's user space (viewBox) to its 
             // parent user space (viewport)
             // We do an 'applyTransform()' instead of 'transform()'
@@ -174,7 +170,6 @@ namespace waavs {
                     return node;
                 });
             
-
             registerSingularNode();
         }
 
@@ -189,110 +184,4 @@ namespace waavs {
 
     };
 
-    
-    
-    
-
-    //=================================================
-    //
-    // SVGDescNode
-    // https://www.w3.org/TR/SVG11/struct.html#DescElement
-    // 
-    struct SVGDescNode : public SVGGraphicsElement
-    {
-        static void registerSingularNode()
-        {
-            registerSVGSingularNodeByName("desc", [](IAmGroot* groot, const XmlElement& elem) {
-                auto node = std::make_shared<SVGDescNode>(groot);
-                node->loadFromXmlElement(elem, groot);
-
-                return node;
-                });
-        }
-
-        // Static constructor to register factory method in map
-        static void registerFactory()
-        {
-            registerContainerNodeByName("desc",
-                [](IAmGroot* groot, XmlPull& iter) {
-                    auto node = std::make_shared<SVGDescNode>(groot);
-                    node->loadFromXmlPull(iter, groot);
-
-                    return node;
-                });
-
-
-            registerSingularNode();
-        }
-
-        ByteSpan fContent{};
-
-        // Instance Constructor
-        SVGDescNode(IAmGroot*)
-            : SVGGraphicsElement()
-        {
-            //setIsStructural(false);
-            setIsVisible(false);
-        }
-
-        const ByteSpan& content() const { return fContent; }
-
-        // Load the text content if it exists
-        void loadContentNode(const XmlElement& elem, IAmGroot* groot) override
-        {
-            fContent = elem.data();
-        }
-    };
-
-
-
-    //=================================================
-    // SVGTitleNode
-    // 	   https://www.w3.org/TR/SVG11/struct.html#TitleElement
-    // Capture the title of the SVG document
-    //=================================================
-    struct SVGTitleNode : public SVGGraphicsElement
-    {
-        static void registerSingularNode()
-        {
-            registerSVGSingularNodeByName("title", [](IAmGroot* groot, const XmlElement& elem) {
-                auto node = std::make_shared<SVGTitleNode>(groot);
-                node->loadFromXmlElement(elem, groot);
-
-                return node;
-                });
-        }
-
-        // Static constructor to register factory method in map
-        static void registerFactory()
-        {
-            registerContainerNodeByName("title",
-                [](IAmGroot* groot, XmlPull& iter) {
-                    auto node = std::make_shared<SVGTitleNode>(groot);
-                    node->loadFromXmlPull(iter, groot);
-
-                    return node;
-                });
-
-
-            registerSingularNode();
-        }
-
-        ByteSpan fContent{};
-
-        // Instance Constructor
-        SVGTitleNode(IAmGroot*)
-            : SVGGraphicsElement() 
-        {
-            setIsVisible(false);
-        }
-
-        const ByteSpan& content() const { return fContent; }
-
-        // Load the text content if it exists
-        void loadContentNode(const XmlElement& elem, IAmGroot* groot) override
-        {
-            fContent = elem.data();
-        }
-    };
 }

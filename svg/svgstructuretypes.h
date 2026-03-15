@@ -83,7 +83,7 @@ namespace waavs {
         bool isStructural() const { return fIsStructural; }
         void setIsStructural(bool aStructural) { fIsStructural = aStructural; }
         
-        bool visible() const { return fIsVisible; }
+        bool isVisible() const { return fIsVisible; }
         void setIsVisible(bool visible) { fIsVisible = visible; }
 
         virtual const WGRectD objectBoundingBox() const noexcept { return {}; }

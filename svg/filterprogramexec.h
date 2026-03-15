@@ -2,10 +2,13 @@
 
 #include <memory>
 
+#include "definitions.h"
+
 #include "nametable.h"
 
 #include "filterprogram.h"
 #include "filterprogrambuilder.h"
+#include "pixeleffects.h"
 
 #include "wggeometry.h"
 
@@ -90,7 +93,7 @@ namespace waavs
         struct IAmFroot : IAmFrootBase
         {
             using Image = ImageT;
-            using ImageHandle = std::unique_ptr<ImageT>;
+            using SurfaceHandle = std::unique_ptr<ImageT>;
 
             virtual ~IAmFroot() = default;
 
@@ -102,7 +105,7 @@ namespace waavs
             virtual const ImageT* getImage(InternedKey key) const noexcept = 0;
 
             // Transfer ownership into the registry.
-            virtual bool putImage(InternedKey key, ImageHandle&& img) noexcept = 0;
+            virtual bool putImage(InternedKey key, SurfaceHandle&& img) noexcept = 0;
 
             virtual void eraseImage(InternedKey key) noexcept = 0;
             virtual void clearSurfaces() noexcept = 0;
@@ -112,8 +115,11 @@ namespace waavs
             virtual void setLastKey(InternedKey k) noexcept = 0;
 
             // Image allocation helpers (backend decides pixel format, alignment, etc.)
-            virtual ImageT& createSurface(InternedKey key, size_t w, size_t h) noexcept = 0;
-            virtual ImageT& createLikeSurface(InternedKey key, const ImageT& like) noexcept = 0;
+            //virtual ImageT& createSurface(InternedKey key, size_t w, size_t h) noexcept = 0;
+            //virtual ImageT& createLikeSurface(InternedKey key, const ImageT& like) noexcept = 0;
+            virtual SurfaceHandle createSurfaceHandle(size_t w, size_t h) noexcept = 0;
+            virtual SurfaceHandle createLikeSurfaceHandle(const ImageT& like) noexcept = 0;
+            virtual SurfaceHandle copySurfaceHandle(const ImageT& src) noexcept = 0;
 
             // Resolve empty / "__last__" sentinel to concrete key.
             InternedKey resolveKey(InternedKey k) const noexcept override
@@ -126,6 +132,43 @@ namespace waavs
                     return lastKey();
 
                 return k;
+            }
+
+            // --------------------------------------------------------
+            // Key resolution helpers for ops
+            // --------------------------------------------------------
+            INLINE InternedKey resolveInKey(InternedKey k, InternedKey fallback) const noexcept
+            {
+                InternedKey r = resolveKey(k);
+                return r ? r : fallback;
+            }
+
+            INLINE InternedKey resolveUnaryInputKey(const FilterIO& io) const noexcept
+            {
+                return resolveInKey(io.in1, kFilter_SourceGraphic());
+            }
+
+            INLINE InternedKey resolveBinaryInput1Key(const FilterIO& io) const noexcept
+            {
+                return resolveInKey(io.in1, kFilter_SourceGraphic());
+            }
+
+            INLINE InternedKey resolveBinaryInput2Key(const FilterIO& io) const noexcept
+            {
+                return resolveInKey(io.in2, kFilter_SourceGraphic());
+            }
+
+            INLINE InternedKey resolveOutKeyStrict(const FilterIO& io) const noexcept
+            {
+                if (!io.hasOut) return kFilter_Last();
+                if (!io.out)    return kFilter_Last();
+                if (io.out == kFilter_Last()) return kFilter_Last();
+                return io.out;
+            }
+
+            INLINE InternedKey resolveOutputKey(const FilterIO& io) const noexcept
+            {
+                return resolveOutKeyStrict(io);
             }
         };
     
@@ -166,7 +209,7 @@ namespace waavs
         struct KeySpan { const InternedKey* p{}; uint32_t n{}; };
 
         struct ComponentFunc {
-            InternedKey typeKey{};
+            FilterTransferFuncType type{FILTER_TRANSFER_IDENTITY};
             float p0{}, p1{}, p2{};
             F32Span table{};
         };
@@ -229,6 +272,99 @@ namespace waavs
             return true;
         }
 
+        // ----------------------------------------------
+        // onComposite
+        // ----------------------------------------------
+        // default implementation of operator per row and per pixel operations
+        // BUGBUG, maybe this should land in Surface, as part of the blit
+        // operations
+
+
+        //static void composite_over_prgb32_row(uint32_t* d, const uint32_t* s, const uint32_t* b, int w) noexcept
+        //{
+        //    for (int x = 0; x < w; ++x)
+        //        d[x] = composite_over_prgb32_pixel(s[x], b[x]);
+        //}
+
+
+
+        // reference scalar implementation in case the sub-class does
+        // not offer any specialization
+        static INLINE uint32_t composite_prgb32_scalar(uint32_t p1, uint32_t p2, FilterCompositeOp op) noexcept
+        {
+            const uint32_t sa = (p1 >> 24) & 0xFF;
+            const uint32_t sr = (p1 >> 16) & 0xFF;
+            const uint32_t sg = (p1 >> 8) & 0xFF;
+            const uint32_t sb = (p1 >> 0) & 0xFF;
+
+            const uint32_t da = (p2 >> 24) & 0xFF;
+            const uint32_t dr = (p2 >> 16) & 0xFF;
+            const uint32_t dg = (p2 >> 8) & 0xFF;
+            const uint32_t db = (p2 >> 0) & 0xFF;
+
+            uint32_t oa, orr, og, ob;
+
+            switch (op)
+            {
+            case FILTER_COMPOSITE_OVER:
+            {
+                const uint32_t isa = 255 - sa;
+                oa = sa + mul255(da, isa);
+                orr = sr + mul255(dr, isa);
+                og = sg + mul255(dg, isa);
+                ob = sb + mul255(db, isa);
+                break;
+            }
+
+            case FILTER_COMPOSITE_IN:
+                oa = mul255(sa, da);
+                orr = mul255(sr, da);
+                og = mul255(sg, da);
+                ob = mul255(sb, da);
+                break;
+
+            case FILTER_COMPOSITE_OUT:
+            {
+                const uint32_t ida = 255 - da;
+                oa = mul255(sa, ida);
+                orr = mul255(sr, ida);
+                og = mul255(sg, ida);
+                ob = mul255(sb, ida);
+                break;
+            }
+
+            case FILTER_COMPOSITE_ATOP:
+            {
+                const uint32_t isa = 255 - sa;
+                oa = da;
+                orr = mul255(sr, da) + mul255(dr, isa);
+                og = mul255(sg, da) + mul255(dg, isa);
+                ob = mul255(sb, da) + mul255(db, isa);
+                break;
+            }
+
+            case FILTER_COMPOSITE_XOR:
+            {
+                const uint32_t ida = 255 - da;
+                const uint32_t isa = 255 - sa;
+                oa = mul255(sa, ida) + mul255(da, isa);
+                orr = mul255(sr, ida) + mul255(dr, isa);
+                og = mul255(sg, ida) + mul255(dg, isa);
+                ob = mul255(sb, ida) + mul255(db, isa);
+                break;
+            }
+
+            default:
+                return 0;
+            }
+            return packPARGB32(
+                (uint8_t)oa,
+                (uint8_t)orr,
+                (uint8_t)og,
+                (uint8_t)ob);
+        }
+
+
         virtual bool onComposite(const FilterIO&, const WGRectD*,
             FilterCompositeOp /*opKey*/, 
             float /*k1*/, 
@@ -281,7 +417,9 @@ namespace waavs
         }
 
         virtual bool onImage(const FilterIO&, const WGRectD*,
-            InternedKey /*imageKey*/) noexcept {
+            InternedKey, 
+            AspectRatioAlignKind,
+            AspectRatioMeetOrSliceKind) noexcept {
             return true;
         }
 
@@ -580,15 +718,26 @@ namespace waavs
 
             for (int i = 0; i < 4; ++i)
             {
-                uint32_t cnt = takeU32();
+                ch[i].type = takeEnum<FilterTransferFuncType>();
+                ch[i].p0 = takeF32();
+                ch[i].p1 = takeF32();
+                ch[i].p2 = takeF32();
+
+                const uint32_t cnt = takeU32();
 
                 if (cnt)
                 {
-                    float* buff = (float*)malloc(sizeof(float) * cnt);
-                    for (uint32_t j = 0; j < cnt; j++)
-                        buff[j] = takeF32();
+                    float* buf = (float*)malloc(sizeof(float) * cnt);
+                    if (!buf) {
+                        for (int k = 0; k < i; ++k)
+                            freeF32Scratch(ch[k].table);
+                        return false;
+                    }
 
-                    ch[i].table = { buff, cnt };
+                    for (uint32_t j = 0; j < cnt; ++j)
+                        buf[j] = takeF32();
+
+                    ch[i].table = { buf, cnt };
                 }
             }
 
@@ -686,10 +835,14 @@ namespace waavs
             FilterIO io{};
             WGRectD subr{};
             const WGRectD* subrPtr{};
+            
             decodeCommon(flags, io, subr, subrPtr);
-
+            
             InternedKey imageKey = takeKey();
-            return onImage(io, subrPtr, imageKey);
+            AspectRatioAlignKind align = takeEnum<AspectRatioAlignKind>();
+            AspectRatioMeetOrSliceKind mos = takeEnum<AspectRatioMeetOrSliceKind>();
+
+            return onImage(io, subrPtr, imageKey, align, mos);
         }
 
         bool merge(uint8_t flags) noexcept
@@ -699,11 +852,21 @@ namespace waavs
             const WGRectD* subrPtr{};
             decodeCommon(flags, io, subr, subrPtr);
 
-            const uint64_t inputsRef = takeU64();
-            uint32_t off = 0, cnt = 0;
-            unpack_listRef(inputsRef, off, cnt);
+            const uint32_t cnt = takeU32();
 
-            KeySpan inputs = decodeKeyListToScratch(off, cnt);
+            KeySpan inputs{};
+            if (cnt)
+            {
+                InternedKey* buf = (InternedKey*)malloc(sizeof(InternedKey) * cnt);
+                if (!buf)
+                    return false;
+
+                for (uint32_t i = 0; i < cnt; ++i)
+                    buf[i] = takeKey();
+
+                inputs = { buf, cnt };
+            }
+
             const bool ok = onMerge(io, subrPtr, inputs);
             freeKeyScratch(inputs);
             return ok;
@@ -744,7 +907,6 @@ namespace waavs
 
 
             FilterTurbulenceType type_ = takeEnum< FilterTurbulenceType>();
-            //turbulenceType_from_u32(takeU64());
 
             float fx = takeF32();
             float fy = takeF32();
@@ -823,10 +985,12 @@ namespace waavs
             fProg = &progRef;
 
             // Setup the run state
-            fRunState.filterUnits = progRef.filterUnits;
-            fRunState.primitiveUnits = progRef.primitiveUnits;
-            fRunState.objectBBoxUS = {};
-            fRunState.filterRectUS = {};
+            // This should have already been done in applyTransform
+            // or elsewhere, so don't undo it.
+            //fRunState.filterUnits = progRef.filterUnits;
+            //fRunState.primitiveUnits = progRef.primitiveUnits;
+            //fRunState.objectBBoxUS = {};
+            //fRunState.filterRectUS = {};
 
             // Emplace cursor in our storage (cannot default-construct it).
             new (fCurStorage) FilterProgramCursor(progRef);

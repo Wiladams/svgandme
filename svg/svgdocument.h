@@ -46,6 +46,7 @@
 #include "svgimage.h"
 #include "svgmarker.h"
 #include "svgmask.h"
+#include "svgmisc.h"
 #include "svgstructure.h"
 #include "svgshapes.h"
 #include "svgsolidcolor.h"

@@ -249,7 +249,7 @@
     <ClInclude Include="..\..\app\viewnavigator.h" />
     <ClInclude Include="..\..\app\waavsdisplaycapture.h" />
     <ClInclude Include="..\..\app\waavsframe.h" />
-    <ClInclude Include="..\..\svg\b2dfilterexec.h" />
+    <ClInclude Include="..\..\svg\filterexec_b2d.h" />
     <ClInclude Include="..\..\svg\base64.h" />
     <ClInclude Include="..\..\svg\bithacks.h" />
     <ClInclude Include="..\..\svg\blend2d_connect.h" />
@@ -257,6 +257,7 @@
     <ClInclude Include="..\..\svg\filterprogram.h" />
     <ClInclude Include="..\..\svg\filterprogrambuilder.h" />
     <ClInclude Include="..\..\svg\filterprogramexec.h" />
+    <ClInclude Include="..\..\svg\filter_codec.h" />
     <ClInclude Include="..\..\svg\frames_blend2d_source.h" />
     <ClInclude Include="..\..\svg\bspan.h" />
     <ClInclude Include="..\..\svg\charset.h" />
@@ -264,12 +265,14 @@
     <ClInclude Include="..\..\svg\definitions.h" />
     <ClInclude Include="..\..\svg\fonthandler.h" />
     <ClInclude Include="..\..\svg\framesource.h" />
+    <ClInclude Include="..\..\svg\idraw.h" />
     <ClInclude Include="..\..\svg\imageproc.h" />
     <ClInclude Include="..\..\svg\imanagesvgstate.h" />
     <ClInclude Include="..\..\svg\irendersvg.h" />
     <ClInclude Include="..\..\svg\maths.h" />
     <ClInclude Include="..\..\svg\membuff.h" />
     <ClInclude Include="..\..\svg\nametable.h" />
+    <ClInclude Include="..\..\svg\filter_noise.h" />
     <ClInclude Include="..\..\svg\pathpu.h" />
     <ClInclude Include="..\..\svg\pathsegmenter.h" />
     <ClInclude Include="..\..\svg\pixelaccessor.h" />
@@ -306,6 +309,7 @@
     <ClInclude Include="..\..\svg\svgmarker.h" />
     <ClInclude Include="..\..\svg\svgmask.h" />
     <ClInclude Include="..\..\svg\b2dpathbuilder.h" />
+    <ClInclude Include="..\..\svg\svgmisc.h" />
     <ClInclude Include="..\..\svg\svgpattern.h" />
     <ClInclude Include="..\..\svg\svgscript.h" />
     <ClInclude Include="..\..\svg\svgshapes.h" />

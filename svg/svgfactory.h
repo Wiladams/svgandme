@@ -14,8 +14,6 @@ namespace waavs {
             registerNodeTypes();
         }
 
-
-        
         void registerNodeTypes()
         {
             //=============================================
@@ -101,18 +99,25 @@ namespace waavs {
 
             // Filter node registrations
             SVGFilterElement::registerFactory();                // 'filter'
-            SVGFeBlendElement::registerFactory();             // 'feBlend'
-            //SVGFeColorMatrixElement::registerFactory();       // 'feColorMatrix'
-            SVGFeCompositeElement::registerFactory();         // 'feComposite'
-            SVGFeComponentTransferElement::registerFactory(); // 'feComponentTransfer'
-            SVGFeConvolveMatrixElement::registerFactory();    // 'feConvolveMatrix'
-            SVGFeDiffuseLightingElement::registerFactory();   // 'feDiffuseLighting'
-            SVGFeDisplacementMapElement::registerFactory();   // 'feDisplacementMap'
-            SVGFeDistantLightElement::registerFactory();      // 'feDistantLightMap'
-            SVGFeFloodElement::registerFactory();             // 'feFlood'
+
+            SVGFeBlendElement::registerFactory();               // 'feBlend'
+            SVGFeColorMatrixElement::registerFactory();         // 'feColorMatrix'
+            SVGFeComponentTransferElement::registerFactory();   // 'feComponentTransfer'
+            SVGFeCompositeElement::registerFactory();           // 'feComposite'
+            SVGFeConvolveMatrixElement::registerFactory();      // 'feConvolveMatrix'
+            SVGFeDiffuseLightingElement::registerFactory();     // 'feDiffuseLighting'
+            SVGFeDisplacementMapElement::registerFactory();     // 'feDisplacementMap'
+            SVGFeDistantLightElement::registerFactory();        // 'feDistantLightMap'
+            SVGFeDropShadowElement::registerFactory();          // 'feDropShadow'
+            SVGFeFloodElement::registerFactory();               // 'feFlood'
             SVGFeGaussianBlurElement::registerFactory();        // 'feGaussianBlur'
+            SVGFeImageElement::registerFactory();               // 'feImage'
+            SVGFeMergeElement::registerFactory();               // 'feMerge'
+            SVGFeMorphologyElement::registerFactory();          // 'feMorphology'
             SVGFeOffsetElement::registerFactory();              // 'feOffset'
-            SVGFeTurbulenceElement::registerFactory();        // 'feTurbulence'
+            SVGFeTileElement::registerFactory();                // 'feTile'
+            SVGFeTurbulenceElement::registerFactory();          // 'feTurbulence'
+            SVGFeSpecularLightingElement::registerFactory();    // 'feSpecularLighting'
 
 
             // Font node registrations

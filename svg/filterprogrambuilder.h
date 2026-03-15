@@ -5,9 +5,11 @@
 #include "filterprogram.h"
 #include "nametable.h"
 #include "svgdatatypes.h"
+#include "surface.h"
 
 namespace waavs::filter
 {
+
     // all filter primitives have these common attributes
     inline InternedKey in() { static InternedKey k = PSNameTable::INTERN("in"); return k; }
     inline InternedKey in2() { static InternedKey k = PSNameTable::INTERN("in2"); return k; }
@@ -29,7 +31,14 @@ namespace waavs::filter
     
     // feBlend
     inline InternedKey mode() { static InternedKey k = PSNameTable::INTERN("mode"); return k; }
-    
+    // feBlend modes 
+    INLINE InternedKey kBlend_normal()   noexcept { static InternedKey k = PSNameTable::INTERN("normal");   return k; }
+    INLINE InternedKey kBlend_multiply() noexcept { static InternedKey k = PSNameTable::INTERN("multiply"); return k; }
+    INLINE InternedKey kBlend_screen()   noexcept { static InternedKey k = PSNameTable::INTERN("screen");   return k; }
+    INLINE InternedKey kBlend_overlay()  noexcept { static InternedKey k = PSNameTable::INTERN("overlay");  return k; }
+    INLINE InternedKey kBlend_darken()   noexcept { static InternedKey k = PSNameTable::INTERN("darken");   return k; }
+    INLINE InternedKey kBlend_lighten()  noexcept { static InternedKey k = PSNameTable::INTERN("lighten");  return k; }
+
     // feComposite
     inline InternedKey operator_() { static InternedKey k = PSNameTable::INTERN("operator"); return k; }
     inline InternedKey k1() { static InternedKey k = PSNameTable::INTERN("k1"); return k; }
@@ -80,6 +89,11 @@ namespace waavs::filter
     inline InternedKey pointsAtY() { static InternedKey k = PSNameTable::INTERN("pointsAtY"); return k; }
     inline InternedKey pointsAtZ() { static InternedKey k = PSNameTable::INTERN("pointsAtZ"); return k; }
     inline InternedKey limitingConeAngle() { static InternedKey k = PSNameTable::INTERN("limitingConeAngle"); return k; }
+
+    // feDistantLight
+    inline InternedKey feDistantLight() { static InternedKey k = PSNameTable::INTERN("feDistantLight"); return k; }
+    inline InternedKey fePointLight() { static InternedKey k = PSNameTable::INTERN("fePointLight"); return k; }
+    inline InternedKey feSpotLight() { static InternedKey k = PSNameTable::INTERN("feSpotLight"); return k; }
 
     // diffuse/specular lighting common
     inline InternedKey x() { static InternedKey k = PSNameTable::INTERN("x"); return k; }
@@ -469,6 +483,115 @@ namespace waavs
     }
 }
 
+namespace waavs {
+    static INLINE uint32_t samplePixelEdge(const Surface& s, int x, int y, FilterEdgeMode edgeMode) noexcept
+    {
+        const int W = (int)s.width();
+        const int H = (int)s.height();
+
+        if (W <= 0 || H <= 0)
+            return 0u;
+
+        switch (edgeMode)
+        {
+        case FILTER_EDGE_WRAP:
+            // Wrap coordinates periodically into the image extent.
+            x %= W;
+            y %= H;
+
+            if (x < 0) x += W;
+            if (y < 0) y += H;
+            break;
+
+        case FILTER_EDGE_NONE:
+            // Outside image contributes transparent black.
+            if (x < 0 || y < 0 || x >= W || y >= H)
+                return 0u;
+            break;
+
+        case FILTER_EDGE_DUPLICATE:
+        default:
+            // Clamp to nearest valid edge pixel.
+            if (x < 0) x = 0;
+            else if (x >= W) x = W - 1;
+
+            if (y < 0) y = 0;
+            else if (y >= H) y = H - 1;
+            break;
+        }
+
+        const uint32_t* row = (const uint32_t*)s.rowPointer((size_t)y);
+        return row[x];
+    }
+
+    // pixelHeightFromAlpha()
+    //
+    // Interprets the alpha channel of a pixel as a height value in [0,1].
+    //
+    static INLINE float pixelHeightFromAlpha(const Surface& s, int x, int y) noexcept
+    {
+        const int W = (int)s.width();
+        const int H = (int)s.height();
+
+        if (W <= 0 || H <= 0)
+            return 0.0f;
+
+        if (x < 0) x = 0;
+        else if (x >= W) x = W - 1;
+
+        if (y < 0) y = 0;
+        else if (y >= H) y = H - 1;
+
+        const uint32_t* row = (const uint32_t*)s.rowPointer((size_t)y);
+        const uint32_t px = row[x];
+
+        return float((px >> 24) & 0xFF) / 255.0f;
+    }
+
+    // computeHeightNormal()
+    //
+    // Computes the normal vector at pixel (x,y) by sampling the alpha channel of
+    //
+    static INLINE void computeHeightNormal(const Surface& s,
+        int x, int y,
+        float surfaceScale,
+        float& nx, float& ny, float& nz) noexcept
+    {
+        // Sample neighboring heights from alpha.
+        const float hL = pixelHeightFromAlpha(s, x - 1, y);
+        const float hR = pixelHeightFromAlpha(s, x + 1, y);
+        const float hU = pixelHeightFromAlpha(s, x, y - 1);
+        const float hD = pixelHeightFromAlpha(s, x, y + 1);
+
+        // Central-difference gradient.
+        const float dHx = 0.5f * (hR - hL);
+        const float dHy = 0.5f * (hD - hU);
+
+        // SurfaceScale turns alpha-height into Z displacement.
+        // Normal points "up" from the height field.
+        nx = -dHx * surfaceScale;
+        ny = -dHy * surfaceScale;
+        nz = 1.0f;
+
+        // Normalize.
+        const float len2 = nx * nx + ny * ny + nz * nz;
+        if (len2 > 0.0f)
+        {
+            const float invLen = 1.0f / std::sqrt(len2);
+            nx *= invLen;
+            ny *= invLen;
+            nz *= invLen;
+        }
+        else
+        {
+            nx = 0.0f;
+            ny = 0.0f;
+            nz = 1.0f;
+        }
+    }
+
+
+}
 
 
 

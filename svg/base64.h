@@ -1,7 +1,10 @@
 #pragma once
 
-#ifndef BASE64_H
-#define BASE64_H
+#ifndef BASE64_H_INCLUDED
+#define BASE64_H_INCLUDED
+
+
+#include <cstdint>
 
 //
 // Base 64 encoding and decoding
@@ -9,22 +12,37 @@
 // The encoding is done according to RFC 4648.
 // The decoding is done according to RFC 4648 and RFC 2045.
 //
-// The decode routine is tolerant of whitespace and other non-base64 characters.
-// it will just ignore them.
+// The decode routine is tolerant of whitespace, but will stop when
+// it sees invalid characters.  It will also stop when it
+// sees the first padding character ('=').
+//
 // The routines here may not be the fastest vectorized versions, but they are simple
-// and easily portable.
+// and easily portable.  There was some effort put into making the decode
+// routine fast, by trying to decode 4 characters at a time when possible, and
+// using a characterization table to quickly identify valid characters and their values.
 
-//#define BASE64_ENCODE_OUT_SIZE(s) ((unsigned int)((((s) + 2) / 3) * 4 + 1))
-//#define BASE64_DECODE_OUT_SIZE(s) ((unsigned int)(((s) / 4) * 3))
 
 
 
 namespace waavs {
-    
+
+    enum class DecodeStatus : uint32_t
+    {
+        DECODE_STATUS_Success = 0,
+        DECODE_STATUS_InvalidByte,
+        DECODE_STATUS_InvalidPadding,
+        DECODE_STATUS_IncompleteQuartet,
+        DECODE_STATUS_OutputTooSmall
+    };
+
+
+    static constexpr uint8_t BASE64_INVALID = 255;
+    static constexpr uint8_t WSP = 254;
+    static constexpr uint8_t PAD = 253;
     
     // BASE 64 encode table
     // According to RFC 4648
-    alignas(256) static const char base64en[64] = {
+    alignas(256) inline static constexpr char base64en[64] = {
  //   0    1    2    3    4    5    6    7
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
  //   8    9   10   11   12   13   14   15
@@ -46,24 +64,24 @@ namespace waavs {
     
     // ASCII order for BASE 64 decode,
     // 255 is unused and invalid character
-    alignas(256) static const unsigned char base64de[256] =
+    inline static constexpr unsigned char base64de[256] =
     {
     // nul, soh, stx, etx, eot, enq, ack, bel,
        255, 255, 255, 255, 255, 255, 255, 255,
     //  bs,  ht,  nl,  vt,  np,  cr,  so,  si,
-       255, 255, 255, 255, 255, 255, 255, 255,
+       255, WSP, WSP, 255, 255, WSP, 255, 255,
     // dle, dc1, dc2, dc3, dc4, nak, syn, etb,
        255, 255, 255, 255, 255, 255, 255, 255,
     // can,  em, sub, esc,  fs,  gs,  rs,  us,
        255, 255, 255, 255, 255, 255, 255, 255,
     //  sp, '!', '"', '#', '$', '%', '&', ''',
-       255, 255, 255, 255, 255, 255, 255, 255,
+       WSP, 255, 255, 255, 255, 255, 255, 255,
     // '(', ')', '*', '+', ',', '-', '.', '/',
        255, 255, 255,  62, 255, 255, 255,  63,
     // '0', '1', '2', '3', '4', '5', '6', '7',
         52,  53,  54,  55,  56,  57,  58,  59,
     // '8', '9', ':', ';', '<', '=', '>', '?',
-        60,  61, 255, 255, 255, 255, 255, 255,
+        60,  61, 255, 255, 255, PAD, 255, 255,
     // '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G',
        255,   0,   1,   2,   3,   4,   5,   6,
     // 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
@@ -117,27 +135,28 @@ namespace waavs {
 
 
     struct base64 {
-        static constexpr unsigned char BASE64DE_FIRST = '+';
-        static constexpr unsigned char BASE64DE_LAST = 'z';
-        static constexpr unsigned char BASE64_PAD = '=';
+        //static constexpr unsigned char BASE64DE_FIRST = '+';
+        //static constexpr unsigned char BASE64DE_LAST = 'z';
+        static constexpr unsigned char BASE64_PAD_CHAR = '=';
 
         // Given an input buffer size, getDecodeOutputSize() returns the size
         // of buffer needed to contain the decoded data.
-        static size_t getDecodeOutputSize(size_t inputSize) noexcept
+        static constexpr size_t getDecodeOutputSize(size_t inputSize) noexcept
         {
-            return ((size_t)(((inputSize) / 4) * 3));
+            return (inputSize / 4) * 3;
         }
 
-        static size_t getEncodeOutputSize(size_t inputSize) noexcept
+        static constexpr size_t getEncodeOutputSize(size_t inputSize) noexcept
         {
-            return ((size_t)((((inputSize)+2) / 3) * 4 + 1));
+            return ((inputSize+2) / 3) * 4 + 1;
         }
 
         // base64_encode
         // out is null-terminated encode string.
         // return values is out length, excluding the terminating `\0'
-        static unsigned int encode(const unsigned char* in, unsigned int inlen, char* out) noexcept {
-            unsigned int i = 0, j = 0;
+        static size_t encode(const unsigned char* in, size_t inlen, char* out) noexcept 
+        {
+            size_t i = 0, j = 0;
             while (i + 2 < inlen) {
                 out[j++] = base64en[(in[i] >> 2) & 0x3F];
                 out[j++] = base64en[((in[i] & 0x03) << 4) | (in[i + 1] >> 4)];
@@ -155,15 +174,14 @@ namespace waavs {
                 }
                 else {
                     out[j++] = base64en[(in[i] & 0x03) << 4];
-                    out[j++] = BASE64_PAD;
+                    out[j++] = BASE64_PAD_CHAR;
                 }
-                out[j++] = BASE64_PAD;
+                out[j++] = BASE64_PAD_CHAR;
             }
 
             out[j] = '\0';
             return j;
         }
-
 
 
         // Decode a Base64 buffer.
@@ -174,6 +192,213 @@ namespace waavs {
         // Returns the number of bytes actually written to 'out'.
         //
         // Output buffer must be at least ((inlen / 4) * 3) bytes.
+ 
+        static DecodeStatus decode(
+            const uint8_t* in,
+            size_t inlen,
+            uint8_t* out,
+            size_t outCap,
+            size_t& bytesRead,
+            size_t& bytesWritten) noexcept
+        {
+            bytesRead = 0;
+            bytesWritten = 0;
+
+            if ((in == nullptr && inlen != 0) || (out == nullptr && outCap != 0))
+                return DecodeStatus::DECODE_STATUS_InvalidByte;
+
+            const uint8_t* src = in;
+            const uint8_t* end = in + inlen;
+            uint8_t* dst = out;
+            uint8_t* dstEnd = out + outCap;
+
+            uint8_t q[4];
+            uint8_t qCount = 0;
+            bool sawPadQuartet = false;
+
+            while (src < end) {
+                const uint8_t c = *src;
+                const uint8_t cls = base64de[c];
+
+                if (cls == WSP) {
+                    ++src;
+                    continue;
+                }
+
+                if (sawPadQuartet) {
+                    bytesRead = (size_t)(src - in);
+                    bytesWritten = (size_t)(dst - out);
+                    return DecodeStatus::DECODE_STATUS_InvalidPadding;
+                }
+
+                if (cls == BASE64_INVALID) {
+                    bytesRead = (size_t)(src - in);
+                    bytesWritten = (size_t)(dst - out);
+                    return DecodeStatus::DECODE_STATUS_InvalidByte;
+                }
+
+                q[qCount++] = cls;
+                ++src;
+
+                if (qCount != 4)
+                    continue;
+
+                if (q[0] <= 63 && q[1] <= 63 && q[2] <= 63 && q[3] <= 63) {
+                    if ((size_t)(dstEnd - dst) < 3) {
+                        bytesRead = (size_t)(src - in);
+                        bytesWritten = (size_t)(dst - out);
+                        return DecodeStatus::DECODE_STATUS_OutputTooSmall;
+                    }
+
+                    const uint32_t v =
+                        (uint32_t(q[0]) << 18) |
+                        (uint32_t(q[1]) << 12) |
+                        (uint32_t(q[2]) << 6) |
+                        uint32_t(q[3]);
+
+                    dst[0] = uint8_t(v >> 16);
+                    dst[1] = uint8_t(v >> 8);
+                    dst[2] = uint8_t(v);
+
+                    dst += 3;
+                    qCount = 0;
+                    continue;
+                }
+
+                if (q[0] > 63 || q[1] > 63) {
+                    bytesRead = (size_t)(src - in);
+                    bytesWritten = (size_t)(dst - out);
+                    return DecodeStatus::DECODE_STATUS_InvalidPadding;
+                }
+
+                if (q[2] == PAD && q[3] == PAD) {
+                    if ((size_t)(dstEnd - dst) < 1) {
+                        bytesRead = (size_t)(src - in);
+                        bytesWritten = (size_t)(dst - out);
+                        return DecodeStatus::DECODE_STATUS_OutputTooSmall;
+                    }
+
+                    const uint32_t v =
+                        (uint32_t(q[0]) << 18) |
+                        (uint32_t(q[1]) << 12);
+
+                    dst[0] = uint8_t(v >> 16);
+                    dst += 1;
+                    qCount = 0;
+                    sawPadQuartet = true;
+                    continue;
+                }
+
+                if (q[2] <= 63 && q[3] == PAD) {
+                    if ((size_t)(dstEnd - dst) < 2) {
+                        bytesRead = (size_t)(src - in);
+                        bytesWritten = (size_t)(dst - out);
+                        return DecodeStatus::DECODE_STATUS_OutputTooSmall;
+                    }
+
+                    const uint32_t v =
+                        (uint32_t(q[0]) << 18) |
+                        (uint32_t(q[1]) << 12) |
+                        (uint32_t(q[2]) << 6);
+
+                    dst[0] = uint8_t(v >> 16);
+                    dst[1] = uint8_t(v >> 8);
+                    dst += 2;
+                    qCount = 0;
+                    sawPadQuartet = true;
+                    continue;
+                }
+
+                bytesRead = (size_t)(src - in);
+                bytesWritten = (size_t)(dst - out);
+                return DecodeStatus::DECODE_STATUS_InvalidPadding;
+            }
+
+            if (qCount == 0) {
+                bytesRead = inlen;
+                bytesWritten = (size_t)(dst - out);
+                return DecodeStatus::DECODE_STATUS_Success;
+            }
+
+            if (qCount == 1) {
+                bytesRead = inlen;
+                bytesWritten = (size_t)(dst - out);
+                return DecodeStatus::DECODE_STATUS_IncompleteQuartet;
+            }
+
+            if (q[0] > 63 || q[1] > 63) {
+                bytesRead = inlen;
+                bytesWritten = (size_t)(dst - out);
+                return DecodeStatus::DECODE_STATUS_InvalidPadding;
+            }
+
+            if (qCount == 2) {
+                if ((size_t)(dstEnd - dst) < 1) {
+                    bytesRead = inlen;
+                    bytesWritten = (size_t)(dst - out);
+                    return DecodeStatus::DECODE_STATUS_OutputTooSmall;
+                }
+
+                const uint32_t v =
+                    (uint32_t(q[0]) << 18) |
+                    (uint32_t(q[1]) << 12);
+
+                dst[0] = uint8_t(v >> 16);
+                dst += 1;
+
+                bytesRead = inlen;
+                bytesWritten = (size_t)(dst - out);
+                return DecodeStatus::DECODE_STATUS_Success;
+            }
+
+            if (q[2] > 63) {
+                bytesRead = inlen;
+                bytesWritten = (size_t)(dst - out);
+                return DecodeStatus::DECODE_STATUS_InvalidPadding;
+            }
+
+            if ((size_t)(dstEnd - dst) < 2) {
+                bytesRead = inlen;
+                bytesWritten = (size_t)(dst - out);
+                return DecodeStatus::DECODE_STATUS_OutputTooSmall;
+            }
+
+            {
+                const uint32_t v =
+                    (uint32_t(q[0]) << 18) |
+                    (uint32_t(q[1]) << 12) |
+                    (uint32_t(q[2]) << 6);
+
+                dst[0] = uint8_t(v >> 16);
+                dst[1] = uint8_t(v >> 8);
+                dst += 2;
+            }
+
+            bytesRead = inlen;
+            bytesWritten = (size_t)(dst - out);
+            return DecodeStatus::DECODE_STATUS_Success;
+        }
+
+        //static DecodeStatus decode(
+        //    const uint8_t* in,
+        //    size_t inlen,
+        //    uint8_t* out,
+        //    size_t outCap,
+        //    size_t& bytesWritten) noexcept
+        //{
+        //    size_t bytesRead = 0;
+        //    return decode(in, inlen, out, outCap, bytesRead, bytesWritten);
+        //}
+
+        static size_t decode(const unsigned char* in, size_t inlen, unsigned char* out, size_t maxOut) noexcept
+        {
+            size_t bytesRead = 0;
+            size_t bytesWritten = 0;
+            DecodeStatus status = decode(in, inlen, out, maxOut, bytesRead, bytesWritten);
+            return (status == DecodeStatus::DECODE_STATUS_Success) ? bytesWritten : 0;
+        }
+
+        /*
         static size_t decode(const unsigned char* in, size_t inlen, unsigned char* out, size_t maxOut) noexcept {
             size_t i = 0, j = 0;
             uint32_t acc = 0;
@@ -209,6 +434,7 @@ namespace waavs {
 
             return j;
         }
+        */
     };
 
 }

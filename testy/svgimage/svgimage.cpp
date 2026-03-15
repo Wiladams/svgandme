@@ -15,6 +15,7 @@
 #include "svg.h"
 #include "viewport.h"
 #include "svgb2ddriver.h"
+#include "blend2d_connect.h"
 
 
 using namespace waavs;
@@ -91,7 +92,7 @@ static void renderImage(SVGDocumentHandle gDoc, const char* outfilename)
 	}
 
 	// Create an image that we will draw into
-	BLImage img(CAN_WIDTH, CAN_HEIGHT, BL_FORMAT_PRGB32);
+	Surface img(CAN_WIDTH, CAN_HEIGHT);
 
 	// Attach the drawing context to the image
 	// We MUST do this before we perform any other
@@ -99,7 +100,7 @@ static void renderImage(SVGDocumentHandle gDoc, const char* outfilename)
 	BLContextCreateInfo createInfo{};
 	createInfo.threadCount = 4;
 	SVGB2DDriver ctx;
-	ctx.attach(img, &createInfo);
+	ctx.attach(img, 4);
 
 	// setup for drawing.  Not strictly necessary.
 	// you can setup the context however you want before actually
@@ -111,7 +112,7 @@ static void renderImage(SVGDocumentHandle gDoc, const char* outfilename)
 	// to calculate the scaling factors for the x and y 
 	// axes.  The easiest way to do that is to create a viewport
 	// Create a rectangle the size of the BLImage we want to render into
-	BLRect surfaceFrame{ 0, 0, CAN_WIDTH, CAN_HEIGHT };
+	WGRectD surfaceFrame{ 0, 0, CAN_WIDTH, CAN_HEIGHT };
 
 	// If the document does not already have a viewBox/width/height
 	// getBBox() will not return a proper size.  So, the document
@@ -126,12 +127,11 @@ static void renderImage(SVGDocumentHandle gDoc, const char* outfilename)
 	// This will essentially do a 'scale to fit'
 	// You don't have to go this route.  You can simply calculate the scaling
 	// and apply that to the context.
-	ViewportTransformer vp{};
-	vp.getViewBoxFrame(sceneFrame);		// The part of the scene we want to display
-	vp.setViewportFrame(surfaceFrame);		// The surface we want to fit to 
+    BLMatrix2D tform = BLMatrix2D::makeIdentity();
+    PreserveAspectRatio par{};	// default is 'meet' and 'xMidYMid', which is what we want
+	computeViewBoxToViewport(surfaceFrame,sceneFrame,par,tform);
 
 	// apply the viewport's sceneToSurface transform to the context
-	BLMatrix2D tform = vp.viewBoxToViewportTransform();
 	ctx.transform(tform);
 
 	// Render the document into the context
@@ -143,7 +143,8 @@ static void renderImage(SVGDocumentHandle gDoc, const char* outfilename)
 
 	// Save the image from the drawing context out to a file
 	// or do whatever you're going to do with it
-	img.writeToFile(outfilename);
+    BLImage blImg = blImageFromSurface(img);
+	blImg.writeToFile(outfilename);
 }
 
 

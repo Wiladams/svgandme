@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <math.h>       /* fmaf; link with -lm on *nix */
 
+#include "definitions.h"
 #include "coloring.h"
 
 
@@ -41,10 +42,126 @@ typedef uint32_t Pixel_RGBA32;
 typedef uint32_t Pixel_SRGBA8_ARGB32; // [A:R:G:B] straight sRGB 
 typedef uint32_t Pixel_SRGBA8_RGBA32; // [R:G:B:A] straight sRGB 
 
+namespace waavs {
+    // a fast multiply of two 8-bit values, returning an 8-bit result, with rounding
+    static INLINE uint32_t mul255(uint32_t x, uint32_t y) noexcept
+    {
+        uint32_t t = x * y + 128;
+        return (t + (t >> 8)) >> 8;
+    }
+
+    static INLINE uint32_t wg_div255_u32(uint32_t x) noexcept
+    {
+        return (x + 128u + ((x + 128u) >> 8)) >> 8;
+    }
+
+
+#if defined(_M_ARM64) || defined(__aarch64__)
+
+    static INLINE uint16x8_t neon_mul255_u16(uint16x8_t x, uint16x8_t y) noexcept
+    {
+        uint16x8_t t = vmulq_u16(x, y);
+        t = vaddq_u16(t, vdupq_n_u16(128));
+        t = vaddq_u16(t, vshrq_n_u16(t, 8));
+        return vshrq_n_u16(t, 8);
+    }
+
+    // Input is 8 lanes holding 2 pixels in little-endian BGRA byte order:
+    //   B0 G0 R0 A0 B1 G1 R1 A1
+    // Output:
+    //   A0 A0 A0 A0 A1 A1 A1 A1
+    static INLINE uint16x8_t neon_splat_alpha_bgra_u16(uint16x8_t px) noexcept
+    {
+        const uint16_t a0 = vgetq_lane_u16(px, 3);
+        const uint16_t a1 = vgetq_lane_u16(px, 7);
+        uint16_t tmp[8] = { a0, a0, a0, a0, a1, a1, a1, a1 };
+        return vld1q_u16(tmp);
+    }
+
+    static INLINE uint16x8_t neon_splat_inv_alpha_bgra_u16(uint16x8_t px) noexcept
+    {
+        return vsubq_u16(vdupq_n_u16(255), neon_splat_alpha_bgra_u16(px));
+    }
+
+#endif
+
+} // namespace waavs
+
+// SIMD helpers for pixel processing
+#if defined(__SSE2__)
+static INLINE __m128i mm_zero_si128() noexcept
+{
+    return _mm_setzero_si128();
+}
+
+static INLINE __m128i mm_mul255_epu16(__m128i x, __m128i y) noexcept
+{
+    __m128i t = _mm_mullo_epi16(x, y);
+    t = _mm_add_epi16(t, _mm_set1_epi16(128));
+    t = _mm_add_epi16(t, _mm_srli_epi16(t, 8));
+    return _mm_srli_epi16(t, 8);
+}
+
+static INLINE __m128i mm_unpacklo_u8_u16(__m128i v) noexcept
+{
+    return _mm_unpacklo_epi8(v, mm_zero_si128());
+}
+
+static INLINE __m128i mm_unpackhi_u8_u16(__m128i v) noexcept
+{
+    return _mm_unpackhi_epi8(v, mm_zero_si128());
+}
+#endif
+
+#if defined(__SSSE3__)
+static INLINE __m128i mm_splat_alpha_u16(__m128i argb16) noexcept
+{
+    const __m128i shuf = _mm_setr_epi8(
+        0, 1, 0, 1, 0, 1, 0, 1,
+        8, 9, 8, 9, 8, 9, 8, 9
+    );
+    return _mm_shuffle_epi8(argb16, shuf);
+}
+
+static INLINE __m128i mm_splat_inv_alpha_u16(__m128i argb16) noexcept
+{
+    return _mm_sub_epi16(_mm_set1_epi16(255), mm_splat_alpha_u16(argb16));
+}
+#endif
+
+
+static INLINE uint32_t packPARGB32(uint8_t a, uint8_t r, uint8_t g, uint8_t b) noexcept
+{
+    return (uint32_t(a) << 24) | (uint32_t(r) << 16) | (uint32_t(g) << 8) | uint32_t(b);
+}
+
+static INLINE void unpackPARGB32(uint32_t px, uint8_t& a, uint8_t& r, uint8_t& g, uint8_t& b) noexcept
+{
+    a = (uint8_t)((px >> 24) & 0xFF);
+    r = (uint8_t)((px >> 16) & 0xFF);
+    g = (uint8_t)((px >> 8) & 0xFF);
+    b = (uint8_t)(px & 0xFF);
+}
+
+static INLINE void unpackPARGB32(uint32_t px, uint32_t& a, uint32_t& r, uint32_t& g, uint32_t& b) noexcept
+{
+    a = (uint32_t)((px >> 24) & 0xFF);
+    r = (uint32_t)((px >> 16) & 0xFF);
+    g = (uint32_t)((px >> 8) & 0xFF);
+    b = (uint32_t)(px & 0xFF);
+}
+
+// Get only the alpha channel from a PRGB32 pixel 
+// Useful for some operations where we only care about alpha
+static INLINE uint32_t unpackAlphaPARGB32(uint32_t p) noexcept
+{
+    return (p >> 24) & 0xFF;
+}
 
 //------------------------------------------------------------------------- 
 // Pack/unpack between PRGBA (linear floats) and ARGB32/RGBA32 (sRGB premul) 
 // ------------------------------------------------------------------------- 
+
 
 // PRGBA (linear) -> ARGB32 (sRGB premultiplied) 
 static inline Pixel_ARGB32 pixeling_prgba_pack_ARGB32(const ColorPRGBA p)
@@ -59,7 +176,7 @@ static inline Pixel_ARGB32 pixeling_prgba_pack_ARGB32(const ColorPRGBA p)
     const uint32_t G8 = (uint32_t)(WAAVS_CLAMP01(s.g) * A * 255.0f + 0.5f);
     const uint32_t B8 = (uint32_t)(WAAVS_CLAMP01(s.b) * A * 255.0f + 0.5f);
 
-    return (A8 << 24) | (R8 << 16) | (G8 << 8) | B8; // [A:R:G:B] 
+    return packPARGB32(A8 , R8 , G8 , B8); // [A:R:G:B] 
 }
 
 // ARGB32 (sRGB premultiplied) -> PRGBA (linear) 
@@ -175,10 +292,11 @@ static inline ColorSRGB pixeling_RGBA32_unpack_srgba(const Pixel_SRGBA8_RGBA32 p
 // ----------------------------------------------------
 
 typedef struct {
-    uint8_t* data;   // base pointer
-    int      width;  // in pixels
-    int      height; // in pixels
-    intptr_t stride; // in bytes between rows
+    uint8_t* data;          // base pointer
+    int      width;         // in pixels
+    int      height;        // in pixels
+    intptr_t stride;        // in bytes between rows
+    bool     contiguous;    // whether the memory is contiguous (no gap between rows)
 } Surface_ARGB32;
 
 

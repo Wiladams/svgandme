@@ -39,6 +39,12 @@
 // If we don't want nametable.h here, replace InternedKey with enum
 // for channel selectors (R,G,B,A) and drop the INTERN usage.
 
+namespace waavs
+{
+
+}
+
+
 namespace waavs {
 
     // ------------------------------------------------------------
@@ -57,16 +63,16 @@ namespace waavs {
     };
 
     // rectangle convenience
-    static INLINE WGRectI rectI_full(const Surface_ARGB32& s) noexcept 
+    static INLINE WGRectI rectI_full(const Surface_ARGB32& s) noexcept
     {
         return WGRectI{ 0, 0, s.width, s.height };
     }
 
-    static INLINE WGRectI roiOrFull(const PixelKernelCtx& k, const Surface_ARGB32& s) noexcept 
+    static INLINE WGRectI roiOrFull(const PixelKernelCtx& k, const Surface_ARGB32& s) noexcept
     {
-        if (k.roi.w > 0 && k.roi.h > 0) 
+        if (k.roi.w > 0 && k.roi.h > 0)
             return intersection(k.roi, rectI_full(s));
-        
+
         return rectI_full(s);
     }
 
@@ -96,7 +102,7 @@ namespace waavs {
     // 
     // Note: std::memcpy is likely SIMD-optimized in libc, so this should be reasonably fast.
     //
-    static INLINE void surface_copy_ARGB32(Surface_ARGB32* dst, const Surface_ARGB32* src) noexcept 
+    static INLINE void surface_copy_ARGB32(Surface_ARGB32* dst, const Surface_ARGB32* src) noexcept
     {
         WAAVS_ASSERT(dst->width == src->width && dst->height == src->height);
         for (int y = 0; y < dst->height; ++y) {
@@ -106,7 +112,7 @@ namespace waavs {
         }
     }
 
-    static INLINE void surface_copy_rect_ARGB32(Surface_ARGB32* dst, const Surface_ARGB32* src, WGRectI r) noexcept 
+    static INLINE void surface_copy_rect_ARGB32(Surface_ARGB32* dst, const Surface_ARGB32* src, WGRectI r) noexcept
     {
         // clamp r to dst/src (assumed same dims)
         if (r.x < 0) { r.w += r.x; r.x = 0; }
@@ -138,44 +144,324 @@ namespace waavs {
         return WAAVS_CLAMP01(c.a);
     }
 
-    // ------------------------------------------------------------
-    // Porter-Duff helpers (linear PRGBA)
-    // ------------------------------------------------------------
-    static INLINE ColorPRGBA prgba_in(ColorPRGBA s, ColorPRGBA d) noexcept {
-        const float a = d.a;
-        return ColorPRGBA{ s.r * a, s.g * a, s.b * a, s.a * a };
-    }
-    static INLINE ColorPRGBA prgba_out(ColorPRGBA s, ColorPRGBA d) noexcept {
-        const float ia = 1.0f - d.a;
-        return ColorPRGBA{ s.r * ia, s.g * ia, s.b * ia, s.a * ia };
-    }
-    static INLINE ColorPRGBA prgba_atop(ColorPRGBA s, ColorPRGBA d) noexcept {
-        const float Ad = d.a;
-        const float iAs = 1.0f - s.a;
-        return ColorPRGBA{
-          s.r * Ad + d.r * iAs,
-          s.g * Ad + d.g * iAs,
-          s.b * Ad + d.b * iAs,
-          s.a * Ad + d.a * iAs
-        };
-    }
-    static INLINE ColorPRGBA prgba_xor(ColorPRGBA s, ColorPRGBA d) noexcept {
-        const float iAd = 1.0f - d.a;
-        const float iAs = 1.0f - s.a;
-        return ColorPRGBA{
-          s.r * iAd + d.r * iAs,
-          s.g * iAd + d.g * iAs,
-          s.b * iAd + d.b * iAs,
-          s.a * iAd + d.a * iAs
-        };
+
+
+    // ----------------------------------------
+    // Porter-Duff Pixel helpers (premultiplied ARGB32)
+    // -------------------------------------------
+    static INLINE uint32_t composite_over_prgb32_pixel(uint32_t p1, uint32_t p2) noexcept
+    {
+        // Unpack the source pixel into components.
+        // we only need alpha initially to do a quick return
+        // but, we unpack them all at once anyway as it's easy.
+        uint32_t sa, sr, sg, sb;
+        unpackPARGB32(p1, sa, sr, sg, sb);
+
+        if (sa == 255)
+            return p1;
+        if (sa == 0)
+            return p2;
+
+        // unpack the rgb values of the destination
+        uint32_t da, dr, dg, db;
+        unpackPARGB32(p2, da, dr, dg, db);
+
+        const uint32_t isa = 255 - sa;
+
+        // construct new pre-multiplied pixel values by multiplying the source color values
+        const uint32_t oa = sa + mul255(da, isa);
+        const uint32_t orr = sr + mul255(dr, isa);
+        const uint32_t og = sg + mul255(dg, isa);
+        const uint32_t ob = sb + mul255(db, isa);
+
+        return packPARGB32((uint8_t)oa, (uint8_t)orr, (uint8_t)og, (uint8_t)ob);
     }
 
+
+    static INLINE uint32_t composite_in_prgb32_pixel(uint32_t p1, uint32_t p2) noexcept
+    {
+        const uint32_t da = unpackAlphaPARGB32(p2);
+        if (da == 255)
+            return p1;
+        if (da == 0)
+            return 0u;
+
+        uint32_t sa, sr, sg, sb;
+        unpackPARGB32(p1, sa, sr, sg, sb);
+
+        const uint32_t oa = mul255(sa, da);
+        const uint32_t orr = mul255(sr, da);
+        const uint32_t og = mul255(sg, da);
+        const uint32_t ob = mul255(sb, da);
+
+        return packPARGB32((uint8_t)oa, (uint8_t)orr, (uint8_t)og, (uint8_t)ob);
+    }
+
+    static INLINE uint32_t composite_out_prgb32_pixel(uint32_t p1, uint32_t p2) noexcept
+    {
+        const uint32_t da = unpackAlphaPARGB32(p2);
+        if (da == 255)
+            return 0u;
+        if (da == 0)
+            return p1;
+
+        uint32_t sa, sr, sg, sb;
+        unpackPARGB32(p1, sa, sr, sg, sb);
+
+        const uint32_t ida = 255 - da;
+
+        const uint32_t oa = mul255(sa, ida);
+        const uint32_t orr = mul255(sr, ida);
+        const uint32_t og = mul255(sg, ida);
+        const uint32_t ob = mul255(sb, ida);
+
+        return packPARGB32((uint8_t)oa, (uint8_t)orr, (uint8_t)og, (uint8_t)ob);
+    }
+
+    static INLINE uint32_t composite_atop_prgb32_pixel(uint32_t p1, uint32_t p2) noexcept
+    {
+        // Src ATOP Dst:
+        //   C = Cs * Ad + Cd * (1 - As)
+        //   A = Ad
+        uint32_t sa, sr, sg, sb;
+        unpackPARGB32(p1, sa, sr, sg, sb);
+
+        uint32_t da, dr, dg, db;
+        unpackPARGB32(p2, da, dr, dg, db);
+
+        if (da == 0)
+            return 0u;
+
+        if (sa == 255)
+        {
+            const uint32_t oa = da;
+            const uint32_t orr = mul255(sr, da);
+            const uint32_t og = mul255(sg, da);
+            const uint32_t ob = mul255(sb, da);
+            return packPARGB32((uint8_t)oa, (uint8_t)orr, (uint8_t)og, (uint8_t)ob);
+        }
+
+        const uint32_t isa = 255 - sa;
+
+        const uint32_t oa = da;
+        const uint32_t orr = mul255(sr, da) + mul255(dr, isa);
+        const uint32_t og = mul255(sg, da) + mul255(dg, isa);
+        const uint32_t ob = mul255(sb, da) + mul255(db, isa);
+
+        return packPARGB32((uint8_t)oa, (uint8_t)orr, (uint8_t)og, (uint8_t)ob);
+    }
+
+    static INLINE uint32_t composite_xor_prgb32_pixel(uint32_t p1, uint32_t p2) noexcept
+    {
+        // Src XOR Dst:
+        //   C = Cs * (1 - Ad) + Cd * (1 - As)
+        //   A = As * (1 - Ad) + Ad * (1 - As)
+        uint32_t sa, sr, sg, sb;
+        unpackPARGB32(p1, sa, sr, sg, sb);
+
+        uint32_t da, dr, dg, db;
+        unpackPARGB32(p2, da, dr, dg, db);
+
+        if (sa == 0)
+            return p2;
+        if (da == 0)
+            return p1;
+
+        if (sa == 255 && da == 255)
+            return 0u;
+
+        const uint32_t isa = 255 - sa;
+        const uint32_t ida = 255 - da;
+
+        const uint32_t oa = mul255(sa, ida) + mul255(da, isa);
+        const uint32_t orr = mul255(sr, ida) + mul255(dr, isa);
+        const uint32_t og = mul255(sg, ida) + mul255(dg, isa);
+        const uint32_t ob = mul255(sb, ida) + mul255(db, isa);
+
+        return packPARGB32((uint8_t)oa, (uint8_t)orr, (uint8_t)og, (uint8_t)ob);
+    }
+}
+
+
+
+namespace waavs {
+
+#if defined(_M_ARM64) || defined(__aarch64__)
+
+    static INLINE void composite_in_prgb32_row_neon(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
+    {
+        int x = 0;
+
+        for (; x + 4 <= w; x += 4)
+        {
+            // Memory byte order on little-endian ARM64:
+            //   B G R A per pixel
+            const uint8x16_t src8 = vld1q_u8((const uint8_t*)(s1 + x));
+            const uint8x16_t dst8 = vld1q_u8((const uint8_t*)(s2 + x));
+
+            const uint16x8_t srcLo = vmovl_u8(vget_low_u8(src8));
+            const uint16x8_t srcHi = vmovl_u8(vget_high_u8(src8));
+            const uint16x8_t dstLo = vmovl_u8(vget_low_u8(dst8));
+            const uint16x8_t dstHi = vmovl_u8(vget_high_u8(dst8));
+
+            const uint16x8_t aLo = neon_splat_alpha_bgra_u16(dstLo);
+            const uint16x8_t aHi = neon_splat_alpha_bgra_u16(dstHi);
+
+            const uint16x8_t outLo = neon_mul255_u16(srcLo, aLo);
+            const uint16x8_t outHi = neon_mul255_u16(srcHi, aHi);
+
+            const uint8x8_t outLo8 = vmovn_u16(outLo);
+            const uint8x8_t outHi8 = vmovn_u16(outHi);
+            const uint8x16_t out8 = vcombine_u8(outLo8, outHi8);
+
+            vst1q_u8((uint8_t*)(d + x), out8);
+        }
+
+        for (; x < w; ++x)
+            d[x] = composite_in_prgb32_pixel(s1[x], s2[x]);
+    }
+
+#endif
+
+#if defined(_M_ARM64) || defined(__aarch64__)
+
+    static INLINE void composite_out_prgb32_row_neon(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
+    {
+        int x = 0;
+
+        for (; x + 4 <= w; x += 4)
+        {
+            const uint8x16_t src8 = vld1q_u8((const uint8_t*)(s1 + x));
+            const uint8x16_t dst8 = vld1q_u8((const uint8_t*)(s2 + x));
+
+            const uint16x8_t srcLo = vmovl_u8(vget_low_u8(src8));
+            const uint16x8_t srcHi = vmovl_u8(vget_high_u8(src8));
+            const uint16x8_t dstLo = vmovl_u8(vget_low_u8(dst8));
+            const uint16x8_t dstHi = vmovl_u8(vget_high_u8(dst8));
+
+            const uint16x8_t aLo = neon_splat_inv_alpha_bgra_u16(dstLo);
+            const uint16x8_t aHi = neon_splat_inv_alpha_bgra_u16(dstHi);
+
+            const uint16x8_t outLo = neon_mul255_u16(srcLo, aLo);
+            const uint16x8_t outHi = neon_mul255_u16(srcHi, aHi);
+
+            const uint8x8_t outLo8 = vmovn_u16(outLo);
+            const uint8x8_t outHi8 = vmovn_u16(outHi);
+            const uint8x16_t out8 = vcombine_u8(outLo8, outHi8);
+
+            vst1q_u8((uint8_t*)(d + x), out8);
+        }
+
+        for (; x < w; ++x)
+            d[x] = composite_out_prgb32_pixel(s1[x], s2[x]);
+    }
+
+#endif
+
+
+
+#if defined(_M_ARM64) || defined(__aarch64__)
+
+    static INLINE void composite_over_prgb32_row_neon(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
+    {
+        int x = 0;
+
+        for (; x + 4 <= w; x += 4)
+        {
+            const uint8x16_t src8 = vld1q_u8((const uint8_t*)(s1 + x));
+            const uint8x16_t dst8 = vld1q_u8((const uint8_t*)(s2 + x));
+
+            const uint16x8_t srcLo = vmovl_u8(vget_low_u8(src8));
+            const uint16x8_t srcHi = vmovl_u8(vget_high_u8(src8));
+            const uint16x8_t dstLo = vmovl_u8(vget_low_u8(dst8));
+            const uint16x8_t dstHi = vmovl_u8(vget_high_u8(dst8));
+
+            const uint16x8_t isaLo = neon_splat_inv_alpha_bgra_u16(srcLo);
+            const uint16x8_t isaHi = neon_splat_inv_alpha_bgra_u16(srcHi);
+
+            const uint16x8_t dstScaledLo = neon_mul255_u16(dstLo, isaLo);
+            const uint16x8_t dstScaledHi = neon_mul255_u16(dstHi, isaHi);
+
+            const uint16x8_t outLo = vaddq_u16(srcLo, dstScaledLo);
+            const uint16x8_t outHi = vaddq_u16(srcHi, dstScaledHi);
+
+            const uint8x8_t outLo8 = vmovn_u16(outLo);
+            const uint8x8_t outHi8 = vmovn_u16(outHi);
+            const uint8x16_t out8 = vcombine_u8(outLo8, outHi8);
+
+            vst1q_u8((uint8_t*)(d + x), out8);
+        }
+
+        for (; x < w; ++x)
+            d[x] = composite_over_prgb32_pixel(s1[x], s2[x]);
+    }
+
+#endif
+
+
+} // namespace waavs
+
+
+//
+// SIMD enhanced row operators
+//
+namespace waavs
+{
+    // ------------------------------------------------------------
+    // Porter-Duff Row helpers (PARGB32
+    // ------------------------------------------------------------
+    static  INLINE void composite_in_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
+    {
+//#if defined(_M_ARM64) || defined(__aarch64__)
+//        composite_in_prgb32_row_neon(d, s1, s2, w);
+//#else
+        for (int x = 0; x < w; ++x)
+            d[x] = composite_in_prgb32_pixel(s1[x], s2[x]);
+//#endif
+    }
+
+    static INLINE void composite_over_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
+    {
+//#if defined(_M_ARM64) || defined(__aarch64__)
+//        composite_over_prgb32_row_neon(d, s1, s2, w);
+//#else
+        for (int x = 0; x < w; ++x)
+            d[x] = composite_over_prgb32_pixel(s1[x], s2[x]);
+//#endif
+    }
+
+    static INLINE void composite_out_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
+    {
+//#if defined(_M_ARM64) || defined(__aarch64__)
+//        composite_out_prgb32_row_neon(d, s1, s2, w);
+//#else
+        for (int x = 0; x < w; ++x)
+            d[x] = composite_out_prgb32_pixel(s1[x], s2[x]);
+//#endif
+    }
+
+
+
+    static INLINE void composite_atop_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
+    {
+        for (int x = 0; x < w; ++x)
+            d[x] = composite_atop_prgb32_pixel(s1[x], s2[x]);
+    }
+
+    static INLINE void composite_xor_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
+    {
+        for (int x = 0; x < w; ++x)
+            d[x] = composite_xor_prgb32_pixel(s1[x], s2[x]);
+    }
+}
+
+
+
+namespace waavs {
     // ============================================================
     // feFlood
     // ============================================================
-    static INLINE bool feFlood(const PixelKernelCtx& k,
-        Surface_ARGB32* out,
-        Pixel_ARGB32 argb32_premul) noexcept
+    static INLINE bool feFlood(const PixelKernelCtx& k, Surface_ARGB32* out, Pixel_ARGB32 argb32_premul) noexcept
     {
         (void)k;
         for (int y = 0; y < out->height; ++y) {
@@ -636,6 +922,7 @@ namespace waavs {
     // ============================================================
     // feComposite
     // ============================================================
+    /*
     enum CompositeOp : uint8_t {
         COMP_OVER,
         COMP_IN,
@@ -646,8 +933,8 @@ namespace waavs {
     };
 
     static INLINE bool feComposite(const PixelKernelCtx& k,
-        const Surface_ARGB32* in1 /* source */,
-        const Surface_ARGB32* in2 /* backdrop */,
+        const Surface_ARGB32* in1,      // source
+        const Surface_ARGB32* in2,     // backdrop
         Surface_ARGB32* out,
         CompositeOp op,
         float k1, float k2, float k3, float k4) noexcept
@@ -698,6 +985,7 @@ namespace waavs {
 
         return true;
     }
+    */
 
     // ============================================================
     // feDisplacementMap

@@ -373,11 +373,11 @@ namespace waavs
             onStrokeBeforeTransform();
         }
         
-        virtual void onBlendMode() {}
+        virtual void onBlendMode(int mode) {}
         void blendMode(int mode) 
         { 
 			setCompositeMode(mode);
-            onBlendMode();
+            onBlendMode(mode);
         }
         
         virtual void onGlobalOpacity() {}

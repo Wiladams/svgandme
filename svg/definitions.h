@@ -100,3 +100,16 @@
     static_assert(sizeof(Type) == (ExpectedSize), #Type " must be " #ExpectedSize " bytes in size")
 
 
+// SIMD Support Detection (example for x86/x64 with SSE2)
+#if defined(__SSE2__)
+#include <emmintrin.h>
+#endif
+
+#if defined(__SSSE3__)
+#include <tmmintrin.h>
+#endif
+
+#if defined(_M_ARM64) || defined(__aarch64__)
+#include <arm_neon.h>
+#endif
+
