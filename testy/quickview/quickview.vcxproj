@@ -1,17 +1,9 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug|ARM64">
-      <Configuration>Debug</Configuration>
-      <Platform>ARM64</Platform>
-    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|ARM64">
-      <Configuration>Release</Configuration>
-      <Platform>ARM64</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Release|Win32">
       <Configuration>Release</Configuration>
@@ -25,12 +17,20 @@
       <Configuration>Release</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|ARM64">
+      <Configuration>Debug</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|ARM64">
+      <Configuration>Release</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{5b455a0a-aeea-4f6d-81df-d9de7c6cafd7}</ProjectGuid>
-    <RootNamespace>svgviewer</RootNamespace>
+    <ProjectGuid>{8edc7760-8cfd-4c92-bbcb-1f0f924cee04}</ProjectGuid>
+    <RootNamespace>quickview</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -53,17 +53,17 @@
     <PlatformToolset>ClangCL</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>ClangCL</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>ClangCL</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>ClangCL</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'" Label="Configuration">
@@ -87,13 +87,13 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'" Label="PropertySheets">
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
@@ -106,20 +106,15 @@
       <AdditionalIncludeDirectories>..\;..\..\;..\..\blend2d;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <DisableLanguageExtensions>false</DisableLanguageExtensions>
-      <ExceptionHandling>false</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\lib\Release</AdditionalLibraryDirectories>
-      <Profile>false</Profile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
+      <WarningLevel>Level3</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
@@ -128,17 +123,10 @@
       <AdditionalIncludeDirectories>..\;..\..\;..\..\blend2d;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <DisableLanguageExtensions>false</DisableLanguageExtensions>
-      <ExceptionHandling>false</ExceptionHandling>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\lib\Release</AdditionalLibraryDirectories>
-      <Profile>false</Profile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -150,15 +138,27 @@
       <AdditionalIncludeDirectories>..\;..\..\;..\..\blend2d;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <DisableLanguageExtensions>false</DisableLanguageExtensions>
-      <ExceptionHandling>false</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\lib\Release</AdditionalLibraryDirectories>
-      <Profile>false</Profile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>..\;..\..\;..\..\blend2d;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
@@ -170,44 +170,15 @@
       <AdditionalIncludeDirectories>..\;..\..\;..\..\blend2d;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <DisableLanguageExtensions>false</DisableLanguageExtensions>
-      <ExceptionHandling>false</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\lib\ARM64\Debug;..\..\3rdparty\ffmpeg\lib\Debug;</AdditionalLibraryDirectories>
-      <Profile>false</Profile>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\;..\..\;..\..\blend2d;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
-      <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <DisableLanguageExtensions>false</DisableLanguageExtensions>
-      <ExceptionHandling>false</ExceptionHandling>
-    </ClCompile>
-    <Link>
-      <SubSystem>Windows</SubSystem>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\lib\Release</AdditionalLibraryDirectories>
-      <Profile>false</Profile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <ClCompile>
-      <WarningLevel>Level4</WarningLevel>
+      <WarningLevel>Level3</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
@@ -216,122 +187,23 @@
       <AdditionalIncludeDirectories>..\;..\..\;..\..\blend2d;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <DisableLanguageExtensions>false</DisableLanguageExtensions>
-      <ExceptionHandling>false</ExceptionHandling>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\lib\ARM64\Release;..\..\3rdparty\ffmpeg\lib\Release;</AdditionalLibraryDirectories>
-      <Profile>false</Profile>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\app\appmain.cpp" />
-    <ClCompile Include="..\..\app\svguiapp.cpp" />
-    <ClCompile Include="svgviewer.cpp" />
+    <ClCompile Include="quickview.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\app\apphost.h" />
-    <ClInclude Include="..\..\app\appmodule.h" />
-    <ClInclude Include="..\..\app\framebuffer.h" />
-    <ClInclude Include="..\..\app\frames_ffmpeg_source.h" />
-    <ClInclude Include="..\..\app\mappedfile.h" />
-    <ClInclude Include="..\..\app\nativewindow.h" />
-    <ClInclude Include="..\..\app\recorder.h" />
-    <ClInclude Include="..\..\app\screensnapshot.h" />
-    <ClInclude Include="..\..\app\svguiapp.h" />
-    <ClInclude Include="..\..\app\svgwaavs.h" />
-    <ClInclude Include="..\..\app\user32pixelmap.h" />
-    <ClInclude Include="..\..\app\viewnavigator.h" />
-    <ClInclude Include="..\..\app\waavsdisplaycapture.h" />
-    <ClInclude Include="..\..\app\waavsframe.h" />
-    <ClInclude Include="..\..\svg\filterexec_b2d.h" />
-    <ClInclude Include="..\..\svg\base64.h" />
-    <ClInclude Include="..\..\svg\bithacks.h" />
-    <ClInclude Include="..\..\svg\blend2d_connect.h" />
-    <ClInclude Include="..\..\svg\coloring.h" />
-    <ClInclude Include="..\..\svg\filterprogram.h" />
-    <ClInclude Include="..\..\svg\filterprogrambuilder.h" />
-    <ClInclude Include="..\..\svg\filterprogramexec.h" />
-    <ClInclude Include="..\..\svg\filter_codec.h" />
-    <ClInclude Include="..\..\svg\frames_blend2d_source.h" />
-    <ClInclude Include="..\..\svg\bspan.h" />
-    <ClInclude Include="..\..\svg\charset.h" />
-    <ClInclude Include="..\..\svg\converters.h" />
     <ClInclude Include="..\..\svg\definitions.h" />
-    <ClInclude Include="..\..\svg\fonthandler.h" />
-    <ClInclude Include="..\..\svg\framesource.h" />
     <ClInclude Include="..\..\svg\idrawpixels.h" />
-    <ClInclude Include="..\..\svg\imageproc.h" />
-    <ClInclude Include="..\..\svg\imanagesvgstate.h" />
-    <ClInclude Include="..\..\svg\irendersvg.h" />
-    <ClInclude Include="..\..\svg\maths.h" />
-    <ClInclude Include="..\..\svg\membuff.h" />
-    <ClInclude Include="..\..\svg\nametable.h" />
-    <ClInclude Include="..\..\svg\filter_noise.h" />
-    <ClInclude Include="..\..\svg\pathpu.h" />
-    <ClInclude Include="..\..\svg\pathsegmenter.h" />
-    <ClInclude Include="..\..\svg\pixelaccessor.h" />
-    <ClInclude Include="..\..\svg\pixeleffects.h" />
     <ClInclude Include="..\..\svg\pixeling.h" />
-    <ClInclude Include="..\..\svg\pubsub.h" />
-    <ClInclude Include="..\..\svg\smildatatypes.h" />
-    <ClInclude Include="..\..\svg\stopwatch.h" />
     <ClInclude Include="..\..\svg\surface.h" />
-    <ClInclude Include="..\..\svg\svg.h" />
-    <ClInclude Include="..\..\svg\svgatoms.h" />
-    <ClInclude Include="..\..\svg\svgattributes.h" />
-    <ClInclude Include="..\..\svg\svgb2ddriver.h" />
-    <ClInclude Include="..\..\svg\svgcamera.h" />
-    <ClInclude Include="..\..\svg\svgclip.h" />
-    <ClInclude Include="..\..\svg\svgcolors.h" />
-    <ClInclude Include="..\..\svg\svgconditional.h" />
-    <ClInclude Include="..\..\svg\svgcss.h" />
-    <ClInclude Include="..\..\svg\svgdatatypes.h" />
-    <ClInclude Include="..\..\svg\svgdefs.h" />
-    <ClInclude Include="..\..\svg\svgdocument.h" />
-    <ClInclude Include="..\..\svg\svgdrawingcontext.h" />
-    <ClInclude Include="..\..\svg\svgdrawingstate.h" />
-    <ClInclude Include="..\..\svg\svgenums.h" />
-    <ClInclude Include="..\..\svg\svgextensibility.h" />
-    <ClInclude Include="..\..\svg\svgfactory.h" />
-    <ClInclude Include="..\..\svg\svgfilter.h" />
-    <ClInclude Include="..\..\svg\svgflowroot.h" />
-    <ClInclude Include="..\..\svg\svgfont.h" />
-    <ClInclude Include="..\..\svg\svggradient.h" />
-    <ClInclude Include="..\..\svg\svggraphicselement.h" />
-    <ClInclude Include="..\..\svg\svghyperlink.h" />
-    <ClInclude Include="..\..\svg\svgimage.h" />
-    <ClInclude Include="..\..\svg\svgmarker.h" />
-    <ClInclude Include="..\..\svg\svgmask.h" />
-    <ClInclude Include="..\..\svg\b2dpathbuilder.h" />
-    <ClInclude Include="..\..\svg\svgmisc.h" />
-    <ClInclude Include="..\..\svg\svgpattern.h" />
-    <ClInclude Include="..\..\svg\svgscript.h" />
-    <ClInclude Include="..\..\svg\svgshapes.h" />
-    <ClInclude Include="..\..\svg\svgsolidcolor.h" />
-    <ClInclude Include="..\..\svg\svgstructure.h" />
-    <ClInclude Include="..\..\svg\svgstructuretypes.h" />
-    <ClInclude Include="..\..\svg\svgstyle.h" />
-    <ClInclude Include="..\..\svg\svgsymbol.h" />
-    <ClInclude Include="..\..\svg\svgtext.h" />
-    <ClInclude Include="..\..\svg\svgtextlayout.h" />
-    <ClInclude Include="..\..\svg\svgunits.h" />
-    <ClInclude Include="..\..\svg\svguse.h" />
-    <ClInclude Include="..\..\svg\twobitpu.h" />
-    <ClInclude Include="..\..\svg\utf8.h" />
-    <ClInclude Include="..\..\svg\viewport.h" />
     <ClInclude Include="..\..\svg\wggeometry.h" />
-    <ClInclude Include="..\..\svg\wsenum.h" />
-    <ClInclude Include="..\..\svg\xmlentity.h" />
-    <ClInclude Include="..\..\svg\xmlscan.h" />
-    <ClInclude Include="..\..\svg\xmlschema.h" />
-    <ClInclude Include="..\..\svg\xmltypes.h" />
-    <ClInclude Include="svgicons.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

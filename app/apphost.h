@@ -2,15 +2,20 @@
 #define apphost_h
 
 /*
-	The primary benefit of the apphost.h/appmain.cpp combination is to turn
-	windows specifics into simpler concepts.
+	apphost.h/appmain.cpp are meant to be the absolute minimum necessary 
+	to create a Windows application.  It also provides a simple pub/sub
+	system for easy UI event handling.
 
 	Typical Windows messages, such as mouse and keyboard, are turned into 
 	topics, that other modules can subscribe to.
 
 	A 'main()' is provided, so a compiled application has a minimal runtime environment
-	when it starts.  The user's app can implement a 'onLoad()' function,
-	and not have to worry about whether it is a console or Window target.
+	when it starts.  The user's app should implement a 'onLoad()', which is where
+	the user's code begins to run.
+
+	From there, the user can decide to either be event driven, by subscribing
+    to various topics (mouse, keyboard, timed events, etc), or to implement 
+	an 'onLoop()' function, which will be called regularly.
 
 	All other aspects of the application are up to the application environment,
 	but at least all the Win32 specific stuff is wrapped up.
@@ -59,18 +64,14 @@
 #define APP_EXTERN  extern
 
 
-
-
-
 #include "maths.h"
 #include "pubsub.h"
 #include "nativewindow.h"
 #include "uievent.h"
 #include "joystick.h"
 #include "network.h"
-//#include "framebuffer.h"
+#include "surface.h"
 
-#include "blend2d_connect.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -84,8 +85,8 @@ typedef void (*PFNFLOAT1)(const float param);
 // Miscellaneous globals
 APP_EXPORT extern int gargc;
 APP_EXPORT extern char **gargv;
-APP_EXPORT extern unsigned int gSystemThreadCount;
 
+APP_EXPORT extern int getSystemThreadCount();
 
 
 // Keyboard Globals

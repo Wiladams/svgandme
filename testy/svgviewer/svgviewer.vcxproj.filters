@@ -314,7 +314,7 @@
     <ClInclude Include="..\..\svg\filter_codec.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\idraw.h">
+    <ClInclude Include="..\..\svg\idrawpixels.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

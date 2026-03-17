@@ -460,6 +460,24 @@ namespace waavs {
         //   void draw(IRenderSVG*, IAmGroot*);
         // --------------------------------------------------------
 
+        std::unique_ptr<Surface> makeSourceAlpha(const Surface& src)
+        {
+            auto out = createLikeSurfaceHandle(src);
+            if (!out)
+                return nullptr;
+
+            uint32_t* dst = (uint32_t*)out->data();
+            const uint32_t* s = (const uint32_t *)src.data();
+
+            size_t n = src.width() * src.height();
+
+            for (size_t i = 0; i < n; ++i) {
+                uint8_t a = s[i] >> 24;
+                dst[i] = packPARGB32(a, a, a, a);
+            }
+
+            return out;
+        }
 
         template<class SubtreeT>
         bool applyFilter(IRenderSVG* ctx,
@@ -569,6 +587,13 @@ namespace waavs {
             if (!putImage(kFilter_SourceGraphic(), std::move(srcGraphic)))
                 return false;
 
+            // make the alpha channel available as SourceAlpha, for primitives that need it.
+            auto srcAlpha = makeSourceAlpha(*getImage(kFilter_SourceGraphic()));
+            if (!srcAlpha)
+                return false;
+
+            if (!putImage(kFilter_SourceAlpha(), std::move(srcAlpha)))
+                return false;
 
             // --------------------------------------------------
             // Execute filter primitives
@@ -2585,8 +2610,8 @@ namespace waavs {
                         }
                     }
 
-                    //drow[x] = pack_premul_argb32(r, g, b, a);
-                    drow[x] = pack_premul_argb32(r, g, b, 1.0f);
+                    drow[x] = pack_premul_argb32(r, g, b, a);
+                   // drow[x] = pack_premul_argb32(r, g, b, 1.0f);
 
                 }
             }

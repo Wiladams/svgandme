@@ -9,9 +9,9 @@
 #pragma once
 
 
-#include "maths.h"
+
 #include "membuff.h"
-#include "idraw.h"
+#include "idrawpixels.h"
 
 namespace waavs
 {

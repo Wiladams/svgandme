@@ -79,6 +79,7 @@
 
 
 // Useful assertions for type construction
+// 
 // Asserts that a type is trivially copyable (memcpy-safe)
 #define ASSERT_MEMCPY_SAFE(Type) \
     static_assert(std::is_trivially_copyable<Type>::value, #Type " must be trivially copyable"); \

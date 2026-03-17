@@ -54,6 +54,11 @@ namespace waavs::filter
     inline InternedKey exponent() { static InternedKey k = PSNameTable::INTERN("exponent"); return k; }
     inline InternedKey offset() { static InternedKey k = PSNameTable::INTERN("offset"); return k; }
 
+    inline InternedKey feFuncR() { static InternedKey k = PSNameTable::INTERN("feFuncR"); return k; }
+    inline InternedKey feFuncG() { static InternedKey k = PSNameTable::INTERN("feFuncG"); return k; }
+    inline InternedKey feFuncB() { static InternedKey k = PSNameTable::INTERN("feFuncB"); return k; }
+    inline InternedKey feFuncA() { static InternedKey k = PSNameTable::INTERN("feFuncA"); return k; }
+
     // feConvolveMatrix
     inline InternedKey order() { static InternedKey k = PSNameTable::INTERN("order"); return k; }
     inline InternedKey kernelMatrix() { static InternedKey k = PSNameTable::INTERN("kernelMatrix"); return k; }

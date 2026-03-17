@@ -50,14 +50,7 @@
 
 namespace waavs
 {
-    struct SVGComponentTransferFunc
-    {
-        FilterTransferFuncType fType{ FILTER_TRANSFER_IDENTITY };
-        float fP0{ 0.0f };
-        float fP1{ 0.0f };
-        float fP2{ 0.0f };
-        std::vector<float> fTable{};
-    };
+
 
     static INLINE bool lengthToFilterNumberOrPercent(const SVGLengthValue& inVal,
         SVGNumberOrPercent& outVal,
@@ -255,43 +248,7 @@ namespace waavs
         return blVarToRgba32(&c, &rgba32) == BL_SUCCESS;
     }
 
-    static INLINE void parseComponentTransferFuncNode(const std::shared_ptr<IViewable>& n, SVGComponentTransferFunc& out) noexcept
-    {
-        out = {};
 
-        auto g = std::dynamic_pointer_cast<SVGGraphicsElement>(n);
-        if (!g)
-            return;
-
-        ByteSpan typeAttr{};
-        if (g->getAttribute(filter::type_(), typeAttr))
-            out.fType = parseFilterTransferFuncType(PSNameTable::INTERN(typeAttr));
-        else
-            out.fType = FILTER_TRANSFER_IDENTITY;
-
-        switch (out.fType)
-        {
-        case FILTER_TRANSFER_LINEAR:
-            parseF32Attr(g->getAttribute(filter::slope()), out.fP0);
-            parseF32Attr(g->getAttribute(filter::intercept()), out.fP1);
-            break;
-
-        case FILTER_TRANSFER_GAMMA:
-            parseF32Attr(g->getAttribute(filter::amplitude()), out.fP0);
-            parseF32Attr(g->getAttribute(filter::exponent()), out.fP1);
-            parseF32Attr(g->getAttribute(filter::offset()), out.fP2);
-            break;
-
-        case FILTER_TRANSFER_TABLE:
-        case FILTER_TRANSFER_DISCRETE:
-            parseFloatListAttr(g->getAttribute(filter::tableValues()), out.fTable);
-            break;
-
-        case FILTER_TRANSFER_IDENTITY:
-        default:
-            break;
-        }
-    }
 }
 
 
@@ -319,7 +276,6 @@ namespace waavs
             : SVGGraphicsElement() 
             , fOperator(op)
         {
-            setIsVisible(false);
         }
 
         virtual bool hasIn2() const noexcept { return fIn2 != nullptr; }
@@ -505,9 +461,118 @@ namespace waavs
         }
     };
     
-    //
+
+    // ----------------------------------------------
     // feComponentTransfer
-    //
+    // ----------------------------------------------
+
+    struct SVGComponentTransferFunc
+    {
+        FilterTransferFuncType fType{ FILTER_TRANSFER_IDENTITY };
+        float fP0{ 1.0f };
+        float fP1{ 0.0f };
+        float fP2{ 0.0f };
+        std::vector<float> fTable{};
+    };
+
+
+
+    // feFuncR, feFuncG, feFuncB, feFuncA are all the same except for the channel they represent.  
+    // We can use a single class for all of them, and just check the name to see which channel it is.
+    struct SVGFeFuncElement : public SVGGraphicsElement
+    {
+
+
+    public:
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName("feFuncA", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeFuncElement>();
+                node->loadFromXmlElement(elem, groot);
+
+                return node;
+                });
+            registerSVGSingularNodeByName("feFuncR", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeFuncElement>();
+                node->loadFromXmlElement(elem, groot);
+
+                return node;
+                });
+            registerSVGSingularNodeByName("feFuncG", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeFuncElement>();
+                node->loadFromXmlElement(elem, groot);
+
+                return node;
+                });
+            registerSVGSingularNodeByName("feFuncB", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeFuncElement>();
+                node->loadFromXmlElement(elem, groot);
+
+                return node;
+                });
+        }
+
+        
+        SVGComponentTransferFunc fFunc{};
+
+
+        // -----------------------------------------------
+        // Implementation
+        // ------------------------------------------------
+
+        SVGFeFuncElement()
+            : SVGGraphicsElement()
+        {
+        }
+
+        const SVGComponentTransferFunc& func() const noexcept
+        {
+            return fFunc;
+        }
+
+        void fixupSelfStyleAttributes(IAmGroot* groot) override
+        {
+            fFunc = {};
+
+            ByteSpan typeAttr{};
+            if (getAttribute(filter::type_(), typeAttr))
+                fFunc.fType = parseFilterTransferFuncType(PSNameTable::INTERN(typeAttr));
+            else
+                fFunc.fType = FILTER_TRANSFER_IDENTITY;
+
+            switch (fFunc.fType)
+            {
+            case FILTER_TRANSFER_LINEAR:
+                fFunc.fP0 = 1.0f;
+                fFunc.fP1 = 0.0f;
+                parseF32Attr(getAttribute(filter::slope()), fFunc.fP0);
+                parseF32Attr(getAttribute(filter::intercept()), fFunc.fP1);
+                break;
+
+            case FILTER_TRANSFER_GAMMA:
+                fFunc.fP0 = 1.0f;
+                fFunc.fP1 = 1.0f;
+                fFunc.fP2 = 0.0f;
+                parseF32Attr(getAttribute(filter::amplitude()), fFunc.fP0);
+                parseF32Attr(getAttribute(filter::exponent()), fFunc.fP1);
+                parseF32Attr(getAttribute(filter::offset()), fFunc.fP2);
+                break;
+
+            case FILTER_TRANSFER_TABLE:
+            case FILTER_TRANSFER_DISCRETE:
+                fFunc.fTable.clear();
+                parseFloatListAttr(getAttribute(filter::tableValues()), fFunc.fTable);
+                break;
+
+            case FILTER_TRANSFER_IDENTITY:
+            default:
+                break;
+            }
+
+        }
+
+
+    };
 
 
     struct SVGFeComponentTransferElement : public SVGFilterPrimitiveElement
@@ -579,20 +644,25 @@ namespace waavs
                 if (!n)
                     continue;
 
-                auto g = std::dynamic_pointer_cast<SVGGraphicsElement>(n);
+                auto g = std::dynamic_pointer_cast<SVGFeFuncElement>(n);
                 if (!g)
                     continue;
 
-                auto nm = g->nameAtom();
+                // Make sure the sub-node is fixed up, 
+                // so that its fFunc is valid when we read it.
+                g->fixupStyleAttributes(groot);
 
-                if (nm == PSNameTable::INTERN("feFuncR"))
-                    parseComponentTransferFuncNode(n, fR);
-                else if (nm == PSNameTable::INTERN("feFuncG"))
-                    parseComponentTransferFuncNode(n, fG);
-                else if (nm == PSNameTable::INTERN("feFuncB"))
-                    parseComponentTransferFuncNode(n, fB);
-                else if (nm == PSNameTable::INTERN("feFuncA"))
-                    parseComponentTransferFuncNode(n, fA);
+                // Get the details of the transferfunc
+                const auto & func = g->func();
+
+                if (g->nameAtom() == filter::feFuncA())
+                    fA = func;
+                else if (g->nameAtom() == filter::feFuncR())
+                    fR = func;
+                else if (g->nameAtom() == filter::feFuncG())
+                    fG = func;
+                else if (g->nameAtom() == filter::feFuncB())
+                    fB = func;
             }
         }
 
@@ -1015,6 +1085,8 @@ namespace waavs
 
                 auto nm = g->nameAtom();
 
+                n->fixupStyleAttributes(groot);
+
                 if (nm == filter::feDistantLight())
                 {
                     fLightType = FILTER_LIGHT_DISTANT;
@@ -1151,7 +1223,6 @@ namespace waavs
         SVGFeDistantLightElement(IAmGroot* )
             : SVGFilterPrimitiveElement(FOP_END)
         {
-            setIsVisible(false);
         }
 
         bool emitSelf(FilterProgramStream& fps, InternedKey& last) const noexcept override
@@ -1164,6 +1235,10 @@ namespace waavs
 
         void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
         {
+            ByteSpan azimuthAttr{};
+            ByteSpan elevationAttr{};
+            getRawAttributeBySpan("azimuth", azimuthAttr);
+            getRawAttributeBySpan("elevation", elevationAttr);
         }
     };
     
@@ -1529,7 +1604,7 @@ namespace waavs
         static void registerSingularNode()
         {
             registerSVGSingularNodeByName("feMergeNode", [](IAmGroot* groot, const XmlElement& elem) {
-                auto node = std::make_shared<SVGFeMergeNodeElement>(groot);
+                auto node = std::make_shared<SVGFeMergeNodeElement>();
                 node->loadFromXmlElement(elem, groot);
                 return node;
                 });
@@ -1538,7 +1613,7 @@ namespace waavs
         static void registerFactory()
         {
             registerContainerNodeByName("feMergeNode", [](IAmGroot* groot, XmlPull& iter) {
-                auto node = std::make_shared<SVGFeMergeNodeElement>(groot);
+                auto node = std::make_shared<SVGFeMergeNodeElement>();
                 node->loadFromXmlPull(iter, groot);
                 return node;
                 });
@@ -1546,10 +1621,9 @@ namespace waavs
             registerSingularNode();
         }
 
-        SVGFeMergeNodeElement(IAmGroot*)
+        SVGFeMergeNodeElement()
             : SVGFilterPrimitiveElement(FOP_END)
         {
-            setIsVisible(false);
         }
 
         bool emitSelf(FilterProgramStream& fps, InternedKey& last) const noexcept override
@@ -1559,11 +1633,6 @@ namespace waavs
             return false;
         }
 
-        void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
-        {
-            (void)groot;
-            // Nothing extra needed. Its "in" is already handled by base fixup.
-        }
     };
 
     //
@@ -1596,7 +1665,6 @@ namespace waavs
         SVGFeMergeElement(IAmGroot*)
             : SVGFilterPrimitiveElement(FOP_MERGE)
         {
-            setIsVisible(false);
         }
 
         // Generator-like wrt common "in1": ABI says it is unused.
@@ -1627,6 +1695,10 @@ namespace waavs
                 auto mn = std::dynamic_pointer_cast<SVGFeMergeNodeElement>(n);
                 if (!mn)
                     continue;
+                
+                // Make sure the fixup occurs so we can get the "in" attribute if specified, 
+                // and also so that any feMergeNode children are processed before we query their "in".
+                mn->fixupStyleAttributes(groot);
 
                 // feMergeNode "in" default is previous result if omitted.
                 // But inside feMerge, that would be surprising and not especially useful.
@@ -1776,8 +1848,8 @@ namespace waavs
     };
     
     //
-// feSpecularLighting
-//
+    // feSpecularLighting
+    //
     struct SVGFeSpecularLightingElement : public SVGFilterPrimitiveElement
     {
         static void registerSingularNode()
@@ -1812,6 +1884,7 @@ namespace waavs
         SVGFeSpecularLightingElement(IAmGroot*)
             : SVGFilterPrimitiveElement(FOP_SPECULAR_LIGHTING)
         {
+            printf("feSpecularLighting\n");
         }
 
         bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
@@ -1857,6 +1930,7 @@ namespace waavs
 
             for (auto& n : fNodes)
             {
+                
                 if (!n)
                     continue;
 
@@ -1864,11 +1938,14 @@ namespace waavs
                 if (!g)
                     continue;
 
+                n->fixupStyleAttributes(groot);
+
                 ByteSpan nm = g->name();
 
                 if (nm == "feDistantLight")
                 {
                     fLightType = FILTER_LIGHT_DISTANT;
+
                     parseF32Attr(g->getAttribute(filter::azimuth()), fLight[0]);
                     parseF32Attr(g->getAttribute(filter::elevation()), fLight[1]);
                     break;
@@ -2113,7 +2190,7 @@ namespace waavs {
 
             // The filter region is resolved against the element being filtered,
             // not against the <filter> element itself.
-            const WGRectD bbox = subtree->calculateObjectBoundingBox(ctx, groot);
+            const WGRectD bbox = subtree->getPaintBox(ctx, groot);
             if (!(bbox.w > 0.0) || !(bbox.h > 0.0))
                 return {};
 

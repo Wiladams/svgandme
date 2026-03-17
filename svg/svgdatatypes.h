@@ -617,6 +617,7 @@ namespace waavs
 
         //
         // nextNumberToken()
+        // 
         // Return the next numeric lexeme as a ByteSpan [start..end),
         // with NO units included.
         //

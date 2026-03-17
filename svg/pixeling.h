@@ -293,18 +293,18 @@ static inline ColorSRGB pixeling_RGBA32_unpack_srgba(const Pixel_SRGBA8_RGBA32 p
 
 typedef struct {
     uint8_t* data;          // base pointer
-    int      width;         // in pixels
-    int      height;        // in pixels
+    int32_t  width;         // in pixels
+    int32_t  height;        // in pixels
     intptr_t stride;        // in bytes between rows
     bool     contiguous;    // whether the memory is contiguous (no gap between rows)
 } Surface_ARGB32;
 
 
-static inline uint32_t* pixeling_ARGB32_row_ptr(const Surface_ARGB32* s, int y) {
-    return (uint32_t*)(s->data + (size_t)y * (size_t)s->stride);
+static  uint32_t* pixeling_ARGB32_row_ptr(const Surface_ARGB32* s, int y) {
+    return (uint32_t*)(s->data + ((size_t)y * (size_t)s->stride));
 }
 
-static inline const uint32_t* pixeling_ARGB32_row_ptr_const(const Surface_ARGB32* s, int y) {
+static  const uint32_t* pixeling_ARGB32_row_ptr_const(const Surface_ARGB32* s, int y) {
     return (const uint32_t*)(s->data + (size_t)y * (size_t)s->stride);
 }
 
@@ -466,9 +466,9 @@ static inline ColorPRGBA pixeling_ARGB32_unpack_prgba_LUT(const Pixel_ARGB32 px)
 }
 
 // Used to rapidly copy 32 bit values 
-static void memset_l(void* adr, int32_t val, size_t count)
+static void memset_l(void* adr, uint32_t val, size_t count)
 {
-    int32_t v;
+    uint32_t v;
     size_t i, n;
     uint32_t* p;
     p = static_cast<uint32_t*>(adr);

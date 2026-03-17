@@ -308,7 +308,7 @@ namespace waavs {
             fHasResolved = false;
             fResStrokeWidth = -1.0;
             fResDpi = -1.0;
-            rectD_reset(fResNearestVP);
+            wg_rectD_reset(fResNearestVP);
         }
 
 

@@ -35,6 +35,11 @@ namespace waavs {
         // We have this separate for those cases where you want to traverse
         // the tree asking for bounding boxes, but you don't want to do it all the 
         // time.
+        virtual const WGRectD getPaintBox(IRenderSVG* ctx, IAmGroot* groot) const noexcept
+        {
+            return objectBoundingBox();
+        }
+
         virtual const WGRectD calculateObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot) const noexcept
         {
             WGRectD bbox{};
@@ -44,7 +49,7 @@ namespace waavs {
 
                 WGRectD nodeBox{};
                 nodeBox = node->objectBoundingBox();
-                expandRect(bbox, nodeBox);
+                wg_rectD_union(bbox, nodeBox);
             }
 
             return bbox;
@@ -57,7 +62,10 @@ namespace waavs {
         bool hasFilter() const noexcept
         {
             ByteSpan filterRef{};
-            return getAttribute(svgattr::filter(), filterRef) && !filterRef.empty();
+            if (!getAttribute(svgattr::filter(), filterRef))
+                return false;
+
+            return  !filterRef.empty();
         }
 
         // Retrieve a filter program stream for this element
@@ -109,7 +117,7 @@ namespace waavs {
 
         virtual WGRectD getFilterRegion(IRenderSVG* ctx, IAmGroot* groot, SVGGraphicsElement *subtree) const noexcept
         {
-            return {};
+            return subtree->getPaintBox(ctx, groot);
         }
 
         const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override

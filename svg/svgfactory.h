@@ -112,6 +112,7 @@ namespace waavs {
             SVGFeFloodElement::registerFactory();               // 'feFlood'
             SVGFeGaussianBlurElement::registerFactory();        // 'feGaussianBlur'
             SVGFeImageElement::registerFactory();               // 'feImage'
+            SVGFeMergeNodeElement::registerFactory();           // 'feMergeNode'
             SVGFeMergeElement::registerFactory();               // 'feMerge'
             SVGFeMorphologyElement::registerFactory();          // 'feMorphology'
             SVGFeOffsetElement::registerFactory();              // 'feOffset'
@@ -119,6 +120,8 @@ namespace waavs {
             SVGFeTurbulenceElement::registerFactory();          // 'feTurbulence'
             SVGFeSpecularLightingElement::registerFactory();    // 'feSpecularLighting'
 
+            // Filter sub-node registrations
+            SVGFeFuncElement::registerSingularNode();          // 'feFuncR', 'feFuncG', 'feFuncB', 'feFuncA'
 
             // Font node registrations
             // These are obsolete and deprecated

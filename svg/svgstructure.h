@@ -152,7 +152,7 @@ namespace waavs {
         static void registerSingularNode()
         {
             registerSVGSingularNodeByName("g", [](IAmGroot* groot, const XmlElement& elem) {
-                auto node = std::make_shared<SVGGElement>(groot);
+                auto node = std::make_shared<SVGGElement>();
                 node->loadFromXmlElement(elem, groot);
 
                 return node;
@@ -164,7 +164,7 @@ namespace waavs {
         {
             registerContainerNodeByName("g",
                 [](IAmGroot* groot, XmlPull& iter) {
-                    auto node = std::make_shared<SVGGElement>(groot);
+                    auto node = std::make_shared<SVGGElement>();
                     node->loadFromXmlPull(iter, groot);
 
                     return node;
@@ -176,12 +176,28 @@ namespace waavs {
 
 
         // Instance Constructor
-        SVGGElement(IAmGroot* )
+        SVGGElement( )
             : SVGGraphicsElement()
         {
         }
 
+        // calculate the full extent of the painted area.  Used to calculate
+        // ofscreen size for filters.
+        const WGRectD getPaintBox(IRenderSVG* ctx, IAmGroot* groot) const noexcept override
+        {
+            WGRectD pbox{};
 
+            for (auto& node : fNodes)
+            {
+                if (!node || !node->isVisible()) continue;
+
+                WGRectD nodeBox{};
+                nodeBox = node->objectBoundingBox();
+                wg_rectD_union(pbox, nodeBox);
+            }
+
+            return pbox;
+        }
     };
 
 }

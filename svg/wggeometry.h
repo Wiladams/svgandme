@@ -4,12 +4,22 @@
 
 namespace waavs
 {
+    // Very core low level geometry types.  Use type assertions here
+    // so they remain usable in C interfaces, and to ensure they are 
+    // POD types that can be safely memcpy'd and used in unions and the like.
+    // Don't want to introduce any virtual functions or anything like that here, 
+    // as these types are meant to be lightweight and efficient, and used in hot code paths.
+    //
+
     struct WGPointD { 
         double x, y; 
         
         WGPointD() : x(0), y(0) {}
         WGPointD(const double x, const double y) : x(x), y(y) {}
     };
+    
+    ASSERT_POD_TYPE(WGPointD);
+
 
     struct WGPointI { 
         int x, y; 
@@ -18,6 +28,9 @@ namespace waavs
         WGPointI(const int x, const int y) : x(x), y(y) {}
     };
 
+    ASSERT_POD_TYPE(WGPointI);
+
+
     struct WGRectD { 
         double x, y, w, h; 
 
@@ -25,19 +38,21 @@ namespace waavs
         WGRectD(const double x, const double y, const double w, const double h) : x(x), y(y), w(w), h(h) {}
     };
 
+    ASSERT_POD_TYPE(WGRectD);
+
     struct WGRectI { 
         int x{}, y{}, w{}, h{}; 
         WGRectI() : x(0), y(0), w(0), h(0) {}
         WGRectI(const int x, const int y, const int w, const int h) : x(x), y(y), w(w), h(h) {}
     };
 
-
+    ASSERT_POD_TYPE(WGRectI);
 }
 
 
 namespace waavs 
 {
-    static INLINE void rectD_reset(WGRectD& r) { r.x = 0.0; r.y = 0.0; r.w = 0.0; r.h = 0.0; }
+    static INLINE void wg_rectD_reset(WGRectD& r) { r.x = 0.0; r.y = 0.0; r.w = 0.0; r.h = 0.0; }
 
     static INLINE double right(const WGRectD& r) { return r.x + r.w; }
     static INLINE double left(const WGRectD& r) { return r.x; }
@@ -122,6 +137,6 @@ namespace waavs
     }
 
     static INLINE void expandRect(WGRectD& a, const WGPointD& b) { a = rectMerge(a, b); }
-    static INLINE void expandRect(WGRectD& a, const WGRectD& b) { a = rectMerge(a, b); }
+    static INLINE void wg_rectD_union(WGRectD& a, const WGRectD& b) { a = rectMerge(a, b); }
 }
 

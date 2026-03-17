@@ -1,6 +1,7 @@
 #pragma once
 
 #include "definitions.h"
+#include "maths.h"
 #include "wggeometry.h"
 #include "pixeling.h"
 
@@ -27,8 +28,10 @@ namespace waavs
     static INLINE uint32_t wg_get_subarea(const Surface_ARGB32& src, const WGRectI& area, Surface_ARGB32& subarea) noexcept;
  
     // Low level pixel ops
-    static INLINE uint32_t wg_fill_hspan_raw(uint32_t* dst, int len, Pixel_ARGB32 rgbaPremul) noexcept;
+    static INLINE uint32_t wg_fill_hspan_raw(Pixel_ARGB32* dst, int len, Pixel_ARGB32 rgbaPremul) noexcept;
     static INLINE uint32_t wg_fill_hspan(Surface_ARGB32& dst, int y, int x, int len, Pixel_ARGB32 color) noexcept;
+    
+    // blending
     static INLINE uint32_t wg_blend_hspan_mask8(Surface_ARGB32& dst, int y, int x, int len, Pixel_ARGB32 color, const uint8_t* mask) noexcept;
 
 
@@ -45,6 +48,19 @@ namespace waavs
 
 
     // Implementations
+
+    // wg_get_subarea()
+    //
+    // Get a subarea view of the given source surface. 
+    // The subarea shares memory with the original surface, 
+    // so changes to the subarea will affect the original surface.
+    // This is a 'view' onto the surface.  Efficient to create and 
+    // use with 'whole surface' operations like fill_all() or clear_all(), 
+    // or to read/write pixels within the subarea.
+    //
+    // This routine will perform boundary clipping and return a subarea
+    // that actually fits within the source surface.
+    //
     static INLINE uint32_t wg_get_subarea(const Surface_ARGB32& src, const WGRectI& area, Surface_ARGB32 &subarea) noexcept
     {
         if (!src.data || src.width == 0 || src.height == 0)
@@ -54,8 +70,7 @@ namespace waavs
         if (area.x < 0 || area.y < 0 || area.x + area.w > (int)src.width || area.y + area.h > (int)src.height)
             return WG_ERROR_Invalid_Argument;
 
-        // Caller can use the returned subarea to read/write pixels within the specified rectangle.
-        // The subarea shares memory with the original surface, so changes will affect the original.
+
         subarea.data = src.data + (size_t)area.y * (size_t)src.stride + (size_t)area.x * 4;
         subarea.width = area.w;
         subarea.height = area.h;
@@ -241,6 +256,8 @@ namespace waavs
 
         if (s.contiguous)
         {
+            // In this case, we're setting bytes to zero
+            // across the whole buffer, so we can do one big memset.
             memset(s.data, 0, (size_t)s.stride * (size_t)s.height);
         }
         else {
@@ -254,7 +271,7 @@ namespace waavs
         return WG_SUCCESS;
     }
 
-    static INLINE uint32_t wg_fill_all(Surface_ARGB32 &s, const Pixel_ARGB32 rgbaPremul) noexcept
+    static  uint32_t wg_fill_all(Surface_ARGB32 &s, const Pixel_ARGB32 rgbaPremul) noexcept
     {
         if (!s.data || s.width <= 0 || s.height <= 0)
             return WG_ERROR_Invalid_Argument;
@@ -262,7 +279,7 @@ namespace waavs
         if (s.contiguous)
         {
             uint32_t* rPtr = pixeling_ARGB32_row_ptr(&s, 0);
-            memset_l(rPtr, rgbaPremul, s.stride * s.height);
+            memset_l(rPtr, rgbaPremul, s.width * s.height);
         }
         else {
             for (int row = 0; row < s.height; ++row)
@@ -290,7 +307,7 @@ namespace waavs
     // Copy a source surface into a destination surface at the given destination coordinates.
     // Big caveat: This routine uses memcpy, so if the source and destination regions 
     // overlap, the behavior is undefined.
-    static INLINE uint32_t wg_blit(Surface_ARGB32& dst, const Surface_ARGB32& src, int dstX, int dstY) noexcept
+    static uint32_t wg_blit(Surface_ARGB32& dst, const Surface_ARGB32& src, int dstX, int dstY) noexcept
     {
         // Reject empty source or destination.
         if (!dst.data || dst.width == 0 || dst.height == 0)

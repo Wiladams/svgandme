@@ -159,6 +159,11 @@ namespace waavs
        {
             return calculateObjectBoundingBox(nullptr, nullptr);
        }
+        
+        const WGRectD getPaintBox(IRenderSVG* ctx, IAmGroot* groot) const noexcept override
+        {
+            return calculateObjectBoundingBox(ctx, groot);
+        }
 
         const WGRectD calculateObjectBoundingBox(IRenderSVG *ctx, IAmGroot *groot) const noexcept override
         {

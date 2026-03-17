@@ -373,7 +373,7 @@ namespace waavs {
         const WGPointD pos = ctx->textCursor();
 
         const WGRectD pRect = Fontography::calcTextPosition(font, txt, pos.x, pos.y, anchor, vAlign, domBase);
-        expandRect(ioBBox, pRect);
+        wg_rectD_union(ioBBox, pRect);
 
         // 3) Access glyph run
         BLGlyphRun grun = gb.glyphRun();

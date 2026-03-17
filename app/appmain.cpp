@@ -69,7 +69,6 @@ ResizeEventTopic gResizeEventTopic;
 int gargc;
 char **gargv;
 
-unsigned int gSystemThreadCount=0;  // how many compute threads the system reports
 
 static StopWatch gAppClock;
 
@@ -127,6 +126,10 @@ float rawMouseY = 0;
 static Joystick gJoystick1(JOYSTICKID1);
 static Joystick gJoystick2(JOYSTICKID2);
 
+
+
+static constexpr int DEFAULT_APP_WINDOW_WIDTH = 640;
+static constexpr int DEFAULT_APP_WINDOW_HEIGHT = 480;
 
 APP_EXPORT bool getScreenPixelCount(int& pixelWidth, int& pixelHeight)
 {
@@ -1133,6 +1136,8 @@ bool setAppFrameSize(long aWidth, long aHeight)
 // Put the application canvas into a window
 void createAppWindow(long aWidth, long aHeight, const char* title)
 {
+    auto win = getAppWindow();
+
     setAppFrameSize(aWidth, aHeight);
     getAppWindow()->setCanvasSize(aWidth, aHeight);
     getAppWindow()->setTitle(title);
@@ -1347,10 +1352,79 @@ static void registerHandlers()
 }
 
 
+// run()
+// 
+// This is the core "application loop" for a Windows application.  
+// This is the 'message pump'.  It runs constantly until the application
+// ends.  We need to achieve several things in here:
+// 1. make sure window messages are processed and dispatched to the appropriate handlers
+// 2. make sure the user application has a chance to do what it wants to do
+// 3. make sure we keep up with the wall clock and dispatch frame events at the appropriate time
+// 
+// We don't want to starve event processing , so we use 'MsgWaitForMultipleObjectsEx()'
+// to wait for either a message to arrive, or for the next frame time to arrive.  
+// This way, we can process messages as they come in, but we can also keep up with 
+// the wall clock and dispatch frame events at the appropriate time.
+// 
+static void runLoop()
+{
+    static bool running = true;
+
+    // Do a typical Windows message pump
+    MSG msg{};
+
+    while (running) {
+        DWORD waitResult = MsgWaitForMultipleObjectsEx(
+            0,              // no kernel objects to wait on
+            nullptr,        // null because no kernel objects to wait on
+            fInterval,      // 1000 / fps
+            QS_ALLEVENTS,
+            MWMO_INPUTAVAILABLE);
+
+        switch (waitResult)
+        {
+        case WAIT_OBJECT_0:
+            // Process all the messages that might be sitting
+            // in the message queue
+            while (PeekMessageA(&msg, nullptr, 0, 0, PM_REMOVE)) {
+                if (msg.message == WM_QUIT) {
+                    running = false;
+                    break;
+                }
+                TranslateMessage(&msg);
+                DispatchMessageA(&msg);
+            }
+            break;
+
+        case WAIT_TIMEOUT:
+            // Handle per frame logic
+            processFrameTiming();
+            break;
+
+        case WAIT_FAILED:
+            // If the wait failed for some reason other than
+            // timeout,break out and stop
+            running = false;
+            break;
+
+        default:
+            // If there are any objects in the wait (like events)
+            // handle them here
+            break;
+        }
+
+        // Give the user application some control to do what
+        // it wants
+        // call onLoop() if it exists
+        if (gOnLoopHandler != nullptr) {
+            gOnLoopHandler();
+        }
+    }
+}
+
 
 static void run()
 {
-    static bool running = true;
     
     // Make sure we have all the event handlers connected
     registerHandlers();
@@ -1364,80 +1438,7 @@ static void run()
 
     gAppClock.start();
 
-    // Do a typical Windows message pump
-    MSG msg{};
-    
-    while (running) {
-        DWORD waitResult = MsgWaitForMultipleObjectsEx(
-            0,              // no kernel objects to wait on
-            nullptr,        // null because no kernel objects to wait on
-            fInterval,      // 1000 / fps
-            QS_ALLEVENTS,
-            MWMO_INPUTAVAILABLE);
-        
-        switch (waitResult)
-        {
-            case WAIT_OBJECT_0:
-                // Process all the messages that might be sitting
-                // in the message queue
-                while (PeekMessageA(&msg, nullptr, 0, 0, PM_REMOVE)) {
-                    if (msg.message == WM_QUIT) {
-                        running = false;
-                        break;
-                    }
-                    TranslateMessage(&msg);
-                    DispatchMessageA(&msg);
-                }
-            break;
-
-            case WAIT_TIMEOUT:
-                // Handle per frame logic
-                processFrameTiming();
-            break;
-
-            case WAIT_FAILED:
-                // If the wait failed for some reason other than
-                // timeout,break out and stop
-                running = false;
-            break;
-                
-            default:
-                // If there are any objects in the wait (like events)
-                // handle them here
-                break;
-        }
-
-        /*
-        // we use peekmessage, so we don't stall on a GetMessage
-        // should probably throw a wait here
-        // WaitForSingleObject
-        BOOL bResult = ::PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE);
-        
-        if (bResult > 0) {
-            // If we are here, there is some message to be handled
-            // If we see a quit message, it's time to stop the program
-            if (msg.message == WM_QUIT) {
-                break;
-            }
-
-            // Do regular Windows message dispatch
-            ::TranslateMessage(&msg);
-            ::DispatchMessageA(&msg);
-        }
-        else {
-            processFrameTiming();
-        }
-        */
-
-        // Give the user application some control to do what
-        // it wants
-        // call onLoop() if it exists
-        if (gOnLoopHandler != nullptr) {
-            gOnLoopHandler();
-        }
-    }
-    
-
+    runLoop();
 }
 
 
@@ -1461,7 +1462,7 @@ static void setDPIAware()
 	screenPixelHeight = ::GetSystemMetrics(SM_CYSCREEN);
     
 
-    // Create a DC to query EDID-basd physical size
+    // Create a DC to query EDID-based physical size
     // This won't be accurate if using a virtual terminal, or if the 
     // monitor driver does not report it accurately
     auto dhdc = CreateDC(TEXT("DISPLAY"), NULL, NULL, NULL);
@@ -1483,7 +1484,6 @@ static void setDPIAware()
 // Initialize Windows networking
 static bool setupNetworking()
 {
-    
     // BUGBUG - decide whether or not we care about WSAStartup failing
     uint16_t version = MAKEWORD(2, 2);
     WSADATA lpWSAData;
@@ -1502,7 +1502,7 @@ static bool setupNetworking()
 //! This function returns a pointer to the main application window. On the first
 //! call, it creates a new window using the "appwindow" window class, which is
 //! registered with the given class styles and message handler. The newly
-//! created window measures 320 x 240. On subsequent calls, it returns the
+//! created window measures 640 x 480. On subsequent calls, it returns the
 //! already-created window pointer, ensuring only one window instance is
 //! maintained for the entire application.
 //
@@ -1524,7 +1524,9 @@ waavs::User32Window * getAppWindow()
         int style = WS_OVERLAPPEDWINDOW;
         int xstyle = 0;
 
-        auto win = appWindowKind.createWindow("Application Window", 640, 480, style, xstyle);
+        auto win = appWindowKind.createWindow("Application Window", 
+            DEFAULT_APP_WINDOW_WIDTH, DEFAULT_APP_WINDOW_HEIGHT, 
+            style, xstyle);
 		gAppWindow = std::unique_ptr<waavs::User32Window>(win);
         
     }
@@ -1532,22 +1534,21 @@ waavs::User32Window * getAppWindow()
     return gAppWindow.get();
 }
 
+static int getSystemThreadCount()
+{
+    return std::thread::hardware_concurrency();
+}
+
 static bool prolog()
 {
-    // initialize blend2d library
-    blRuntimeInit();
-    
-    // get count of system threads to use later
-    gSystemThreadCount = std::thread::hardware_concurrency();
-
     setupNetworking();
 
     setDPIAware();
 
     // set the canvas a default size to start
     // but don't show it
-    setAppFrameSize(320, 240);
-    //gAppWindow = gAppWindowKind.createWindow("Application Window", 320, 240);
+    auto win = getAppWindow();
+    setAppFrameSize(DEFAULT_APP_WINDOW_WIDTH, DEFAULT_APP_WINDOW_HEIGHT);
 
     return true;
 }
@@ -1559,9 +1560,6 @@ static void epilog()
     if (gOnUnloadHandler != nullptr) {
         gOnUnloadHandler();
     }
-
-    // shutdown the blend2d library
-    blRuntimeShutdown();
     
     // shut down networking stack
     ::WSACleanup();
