@@ -120,7 +120,7 @@ namespace waavs
             virtual SurfaceHandle createSurfaceHandle(size_t w, size_t h) noexcept = 0;
             virtual SurfaceHandle createLikeSurfaceHandle(const ImageT& like) noexcept = 0;
             virtual SurfaceHandle copySurfaceHandle(const ImageT& src) noexcept = 0;
-
+        
             // Resolve empty / "__last__" sentinel to concrete key.
             InternedKey resolveKey(InternedKey k) const noexcept override
             {
@@ -138,8 +138,6 @@ namespace waavs
             // Key resolution helpers for ops
             // --------------------------------------------------------
             
-
-
             INLINE InternedKey implicitInputFallback() const noexcept
             {
                 return lastKey() ? lastKey() : kFilter_SourceGraphic();
@@ -464,9 +462,13 @@ namespace waavs
         }
 
         virtual bool onDiffuseLighting(const FilterIO&, const WGRectD*,
-            uint32_t /*lightingRGBA*/, float /*surfaceScale*/, float /*diffuseConstant*/,
-            float /*kernelUnitLengthX*/, float /*kernelUnitLengthY*/,
-            uint32_t /*lightType*/, const LightPayload& /*light*/) noexcept {
+            uint32_t /*lightingRGBA*/, 
+            float /*surfaceScale*/, 
+            float /*diffuseConstant*/,
+            float /*kernelUnitLengthX*/, 
+            float /*kernelUnitLengthY*/,
+            uint32_t /*lightType*/, 
+            const LightPayload& /*light*/) noexcept {
             return true;
         }
 

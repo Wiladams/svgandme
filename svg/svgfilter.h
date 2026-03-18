@@ -25,20 +25,20 @@
 // feConvolveMatrix	- single
 // feDiffuseLighting- single
 // feDisplacementMap- single
-// feDistantLight	- single
 // feFlood			- single
 // feGaussianBlur	- single
 // feImage			- single
 // feMerge			- compound
-// feMergeNode		- single
 // feMorphology		- single
 // feOffset			- single
-// fePointLight		- single
 // feSpecularLighting- single
-// feSpotLight		- single
 // feTile			- single
 // feTurbulence		- single
 
+// feMergeNode		- single
+// feDistantLight	- single
+// fePointLight		- single
+// feSpotLight		- single
 
 
 // feFuncR			- single
@@ -251,7 +251,117 @@ namespace waavs
 
 }
 
+namespace waavs
+{
+    //
+    // feDistantLight
+    // This is a sub-component of other lighting components
+    // so don't emit a program for it.
+    //
+    struct SVGFeDistantLightElement : public SVGGraphicsElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName(filter::feDistantLight(), [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeDistantLightElement>();
+                node->loadFromXmlElement(elem, groot);
 
+                return node;
+                });
+        }
+
+        static void registerFactory()
+        {
+            registerContainerNodeByName(filter::feDistantLight(), [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFeDistantLightElement>();
+                node->loadFromXmlPull(iter, groot);
+
+                return node;
+                });
+
+            registerSingularNode();
+        }
+
+
+        SVGFeDistantLightElement()
+            : SVGGraphicsElement()
+        {
+        }
+
+
+    };
+
+    // feSpotLight
+    // This is a sub-component of other lighting components
+    // so don't emit a program for it.
+    //
+    struct SVGFePointLightElement : public SVGGraphicsElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName(filter::fePointLight(), [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFePointLightElement>();
+                node->loadFromXmlElement(elem, groot);
+
+                return node;
+                });
+        }
+
+        static void registerFactory()
+        {
+            registerContainerNodeByName(filter::fePointLight(), [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFePointLightElement>();
+                node->loadFromXmlPull(iter, groot);
+
+                return node;
+                });
+
+            registerSingularNode();
+        }
+
+        SVGFePointLightElement()
+            : SVGGraphicsElement()
+        {
+        }
+
+    };
+
+
+    // feSpotLight
+    // This is a sub-component of other lighting components
+    // so don't emit a program for it.
+    //
+    struct SVGFeSpotLightElement : public SVGGraphicsElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName("feSpotLight", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFeSpotLightElement>();
+                node->loadFromXmlElement(elem, groot);
+
+                return node;
+                });
+        }
+
+        static void registerFactory()
+        {
+            registerContainerNodeByName("feSpotLight", [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFeSpotLightElement>();
+                node->loadFromXmlPull(iter, groot);
+
+                return node;
+                });
+
+            registerSingularNode();
+        }
+
+        SVGFeSpotLightElement()
+            : SVGGraphicsElement()
+        {
+        }
+
+    };
+}
 
 // All the filter primitives
 namespace waavs
@@ -1031,12 +1141,10 @@ namespace waavs
         SVGFeDiffuseLightingElement(IAmGroot* )
             : SVGFilterPrimitiveElement(FOP_DIFFUSE_LIGHTING)
         {
-            setIsVisible(false);
         }
 
         bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
         {
-
             emit_u32(out, fLightingColorRGBA32);
             emit_f32(out, fSurfaceScale);
             emit_f32(out, fDiffuseConstant);
@@ -1105,6 +1213,7 @@ namespace waavs
                 else if (nm == filter::feSpotLight())
                 {
                     fLightType = FILTER_LIGHT_SPOT;
+                    fLight[6] = 1.0f; // default specular exponent
                     parseF32Attr(g->getAttribute(filter::x()), fLight[0]);
                     parseF32Attr(g->getAttribute(filter::y()), fLight[1]);
                     parseF32Attr(g->getAttribute(filter::z()), fLight[2]);
@@ -1190,58 +1299,14 @@ namespace waavs
         }
     };
 
-    //
-    // feDistantLight
-    // This is a sub-component of other lighting components
-    // so don't emit a program for it.
-    //
-    struct SVGFeDistantLightElement : public SVGFilterPrimitiveElement
-    {
-        static void registerSingularNode()
-        {
-            registerSVGSingularNodeByName("feDistantLight", [](IAmGroot* groot, const XmlElement& elem) {
-                auto node = std::make_shared<SVGFeDistantLightElement>(groot);
-                node->loadFromXmlElement(elem, groot);
+    // ----------------------------------------------
+    // Light related elements.
+    // ----------------------------------------------
 
-                return node;
-                });
-        }
-
-        static void registerFactory()
-        {
-            registerContainerNodeByName("feDistantLight", [](IAmGroot* groot, XmlPull& iter) {
-                auto node = std::make_shared<SVGFeDistantLightElement>(groot);
-                node->loadFromXmlPull(iter, groot);
-                
-                return node;
-                });
-
-            registerSingularNode();
-        }
-
-
-        SVGFeDistantLightElement(IAmGroot* )
-            : SVGFilterPrimitiveElement(FOP_END)
-        {
-        }
-
-        bool emitSelf(FilterProgramStream& fps, InternedKey& last) const noexcept override
-        {
-            (void)fps;
-            (void)last;
-            // Handled as child payload of feDiffuseLighting / feSpecularLighting.
-            return false;
-        }
-
-        void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
-        {
-            ByteSpan azimuthAttr{};
-            ByteSpan elevationAttr{};
-            getRawAttributeBySpan("azimuth", azimuthAttr);
-            getRawAttributeBySpan("elevation", elevationAttr);
-        }
-    };
     
+
+
+
     //
     // feDropShadow
     //
@@ -1599,7 +1664,7 @@ namespace waavs
     // feMergeNode
     // Child-only payload for feMerge
     //
-    struct SVGFeMergeNodeElement : public SVGFilterPrimitiveElement
+    struct SVGFeMergeNodeElement : public SVGGraphicsElement
     {
         static void registerSingularNode()
         {
@@ -1622,16 +1687,11 @@ namespace waavs
         }
 
         SVGFeMergeNodeElement()
-            : SVGFilterPrimitiveElement(FOP_END)
+            : SVGGraphicsElement()
         {
         }
 
-        bool emitSelf(FilterProgramStream& fps, InternedKey& last) const noexcept override
-        {
-            (void)fps;
-            (void)last;
-            return false;
-        }
+
 
     };
 
@@ -1692,6 +1752,8 @@ namespace waavs
                 if (!n)
                     continue;
 
+                // Only accept feMergeNode children.  Ignore anything else, 
+                // even if it's a graphics element that has an "in" attribute.
                 auto mn = std::dynamic_pointer_cast<SVGFeMergeNodeElement>(n);
                 if (!mn)
                     continue;
@@ -1700,10 +1762,21 @@ namespace waavs
                 // and also so that any feMergeNode children are processed before we query their "in".
                 mn->fixupStyleAttributes(groot);
 
-                // feMergeNode "in" default is previous result if omitted.
+                InternedKey k{};
+                ByteSpan inAttr{};
+
+                // BUGBUG: feMergeNode "in" default is previous result if omitted.
                 // But inside feMerge, that would be surprising and not especially useful.
                 // Usually authors provide it explicitly. Still, use the same fallback rule.
-                InternedKey k = mn->fIn ? mn->fIn : kFilter_SourceGraphic();
+
+                // If "in" is not specified, SVG spec says the default is the result of the previous filter primitive.
+                if (!mn->getAttribute(filter::in(), inAttr))
+                {
+                    k = PSNameTable::INTERN("__last__");
+                }else
+                    k = PSNameTable::INTERN(inAttr);
+
+
                 fInputs.push_back(k);
             }
         }
@@ -1940,9 +2013,9 @@ namespace waavs
 
                 n->fixupStyleAttributes(groot);
 
-                ByteSpan nm = g->name();
+                InternedKey nm = g->nameAtom();
 
-                if (nm == "feDistantLight")
+                if (nm == filter::feDistantLight())
                 {
                     fLightType = FILTER_LIGHT_DISTANT;
 
@@ -1950,7 +2023,7 @@ namespace waavs
                     parseF32Attr(g->getAttribute(filter::elevation()), fLight[1]);
                     break;
                 }
-                else if (nm == "fePointLight")
+                else if (nm == filter::fePointLight())
                 {
                     fLightType = FILTER_LIGHT_POINT;
                     parseF32Attr(g->getAttribute(filter::x()), fLight[0]);
@@ -1958,9 +2031,10 @@ namespace waavs
                     parseF32Attr(g->getAttribute(filter::z()), fLight[2]);
                     break;
                 }
-                else if (nm == "feSpotLight")
+                else if (nm == filter::feSpotLight())
                 {
                     fLightType = FILTER_LIGHT_SPOT;
+                    fLight[6] = 1.0f; // default specular exponent
                     parseF32Attr(g->getAttribute(filter::x()), fLight[0]);
                     parseF32Attr(g->getAttribute(filter::y()), fLight[1]);
                     parseF32Attr(g->getAttribute(filter::z()), fLight[2]);

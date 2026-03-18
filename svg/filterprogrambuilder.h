@@ -560,27 +560,29 @@ namespace waavs {
     static INLINE void computeHeightNormal(const Surface& s,
         int x, int y,
         float surfaceScale,
+        float dux, float duy,
         float& nx, float& ny, float& nz) noexcept
     {
-        // Sample neighboring heights from alpha.
         const float hL = pixelHeightFromAlpha(s, x - 1, y);
         const float hR = pixelHeightFromAlpha(s, x + 1, y);
         const float hU = pixelHeightFromAlpha(s, x, y - 1);
         const float hD = pixelHeightFromAlpha(s, x, y + 1);
 
-        // Central-difference gradient.
-        const float dHx = 0.5f * (hR - hL);
-        const float dHy = 0.5f * (hD - hU);
+        float dHx = 0.0f;
+        float dHy = 0.0f;
 
-        // SurfaceScale turns alpha-height into Z displacement.
-        // Normal points "up" from the height field.
-        nx = -dHx * surfaceScale;
-        ny = -dHy * surfaceScale;
+        if (dux > 0.0f)
+            dHx = (hR - hL) / (2.0f * dux);
+
+        if (duy > 0.0f)
+            dHy = (hD - hU) / (2.0f * duy);
+
+        nx = -surfaceScale * dHx;
+        ny = -surfaceScale * dHy;
         nz = 1.0f;
 
-        // Normalize.
         const float len2 = nx * nx + ny * ny + nz * nz;
-        if (len2 > 0.0f)
+        if (len2 > 1e-20f)
         {
             const float invLen = 1.0f / std::sqrt(len2);
             nx *= invLen;

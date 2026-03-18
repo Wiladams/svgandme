@@ -438,6 +438,7 @@ namespace waavs {
             return interArea;
         }
 
+        /*
         INLINE void pixelCenterToUser(int x, int y, float& ux, float& uy) const noexcept
         {
             // Convert tile-local pixel to device-space pixel center.
@@ -449,6 +450,26 @@ namespace waavs {
 
             ux = float(dx * m.m00 + dy * m.m10 + m.m20);
             uy = float(dx * m.m01 + dy * m.m11 + m.m21);
+        }
+        */
+
+        INLINE void pixelCenterToFilterUser(const Surface& s, int x, int y, float& ux, float& uy) const noexcept
+        {
+            const double w = double(s.width());
+            const double h = double(s.height());
+
+            if (w <= 0.0 || h <= 0.0)
+            {
+                ux = float(fSpace.filterRectUS.x);
+                uy = float(fSpace.filterRectUS.y);
+                return;
+            }
+
+            const double fx = (double(x) + 0.5) / w;
+            const double fy = (double(y) + 0.5) / h;
+
+            ux = float(fSpace.filterRectUS.x + fx * fSpace.filterRectUS.w);
+            uy = float(fSpace.filterRectUS.y + fy * fSpace.filterRectUS.h);
         }
 
         // --------------------------------------------------------
@@ -1371,17 +1392,47 @@ namespace waavs {
             out->clearAll();
 
             WGRectI area = resolveSubregionPx(subr, *in);
-            if (area.w <= 0 || area.h <= 0) {
+            if (area.w <= 0 || area.h <= 0)
+            {
                 if (!putImage(outKey, std::move(out)))
                     return false;
+
                 setLastKey(outKey);
                 return true;
             }
 
-            const float lcA = float((lightingRGBA >> 24) & 0xFF) / 255.0f;
             const float lcR = float((lightingRGBA >> 16) & 0xFF) / 255.0f;
             const float lcG = float((lightingRGBA >> 8) & 0xFF) / 255.0f;
             const float lcB = float((lightingRGBA >> 0) & 0xFF) / 255.0f;
+
+            const float kPi = 3.14159265358979323846f;
+
+            auto safeNormalize3 = [](float& x, float& y, float& z) noexcept -> bool
+                {
+                    const float len2 = x * x + y * y + z * z;
+                    if (len2 <= 1e-20f)
+                    {
+                        x = 0.0f;
+                        y = 0.0f;
+                        z = 1.0f;
+                        return false;
+                    }
+
+                    const float invLen = 1.0f / std::sqrt(len2);
+                    x *= invLen;
+                    y *= invLen;
+                    z *= invLen;
+                    return true;
+                };
+
+            auto clamp01f = [](float v) noexcept -> float
+                {
+                    if (v < 0.0f)
+                        return 0.0f;
+                    if (v > 1.0f)
+                        return 1.0f;
+                    return v;
+                };
 
             for (int y = area.y; y < area.y + area.h; ++y)
             {
@@ -1390,71 +1441,101 @@ namespace waavs {
                 for (int x = area.x; x < area.x + area.w; ++x)
                 {
                     float nx, ny, nz;
-                    computeHeightNormal(*in, x, y, surfaceScale, nx, ny, nz);
+                    const float dux = (in->width() > 0) ? float(fSpace.filterRectUS.w / double(in->width())) : 1.0f;
+                    const float duy = (in->height() > 0) ? float(fSpace.filterRectUS.h / double(in->height())) : 1.0f;
+
+                    computeHeightNormal(*in, x, y, surfaceScale, dux, duy, nx, ny, nz);
+                    safeNormalize3(nx, ny, nz);
 
                     float ux, uy;
-                    pixelCenterToUser(x, y, ux, uy);
+                    pixelCenterToFilterUser(*in, x, y, ux, uy);
 
+                    const float h = surfaceScale * pixelHeightFromAlpha(*in, x, y);
+
+                    // L is always surface point -> light for the diffuse term.
                     float lx = 0.0f;
                     float ly = 0.0f;
                     float lz = 1.0f;
 
                     if (lightType == FILTER_LIGHT_DISTANT)
                     {
-                        const float az = light.L[0] * 3.14159265358979323846f / 180.0f;
-                        const float el = light.L[1] * 3.14159265358979323846f / 180.0f;
+                        const float az = light.L[0] * (kPi / 180.0f);
+                        const float el = light.L[1] * (kPi / 180.0f);
 
                         lx = std::cos(el) * std::cos(az);
                         ly = std::cos(el) * std::sin(az);
                         lz = std::sin(el);
-                        vec3_normalize(lx, ly, lz);
+                        safeNormalize3(lx, ly, lz);
                     }
                     else if (lightType == FILTER_LIGHT_POINT || lightType == FILTER_LIGHT_SPOT)
                     {
                         lx = light.L[0] - ux;
                         ly = light.L[1] - uy;
-                        lz = light.L[2] - surfaceScale * pixelHeightFromAlpha(*in, x, y);
-                        vec3_normalize(lx, ly, lz);
+                        lz = light.L[2] - h;
+                        safeNormalize3(lx, ly, lz);
                     }
 
-                    float ndotl = vec3_dot(nx, ny, nz, lx, ly, lz);
+                    float ndotl = nx * lx + ny * ly + nz * lz;
                     if (ndotl < 0.0f)
                         ndotl = 0.0f;
 
+                    float lightFactor = 1.0f;
+
                     if (lightType == FILTER_LIGHT_SPOT)
                     {
-                        float sdx = light.L[3] - light.L[0];
-                        float sdy = light.L[4] - light.L[1];
-                        float sdz = light.L[5] - light.L[2];
-                        vec3_normalize(sdx, sdy, sdz);
+                        // Spotlight axis is light position -> pointsAt.
+                        float ax = light.L[3] - light.L[0];
+                        float ay = light.L[4] - light.L[1];
+                        float az = light.L[5] - light.L[2];
 
-                        float vx = ux - light.L[0];
-                        float vy = uy - light.L[1];
-                        float vz = surfaceScale * pixelHeightFromAlpha(*in, x, y) - light.L[2];
-                        vec3_normalize(vx, vy, vz);
+                        // Spotlight ray is light position -> current surface point.
+                        float sx = ux - light.L[0];
+                        float sy = uy - light.L[1];
+                        float sz = h - light.L[2];
 
-                        float cosAng = -(sdx * vx + sdy * vy + sdz * vz);
-                        float limit = light.L[7];
+                        const bool axisOk = safeNormalize3(ax, ay, az);
+                        const bool rayOk = safeNormalize3(sx, sy, sz);
 
-                        if (limit > 0.0f) {
-                            const float limitCos = std::cos(limit * 3.14159265358979323846f / 180.0f);
-                            if (cosAng < limitCos)
-                                ndotl = 0.0f;
+                        if (axisOk && rayOk)
+                        {
+                            float cosAng = ax * sx + ay * sy + az * sz;
+                            cosAng = clamp01f(cosAng);
+
+                            float spotExp = light.L[6];
+                            if (!(spotExp > 0.0f))
+                                spotExp = 1.0f;
+
+                            lightFactor = std::pow(cosAng, spotExp);
+
+                            const float limitDeg = light.L[7];
+                            if (limitDeg > 0.0f)
+                            {
+                                const float limitCos = std::cos(limitDeg * (kPi / 180.0f));
+                                if (cosAng < limitCos)
+                                    lightFactor = 0.0f;
+                            }
+                        }
+                        else
+                        {
+                            // Degenerate spotlight: do not black out the whole effect.
+                            // Fall back to point-light behavior.
+                            lightFactor = 1.0f;
                         }
                     }
 
-                    const float lit = diffuseConstant * ndotl;
+                    const float lit = clamp01f(diffuseConstant * ndotl * lightFactor);
 
-                    const float rr = clamp01(lcR * lit);
-                    const float gg = clamp01(lcG * lit);
-                    const float bb = clamp01(lcB * lit);
-                    const float aa = clamp01((lcA > 0.0f ? lcA : 1.0f) * lit);
+                    // Premultiplied output.
+                    const float a = lit;
+                    const float pr = lcR * lit;
+                    const float pg = lcG * lit;
+                    const float pb = lcB * lit;
 
                     drow[x] = packPARGB32(
-                        clamp_u8((int)std::lround(aa * 255.0f)),
-                        clamp_u8((int)std::lround(rr * 255.0f)),
-                        clamp_u8((int)std::lround(gg * 255.0f)),
-                        clamp_u8((int)std::lround(bb * 255.0f)));
+                        clamp_u8((int)std::lround(a * 255.0f)),
+                        clamp_u8((int)std::lround(pr * 255.0f)),
+                        clamp_u8((int)std::lround(pg * 255.0f)),
+                        clamp_u8((int)std::lround(pb * 255.0f)));
                 }
             }
 
@@ -2263,19 +2344,52 @@ namespace waavs {
             out->clearAll();
 
             WGRectI area = resolveSubregionPx(subr, *in);
-            if (area.w <= 0 || area.h <= 0) {
+            if (area.w <= 0 || area.h <= 0)
+            {
                 if (!putImage(outKey, std::move(out)))
                     return false;
+
                 setLastKey(outKey);
                 return true;
             }
 
-            const float lcA = float((lightingRGBA >> 24) & 0xFF) / 255.0f;
             const float lcR = float((lightingRGBA >> 16) & 0xFF) / 255.0f;
             const float lcG = float((lightingRGBA >> 8) & 0xFF) / 255.0f;
             const float lcB = float((lightingRGBA >> 0) & 0xFF) / 255.0f;
 
+            const float kPi = 3.14159265358979323846f;
+
             specularExponent = clamp(specularExponent, 1.0f, 128.0f);
+
+            const float dux = (in->width() > 0) ? float(fSpace.filterRectUS.w / double(in->width())) : 1.0f;
+            const float duy = (in->height() > 0) ? float(fSpace.filterRectUS.h / double(in->height())) : 1.0f;
+
+            auto safeNormalize3 = [](float& x, float& y, float& z) noexcept -> bool
+                {
+                    const float len2 = x * x + y * y + z * z;
+                    if (len2 <= 1e-20f)
+                    {
+                        x = 0.0f;
+                        y = 0.0f;
+                        z = 1.0f;
+                        return false;
+                    }
+
+                    const float invLen = 1.0f / std::sqrt(len2);
+                    x *= invLen;
+                    y *= invLen;
+                    z *= invLen;
+                    return true;
+                };
+
+            auto clamp01f = [](float v) noexcept -> float
+                {
+                    if (v < 0.0f)
+                        return 0.0f;
+                    if (v > 1.0f)
+                        return 1.0f;
+                    return v;
+                };
 
             for (int y = area.y; y < area.y + area.h; ++y)
             {
@@ -2284,84 +2398,127 @@ namespace waavs {
                 for (int x = area.x; x < area.x + area.w; ++x)
                 {
                     float nx, ny, nz;
-                    computeHeightNormal(*in, x, y, surfaceScale, nx, ny, nz);
+                    computeHeightNormal(*in, x, y, surfaceScale, dux, duy, nx, ny, nz);
+                    safeNormalize3(nx, ny, nz);
 
                     float ux, uy;
-                    pixelCenterToUser(x, y, ux, uy);
+                    pixelCenterToFilterUser(*in, x, y, ux, uy);
 
+                    const float h = surfaceScale * pixelHeightFromAlpha(*in, x, y);
+
+                    // L is surface point -> light.
                     float lx = 0.0f;
                     float ly = 0.0f;
                     float lz = 1.0f;
 
                     if (lightType == FILTER_LIGHT_DISTANT)
                     {
-                        const float az = light.L[0] * 3.14159265358979323846f / 180.0f;
-                        const float el = light.L[1] * 3.14159265358979323846f / 180.0f;
+                        const float az = light.L[0] * (kPi / 180.0f);
+                        const float el = light.L[1] * (kPi / 180.0f);
 
                         lx = std::cos(el) * std::cos(az);
                         ly = std::cos(el) * std::sin(az);
                         lz = std::sin(el);
-                        vec3_normalize(lx, ly, lz);
+                        safeNormalize3(lx, ly, lz);
                     }
                     else if (lightType == FILTER_LIGHT_POINT || lightType == FILTER_LIGHT_SPOT)
                     {
                         lx = light.L[0] - ux;
                         ly = light.L[1] - uy;
-                        lz = light.L[2] - surfaceScale * pixelHeightFromAlpha(*in, x, y);
-                        vec3_normalize(lx, ly, lz);
+                        lz = light.L[2] - h;
+                        safeNormalize3(lx, ly, lz);
+                    }
+                    else
+                    {
+                        lx = 0.0f;
+                        ly = 0.0f;
+                        lz = 1.0f;
                     }
 
-                    float ndotl = vec3_dot(nx, ny, nz, lx, ly, lz);
+                    float ndotl = nx * lx + ny * ly + nz * lz;
                     if (ndotl < 0.0f)
                         ndotl = 0.0f;
 
+                    float lightFactor = 1.0f;
+
                     if (lightType == FILTER_LIGHT_SPOT)
                     {
-                        float sdx = light.L[3] - light.L[0];
-                        float sdy = light.L[4] - light.L[1];
-                        float sdz = light.L[5] - light.L[2];
-                        vec3_normalize(sdx, sdy, sdz);
+                        // Spotlight axis: light position -> pointsAt.
+                        float ax = light.L[3] - light.L[0];
+                        float ay = light.L[4] - light.L[1];
+                        float az = light.L[5] - light.L[2];
 
-                        float vx2 = ux - light.L[0];
-                        float vy2 = uy - light.L[1];
-                        float vz2 = surfaceScale * pixelHeightFromAlpha(*in, x, y) - light.L[2];
-                        vec3_normalize(vx2, vy2, vz2);
+                        // Spotlight ray: light position -> current surface point.
+                        float sx = ux - light.L[0];
+                        float sy = uy - light.L[1];
+                        float sz = h - light.L[2];
 
-                        float cosAng = -(sdx * vx2 + sdy * vy2 + sdz * vz2);
-                        float limit = light.L[7];
+                        const bool axisOk = safeNormalize3(ax, ay, az);
+                        const bool rayOk = safeNormalize3(sx, sy, sz);
 
-                        if (limit > 0.0f) {
-                            const float limitCos = std::cos(limit * 3.14159265358979323846f / 180.0f);
-                            if (cosAng < limitCos)
-                                ndotl = 0.0f;
+                        if (axisOk && rayOk)
+                        {
+                            float cosAng = ax * sx + ay * sy + az * sz;
+                            cosAng = clamp01f(cosAng);
+
+                            float spotExp = light.L[6];
+                            if (!(spotExp > 0.0f))
+                                spotExp = 1.0f;
+
+                            lightFactor = std::pow(cosAng, spotExp);
+
+                            const float limitDeg = light.L[7];
+                            if (limitDeg > 0.0f)
+                            {
+                                const float limitCos = std::cos(limitDeg * (kPi / 180.0f));
+                                if (cosAng < limitCos)
+                                    lightFactor = 0.0f;
+                            }
+                        }
+                        else
+                        {
+                            // Degenerate spotlight: fall back to point-light behavior.
+                            lightFactor = 1.0f;
                         }
                     }
 
-                    const float vx = 0.0f;
-                    const float vy = 0.0f;
-                    const float vz = 1.0f;
+                    // Viewer vector. For this first-pass implementation, viewer is along +Z.
+                    float vx = 0.0f;
+                    float vy = 0.0f;
+                    float vz = 1.0f;
 
+                    // Half vector H = normalize(L + V)
                     float hx = lx + vx;
                     float hy = ly + vy;
                     float hz = lz + vz;
-                    vec3_normalize(hx, hy, hz);
+                    const bool halfOk = safeNormalize3(hx, hy, hz);
 
-                    float ndoth = vec3_dot(nx, ny, nz, hx, hy, hz);
-                    if (ndoth < 0.0f)
-                        ndoth = 0.0f;
+                    float ndoth = 0.0f;
+                    if (halfOk)
+                    {
+                        ndoth = nx * hx + ny * hy + nz * hz;
+                        if (ndoth < 0.0f)
+                            ndoth = 0.0f;
+                    }
 
-                    const float lit = specularConstant * std::pow(ndoth, specularExponent) * (ndotl > 0.0f ? 1.0f : 0.0f);
+                    float lit = 0.0f;
+                    if (ndotl > 0.0f && ndoth > 0.0f)
+                        lit = specularConstant * std::pow(ndoth, specularExponent) * lightFactor;
 
-                    const float rr = clamp01(lcR * lit);
-                    const float gg = clamp01(lcG * lit);
-                    const float bb = clamp01(lcB * lit);
-                    const float aa = clamp01((lcA > 0.0f ? lcA : 1.0f) * lit);
+                    lit = clamp01f(lit);
+
+                    // Keep output premultiplied and browser-like.
+                    // Alpha tracks the visible light contribution.
+                    const float a = lit;
+                    const float pr = lcR * lit;
+                    const float pg = lcG * lit;
+                    const float pb = lcB * lit;
 
                     drow[x] = packPARGB32(
-                        clamp_u8((int)std::lround(aa * 255.0f)),
-                        clamp_u8((int)std::lround(rr * 255.0f)),
-                        clamp_u8((int)std::lround(gg * 255.0f)),
-                        clamp_u8((int)std::lround(bb * 255.0f)));
+                        clamp_u8((int)std::lround(a * 255.0f)),
+                        clamp_u8((int)std::lround(pr * 255.0f)),
+                        clamp_u8((int)std::lround(pg * 255.0f)),
+                        clamp_u8((int)std::lround(pb * 255.0f)));
                 }
             }
 
@@ -2371,6 +2528,8 @@ namespace waavs {
             setLastKey(outKey);
             return true;
         }
+
+
 
         // -----------------------------------------
         // onTile
@@ -2557,7 +2716,7 @@ namespace waavs {
                 for (int x = area.x; x < area.x + area.w; ++x)
                 {
                     float ux, uy;
-                    pixelCenterToUser(x, y, ux, uy);
+                    pixelCenterToFilterUser(*like, x, y, ux, uy);
 
                     float sx = ux;
                     float sy = uy;

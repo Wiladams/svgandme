@@ -109,18 +109,22 @@ namespace waavs {
             SVGFeConvolveMatrixElement::registerFactory();      // 'feConvolveMatrix'
             SVGFeDiffuseLightingElement::registerFactory();     // 'feDiffuseLighting'
             SVGFeDisplacementMapElement::registerFactory();     // 'feDisplacementMap'
-            SVGFeDistantLightElement::registerFactory();        // 'feDistantLightMap'
             SVGFeDropShadowElement::registerFactory();          // 'feDropShadow'
             SVGFeFloodElement::registerFactory();               // 'feFlood'
             SVGFeGaussianBlurElement::registerFactory();        // 'feGaussianBlur'
             SVGFeImageElement::registerFactory();               // 'feImage'
-            SVGFeMergeNodeElement::registerFactory();           // 'feMergeNode'
             SVGFeMergeElement::registerFactory();               // 'feMerge'
             SVGFeMorphologyElement::registerFactory();          // 'feMorphology'
             SVGFeOffsetElement::registerFactory();              // 'feOffset'
             SVGFeTileElement::registerFactory();                // 'feTile'
             SVGFeTurbulenceElement::registerFactory();          // 'feTurbulence'
             SVGFeSpecularLightingElement::registerFactory();    // 'feSpecularLighting'
+
+            // sub-elements
+            SVGFeMergeNodeElement::registerFactory();           // 'feMergeNode'
+            SVGFeDistantLightElement::registerFactory();        // 'feDistantLightMap'
+            SVGFePointLightElement::registerFactory();          // 'fePointLight'
+            SVGFeSpotLightElement::registerFactory();           // 'feSpotLight'
 
             // Filter sub-node registrations
             SVGFeFuncElement::registerSingularNode();          // 'feFuncR', 'feFuncG', 'feFuncB', 'feFuncA'
