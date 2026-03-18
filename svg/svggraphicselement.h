@@ -59,11 +59,13 @@ namespace waavs {
 
         // Deal with filters
 
-        bool hasFilter() const noexcept
+        virtual bool hasFilter() const noexcept
         {
             ByteSpan filterRef{};
             if (!getAttribute(svgattr::filter(), filterRef))
+            {
                 return false;
+            }
 
             return  !filterRef.empty();
         }
@@ -721,10 +723,7 @@ namespace waavs {
 
             if (hasFilter())
             {
-                // For debugging
-                //ByteSpan filterKey{};
-                //if (getAttribute(svgattr::filter(), filterKey))
-                //printf("Applying filter [%s]\n", toString(filterKey).c_str());
+
                 auto filterNode = getReferencedFilterNode(groot);
                 if (filterNode) {
                     //printf("Found filter node for filter reference\n");

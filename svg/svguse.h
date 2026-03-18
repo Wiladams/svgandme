@@ -181,39 +181,7 @@ namespace waavs
             ctx->pop();
         }
 
-        /*
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
-        {
-            if (fWrappedNode == nullptr)
-                return;
 
-            // set local size, if width and height were set
-            // we don't want to do scaling here, because the
-            // wrapped graphic might want to do something different
-            // really it applies to symbols, and they're do their
-            // own scaling.
-            // width and height only apply when the wrapped graphic
-            // is a symbol.  So, we should do that when we lookup the node
-            //if (fDimWidth.isSet() && fDimHeight.isSet())
-            //{
-            //	ctx->localFrame(BLRect{ x,y,width,height });
-            //}
-
-
-            ctx->push();
-            ctx->translate(fBoundingBox.x, fBoundingBox.y);
-
-            // Draw the wrapped graphic
-            if (fBoundingBox.w > 0 && fBoundingBox.h > 0) {
-                ctx->setObjectFrame(fBoundingBox);
-                ctx->setViewport(BLRect{ 0,0,fBoundingBox.w, fBoundingBox.h });
-            }
-
-            fWrappedNode->draw(ctx, groot);
-
-            ctx->pop();
-        }
-        */
     };
 }
 

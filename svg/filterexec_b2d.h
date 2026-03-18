@@ -588,6 +588,8 @@ namespace waavs {
                 return false;
 
             // make the alpha channel available as SourceAlpha, for primitives that need it.
+            // BUGBUG - maybe this can be delayed and the filter primitives that need
+            // it can request it on demand.
             auto srcAlpha = makeSourceAlpha(*getImage(kFilter_SourceGraphic()));
             if (!srcAlpha)
                 return false;
@@ -645,8 +647,8 @@ namespace waavs {
         // feBlend
         bool onBlend(const FilterIO& io, const WGRectD*, FilterBlendMode mode) noexcept override
         {
-            InternedKey in1Key = resolveInKey(io.in1, kFilter_SourceGraphic());
-            InternedKey in2Key = resolveInKey(io.in2, kFilter_SourceGraphic());
+            InternedKey in1Key = resolveBinaryInput1Key(io);
+            InternedKey in2Key = resolveBinaryInput2Key(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
             Surface* in1 = getImage(in1Key);
@@ -701,7 +703,7 @@ namespace waavs {
         bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             FilterColorMatrixType type, float param, F32Span matrix) noexcept override
         {
-            InternedKey inKey = resolveInKey(io.in1, kFilter_SourceGraphic());
+            InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
             Surface* in = getImage(inKey);
@@ -877,7 +879,7 @@ namespace waavs {
             const ComponentFunc& bF,
             const ComponentFunc& aF) noexcept override
         {
-            InternedKey inKey = resolveInKey(io.in1,  kFilter_SourceGraphic());
+            InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
             Surface* in = getImage(inKey);
@@ -977,8 +979,8 @@ namespace waavs {
             if (!io.hasIn2)
                 return false;
 
-            InternedKey in1Key = resolveInKey(io.in1, kFilter_SourceGraphic());
-            InternedKey in2Key = resolveInKey(io.in2, kFilter_SourceGraphic());
+            InternedKey in1Key = resolveBinaryInput1Key(io);
+            InternedKey in2Key = resolveBinaryInput2Key(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
             Surface* in1 = getImage(in1Key);
@@ -1233,7 +1235,7 @@ namespace waavs {
             (void)kernelUnitLengthX;
             (void)kernelUnitLengthY;
 
-            InternedKey inKey = resolveInKey(io.in1, kFilter_SourceGraphic());
+            InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
             Surface* in = getImage(inKey);
@@ -1352,7 +1354,7 @@ namespace waavs {
             (void)kernelUnitLengthX;
             (void)kernelUnitLengthY;
 
-            InternedKey inKey = resolveInKey(io.in1, kFilter_SourceGraphic());
+            InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
             Surface* in = getImage(inKey);
@@ -1471,8 +1473,8 @@ namespace waavs {
         bool onDisplacementMap(const FilterIO& io, const WGRectD* subr,
             float scale, FilterChannelSelector xChannel, FilterChannelSelector yChannel) noexcept override
         {
-            InternedKey in1Key = resolveInKey(io.in1, kFilter_SourceGraphic());
-            InternedKey in2Key = resolveInKey(io.in2, kFilter_SourceGraphic());
+            InternedKey in1Key = resolveBinaryInput1Key(io);
+            InternedKey in2Key = resolveBinaryInput2Key(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
             Surface* in1 = getImage(in1Key);
@@ -1566,7 +1568,7 @@ namespace waavs {
             float dx, float dy, float sx, float sy,
             uint32_t rgbaPremul) noexcept override
         {
-            InternedKey inKey = resolveInKey(io.in1, kFilter_SourceGraphic());
+            InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
             Surface* in = getImage(inKey);
@@ -1803,7 +1805,7 @@ namespace waavs {
         bool onGaussianBlur(const FilterIO& io, const WGRectD* subr,
             float sx, float sy) noexcept override
         {
-            InternedKey inKey = resolveInKey(io.in1, kFilter_SourceGraphic());
+            InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
             Surface* in = getImage(inKey);
@@ -1983,7 +1985,7 @@ namespace waavs {
 
             Surface* base = nullptr;
             for (uint32_t i = 0; i < inputs.n; ++i) {
-                InternedKey k = resolveInKey(inputs.p[i], kFilter_SourceGraphic());
+                InternedKey k = resolveInKey(inputs.p[i]);
                 Surface* img = getImage(k);
                 if (img) { base = img; break; }
             }
@@ -2005,7 +2007,7 @@ namespace waavs {
 
 
             for (uint32_t i = 0; i < inputs.n; ++i) {
-                InternedKey k = resolveInKey(inputs.p[i], kFilter_SourceGraphic());
+                InternedKey k = resolveInKey(inputs.p[i]);
                 Surface* img = getImage(k);
                 if (!img)
                     continue;
@@ -2029,7 +2031,7 @@ namespace waavs {
         bool onMorphology(const FilterIO& io, const WGRectD* subr,
             FilterMorphologyOp op, float rx, float ry) noexcept override
         {
-            InternedKey inKey = resolveInKey(io.in1, kFilter_SourceGraphic());
+            InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
             Surface* in = getImage(inKey);
@@ -2158,7 +2160,7 @@ namespace waavs {
         {
             (void)subr;
 
-            InternedKey inKey = resolveInKey(io.in1, kFilter_SourceGraphic());
+            InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
 
@@ -2244,7 +2246,7 @@ namespace waavs {
             (void)kernelUnitLengthX;
             (void)kernelUnitLengthY;
 
-            InternedKey inKey = resolveInKey(io.in1, kFilter_SourceGraphic());
+            InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
             Surface* in = getImage(inKey);
@@ -2377,7 +2379,7 @@ namespace waavs {
 
         bool onTile(const FilterIO& io, const WGRectD* subr) noexcept override
         {
-            InternedKey inKey = resolveInKey(io.in1, kFilter_SourceGraphic());
+            InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
             Surface* in = getImage(inKey);

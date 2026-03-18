@@ -349,9 +349,8 @@ void setup()
     // Load extension elements
     //SVGScriptElement::registerFactory();
    // DisplayCaptureElement::registerFactory();
-    SVGFramesElement::registerFactory();
-
-
+    SVGFramesElement::registerFactory();                // <frames>
+    SVGFilterElement::registerFactory();                // <filter>
 
     getDrawingContext()->background(BLRgba32(0xffffffff));
     getDrawingContext()->clearToBackground();

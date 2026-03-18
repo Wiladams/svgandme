@@ -98,7 +98,9 @@ namespace waavs {
 
 
             // Filter node registrations
-            SVGFilterElement::registerFactory();                // 'filter'
+            // Do this registration at the application level
+            // If you want to turn the whole thing on or off
+            //SVGFilterElement::registerFactory();                // 'filter'
 
             SVGFeBlendElement::registerFactory();               // 'feBlend'
             SVGFeColorMatrixElement::registerFactory();         // 'feColorMatrix'

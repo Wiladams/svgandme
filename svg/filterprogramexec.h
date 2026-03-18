@@ -137,25 +137,40 @@ namespace waavs
             // --------------------------------------------------------
             // Key resolution helpers for ops
             // --------------------------------------------------------
-            INLINE InternedKey resolveInKey(InternedKey k, InternedKey fallback) const noexcept
+            
+
+
+            INLINE InternedKey implicitInputFallback() const noexcept
+            {
+                return lastKey() ? lastKey() : kFilter_SourceGraphic();
+            }
+
+            INLINE InternedKey resolveExplicitOrImplicitInputKey(InternedKey k) const noexcept
             {
                 InternedKey r = resolveKey(k);
-                return r ? r : fallback;
+                return r ? r : implicitInputFallback();
+            }
+
+            // BUGBUG: This one should go away
+            INLINE InternedKey resolveInKey(InternedKey k) const noexcept
+            {
+                InternedKey r = resolveKey(k);
+                return r ? r : implicitInputFallback();
             }
 
             INLINE InternedKey resolveUnaryInputKey(const FilterIO& io) const noexcept
             {
-                return resolveInKey(io.in1, kFilter_SourceGraphic());
+                return resolveExplicitOrImplicitInputKey(io.in1);
             }
 
             INLINE InternedKey resolveBinaryInput1Key(const FilterIO& io) const noexcept
             {
-                return resolveInKey(io.in1, kFilter_SourceGraphic());
+                return resolveExplicitOrImplicitInputKey(io.in1);
             }
 
             INLINE InternedKey resolveBinaryInput2Key(const FilterIO& io) const noexcept
             {
-                return resolveInKey(io.in2, kFilter_SourceGraphic());
+                return resolveExplicitOrImplicitInputKey(io.in2);
             }
 
             INLINE InternedKey resolveOutKeyStrict(const FilterIO& io) const noexcept
