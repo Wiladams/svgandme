@@ -14,8 +14,8 @@ namespace waavs {
 
 		// Optional per-segment metadata
 		bool visible = true;
-		Point2d start;
-		Point2d end;
+		WGPointD start;
+		WGPointD end;
 	};
 }
 

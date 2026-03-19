@@ -13,14 +13,14 @@
 
 namespace waavs
 {
-    struct IParametricCurve: public IParametricSource<Point2d>
+    struct IParametricCurve: public IParametricSource<WGPointD>
     {
         virtual ~IParametricCurve() = default;
 
-        virtual Point2d evalTangent(double t) const = 0;
+        virtual WGPointD evalTangent(double t) const = 0;
 
-        virtual Point2d evalNormal(double t) const {
-            Point2d tangent = evalTangent(t);
+        virtual WGPointD evalNormal(double t) const {
+            WGPointD tangent = evalTangent(t);
             tangent.normalize();
             return { -tangent.y, tangent.x };
         }
@@ -28,10 +28,10 @@ namespace waavs
         // Calculate the length of the curve
         virtual double computeLength(int steps = 50) const {
             double length = 0.0;
-            Point2d prev = eval(0.0);
+            WGPointD prev = eval(0.0);
             for (int i = 1; i <= steps; ++i) {
                 double t = static_cast<double>(i) / steps;
-                Point2d curr = eval(t);
+                WGPointD curr = eval(t);
                 double dx = curr.x - prev.x;
                 double dy = curr.y - prev.y;
                 length += std::sqrt(dx * dx + dy * dy);
@@ -42,10 +42,10 @@ namespace waavs
 
         double approximateArcLength(double t0, double t1, int steps = 10) const {
             double length = 0.0;
-            Point2d prev = eval(t0);
+            WGPointD prev = eval(t0);
             for (int i = 1; i <= steps; ++i) {
                 double t = t0 + (t1 - t0) * i / steps;
-                Point2d curr = eval(t);
+                WGPointD curr = eval(t);
                 double dx = curr.x - prev.x;
                 double dy = curr.y - prev.y;
                 length += std::sqrt(dx * dx + dy * dy);
@@ -103,22 +103,22 @@ namespace waavs {
             , fT1(t1) {}
 
 
-        Point2d eval(double t) const override {
+        WGPointD eval(double t) const override {
             double mapped = fT0 + t * (fT1 - fT0);
             return fBase.eval(mapped);
         }
 
-        Point2d evalTangent(double t) const override {
+        WGPointD evalTangent(double t) const override {
             double mapped = fT0 + t * (fT1 - fT0);
             return fBase.evalTangent(mapped);
         }
 
         double computeLength(int steps = 50) const override {
             double len = 0.0;
-            Point2d prev = eval(0.0);
+            WGPointD prev = eval(0.0);
             for (int i = 1; i <= steps; ++i) {
                 double t = static_cast<double>(i) / steps;
-                Point2d curr = eval(t);
+                WGPointD curr = eval(t);
                 len += std::hypot(curr.x - prev.x, curr.y - prev.y);
                 prev = curr;
             }
@@ -131,10 +131,10 @@ namespace waavs {
             if (length >= total) return 1.0;
 
             double acc = 0.0;
-            Point2d prev = eval(0.0);
+            WGPointD prev = eval(0.0);
             for (int i = 1; i <= steps; ++i) {
                 double t = static_cast<double>(i) / steps;
-                Point2d curr = eval(t);
+                WGPointD curr = eval(t);
                 double segLen = std::hypot(curr.x - prev.x, curr.y - prev.y);
                 if (acc + segLen >= length) {
                     double frac = (length - acc) / segLen;
@@ -157,14 +157,14 @@ namespace waavs {
     class LineCurve : public IParametricCurve 
     {
     public:
-        LineCurve(Point2d a, Point2d b) : p0(a), p1(b) {}
+        LineCurve(WGPointD a, WGPointD b) : p0(a), p1(b) {}
 
-        Point2d eval(double t) const override {
+        WGPointD eval(double t) const override {
             double u = 1.0 - t;
             return { u * p0.x + t * p1.x, u * p0.y + t * p1.y };
         }
 
-        Point2d evalTangent(double) const override {
+        WGPointD evalTangent(double) const override {
             return { p1.x - p0.x, p1.y - p0.y }; // constant direction
         }
 
@@ -181,16 +181,16 @@ namespace waavs {
         }
 
     private:
-        Point2d p0, p1;
+        WGPointD p0, p1;
     };
 }
 
 namespace waavs 
 {
     struct CubicCurve : public IParametricCurve {
-        Point2d a, b, c, d;
+        WGPointD a, b, c, d;
 
-        CubicCurve(const Point2d &p0, const Point2d &p1, const Point2d &p2, const Point2d &p3) 
+        CubicCurve(const WGPointD &p0, const WGPointD &p1, const WGPointD &p2, const WGPointD &p3) 
         {
             d = p0;
             c = { 3 * (p1.x - p0.x),       3 * (p1.y - p0.y) };
@@ -198,13 +198,13 @@ namespace waavs
             a = { p3.x - p0.x - c.x - b.x, p3.y - p0.y - c.y - b.y };
         }
 
-        Point2d eval(double t) const override 
+        WGPointD eval(double t) const override 
         {
             t = clamp(t, 0.0, 1.0);
             return ((a * t + b) * t + c) * t + d;
         }
 
-        Point2d evalTangent(double t) const override 
+        WGPointD evalTangent(double t) const override 
         {
             double u = 1.0 - t;
             return c * (3 * u * u) + b * (6 * u * t) + a * (3 * t * t);
@@ -217,20 +217,20 @@ namespace waavs
 namespace waavs {
     struct QuadraticCurve : public IParametricCurve 
     {
-        Point2d a, b, c;
+        WGPointD a, b, c;
 
-        QuadraticCurve(Point2d p0, Point2d p1, Point2d p2) {
+        QuadraticCurve(WGPointD p0, WGPointD p1, WGPointD p2) {
             c = p0;
             b = { 2 * (p1.x - p0.x),       2 * (p1.y - p0.y) };
             a = { p2.x - p0.x - b.x / 2,   p2.y - p0.y - b.y / 2 };
         }
 
-        Point2d eval(double t) const override {
+        WGPointD eval(double t) const override {
             t = clamp(t, 0.0, 1.0);
             return (a * t + b) * t + c;
         }
 
-        Point2d evalTangent(double t) const override {
+        WGPointD evalTangent(double t) const override {
             return a * (2 * t) + b;
         }
     };
@@ -240,11 +240,11 @@ namespace waavs {
 namespace waavs {
 
     struct ArcCurve : public IParametricCurve {
-        Point2d center;
+        WGPointD center;
         double rx, ry, phi, theta1, deltaTheta;
         double cosPhi, sinPhi;
 
-        ArcCurve(Point2d p0, Point2d p1, double rx_, double ry_, double xAxisRotationDeg, bool largeArc, bool sweep) {
+        ArcCurve(WGPointD p0, WGPointD p1, double rx_, double ry_, double xAxisRotationDeg, bool largeArc, bool sweep) {
             constexpr double pi = 3.14159265358979323846;
             rx = std::abs(rx_);
             ry = std::abs(ry_);
@@ -282,10 +282,10 @@ namespace waavs {
                 sinPhi * cxp + cosPhi * cyp + (p0.y + p1.y) / 2.0
             };
 
-            Point2d start_v = { (x1p - cxp) / rx, (y1p - cyp) / ry };
-            Point2d end_v = { (-x1p - cxp) / rx, (-y1p - cyp) / ry };
+            WGPointD start_v = { (x1p - cxp) / rx, (y1p - cyp) / ry };
+            WGPointD end_v = { (-x1p - cxp) / rx, (-y1p - cyp) / ry };
 
-            auto angle_between = [](const Point2d& u, const Point2d& v) -> double {
+            auto angle_between = [](const WGPointD& u, const WGPointD& v) -> double {
                 double dot = u.x * v.x + u.y * v.y;
                 double len_u = std::sqrt(u.x * u.x + u.y * u.y);
                 double len_v = std::sqrt(v.x * v.x + v.y * v.y);
@@ -300,7 +300,7 @@ namespace waavs {
             if (sweep && deltaTheta < 0) deltaTheta += 2 * pi;
         }
 
-        Point2d eval(double t) const override {
+        WGPointD eval(double t) const override {
             double theta = theta1 + deltaTheta * clamp(t, 0.0, 1.0);
             return {
                 center.x + rx * std::cos(theta) * cosPhi - ry * std::sin(theta) * sinPhi,
@@ -308,7 +308,7 @@ namespace waavs {
             };
         }
 
-        Point2d evalTangent(double t) const override {
+        WGPointD evalTangent(double t) const override {
             double theta = theta1 + deltaTheta * clamp(t, 0.0, 1.0);
             double dx = -rx * std::sin(theta);
             double dy = ry * std::cos(theta);
@@ -337,7 +337,7 @@ namespace waavs {
             : fCurve(curve), fSteps(steps), fIndex(0), fT0(t0), fT1(t1) {
         }
 
-        bool next(Point2d& out, double& t) 
+        bool next(WGPointD& out, double& t) 
         {
             if (fIndex > fSteps) return false;
 
@@ -356,7 +356,7 @@ namespace waavs {
             : fCurve(curve), fSteps(steps), fIndex(0), fTotalLength(curve.computeLength()) {
         }
 
-        bool next(Point2d& out, double& t) {
+        bool next(WGPointD& out, double& t) {
             if (fIndex > fSteps) return false;
             double arcLen = (fTotalLength * fIndex++) / fSteps;
             t = fCurve.findTAtLength(arcLen);
@@ -379,7 +379,7 @@ namespace waavs {
     // CubicBezierAdaptiveGenerator
     //
     // This generator uses an adaptive subdivision algorithm to generate 
-    // points along a cubic Bézier curve.
+    // points along a cubic Bï¿½zier curve.
     // It recursively subdivides the curve until the segments are flat enough.
     // This is in contrast to the SegmentGenerator, which uses a fixed number
     // of segments, no matter how flat the curve is.
@@ -388,7 +388,7 @@ namespace waavs {
     {
     private:
         struct Segment {
-            Point2d p0, p1, p2, p3;
+            WGPointD p0, p1, p2, p3;
             double t0, t1;
         };
 
@@ -398,14 +398,14 @@ namespace waavs {
 
 
     public:
-        CubicBezierAdaptiveGenerator(Point2d p0_, Point2d p1_, Point2d p2_, Point2d p3_, double flatness = 0.25)
+        CubicBezierAdaptiveGenerator(WGPointD p0_, WGPointD p1_, WGPointD p2_, WGPointD p3_, double flatness = 0.25)
             : flatnessThreshold(flatness)
         {
             fSegmentStack.push_back({ p0_, p1_, p2_, p3_ });
             first = true;
         }
 
-        bool next(Point2d& out) 
+        bool next(WGPointD& out) 
         {
             while (!fSegmentStack.empty()) {
                 Segment seg = fSegmentStack.back();
@@ -423,12 +423,12 @@ namespace waavs {
                 }
                 else {
                     // Subdivide
-                    Point2d p01 = seg.p0.midpoint(seg.p1);
-                    Point2d p12 = seg.p1.midpoint(seg.p2);
-                    Point2d p23 = seg.p2.midpoint(seg.p3);
-                    Point2d p012 = p01.midpoint(p12);
-                    Point2d p123 = p12.midpoint(p23);
-                    Point2d p0123 = p012.midpoint(p123);
+                    WGPointD p01 = seg.p0.midpoint(seg.p1);
+                    WGPointD p12 = seg.p1.midpoint(seg.p2);
+                    WGPointD p23 = seg.p2.midpoint(seg.p3);
+                    WGPointD p012 = p01.midpoint(p12);
+                    WGPointD p123 = p12.midpoint(p23);
+                    WGPointD p0123 = p012.midpoint(p123);
 
                     fSegmentStack.push_back({ p0123, p123, p23, seg.p3 });
                     fSegmentStack.push_back({ seg.p0, p01, p012, p0123 });

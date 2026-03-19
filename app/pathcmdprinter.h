@@ -48,8 +48,8 @@ namespace waavs
 	{
 		// A tiny bit of state we maintain
 		// primarily to support relative position operations 'by'
-		Point2d fLastMoveTo{};
-		Point2d fLastPoint{};
+		WGPointD fLastMoveTo{};
+		WGPointD fLastPoint{};
 
 		// Return the array that maps the single letter commands to the functions
 		// that handle their arguments
@@ -118,7 +118,7 @@ namespace waavs
 
 		// Given a reference point, and an array of doubles, return a new point
 		// which is the reference point plus the x and y values in the array
-		inline Point2d relativePoint(const Point2d& ref, const float* args, int offset = 0) noexcept
+		inline WGPointD relativePoint(const WGPointD& ref, const float* args, int offset = 0) noexcept
 		{
 			return { ref.x + args[offset], ref.y + args[offset + 1] };
 		}
@@ -175,7 +175,7 @@ namespace waavs
 			bool larc = seg.args()[3] > 0.5;
 			bool swp = seg.args()[4] > 0.5;
 			double xrot = radians(seg.args()[2]);
-			Point2d lastPos = relativePoint(fLastPoint, seg.args(), 5);
+			WGPointD lastPos = relativePoint(fLastPoint, seg.args(), 5);
 
 			printf("apath.ellipticArcTo(BLPoint(%f, %f), %f, %d, %d, BLPoint(%f, %f));\n",
 				seg.args()[0], seg.args()[1], xrot, larc, swp, lastPos.x, lastPos.y);
@@ -195,7 +195,7 @@ namespace waavs
 		// Command - c
 		void cubicBy(const PathSegment& seg) noexcept
 		{
-			Point2d lastPos = relativePoint(fLastPoint, seg.args(), 4);
+			WGPointD lastPos = relativePoint(fLastPoint, seg.args(), 4);
 
 			printf("apath.cubicTo(%f, %f, %f, %f, %f, %f);\n", fLastPoint.x + seg.args()[0], fLastPoint.y + seg.args()[1], fLastPoint.x + seg.args()[2], fLastPoint.y + seg.args()[3], lastPos.x, lastPos.y);
 			fLastPoint = lastPos;
@@ -229,7 +229,7 @@ namespace waavs
 		// Command 'l' - LineBy
 		void lineBy(const PathSegment& seg) noexcept
 		{
-			Point2d lastPos = relativePoint(fLastPoint, seg.args(), 0);
+			WGPointD lastPos = relativePoint(fLastPoint, seg.args(), 0);
 
 			printf("apath.lineTo(%f, %f);\n", lastPos.x, lastPos.y);
 			fLastPoint = lastPos;
@@ -256,7 +256,7 @@ namespace waavs
 		{
 
 			if (seg.iteration() == 0) {
-				Point2d lastPos = relativePoint(fLastPoint, seg.args(), 0);
+				WGPointD lastPos = relativePoint(fLastPoint, seg.args(), 0);
 
 				printf("apath.moveTo(%f, %f);\n", lastPos.x, lastPos.y);
 				fLastMoveTo = lastPos;
@@ -278,7 +278,7 @@ namespace waavs
 		// Command - q
 		void quadBy(const PathSegment& seg) noexcept
 		{
-			Point2d lastPos = relativePoint(fLastPoint, seg.args(), 2);
+			WGPointD lastPos = relativePoint(fLastPoint, seg.args(), 2);
 
 			printf("apath.quadTo(%f, %f, %f, %f);\n", fLastPoint.x + seg.args()[0], fLastPoint.y + seg.args()[1], lastPos.x, lastPos.y);
 			fLastPoint = lastPos;
@@ -294,7 +294,7 @@ namespace waavs
 		// Command - s
 		void smoothCubicBy(const PathSegment& seg) noexcept
 		{
-			Point2d lastPos = relativePoint(fLastPoint, seg.args(), 2);
+			WGPointD lastPos = relativePoint(fLastPoint, seg.args(), 2);
 
 			printf("apath.smoothCubicTo(%f, %f, %f, %f);\n", fLastPoint.x + seg.args()[0], fLastPoint.y + seg.args()[1], fLastPoint.x + seg.args()[2], fLastPoint.y + seg.args()[3]);
 			fLastPoint = lastPos;
@@ -310,7 +310,7 @@ namespace waavs
 		// Command - t
 		void smoothQuadBy(const PathSegment& seg) noexcept
 		{
-			Point2d lastPos = relativePoint(fLastPoint, seg.args(), 0);
+			WGPointD lastPos = relativePoint(fLastPoint, seg.args(), 0);
 
 			printf("apath.smoothQuadTo(%f, %f);\n", fLastPoint.x + seg.args()[0], fLastPoint.y + seg.args()[1]);
 			fLastPoint = lastPos;

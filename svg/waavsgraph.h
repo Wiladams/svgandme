@@ -10,63 +10,18 @@
 #include "definitions.h"
 
 #include "coloring.h"
+#include "wggeometry.h"
 
-/*
-// Some data structures used for graphics
-namespace waavs {
-
-	// absolute value of the difference between two doubles
-	constexpr double absdiff(double a, double b) 
-	{
-		return (a > b ? a - b : b - a);
-	}
-
-	// compare two double values.  They are equal within a tolerance
-	constexpr bool nearlyEqual(double a, double b, double epsilon = 1e-6) 
-	{
-		return absdiff(a,b) <= epsilon;
-	}
-}
-*/
 
 
 namespace waavs
 {
-	// struct Point
-	// 
-	// A simple structure to hold a point
-	// We're not making a mathematical distinction between a point and a vector
-	// This structure will take on either meaning, depending on the context
-	//
-	struct Point2d final 
-	{
-		double x{ 0.0 };
-		double y{ 0.0 };
-
-		Point2d operator-(const Point2d& rhs) const { return { x - rhs.x, y - rhs.y }; }
-		Point2d operator+(const Point2d& rhs) const { return { x + rhs.x, y + rhs.y }; }
-		Point2d operator*(double s) const { return { x * s, y * s }; }
-
-		Point2d midpoint(const Point2d& b) const { return (*this + b) * 0.5; }
-
-		void normalize() {
-			double len = std::sqrt(x * x + y * y);
-			if (len > 1e-8) {
-				x /= len;
-				y /= len;
-			}
-		}
-
-	};
-
-	ASSERT_POD_TYPE(Point2d);
-	ASSERT_STRUCT_SIZE(Point2d, 16);
 
 	// distanceToLine()
 	// 
 	// Calculate the distance from a point to a line segment
 	//
-	static double distanceToLine(const Point2d& pt, const Point2d& a, const Point2d& b) 
+	static double distanceToLine(const WGPointD& pt, const WGPointD& a, const WGPointD& b) 
 	{
 		double dx = b.x - a.x;
 		double dy = b.y - a.y;
@@ -125,17 +80,17 @@ namespace waavs
 		V = 'V',  // absolute vertical lineto
 		v = 'v',  // relative vertical lineto
 
-		// Cubic Bézier
-		C = 'C',  // absolute cubic Bézier
-		c = 'c',  // relative cubic Bézier
-		S = 'S',  // absolute smooth cubic Bézier
-		s = 's',  // relative smooth cubic Bézier
+		// Cubic Bï¿½zier
+		C = 'C',  // absolute cubic Bï¿½zier
+		c = 'c',  // relative cubic Bï¿½zier
+		S = 'S',  // absolute smooth cubic Bï¿½zier
+		s = 's',  // relative smooth cubic Bï¿½zier
 
-		// Quadratic Bézier
-		Q = 'Q',  // absolute quadratic Bézier
-		q = 'q',  // relative quadratic Bézier
-		T = 'T',  // absolute smooth quadratic Bézier
-		t = 't',  // relative smooth quadratic Bézier
+		// Quadratic Bï¿½zier
+		Q = 'Q',  // absolute quadratic Bï¿½zier
+		q = 'q',  // relative quadratic Bï¿½zier
+		T = 'T',  // absolute smooth quadratic Bï¿½zier
+		t = 't',  // relative smooth quadratic Bï¿½zier
 
 		// Elliptical arc
 		A = 'A',  // absolute arc

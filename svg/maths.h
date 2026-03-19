@@ -65,65 +65,34 @@ namespace waavs {
 
     constexpr auto int_max = std::numeric_limits<int>::max();
     constexpr auto int_min = std::numeric_limits<int>::min();
+    
     constexpr auto flt_max = std::numeric_limits<float>::max();
     constexpr auto flt_min = std::numeric_limits<float>::min();
     constexpr auto flt_eps = std::numeric_limits<float>::epsilon();
+
     constexpr auto dbl_max = std::numeric_limits<double>::max();
     constexpr auto dbl_min = std::numeric_limits<double>::min();
     constexpr auto dbl_eps = std::numeric_limits<double>::epsilon();
 
 } 
 
+
+
 /*
-//=================================
-// DECLARATIONS for singular floats
-//=================================
-namespace waavs
-{
-	INLINE double min(double a, double b) noexcept;
-	INLINE double max(double a, double b) noexcept;
-    
-    INLINE float abs(float a);
-    INLINE float acos(float a);
-    INLINE float asin(float a);
+// Some data structures used for graphics
+namespace waavs {
 
-    INLINE float atan(float a);
-    INLINE float atan2(float y, float x);
+	// absolute value of the difference between two doubles
+	constexpr double absdiff(double a, double b) 
+	{
+		return (a > b ? a - b : b - a);
+	}
 
-    INLINE float clamp(float a, float min, float max);
-    INLINE float cos(float a);
-    INLINE float exp(float a);
-    INLINE float exp2(float a);
-    INLINE float fmod(float a, float b);
-    INLINE float log(float a);
-    INLINE float log2(float a);
-    INLINE float max(float a, float b);
-    INLINE float min(float a, float b);
-
-    INLINE float pow(float a, float b);
-    INLINE double powd(double a, double b);
-    
-    INLINE float sign(float a);
-    INLINE float sin(float a);
-    INLINE float sqr(float a);
-    INLINE float sqrt(float a);
-    INLINE float tan(float a);
-
-
-    INLINE constexpr float radians(float a);
-    INLINE constexpr float degrees(float a);
-    INLINE constexpr float lerp(float a, float b, float u);
-    INLINE void swap(float& a, float& b);
-    INLINE float smoothStep(float a, float b, float u);
-    INLINE float bias(float a, float bias);
-    INLINE float gain(float a, float gain);
-
-    INLINE float map(float x, float olow, float ohigh, float rlow, float rhigh);
-    INLINE float floor(float a);
-    INLINE float ceil(float a);
-    INLINE bool isNaN(const float a);
-    INLINE bool isfinite(float a);
-
+	// compare two double values.  They are equal within a tolerance
+	constexpr bool nearlyEqual(double a, double b, double epsilon = 1e-6) 
+	{
+		return absdiff(a,b) <= epsilon;
+	}
 }
 */
 
@@ -132,7 +101,9 @@ namespace waavs
 //==================================
 
 
-
+//=================================
+// DECLARATIONS for floats
+//=================================
 namespace waavs
 {
     INLINE float sign(float a) noexcept { return a < 0 ? -1.0f : 1.0f; }

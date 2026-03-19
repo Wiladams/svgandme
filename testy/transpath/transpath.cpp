@@ -39,10 +39,10 @@ namespace waavs {
 struct RelToAbsPath : public ITransform<waavs::PathSegment, waavs::PathSegment>
 {
 	using PathSegment = waavs::PathSegment;
-	using Point2d = waavs::Point2d;
+	using WGPointD = waavs::WGPointD;
 	using SVGPathCommand = waavs::SVGPathCommand;
 
-	Point2d current{};
+	WGPointD current{};
 
 	explicit RelToAbsPath(ProducerFn<PathSegment> input = nullptr) {
 		if (input)

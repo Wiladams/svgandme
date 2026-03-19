@@ -62,10 +62,10 @@ static void test_pipeline()
 
 static void test_graph()
 {
-    Point2d a{ 0.0, 0.0 };
-    Point2d b{ 10.0, 5.0 };
+    WGPointD a{ 0.0, 0.0 };
+    WGPointD b{ 10.0, 5.0 };
 
-    Point2d c = a.midpoint(b);
+    WGPointD c = a.midpoint(b);
 
 
     printf("a: (%f, %f)\n", a.x, a.y);
