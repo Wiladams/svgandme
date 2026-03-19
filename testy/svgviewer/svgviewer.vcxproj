@@ -237,7 +237,6 @@
   <ItemGroup>
     <ClInclude Include="..\..\app\apphost.h" />
     <ClInclude Include="..\..\app\appmodule.h" />
-    <ClInclude Include="..\..\app\framebuffer.h" />
     <ClInclude Include="..\..\app\frames_ffmpeg_source.h" />
     <ClInclude Include="..\..\app\mappedfile.h" />
     <ClInclude Include="..\..\app\nativewindow.h" />

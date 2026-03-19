@@ -1,7 +1,6 @@
 #pragma once
 
 
-
 #include <cmath>
 #include <algorithm>
 #include <type_traits>
@@ -12,24 +11,6 @@
 #include "coloring.h"
 #include "wggeometry.h"
 
-
-
-namespace waavs
-{
-
-	// distanceToLine()
-	// 
-	// Calculate the distance from a point to a line segment
-	//
-	static double distanceToLine(const WGPointD& pt, const WGPointD& a, const WGPointD& b) 
-	{
-		double dx = b.x - a.x;
-		double dy = b.y - a.y;
-		double num = std::abs(dy * pt.x - dx * pt.y + b.x * a.y - b.y * a.x);
-		double den = std::sqrt(dx * dx + dy * dy);
-		return den > 0 ? num / den : 0.0;
-	}
-}
 
 namespace waavs
 {

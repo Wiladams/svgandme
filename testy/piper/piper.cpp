@@ -72,7 +72,7 @@ static void test_graph()
     printf("b: (%f, %f)\n", b.x, b.y);
     printf("c: (%f, %f)\n", c.x, c.y);
 
-    double d = distanceToLine({ 5.0, 3.0 }, {0,0}, {10,0});
+    double d = distance_to_line({ 5.0, 3.0 }, {0,0}, {10,0});
     printf("Distance from (5,3) to line ab: %f\n", d);
 }
 

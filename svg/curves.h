@@ -440,8 +440,8 @@ namespace waavs {
     private:
 
         bool isFlatEnough(const Segment& s) const {
-            return distanceToLine(s.p1, s.p0, s.p3) < flatnessThreshold &&
-                distanceToLine(s.p2, s.p0, s.p3) < flatnessThreshold;
+            return distance_to_line(s.p1, s.p0, s.p3) < flatnessThreshold &&
+                distance_to_line(s.p2, s.p0, s.p3) < flatnessThreshold;
         }
 
     };

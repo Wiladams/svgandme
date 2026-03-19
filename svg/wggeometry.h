@@ -125,7 +125,7 @@ namespace waavs
     // 
     // Perform a union operation between a WGRectD and a WGPointD
     // Return a new WGRectD that represents the union.
-    static INLINE WGRectD rectMerge(const WGRectD& a, const WGPointD& b)
+    static INLINE WGRectD wg_rectd_merge_point(const WGRectD& a, const WGPointD& b)
     {
         // return a BLRect that is the union of BLRect a 
         // and BLPoint b using local temporary variables
@@ -140,9 +140,9 @@ namespace waavs
     // mergeRect()
     // 
     // Expand the size of the rectangle such that the new rectangle
-    // firts the original (a) as well as the new one (b)
+    // fits the original (a) as well as the new one (b)
     // this is a union operation.
-    static INLINE WGRectD rectMerge(const WGRectD& a, const WGRectD& b)
+    static INLINE WGRectD wg_rectd_merge_rect(const WGRectD& a, const WGRectD& b)
     {
         // return a WGRectD that is the union of WGRectD a
         // and WGRectD b, using local temporary variables
@@ -154,7 +154,45 @@ namespace waavs
         return { x1, y1, x2 - x1, y2 - y1 };
     }
 
-    static INLINE void expandRect(WGRectD& a, const WGPointD& b) { a = rectMerge(a, b); }
-    static INLINE void wg_rectD_union(WGRectD& a, const WGRectD& b) { a = rectMerge(a, b); }
+    static INLINE void wg_rectD_union_point(WGRectD& a, const WGPointD& b) { a = wg_rectd_merge_point(a, b); }
+    static INLINE void wg_rectD_union(WGRectD& a, const WGRectD& b) { a = wg_rectd_merge_rect(a, b); }
+
+
+    // Boxes
+    static INLINE void bboxInit(double& minX, double& minY,
+        double& maxX, double& maxY,
+        double x, double y) noexcept
+    {
+        minX = maxX = x;
+        minY = maxY = y;
+
+        //minX = minY = std::numeric_limits<double>::infinity();
+        //maxX = maxY = -std::numeric_limits<double>::infinity();
+    }
+
+    static INLINE void bboxExpand(double& minX, double& minY,
+        double& maxX, double& maxY,
+        double x, double y) noexcept
+    {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+    }
+
+    // distanceToLine()
+    // 
+    // Calculate the distance from a point to a line segment.  The line segment
+    // is defined by two points (a and b).  
+    // The point int question is defined by pt.
+    //
+    static double distance_to_line(const WGPointD& pt, const WGPointD& a, const WGPointD& b)
+    {
+        double dx = b.x - a.x;
+        double dy = b.y - a.y;
+        double num = std::abs(dy * pt.x - dx * pt.y + b.x * a.y - b.y * a.x);
+        double den = std::sqrt(dx * dx + dy * dy);
+        return den > 0 ? num / den : 0.0;
+    }
 }
 

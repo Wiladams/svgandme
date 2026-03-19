@@ -12,26 +12,7 @@
 //=================================
 namespace waavs
 {
-    static INLINE void bboxInit(double &minX, double &minY, 
-        double &maxX, double &maxY, 
-        double x, double y) noexcept
-    {
-        minX = maxX = x;
-        minY = maxY = y;
 
-        //minX = minY = std::numeric_limits<double>::infinity();
-        //maxX = maxY = -std::numeric_limits<double>::infinity();
-    }
-
-    static INLINE void bboxExpand(double &minX, double &minY, 
-        double &maxX, double &maxY, 
-        double x, double y) noexcept
-    {
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
-    }
 
     static INLINE void quadBounds(
         double x0, double y0,
@@ -119,10 +100,6 @@ namespace waavs
         solve(x0, x1, x2, x3, true);
         solve(y0, y1, y2, y3, false);
     }
-
-
-
-
 }
 
 // Machinery for a PathProgram
