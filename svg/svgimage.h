@@ -179,6 +179,11 @@ namespace waavs
             return { fX, fY, fWidth, fHeight };
         }
         
+        virtual const WGRectD getPaintBox(IRenderSVG* ctx, IAmGroot* groot) const noexcept override
+        {
+            return objectBoundingBox();
+        }
+
         const BLVar getVariant(IRenderSVG *ctx, IAmGroot *groot) noexcept override
         {
             if (fImageVar.isNull())
@@ -221,7 +226,10 @@ namespace waavs
                     if (filepath.size() > 0)
                     {
                         if (fImage.readFromFile(filepath.c_str()) == BL_SUCCESS)
+                        {
+                            fSurface = surfaceFromBLImage(fImage);
                             fImageVar = fImage;
+                        }
                     }
                 }
             }

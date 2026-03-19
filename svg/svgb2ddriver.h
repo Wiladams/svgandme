@@ -362,6 +362,10 @@ namespace waavs
         // Bitmap drawing
         void onImage(const Surface& surf, double x, double y) override
         {
+            // bail out if there is no image data
+            if (!surf.data())
+                return;
+
             BLImage blImg = blImageFromSurface(surf);
             fDrawingContext->blitImage(BLPoint(x, y), blImg);
         }
