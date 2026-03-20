@@ -430,17 +430,17 @@ namespace waavs
         }
 
         virtual void onDashArray() {}
-        void dashArray(const std::vector<SVGLengthValue> &dashes)
+        void dashArray(const std::vector <float> & dashes)
         {
             setStrokeDashArrayRaw(dashes);
             onDashArray();
         }
 
-        virtual void onDashOffset() {}
-        void dashOffset(const SVGLengthValue &offset)
+        virtual void onDashOffset(float offset) {}
+        void dashOffset(const float offset)
         {
             setStrokeDashOffsetRaw(offset);
-            onDashOffset();
+            onDashOffset(offset);
         }
 
         // paint for filling shapes

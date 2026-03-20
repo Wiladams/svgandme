@@ -1338,28 +1338,28 @@ namespace waavs
     INLINE float* data(vec3f& a) { return &a.x; }
 
 
-    INLINE bool operator==(const vec3f& a, const vec3f& b) { return ((a.x == b.x) && (a.y == b.y)); }
-    INLINE bool operator!=(const vec3f& a, const vec3f& b) { return a.x != b.x || a.y != b.y; }
+    INLINE bool operator==(const vec3f& a, const vec3f& b) { return ((a.x == b.x) && (a.y == b.y) && (a.z==b.z)); }
+    INLINE bool operator!=(const vec3f& a, const vec3f& b) { return a.x != b.x || a.y != b.y || a.z!=b.z; }
 
     // Vector operations
     INLINE vec3f operator+(const vec3f& a) { return a; }
     INLINE vec3f operator-(const vec3f& a) { return { -a.x, -a.y }; }
 
-    INLINE vec3f operator+(const vec3f& a, const vec3f& b) { return { a.x + b.x, a.y + b.y }; }
-    INLINE vec3f operator+(const vec3f& a, float b) { return { a.x + b, a.y + b }; }
-    INLINE vec3f operator+(float a, const vec3f& b) { return { a + b.x, a + b.y }; }
+    INLINE vec3f operator+(const vec3f& a, const vec3f& b) { return { a.x + b.x, a.y + b.y, a.z+b.z }; }
+    INLINE vec3f operator+(const vec3f& a, float b) { return { a.x + b, a.y + b, a.z+b }; }
+    INLINE vec3f operator+(float a, const vec3f& b) { return { a + b.x, a + b.y, a+b.z }; }
 
-    INLINE vec3f operator-(const vec3f& a, const vec3f& b) { return { a.x - b.x, a.y - b.y }; }
-    INLINE vec3f operator-(const vec3f& a, float b) { return { a.x - b, a.y - b }; }
-    INLINE vec3f operator-(float a, const vec3f& b) { return { a - b.x, a - b.y }; }
+    INLINE vec3f operator-(const vec3f& a, const vec3f& b) { return { a.x - b.x, a.y - b.y, a.z-b.z }; }
+    INLINE vec3f operator-(const vec3f& a, float b) { return { a.x - b, a.y - b, a.z-b }; }
+    INLINE vec3f operator-(float a, const vec3f& b) { return { a - b.x, a - b.y, a-b.z }; }
 
-    INLINE vec3f operator*(const vec3f& a, const vec3f& b) { return { a.x * b.x, a.y * b.y }; }
-    INLINE vec3f operator*(const vec3f& a, float b) { return { a.x * b, a.y * b }; }
-    INLINE vec3f operator*(float a, const vec3f& b) { return { a * b.x, a * b.y }; }
+    INLINE vec3f operator*(const vec3f& a, const vec3f& b) { return { a.x * b.x, a.y * b.y, a.z*b.z }; }
+    INLINE vec3f operator*(const vec3f& a, float b) { return { a.x * b, a.y * b, a.z*b }; }
+    INLINE vec3f operator*(float a, const vec3f& b) { return { a * b.x, a * b.y, a*b.z }; }
 
-    INLINE vec3f operator/(const vec3f& a, const vec3f& b) { return { a.x / b.x, a.y / b.y }; }
-    INLINE vec3f operator/(const vec3f& a, float b) { return { a.x / b, a.y / b }; }
-    INLINE vec3f operator/(float a, const vec3f& b) { return { a / b.x, a / b.y }; }
+    INLINE vec3f operator/(const vec3f& a, const vec3f& b) { return { a.x / b.x, a.y / b.y , a.z/b.z}; }
+    INLINE vec3f operator/(const vec3f& a, float b) { return { a.x / b, a.y / b, a.z/b }; }
+    INLINE vec3f operator/(float a, const vec3f& b) { return { a / b.x, a / b.y, a/b.z }; }
 
     // Vector assignments
     INLINE vec3f& operator +=(vec3f& a, const vec3f& b) { return a = a + b; }
@@ -1815,11 +1815,11 @@ namespace waavs
     INLINE void  swap(vec3i& a, vec3i& b) { std::swap(a, b); }
 
     // Vector sequence operations.
-    INLINE int        size(const vec3b& ) { return 4; }
+    INLINE int        size(const vec3b& ) { return 3; }
     INLINE const uint8_t* begin(const vec3b& a) { return &a.x; }
-    INLINE const uint8_t* end(const vec3b& a) { return &a.x + 4; }
+    INLINE const uint8_t* end(const vec3b& a) { return &a.x + 3; }
     INLINE uint8_t* begin(vec3b& a) { return &a.x; }
-    INLINE uint8_t* end(vec3b& a) { return &a.x + 4; }
+    INLINE uint8_t* end(vec3b& a) { return &a.x + 3; }
     INLINE const uint8_t* data(const vec3b& a) { return &a.x; }
     INLINE uint8_t* data(vec3b& a) { return &a.x; }
     

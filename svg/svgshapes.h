@@ -12,6 +12,8 @@
 #include "svgmarker.h"
 #include "pathattribute_parser.h"
 #include "pathprogram_builder.h"
+#include "pathprogram_flattener.h"
+#include "pathprogram_dasher.h"
 
 
 namespace waavs 
@@ -99,6 +101,7 @@ namespace waavs
         mutable bool fFillPathValid{ false };
 
         mutable BLPath fStrokePath{};
+        mutable bool fStrokePathValid{ false };
         mutable uint64_t fStrokeCacheKey{ 0 };
 
 
@@ -141,14 +144,55 @@ namespace waavs
             fFillPath.shrink();
 
             fFillPathValid = true;
+
             return fFillPath;
         }
 
 
         const BLPath & getStrokePath(IRenderSVG* ctx, IAmGroot* groot) const noexcept
         {
-            // For now, stroke path is same as fill path
-            return getFillPath();
+            if (fStrokePathValid)
+                return fStrokePath;
+
+            fStrokePath.reset();
+
+            if (ctx->hasDashing())
+            {
+                const auto &sds = ctx->getStrokeDashState();
+
+                PathProgramBuilder builder;
+
+                PathDasher<PathProgramBuilder> dasher(builder);
+
+                if (!initPathDasher(dasher, sds.fArray, sds.fOffset))
+                {
+                    // Failed to init dasher, return non-dashed path
+                    return getFillPath();
+                }
+
+                PathFlattener<PathDasher<PathProgramBuilder>> flattener(dasher);
+                flattener.opt.flatness = 0.25;
+                flattener.opt.maxDepth = 16;
+
+                if (!pathprogram_dispatch(fProg, flattener))
+                {
+                    // Failed to flatten/dash path, return non-dashed path
+                    fStrokePath = getFillPath();
+                    fStrokePathValid = true;
+                }
+
+                PathProgram dashed = std::move(builder.prog);
+
+                blPath_from_PathProgram(dashed, fStrokePath);
+                fStrokePathValid = true;
+            }
+            else {
+                fStrokePath = getFillPath();
+                fStrokePathValid = true;
+            }
+
+
+            return fStrokePath;
         }
 
         // objectBoundingBox
@@ -829,7 +873,6 @@ return true;
 
         void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
-
             ByteSpan pts{};
             pts = getAttribute(svgattr::points());
             if (!pts.empty())

@@ -1678,7 +1678,7 @@ namespace waavs
                 });
         }
 
-        std::vector<SVGLengthValue> fArray{};
+        std::vector<float> fArray{};
         bool fIsNone{ true };
 
         SVGStrokeDashArray(IAmGroot* groot) : SVGVisualProperty(groot)
@@ -1686,19 +1686,32 @@ namespace waavs
             setName(svgattr::stroke_dasharray());
         }
 
-        bool loadSelfFromChunk(const ByteSpan& inChunk) override
+
+
+        bool loadFromAttributes(const XmlAttributeCollection& attrs) override
         {
-            // Delegate to your parser.
-            if (!parseStrokeDashArray(inChunk, fArray, fIsNone))
+            ByteSpan dashArrayAttr{};
+            if (!attrs.getValue(svgattr::stroke_dasharray(), dashArrayAttr))
+                return false;
+
+            // parse the dash array value
+            if (!parseStrokeDashArray(dashArrayAttr, fArray, fIsNone))
                 return set(false);
 
             set(true);
             setNeedsBinding(false);
+
+            // Get the dash-offset if it exists
+            ByteSpan dashOffsetAttr{};
+            attrs.getValue(svgattr::stroke_dashoffset(), dashOffsetAttr);
+
             return true;
         }
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* /*groot*/) override
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
+            (void)groot;
+
             if (ctx == nullptr)
                 return;
 
@@ -1730,7 +1743,7 @@ namespace waavs
                 });
         }
 
-        SVGLengthValue fOffset;
+        float fOffset;
         bool fHasOffset{ false };
 
         SVGStrokeDashOffset(IAmGroot* groot) : SVGVisualProperty(groot)
@@ -1740,12 +1753,18 @@ namespace waavs
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
-            fHasOffset = parseStrokeDashOffset(inChunk, fOffset);
+            double offset = 0.0;
+            if (parseNumber(inChunk, offset))
+            {
+                fHasOffset = true;
+                fOffset = static_cast<float>(offset);
+            }
 
             // Even if empty/not set, we still consider the property "set"
             // if the attribute existed; drawSelf() will clear the state.
             set(true);
             setNeedsBinding(false);
+
             return true;
         }
 

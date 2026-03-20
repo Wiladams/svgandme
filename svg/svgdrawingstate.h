@@ -302,8 +302,11 @@ namespace waavs {
             markModified();
         }
         
+        bool hasDashing() const { 
+            return fDrawingState->fDash.fHasArray; 
+        }
         const StrokeDashState& getStrokeDashState() const { return fDrawingState->fDash; }
-        void setStrokeDashArrayRaw(const std::vector<SVGLengthValue>& arr)
+        void setStrokeDashArrayRaw(const std::vector<float>& arr)
         {
             fDrawingState->fDash.fArray = arr;
             fDrawingState->fDash.fHasArray = !arr.empty();
@@ -316,10 +319,11 @@ namespace waavs {
             markModified();
         }
 
-        void setStrokeDashOffsetRaw(const SVGLengthValue& off)
+        void setStrokeDashOffsetRaw(const float off)
         {
             fDrawingState->fDash.fOffset = off;
-            fDrawingState->fDash.fHasOffset = off.isSet();
+            fDrawingState->fDash.fHasOffset = true;
+
             markModified();
         }
 
@@ -330,9 +334,10 @@ namespace waavs {
         }
 
 
-        void setStrokeDashArray(const double *dashes, size_t count)
+        void setStrokeDashArray(const std::vector<float> &dasharray)
         {
-            //fDrawingState->fStrokeDashArray = dashes;
+            setStrokeDashArrayRaw(dasharray);
+
             markModified();
         }
 

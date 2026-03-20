@@ -5,6 +5,60 @@
 
 namespace waavs
 {
+    template<class Sink>
+    static bool pathprogram_dispatch(const PathProgram& prog, Sink& sink) noexcept
+    {
+        size_t ip = 0; // instruction pointer for ops
+        size_t ap = 0; // argument pointer for args
+
+        while (ip < prog.ops.size()) 
+        {
+            uint8_t op = prog.ops[ip++];
+            const float* args = prog.args.data() + ap;
+            ap += kPathOpArity[op];
+
+            switch (op) {
+            case OP_END:
+                sink.onEnd();
+                return true; // done
+
+            case OP_MOVETO:
+                if (!sink.onMoveTo(args[0], args[1]))
+                    return false;
+                break;
+
+            case OP_LINETO:
+                if (!sink.onLineTo(args[0], args[1]))
+                    return false;
+                break;
+
+            case OP_QUADTO:
+                if (!sink.onQuadTo(args[0], args[1], args[2], args[3]))
+                    return false;
+                break;
+
+            case OP_CUBICTO:
+                if (!sink.onCubicTo(args[0], args[1], args[2], args[3], args[4], args[5]))
+                    return false;
+                break;
+
+            case OP_ARCTO:
+                if (!sink.onArcTo(args[0], args[1], args[2], args[3], args[4], args[5], args[6]))
+                    return false;
+                break;
+
+            case OP_CLOSE:
+                if (!sink.onClose())
+                    return false;
+                break;
+
+            default:
+                WAAVS_ASSERT(false && "dispatchPathProgram: unknown op");
+                return false; // invalid opcode
+            }
+        }
+    }
+
 
     struct PathProgramBuilder
     {

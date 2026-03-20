@@ -1505,8 +1505,8 @@ namespace waavs {
         bool fHasOffset{ false };
 
         // Raw as-authored values (preserve units)
-        std::vector<SVGLengthValue> fArray{};   // each entry is a <length> or <percentage>
-        SVGLengthValue fOffset{};               // <length> or <percentage>
+        std::vector<float> fArray{};   // each entry is a <length> or <percentage>
+        float fOffset{};               // <length> or <percentage>
 
         void clearArray() noexcept
         {
@@ -1516,14 +1516,12 @@ namespace waavs {
 
         void clearOffset() noexcept
         {
-            fOffset = SVGLengthValue{};
+            fOffset = 0;
             fHasOffset = false;
         }
     };
 
-    static bool parseStrokeDashArray(const ByteSpan& inChunk,
-        std::vector<SVGLengthValue>& outArray,
-        bool& outIsNone) noexcept
+    static bool parseStrokeDashArray(const ByteSpan& inChunk, std::vector<float>& outArray, bool& outIsNone) noexcept
     {
         outArray.clear();
         outIsNone = false;
@@ -1541,36 +1539,20 @@ namespace waavs {
             return true;
         }
 
-        SVGTokenListView view(s);
-
-        ByteSpan tok{};
-        while (view.nextLengthToken(tok))
+        float dummy = 0.0f;
+        while (readNextFloat(s, dummy))
         {
-            SVGLengthValue dim{};
-            if (!parseLengthValue(tok, dim))
-                return false;
-
             // SVG disallows negative dash lengths
-            if (dim.value() < 0.0)
+            if (dummy < 0.0)
                 return false;
 
-            outArray.push_back(dim);
+            outArray.push_back(dummy);
         }
 
         // If we got no tokens, treat as none-ish
         if (outArray.empty()) {
             outIsNone = true;
             return true;
-        }
-
-        // If there is trailing junk, you can choose strict or permissive:
-        // Strict: return false if non-separator remains
-        // Permissive: ignore remaining garbage if any progress made
-        ByteSpan rem = view.remaining();
-        rem.skipWhile(SVGTokenListView::sepChars());
-        if (rem) {
-            // permissive: ignore; strict: return false;
-            // return false;
         }
 
         return true;

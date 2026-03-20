@@ -276,6 +276,8 @@
     <ClInclude Include="..\..\svg\pathprogram.h" />
     <ClInclude Include="..\..\svg\pathprogram_builder.h" />
     <ClInclude Include="..\..\svg\pathprogramexec.h" />
+    <ClInclude Include="..\..\svg\pathprogram_dasher.h" />
+    <ClInclude Include="..\..\svg\pathprogram_flattener.h" />
     <ClInclude Include="..\..\svg\pathsegment.h" />
     <ClInclude Include="..\..\svg\pathsegment_normalizer.h" />
     <ClInclude Include="..\..\svg\pixelaccessor.h" />
@@ -311,7 +313,6 @@
     <ClInclude Include="..\..\svg\svgimage.h" />
     <ClInclude Include="..\..\svg\svgmarker.h" />
     <ClInclude Include="..\..\svg\svgmask.h" />
-    <ClInclude Include="..\..\svg\b2dpathbuilder.h" />
     <ClInclude Include="..\..\svg\svgmisc.h" />
     <ClInclude Include="..\..\svg\svgpattern.h" />
     <ClInclude Include="..\..\svg\svgscript.h" />

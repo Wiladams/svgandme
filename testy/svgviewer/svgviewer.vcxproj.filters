@@ -56,9 +56,6 @@
     <ClInclude Include="..\..\svg\definitions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\b2dpathbuilder.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\svg\svgcolors.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -324,6 +321,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\pathattribute_parser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\pathprogram_flattener.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\pathprogram_dasher.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
