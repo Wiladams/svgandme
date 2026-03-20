@@ -196,3 +196,96 @@ namespace waavs
     }
 }
 
+//
+// Bounding box calculations for quadratic and cubic Bezier curves.
+//
+namespace waavs
+{
+    static INLINE void quadBounds(
+        double x0, double y0,
+        double x1, double y1,
+        double x2, double y2,
+        double& minX, double& minY,
+        double& maxX, double& maxY)
+    {
+        bboxExpand(minX, minY, maxX, maxY, x2, y2);
+
+        // X extrema
+        double dx = x0 - 2.0 * x1 + x2;
+        if (dx != 0.0) {
+            double t = (x0 - x1) / dx;
+            if (t > 0.0 && t < 1.0) {
+                double mt = 1.0 - t;
+                double x = mt * mt * x0 + 2 * mt * t * x1 + t * t * x2;
+                double y = mt * mt * y0 + 2 * mt * t * y1 + t * t * y2;
+                bboxExpand(minX, minY, maxX, maxY, x, y);
+            }
+        }
+
+        // Y extrema
+        double dy = y0 - 2.0 * y1 + y2;
+        if (dy != 0.0) {
+            double t = (y0 - y1) / dy;
+            if (t > 0.0 && t < 1.0) {
+                double mt = 1.0 - t;
+                double x = mt * mt * x0 + 2 * mt * t * x1 + t * t * x2;
+                double y = mt * mt * y0 + 2 * mt * t * y1 + t * t * y2;
+                bboxExpand(minX, minY, maxX, maxY, x, y);
+            }
+        }
+    }
+
+    static inline void cubicBounds(
+        double x0, double y0,
+        double x1, double y1,
+        double x2, double y2,
+        double x3, double y3,
+        double& minX, double& minY,
+        double& maxX, double& maxY)
+    {
+        bboxExpand(minX, minY, maxX, maxY, x3, y3);
+
+        auto solve = [&](double p0, double p1, double p2, double p3,
+            bool isX)
+            {
+                double a = -p0 + 3 * p1 - 3 * p2 + p3;
+                double b = 2 * (p0 - 2 * p1 + p2);
+                double c = -p0 + p1;
+
+                if (std::abs(a) < 1e-12) {
+                    if (std::abs(b) < 1e-12) return;
+                    double t = -c / b;
+                    if (t > 0.0 && t < 1.0) {
+                        double mt = 1.0 - t;
+                        double x = mt * mt * mt * x0 + 3 * mt * mt * t * x1 + 3 * mt * t * t * x2 + t * t * t * x3;
+                        double y = mt * mt * mt * y0 + 3 * mt * mt * t * y1 + 3 * mt * t * t * y2 + t * t * t * y3;
+                        bboxExpand(minX, minY, maxX, maxY, x, y);
+                    }
+                    return;
+                }
+
+                double disc = b * b - 4 * a * c;
+                if (disc < 0.0) return;
+
+                double s = std::sqrt(disc);
+                double t1 = (-b + s) / (2 * a);
+                double t2 = (-b - s) / (2 * a);
+
+                auto eval = [&](double t) {
+                    if (t > 0.0 && t < 1.0) {
+                        double mt = 1.0 - t;
+                        double x = mt * mt * mt * x0 + 3 * mt * mt * t * x1 + 3 * mt * t * t * x2 + t * t * t * x3;
+                        double y = mt * mt * mt * y0 + 3 * mt * mt * t * y1 + 3 * mt * t * t * y2 + t * t * t * y3;
+                        bboxExpand(minX, minY, maxX, maxY, x, y);
+                    }
+                    };
+
+                eval(t1);
+                eval(t2);
+            };
+
+        solve(x0, x1, x2, x3, true);
+        solve(y0, y1, y2, y3, false);
+    }
+}
+

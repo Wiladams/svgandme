@@ -8,10 +8,10 @@
 
 #include "svgattributes.h"
 #include "svggraphicselement.h"
-#include "b2dpathbuilder.h"
 #include "viewport.h"
 #include "svgmarker.h"
-
+#include "pathattribute_parser.h"
+#include "pathprogram_builder.h"
 
 
 namespace waavs 

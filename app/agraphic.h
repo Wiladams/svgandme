@@ -190,6 +190,7 @@ namespace waavs {
 	{
 
 		BLPath fPath{};
+        PathProgram fPathProgram{};
 
 		BLFillRule fFillRule{BLFillRule::BL_FILL_RULE_EVEN_ODD};
 		uint32_t fPaintOrder{ SVG_PAINT_ORDER_NORMAL };
@@ -204,6 +205,7 @@ namespace waavs {
 		
 		void initFromData(const ByteSpan& inPath)
 		{
+			
 			parsePath(inPath, fPath);
 			setBounds(pathBounds(fPath));
 		}

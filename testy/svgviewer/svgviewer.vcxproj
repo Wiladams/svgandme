@@ -272,8 +272,12 @@
     <ClInclude Include="..\..\svg\membuff.h" />
     <ClInclude Include="..\..\svg\nametable.h" />
     <ClInclude Include="..\..\svg\filter_noise.h" />
-    <ClInclude Include="..\..\svg\pathpu.h" />
-    <ClInclude Include="..\..\svg\pathsegmenter.h" />
+    <ClInclude Include="..\..\svg\pathattribute_parser.h" />
+    <ClInclude Include="..\..\svg\pathprogram.h" />
+    <ClInclude Include="..\..\svg\pathprogram_builder.h" />
+    <ClInclude Include="..\..\svg\pathprogramexec.h" />
+    <ClInclude Include="..\..\svg\pathsegment.h" />
+    <ClInclude Include="..\..\svg\pathsegment_normalizer.h" />
     <ClInclude Include="..\..\svg\pixelaccessor.h" />
     <ClInclude Include="..\..\svg\pixeleffects.h" />
     <ClInclude Include="..\..\svg\pixeling.h" />

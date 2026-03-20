@@ -9,9 +9,7 @@
 
 
 #include "svgdatatypes.h"
-#include "collections.h"
-#include "b2dpathbuilder.h"
-#include "pathsegmenter.h"
+#include "pathsegment.h"
 #include "viewport.h"
 
 

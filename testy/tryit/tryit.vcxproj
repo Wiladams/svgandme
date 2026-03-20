@@ -210,7 +210,6 @@
     <ClInclude Include="..\..\svg\parse_color.h" />
     <ClInclude Include="..\..\svg\stopsmap.h" />
     <ClInclude Include="..\..\svg\pipeline.h" />
-    <ClInclude Include="..\..\svg\waavsgraph.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

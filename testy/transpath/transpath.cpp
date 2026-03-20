@@ -2,10 +2,10 @@
 
 
 #include "blend2d.h"
-#include "pathsegmenter.h"
+#include "pathsegment.h"
 #include "pathcmdprinter.h"
 #include "pubsub.h"
-#include "waavsgraph.h"
+
 
 using namespace waavs;
 

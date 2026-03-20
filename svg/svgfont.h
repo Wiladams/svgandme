@@ -7,7 +7,6 @@
 
 
 #include "svgshapes.h"
-#include "b2dpathbuilder.h"
 #include "svgcss.h"
 
 
@@ -218,8 +217,13 @@ namespace waavs {
 			if (!d)
 				return;
 
-			if (parsePath(d, fPath))
-				fPath.shrink();
+            PathProgram prog{};
+			if (parsePathProgram(d, prog))
+			{
+                blPath_from_PathProgram(prog, fPath);
+			}
+
+
 
 			setNeedsBinding(false);
 		}

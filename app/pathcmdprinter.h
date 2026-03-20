@@ -1,7 +1,7 @@
 #pragma once
 
 #include <array>
-#include "pathsegmenter.h"
+#include "pathsegment.h"
 #include "pipeline.h"
 
 namespace waavs 

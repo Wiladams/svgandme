@@ -188,7 +188,7 @@
     <ClInclude Include="..\..\svg\imanagesvgstate.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\pathsegmenter.h">
+    <ClInclude Include="..\..\svg\pathsegment.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\app\appmodule.h">
@@ -230,7 +230,7 @@
     <ClInclude Include="..\..\svg\twobitpu.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\pathpu.h">
+    <ClInclude Include="..\..\svg\pathprogramexec.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\svgcamera.h">
@@ -312,6 +312,18 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\idrawpixels.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\pathprogram.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\pathprogram_builder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\pathsegment_normalizer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\pathattribute_parser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

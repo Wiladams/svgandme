@@ -7,7 +7,8 @@
 #include <algorithm> // for std::clamp
 #include <memory>
 
-#include "pathsegmenter.h"
+#include "wggeometry.h"
+#include "pathsegment.h"
 #include "generator.h"
 
 
