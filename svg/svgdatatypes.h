@@ -1519,6 +1519,12 @@ namespace waavs {
             fOffset = 0;
             fHasOffset = false;
         }
+
+        void reset() noexcept
+        {
+            clearArray();
+            clearOffset();
+        }
     };
 
     static bool parseStrokeDashArray(const ByteSpan& inChunk, std::vector<float>& outArray, bool& outIsNone) noexcept

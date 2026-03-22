@@ -5,8 +5,6 @@
 
 namespace waavs
 {
-
-    
     //    A simple class to handle high precision keeping of
     //    time.  The class is a stopwatch because it will
     //    report number of seconds ellapsed since the last call

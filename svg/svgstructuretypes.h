@@ -17,6 +17,7 @@
 #include "svgcss.h"
 #include "irendersvg.h"
 #include "uievent.h"
+#include "stopwatch.h"
 
 #include "svgatoms.h"
 
@@ -270,8 +271,12 @@ namespace waavs {
     {
         std::unordered_map<ByteSpan, std::shared_ptr<IViewable>, ByteSpanHash, ByteSpanEquivalent> fDefinitions{};
         std::unordered_map<ByteSpan, ByteSpan, ByteSpanHash, ByteSpanEquivalent> fEntities{};
+        StopWatch fDocClock{};
+
         
-        
+
+        StopWatch& documentClock() noexcept { return fDocClock; }
+
         virtual void addElementReference(const ByteSpan& name, std::shared_ptr<IViewable> obj)
         {
             fDefinitions[name] = obj;

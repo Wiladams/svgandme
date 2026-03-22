@@ -318,12 +318,21 @@ namespace waavs {
 
     struct SVGLineElement : public SVGPathBasedGeometry
     {
+
         static void registerFactory() {
             registerSVGSingularNodeByName("line", [](IAmGroot* groot, const XmlElement& elem) {
                 auto node = std::make_shared<SVGLineElement>(groot);
                 node->loadFromXmlElement(elem, groot);
                 return node;
             });
+
+            registerContainerNodeByName("line",
+                [](IAmGroot* groot, XmlPull& iter) {
+                    auto node = std::make_shared<SVGLineElement>(groot);
+                    node->loadFromXmlPull(iter, groot);
+
+                    return node;
+                });
         }
 
 
@@ -452,10 +461,10 @@ namespace waavs {
         b.arcTo(rx, ry, kXRot, kLarge, kSweep, x1, y0 + ry);
 
         // Right edge -> bottom-right corner
-b.lineTo(x1, y1 - ry);
-b.arcTo(rx, ry, kXRot, kLarge, kSweep, x1 - rx, y1);
+        b.lineTo(x1, y1 - ry);
+        b.arcTo(rx, ry, kXRot, kLarge, kSweep, x1 - rx, y1);
 
-// Bottom edge -> bottom-left corner
+        // Bottom edge -> bottom-left corner
 b.lineTo(x0 + rx, y1);
 b.arcTo(rx, ry, kXRot, kLarge, kSweep, x0, y1 - ry);
 
@@ -717,6 +726,14 @@ return true;
                 node->loadFromXmlElement(elem, groot);
                 
                 return node; });
+
+            registerContainerNodeByName("ellipse",
+                [](IAmGroot* groot, XmlPull& iter) {
+                    auto node = std::make_shared<SVGEllipseElement>(groot);
+                    node->loadFromXmlPull(iter, groot);
+
+                    return node;
+                });
         }
 
 
@@ -862,6 +879,15 @@ return true;
                 
                 return node;
             });
+
+            registerContainerNodeByName("polyline",
+                [](IAmGroot* groot, XmlPull& iter) {
+                    auto node = std::make_shared<SVGPolylineElement>(groot);
+                    node->loadFromXmlPull(iter, groot);
+
+                    return node;
+                });
+
         }
 
         
@@ -888,28 +914,7 @@ return true;
             }
         }
 
-        /*
-        void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
-        {
-            ByteSpan pts{};
-            pts = getAttribute(svgattr::points());
-            if (!pts.empty())
-            {
-                if (!parsePointsToPathProgram(pts, fProg, false)) {
-                    // Failed to parse points; clear program
-                    fProg.clear();
 
-                }
-                else {
-
-                }
-            }
-
-            fFillPathValid = false;
-
-
-        }
-        */
     };
     
 
@@ -964,28 +969,7 @@ return true;
             }
         }
 
-        /*
-        void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
-        {
 
-            ByteSpan pts{};
-            pts = getAttribute(svgattr::points());
-            if (!pts.empty())
-            {
-                if (!parsePointsToPathProgram(pts, fProg, true)) {
-                    fProg.clear();
-                    //fHasProg = false;
-                }
-                else {
-                    //fHasProg = true;
-                }
-            }
-
-            fFillPathValid = false;
-            fStrokePathValid = false;
-
-        }
-        */
     };
     
 
@@ -1037,19 +1021,6 @@ return true;
             }
 
         }
-
-        /*
-        virtual void bindSelfToContext(IRenderSVG*, IAmGroot*) override
-        {
-            fProg.clear();
-            invalidateGeometry();
-
-            auto d = getAttribute(svgattr::d());
-            if (d) {
-                parsePathProgram(d, fProg);
-            }
-        }
-        */
 
     };
 

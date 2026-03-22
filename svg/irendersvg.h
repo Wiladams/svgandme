@@ -9,7 +9,6 @@
 
 #include "fonthandler.h"
 #include "svgenums.h"
-#include "svgdrawingstate.h"
 #include "imanagesvgstate.h"
 #include "surface.h"
 

@@ -338,7 +338,6 @@ namespace waavs {
 
 
         // Crop in source pixel space (resolved)
-        WGRectI fCropRect{};
         bool fCropIsFull = true;
 
         // Output pixels used by renderer (crop-sized)
@@ -372,9 +371,9 @@ namespace waavs {
             WGRectI srcRect{ 0, 0, fCurrentStruct.width, fCurrentStruct.height };
 
             // Intersect the crop rectangle with the source rectangle to ensure it fits within bounds
-            fCropRect = intersection(cropRect, srcRect);
+            fCroppedRect = intersection(cropRect, srcRect);
 
-            fCropIsFull = (fCropRect == srcRect);
+            fCropIsFull = (fCroppedRect == srcRect);
         }
 
         // This should only be called when the format
@@ -429,7 +428,7 @@ namespace waavs {
             fCropHeight = (int64_t)resolveNumberOrPercent(desc.cropH, (double)fCurrentStruct.height, (double)fCurrentStruct.height);
 
             clampCropToBounds();
-            if (fCropRect.w <= 0 || fCropRect.h <= 0)
+            if (fCroppedRect.w <= 0 || fCroppedRect.h <= 0)
                 return false;
 
             // Allocate full buffer to match media size
@@ -438,7 +437,7 @@ namespace waavs {
 
             // Crop buffer is a subregion of the full buffer,
             // possibly the same as the full buffer size
-            if (fPixels.getSubSurface(fCropRect, fCroppedPixels) != WG_SUCCESS)
+            if (fPixels.getSubSurface(fCroppedRect, fCroppedPixels) != WG_SUCCESS)
                 return false;
 
 

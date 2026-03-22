@@ -32,6 +32,7 @@ namespace waavs
         // Name of thing we're displaying
         InternedKey fSourceKey{ nullptr };
 
+        WGRectI fCroppedRect{}; // Calculated crop rectangle in source-space (pixels)
         int64_t fCropX = 0;
         int64_t fCropY = 0;
         int64_t fCropWidth = 0;
@@ -42,8 +43,6 @@ namespace waavs
         double fFrameRate{ 15.0 };
         double fMinInterval = 0.0;
         double fLastCaptureTime = 0;
-
-
 
         virtual ~IFrameSource() = default;
 
