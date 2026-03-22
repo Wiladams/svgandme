@@ -58,7 +58,23 @@ namespace waavs
         }
         SVGUseElement(const SVGUseElement& other) = delete;
 
-        void fixupSelfStyleAttributes(IAmGroot*) override
+        virtual const WGRectD objectBoundingBox() const noexcept override
+        {
+            if (!fTarget)
+                return {};
+
+            return fTarget->objectBoundingBox();
+        }
+
+        const WGRectD getFilterRegion(IRenderSVG* ctx, IAmGroot* groot)  noexcept override
+        {
+            if (!fTarget)
+                return {};
+
+            return fTarget->getFilterRegion(ctx, groot);
+        }
+
+        void fixupSelfStyleAttributes(IAmGroot* groot) override
         {
             fX = parseLengthAttr(getAttributeByName("x"));
             fY = parseLengthAttr(getAttributeByName("y"));
@@ -70,6 +86,10 @@ namespace waavs
                 href = getAttributeByName(svgattr::href());
 
             fHref = chunk_trim(href, chrWspChars);
+
+            if (fHref && groot)
+                fTarget = groot->findNodeByHref(fHref);
+
         }
 
 
@@ -77,12 +97,8 @@ namespace waavs
 
         void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            fTarget.reset();
             fHasPlacedRect = false;
             fPlacedRect = BLRect{};
-
-            if (fHref && groot)
-                fTarget = groot->findNodeByHref(fHref);
 
             if (!fTarget)
                 return;

@@ -593,7 +593,10 @@ namespace waavs
         virtual WGPointD defaultCursor(IRenderSVG* ctx) const noexcept = 0;
 
 
-        const WGRectD calculateObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot) const override { return fBBox; }
+        const WGRectD getFilterRegion(IRenderSVG* ctx, IAmGroot* groot)  noexcept override
+        { 
+            return fBBox; 
+        }
 
         // child loading shared between 'text' and 'tspan'
         void loadContentNode(const XmlElement& elem, IAmGroot* groot) override

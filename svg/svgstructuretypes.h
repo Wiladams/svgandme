@@ -86,7 +86,19 @@ namespace waavs {
         bool isVisible() const { return fIsVisible; }
         void setIsVisible(bool visible) { fIsVisible = visible; }
 
-        virtual const WGRectD objectBoundingBox() const noexcept { return {}; }
+        virtual const WGRectD getFilterArea(IRenderSVG* ctx, IAmGroot* groot, IViewable *subtree)  noexcept
+        {
+            return subtree->getFilterRegion(ctx, groot);
+        }
+
+        virtual const WGRectD getFilterRegion(IRenderSVG* ctx, IAmGroot* groot)  noexcept
+        {
+            return {};
+        }
+
+        virtual const WGRectD objectBoundingBox() const noexcept { 
+            return {}; 
+        }
 
         virtual bool contains(double x, double y) { return false; }
         
@@ -351,7 +363,6 @@ namespace waavs {
         virtual double dpi() const = 0;
         virtual void setDpi(const double d) = 0;
     };
-
 }
 
 

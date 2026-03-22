@@ -35,11 +35,22 @@ namespace waavs {
         // We have this separate for those cases where you want to traverse
         // the tree asking for bounding boxes, but you don't want to do it all the 
         // time.
-        virtual const WGRectD getPaintBox(IRenderSVG* ctx, IAmGroot* groot) const noexcept
+        const WGRectD getFilterRegion(IRenderSVG* ctx, IAmGroot* groot) noexcept
         {
-            return objectBoundingBox();
+            WGRectD bbox{};
+            for (auto& node : fNodes)
+            {
+                if (!node || !node->isVisible()) continue;
+
+                WGRectD nodeBox{};
+                nodeBox = node->getFilterRegion(ctx, groot);
+                wg_rectD_union(bbox, nodeBox);
+            }
+
+            return bbox;
         }
 
+        /*
         virtual const WGRectD calculateObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot) const noexcept
         {
             WGRectD bbox{};
@@ -54,7 +65,7 @@ namespace waavs {
 
             return bbox;
         }
-
+        */
 
 
         // Deal with filters
@@ -117,10 +128,7 @@ namespace waavs {
             return filterElem->getFilterProgramStream(groot);
         }
 
-        virtual WGRectD getFilterRegion(IRenderSVG* ctx, IAmGroot* groot, SVGGraphicsElement *subtree) const noexcept
-        {
-            return subtree->getPaintBox(ctx, groot);
-        }
+
 
         const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
         {
@@ -702,7 +710,7 @@ namespace waavs {
                 tform->applyToContext(ctx, groot);
 
             // Compute bbox in current user space
-            WGRectD bbox = calculateObjectBoundingBox(ctx, groot);
+            WGRectD bbox = objectBoundingBox();
 
             ctx->setObjectFrame(bbox);
 
@@ -727,7 +735,7 @@ namespace waavs {
                 auto filterNode = getReferencedFilterNode(groot);
                 if (filterNode) {
                     //printf("Found filter node for filter reference\n");
-                    WGRectD filterRect = filterNode->getFilterRegion(ctx, groot, this);
+                    const WGRectD filterRect = filterNode->getFilterArea(ctx, groot, this);
                     auto filterProgram = filterNode->getFilterProgramStream(groot);
 
                     if (filterProgram)

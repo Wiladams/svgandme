@@ -102,7 +102,6 @@ namespace waavs
 
         mutable BLPath fStrokePath{};
         mutable bool fStrokePathValid{ false };
-        mutable uint64_t fStrokeCacheKey{ 0 };
 
 
         // Indication of whether we have markers or not
@@ -118,7 +117,7 @@ namespace waavs
         void invalidateGeometry() noexcept
         {
             fFillPathValid = false;
-            fStrokeCacheKey = 0;
+            fStrokePathValid = false;
         }
 
         // Get the path used for filling. We do a lazy evaluation here so we only
@@ -201,16 +200,20 @@ namespace waavs
         // This is used for percentage sizing, and marker placement.
        const WGRectD objectBoundingBox() const noexcept override
        {
-            return calculateObjectBoundingBox(nullptr, nullptr);
+           auto& path = getFillPath();
+
+           BLBox pathBox{};
+           path.getBoundingBox(&pathBox);
+
+           WGRectD bbox = { pathBox.x0, pathBox.y0, pathBox.x1 - pathBox.x0, pathBox.y1 - pathBox.y0 };
+
+           return bbox;
        }
         
-        const WGRectD getPaintBox(IRenderSVG* ctx, IAmGroot* groot) const noexcept override
+        const WGRectD getFilterRegion(IRenderSVG* ctx, IAmGroot* groot) noexcept override
         {
-            return calculateObjectBoundingBox(ctx, groot);
-        }
+            bindToContext(ctx, groot);
 
-        const WGRectD calculateObjectBoundingBox(IRenderSVG *ctx, IAmGroot *groot) const noexcept override
-        {
             auto& path = getFillPath();
 
             BLBox pathBox{};
@@ -220,6 +223,7 @@ namespace waavs
 
             return bbox;
         }
+
        
         bool contains(double x, double y) override
         {
@@ -255,8 +259,11 @@ namespace waavs
             return fHasMarkers;
         }
 
-        void fixupSelfStyleAttributes(IAmGroot* ) override
+
+        void fixupStyleAttributes(IAmGroot* groot) override
         {
+            SVGGraphicsElement::fixupStyleAttributes(groot);
+
             checkForMarkers();
         }
 
@@ -350,6 +357,8 @@ namespace waavs {
             geom.y1 = resolveLengthOr(fDocState.y2, cy, 0);
             
 
+            fProg.clear();
+            invalidateGeometry();
 
             PathProgramBuilder pb;
             pb.moveTo(geom.x0, geom.y0);
@@ -358,7 +367,7 @@ namespace waavs {
 
             fProg = std::move(pb.prog);
 
-            invalidateGeometry();
+
         }
         
     };
@@ -540,26 +549,26 @@ return true;
             geom.w = resolveLengthOr(fDocState.width, cx, 0);
             geom.h = resolveLengthOr(fDocState.height, cy, 0);
 
+            fProg.clear();
+            invalidateGeometry();
+
             // Reject if width or height is not positive
             if (!(geom.w > 0.0) || !(geom.h > 0.0))
             {
-                fProg.clear();
-                invalidateGeometry();
+                //fProg.clear();
+                //invalidateGeometry();
                 return;
             }
 
             geom.rx = resolveLengthOr(fDocState.rx, cx, 0);
             geom.ry = resolveLengthOr(fDocState.ry, cy, 0);
 
-            fProg.clear();
 
             buildRectPathProgram(fProg,
                 (float)geom.x, (float)geom.y,
                 (float)geom.w, (float)geom.h,
                 (float)geom.rx, (float)geom.ry);
 
-            // Invalidate cached fill/stroke materializations
-            invalidateGeometry();
         }
     
     };
@@ -661,10 +670,9 @@ return true;
             geom.r = fR.calculatePixels(w, h, dpi);
 
             fProg.clear();
-            buildCirclePathProgram(fProg, (float)geom.cx, (float)geom.cy, (float)geom.r);
-
-            // Invalidate cached paths
             invalidateGeometry();
+
+            buildCirclePathProgram(fProg, (float)geom.cx, (float)geom.cy, (float)geom.r);
 
         }
     };
@@ -718,12 +726,7 @@ return true;
         SVGEllipseElement(IAmGroot* iMap)
             :SVGPathBasedGeometry(iMap) {}
         
-        
-        //BLRect objectBoundingBox() const noexcept override
-        //{
-        //    return BLRect(geom.cx - geom.rx, geom.cy - geom.ry, geom.rx * 2, geom.ry * 2);
-        //}
-        
+
         void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
             double dpi = 96;
@@ -735,12 +738,9 @@ return true;
                 dpi = groot->dpi();
             }
             
-
             WGRectD cFrame = ctx->viewport();
             w = cFrame.w;
             h = cFrame.h;
-
-            
 
             SVGDimension fCx{};
             SVGDimension fCy{};
@@ -759,19 +759,16 @@ return true;
             geom.ry = fRy.calculatePixels(h, 0, dpi);
 
 
-            // Program-first (no legacy fPath)
             fProg.clear();
-            //fHasProg = false;
+            invalidateGeometry();
 
-            if (buildEllipsePathProgram(fProg,
+            if (!buildEllipsePathProgram(fProg,
                 (float)geom.cx, (float)geom.cy,
                 (float)geom.rx, (float)geom.ry))
             {
-                //fHasProg = true;
+                printf("Failed to build ellipse path program (rx=%f, ry=%f); clearing program.\n", geom.rx, geom.ry);
             }
 
-            // Invalidate caches
-            invalidateGeometry();
         }
 
     };
@@ -781,7 +778,7 @@ return true;
     // SVGPolylineElement
     //
     //====================================
-        // Parse SVG "points" attribute into a PathProgram.
+    // Parse SVG "points" attribute into a PathProgram.
     // - closePath=false => polyline
     // - closePath=true  => polygon
     //
@@ -871,6 +868,27 @@ return true;
         SVGPolylineElement(IAmGroot* groot) :SVGPathBasedGeometry(groot) {}
 
 
+        void fixupSelfStyleAttributes(IAmGroot* groot) override
+        {
+            fProg.clear();
+            invalidateGeometry();
+
+            // This geometry can be known at this point, instead of
+            // waiting for bindSelfToContext, because it doesn't 
+            // depend on any context-specific resolution (like length units).
+            ByteSpan pts{};
+            pts = getAttribute(svgattr::points());
+            if (!pts.empty())
+            {
+                if (!parsePointsToPathProgram(pts, fProg, false)) 
+                {
+                    // Failed to parse points; clear program
+                    fProg.clear();
+                }
+            }
+        }
+
+        /*
         void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
             ByteSpan pts{};
@@ -880,17 +898,18 @@ return true;
                 if (!parsePointsToPathProgram(pts, fProg, false)) {
                     // Failed to parse points; clear program
                     fProg.clear();
-                    //fHasProg = false;
+
                 }
                 else {
-                    //fHasProg = true;
+
                 }
             }
 
             fFillPathValid = false;
-            fStrokeCacheKey = 0;
+
 
         }
+        */
     };
     
 
@@ -926,6 +945,26 @@ return true;
         SVGPolygonElement(IAmGroot* iMap) 
             :SVGPathBasedGeometry(iMap) {}
 
+        void fixupSelfStyleAttributes(IAmGroot* groot) override
+        {
+            // This geometry can be known at this point, instead of
+            // waiting for bindSelfToContext, because it doesn't 
+            // depend on any context-specific resolution (like length units).
+            fProg.clear();
+            invalidateGeometry();
+
+            ByteSpan pts{};
+            pts = getAttribute(svgattr::points());
+            if (!pts.empty())
+            {
+                if (!parsePointsToPathProgram(pts, fProg, true)) 
+                {
+                    fProg.clear();
+                }
+            }
+        }
+
+        /*
         void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
 
@@ -943,8 +982,10 @@ return true;
             }
 
             fFillPathValid = false;
-            fStrokeCacheKey = 0;
+            fStrokePathValid = false;
+
         }
+        */
     };
     
 
@@ -982,21 +1023,33 @@ return true;
         {
         }
         
-        virtual void bindSelfToContext(IRenderSVG*, IAmGroot*) override
+        void fixupSelfStyleAttributes(IAmGroot* groot) override
         {
+            // This geometry can be known at this point, instead of
+            // waiting for bindSelfToContext, because it doesn't 
+            // depend on any context-specific resolution (like length units).
             fProg.clear();
-            //fHasProg = false;
+            invalidateGeometry();
 
             auto d = getAttribute(svgattr::d());
             if (d) {
                 parsePathProgram(d, fProg);
-                //fHasProg = true;
             }
 
-            fFillPathValid = false;
-            fStrokeCacheKey = 0;
         }
 
+        /*
+        virtual void bindSelfToContext(IRenderSVG*, IAmGroot*) override
+        {
+            fProg.clear();
+            invalidateGeometry();
+
+            auto d = getAttribute(svgattr::d());
+            if (d) {
+                parsePathProgram(d, fProg);
+            }
+        }
+        */
 
     };
 

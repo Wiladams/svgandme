@@ -120,7 +120,7 @@ namespace waavs
         }
 
         // Not a geometry bbox; return something stable
-        const WGRectD calculateObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot) const noexcept override
+        const WGRectD getFilterRegion(IRenderSVG* ctx, IAmGroot* groot)  noexcept override
         {
             return fTileRect;
         }

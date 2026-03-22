@@ -2255,19 +2255,18 @@ namespace waavs {
             return std::make_shared<FilterProgramStream>(fProgram);
         }
 
-        WGRectD getFilterRegion(IRenderSVG* ctx, IAmGroot* groot, SVGGraphicsElement* subtree) const noexcept override
+        const WGRectD getFilterArea(IRenderSVG* ctx, IAmGroot* groot, IViewable* subtree) noexcept override
         {
             if (!ctx || !subtree)
                 return {};
 
             // The filter region is resolved against the element being filtered,
             // not against the <filter> element itself.
-            const WGRectD bbox = subtree->getPaintBox(ctx, groot);
+            const WGRectD bbox = subtree->getFilterRegion(ctx, groot);
             if (!(bbox.w > 0.0) || !(bbox.h > 0.0))
                 return {};
 
             // Use current context info as much as is available.
-            // If you have a better DPI/font source on ctx, plug it in here.
             const double dpi = groot? groot->dpi() : 96.0;
             const BLFont* font = ctx ? &ctx->getFont() : nullptr;
 

@@ -61,7 +61,7 @@ namespace waavs
     // This routine will perform boundary clipping and return a subarea
     // that actually fits within the source surface.
     //
-    static INLINE uint32_t wg_get_subarea(const Surface_ARGB32& src, const WGRectI& area, Surface_ARGB32 &subarea) noexcept
+    static  uint32_t wg_get_subarea(const Surface_ARGB32& src, const WGRectI& area, Surface_ARGB32 &subarea) noexcept
     {
         if (!src.data || src.width == 0 || src.height == 0)
             return WG_ERROR_Invalid_Argument;

@@ -515,7 +515,7 @@ namespace waavs {
 
             // Object bounding box in current drawing user space
             //const WGRectD objBB = subtree->calculateObjectBoundingBox(ctx, groot);
-            const WGRectD objBB = subtree->getPaintBox(ctx, groot);
+            const WGRectD objBB = subtree->getFilterRegion(ctx, groot);
             if (!(objBB.w > 0.0) || !(objBB.h > 0.0))
                 return true;
 

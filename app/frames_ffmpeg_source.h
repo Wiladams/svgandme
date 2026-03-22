@@ -10,6 +10,12 @@
 // - Cropping is expressed in authored SVGNumberOrPercent and resolved against
 //   decoded frame dimensions.
 // - This implementation loops files on EOF by seeking back to start.
+//
+// Reference: 
+// https://github.com/leandromoreira/ffmpeg-libav-tutorial
+// https://github.com/leandromoreira/ffmpeg-libav-tutorial?tab=readme-ov-file#chapter-0---the-infamous-hello-world
+//
+
 #pragma comment(lib, "avcodec.lib")
 #pragma comment(lib, "avformat.lib")
 #pragma comment(lib, "swscale.lib")
@@ -35,87 +41,311 @@ extern "C" {
 #include "bspan.h"
 #include "charset.h"
 
+
+
 namespace waavs {
 
-    static INLINE int64_t clamp_i64(int64_t v, int64_t lo, int64_t hi) noexcept
+    enum FFMpegDecodeResult : uint32_t
     {
-        if (v < lo) return lo;
-        if (v > hi) return hi;
-        return v;
-    }
+        None = 0,
+        FrameReady,
+        FrameReadyStructureChanged,
+        Rewound,
+        EndOfStream,
+        Failed
+    };
 
-    static INLINE bool isLikelyNetworkUrl(const ByteSpan& s) noexcept
+
+    // Representation of a piece of media opened with ffmpeg.
+    // This is meant to be a simple wrapper around the ffmpeg APIs, 
+    // to keep things organized.
+    // You can do the open(), then ask for frames
+    // Note:  It might be nice to do pub/sub for those who
+    // want to be notified.  There are two conditions that are interesting
+    // 
+    // 1) Receiving a new frame
+    // 2) Receiving a new frame with a different size/format 
+    //      (which may require renderer reconfig).
+
+    struct FFMpegFrameFormat
     {
-        // cheap check; you already have scheme parsing upstream
-        ByteSpan found{};
-        return chunk_find(s, ByteSpan("://"), found);
-    }
+        AVPixelFormat format{ AV_PIX_FMT_NONE };
+        int width{};
+        int height{};
 
-    struct AvFormatDeleter {
-        void operator()(AVFormatContext* ctx) const noexcept {
-            if (ctx) avformat_close_input(&ctx);
+        void reset(AVPixelFormat fmt, int w, int h) noexcept
+        {
+            format = fmt;
+            width = w;
+            height = h;
+        }
+
+        bool equals(const FFMpegFrameFormat& other) const noexcept
+        {
+            return format == other.format &&
+                width == other.width &&
+                height == other.height;
         }
     };
 
-    struct AvCodecDeleter {
-        void operator()(AVCodecContext* ctx) const noexcept {
-            if (ctx) avcodec_free_context(&ctx);
+    struct FFMpegMedia
+    {
+        InternedKey fSourceKey{ nullptr };
+    
+        AVDictionary* fOpts = nullptr;
+        AVFormatContext* fFormatContext = nullptr;
+
+        const AVCodec* fCodec{ nullptr };
+        AVCodecContext* fCodecContext = nullptr;
+        
+        int fVideoStreamIndex = -1;
+        AVStream* fVideoStream{ nullptr };
+        AVRational fTimeBase{ 1, 1 };
+
+        // Media structure, as reported when originally opened.  
+        FFMpegFrameFormat fCurrentStructure{};
+
+
+        // Frame handling
+        AVPacket* fPkt{ nullptr };
+        AVFrame* fFrame{ nullptr };
+
+        // Configurable behavior
+        bool fAutoLoop{ false };
+
+        FFMpegMedia() = default;
+
+
+        ~FFMpegMedia()
+        {
+            reset();
+        }
+
+        void reset()
+        {
+            if (fFormatContext) {
+                avformat_close_input(&fFormatContext);
+                fFormatContext = nullptr;
+            }
+
+            if (fCodecContext) {
+                avcodec_free_context(&fCodecContext);
+                fCodecContext = nullptr;
+            }
+
+            if (fFrame) {
+                av_frame_free(&fFrame);
+                fFrame = nullptr;
+            }
+
+            if (fPkt) {
+                av_packet_free(&fPkt);
+                fPkt = nullptr;
+            }
+        }
+
+        void setAutoLoop(bool loop) noexcept {fAutoLoop = loop;}
+        bool isAutoLoop() const noexcept {return fAutoLoop;}   
+
+        // How the caller can get a hold of the last read frame
+        const AVFrame* currentFrame() const { return fFrame;}
+        const FFMpegFrameFormat& currentStructure() const { return fCurrentStructure; }
+        
+        
+        // open()
+        //
+        // Opens the source and prepares for decoding.  
+        // This is where we first learn what the media 
+        // structure is (size/format).
+        // 
+        // Return: 0 on success, negative on failure.
+        //
+        int open(const ByteSpan &src)
+        {
+            // Intern the key in case we're storing in a library
+            fSourceKey = PSNameTable::INTERN(src);
+
+            int err = avformat_open_input(&fFormatContext, fSourceKey, nullptr, &fOpts);
+            av_dict_free(&fOpts);
+
+            if (err < 0 || !fFormatContext)
+                return err;
+
+            err = avformat_find_stream_info(fFormatContext, nullptr);
+            if (err < 0)
+                return err;
+
+            // Find best video stream
+            err = av_find_best_stream(fFormatContext, 
+                AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
+            if (err < 0)
+                return err;
+
+            fVideoStreamIndex = err;
+            fVideoStream = fFormatContext->streams[fVideoStreamIndex];
+            if (!fVideoStream)
+                return -1;
+
+            fTimeBase = fVideoStream->time_base;
+
+            // Create decoder
+            const AVCodecParameters* par = fVideoStream->codecpar;
+            if (!par)
+                return -1;
+
+            fCodec = avcodec_find_decoder(par->codec_id);
+            if (!fCodec)
+                return -1;
+
+            fCodecContext = avcodec_alloc_context3(fCodec);
+            if (!fCodecContext)
+                return -1;
+
+            err = avcodec_parameters_to_context(fCodecContext, par);
+            if (err < 0)
+                return err;
+
+            err = avcodec_open2(fCodecContext, fCodec, nullptr);
+            if (err < 0)
+                return err;
+
+            fFrame = av_frame_alloc();
+            fPkt = av_packet_alloc();
+            if (!fFrame || !fPkt)
+                return -1;
+
+            // Prefer coded size if set; 
+            // otherwise use codec context.
+            fCurrentStructure.reset((AVPixelFormat)fCodecContext->pix_fmt,
+                fCodecContext->coded_width > 0 ? fCodecContext->coded_width : fCodecContext->width,
+                fCodecContext->coded_height > 0 ? fCodecContext->coded_height : fCodecContext->height);
+
+
+            if (fCurrentStructure.width <= 0 || fCurrentStructure.height <= 0)
+                return -1;
+
+            // decode one frame to get the real size/format, 
+            // and to prime the decoder for streaming.
+            // Then the caller can get an initial size for the backing
+            // surface, and can subscribe to changes if they want.
+            FFMpegDecodeResult decoderr = decodeOneFrame();
+            if ((decoderr != FFMpegDecodeResult::FrameReady)  &&
+                (decoderr != FFMpegDecodeResult::FrameReadyStructureChanged))
+                return 
+                
+                FFMpegDecodeResult::Failed;
+
+            return 0;
+        }
+
+        int tryRewind() const
+        {
+            // EOF or error. If file-like, loop to start.
+            // For live streams this may block/fail; you can refine policy later.
+            if (av_seek_frame(fFormatContext, fVideoStreamIndex, 0, AVSEEK_FLAG_BACKWARD) >= 0)
+            {
+                avcodec_flush_buffers(fCodecContext);
+                return 0;
+            }
+
+            return -1;
+        }
+
+        FFMpegDecodeResult decodeOneFrame() noexcept
+        {
+            // Read packets until we can output one frame.
+            for (;;)
+            {
+                int err = av_read_frame(fFormatContext, fPkt);
+
+                // If we get an error, we might be at EOF
+                // If file-like, try to rewind and continue; 
+                // otherwise fail.
+                if (err < 0)
+                {
+                    if (err == AVERROR_EOF)
+                    {
+                        if (isAutoLoop())
+                        {
+                            if (tryRewind() < 0)
+                                return FFMpegDecodeResult::Failed;
+
+                            continue;
+                        }
+                        return FFMpegDecodeResult::EndOfStream;
+                    }
+
+                    return FFMpegDecodeResult::Failed;
+                }
+
+                if (fPkt->stream_index != fVideoStreamIndex) {
+                    av_packet_unref(fPkt);
+                    continue;
+                }
+
+                err = avcodec_send_packet(fCodecContext, fPkt);
+                av_packet_unref(fPkt);
+                if (err < 0) {
+                    // Try to continue in the face of decode errors
+                    continue;
+                }
+
+                err = avcodec_receive_frame(fCodecContext, fFrame);
+                if (err == AVERROR(EAGAIN)) {
+                    // if we see EAGAIN, it means the decoder needs more 
+                    // packets before it can output a frame.
+                    // so continue
+                    continue;
+                }
+
+                // Any other error is a failure.
+                if (err < 0) {
+                    return FFMpegDecodeResult::Failed;
+                }
+
+                FFMpegFrameFormat newStruct;
+                newStruct.reset((AVPixelFormat)fFrame->format, fFrame->width, fFrame->height);
+
+                if (!fCurrentStructure.equals(newStruct))
+                {
+                    fCurrentStructure = newStruct;
+                    return FFMpegDecodeResult::FrameReadyStructureChanged;
+                }
+
+                return FFMpegDecodeResult::FrameReady;
+            }
         }
     };
 
-    struct AvFrameDeleter {
-        void operator()(AVFrame* f) const noexcept {
-            if (f) av_frame_free(&f);
-        }
-    };
 
-    struct AvPacketDeleter {
-        void operator()(AVPacket* p) const noexcept {
-            if (p) av_packet_free(&p);
-        }
-    };
-
+    // FFmpegFrameSource
+    //
+    // Supporting FFMPEG in the IFrameSource interface.
+    // This allows us to display moving pictures from video files
+    // and streams.
     class FFmpegFrameSource final : public IFrameSource
     {
         static constexpr double kDefaultFrameRate = 30.0;
 
         bool fIsValid = false;
 
-        // Source identity
-        InternedKey fSourceKey{ nullptr };
+        FFMpegMedia fMedia{};
 
-        // FFmpeg core
-        std::unique_ptr<AVFormatContext, AvFormatDeleter> fFmt{};
-        std::unique_ptr<AVCodecContext, AvCodecDeleter>   fCodec{};
-        std::unique_ptr<AVFrame, AvFrameDeleter>          fFrame{};
-        std::unique_ptr<AVPacket, AvPacketDeleter>        fPkt{};
         SwsContext* fSws = nullptr;
 
-        int fVideoStream = -1;
-        AVRational fTimeBase{ 1, 1 };
+        // Decoded frame size and format
+        FFMpegFrameFormat fCurrentStruct{};
 
-        // Decoded frame size (source)
-        int fSrcW = 0;
-        int fSrcH = 0;
-        AVPixelFormat fSrcFmt = AV_PIX_FMT_NONE;
 
         // Crop in source pixel space (resolved)
-        int64_t fCropX = 0;
-        int64_t fCropY = 0;
-        int64_t fCropW = 0;
-        int64_t fCropH = 0;
+        WGRectI fCropRect{};
         bool fCropIsFull = true;
 
         // Output pixels used by renderer (crop-sized)
+        Surface fCroppedPixels{};
+
+        // Full frame of captured pixels
         Surface fPixels{};
-
-        // Optional full-frame staging buffer (only used when crop is not full)
-        Surface fFullPixels{};
-
-        // Throttling
-        StopWatch fTimer;
-        double fMinInterval = 0.0;
-        double fLastTime = 0.0;
 
     public:
         FFmpegFrameSource() = default;
@@ -128,114 +358,27 @@ namespace waavs {
             }
         }
 
-        void setMaxFrameRate(double fps) noexcept
-        {
-            fMinInterval = (fps > 0.0) ? (1.0 / fps) : 0.0;
-        }
 
-        Surface& pixels() noexcept override { return fPixels; }
-        const Surface& pixels() const noexcept override { return fPixels; }
+        Surface& pixels() noexcept override { return fCroppedPixels; }
+        const Surface& pixels() const noexcept override { return fCroppedPixels; }
 
     private:
         void clampCropToBounds() noexcept
         {
-            const int64_t sw = (int64_t)fSrcW;
-            const int64_t sh = (int64_t)fSrcH;
+            // Create a rectangle based on the crop parameters
+            WGRectI cropRect{ (int)fCropX, (int)fCropY, (int)fCropWidth, (int)fCropHeight };
 
-            if (fCropX < 0) fCropX = 0;
-            if (fCropY < 0) fCropY = 0;
-            if (fCropW < 0) fCropW = 0;
-            if (fCropH < 0) fCropH = 0;
+            // Create a rectangle based on the source dimensions
+            WGRectI srcRect{ 0, 0, fCurrentStruct.width, fCurrentStruct.height };
 
-            if (fCropX > sw) fCropX = sw;
-            if (fCropY > sh) fCropY = sh;
+            // Intersect the crop rectangle with the source rectangle to ensure it fits within bounds
+            fCropRect = intersection(cropRect, srcRect);
 
-            if (fCropX + fCropW > sw) fCropW = sw - fCropX;
-            if (fCropY + fCropH > sh) fCropH = sh - fCropY;
-
-            fCropIsFull = (fCropX == 0 && fCropY == 0 && fCropW == sw && fCropH == sh);
+            fCropIsFull = (fCropRect == srcRect);
         }
 
-        bool openInput(const ByteSpan& src) noexcept
-        {
-            // Convert ByteSpan to null-terminated C string for ffmpeg.
-            // We rely on PSNameTable::INTERN for a stable c-string.
-            fSourceKey = PSNameTable::INTERN(src);
-            if (!fSourceKey)
-                return false;
-
-            AVFormatContext* rawFmt = nullptr;
-
-            // Optional: tune for low latency / networking. Keep minimal here.
-            AVDictionary* opts = nullptr;
-
-            // If you want to add options later:
-            // av_dict_set(&opts, "rtsp_transport", "tcp", 0);
-            // av_dict_set(&opts, "fflags", "nobuffer", 0);
-
-            int err = avformat_open_input(&rawFmt, fSourceKey, nullptr, &opts);
-            av_dict_free(&opts);
-
-            if (err < 0 || !rawFmt)
-                return false;
-
-            fFmt.reset(rawFmt);
-
-            err = avformat_find_stream_info(fFmt.get(), nullptr);
-            if (err < 0)
-                return false;
-
-            // Find best video stream
-            err = av_find_best_stream(fFmt.get(), AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
-            if (err < 0)
-                return false;
-
-            fVideoStream = err;
-            AVStream* st = fFmt->streams[fVideoStream];
-            if (!st)
-                return false;
-
-            fTimeBase = st->time_base;
-
-            // Create decoder
-            const AVCodecParameters* par = st->codecpar;
-            if (!par)
-                return false;
-
-            const AVCodec* dec = avcodec_find_decoder(par->codec_id);
-            if (!dec)
-                return false;
-
-            AVCodecContext* rawCodec = avcodec_alloc_context3(dec);
-            if (!rawCodec)
-                return false;
-
-            fCodec.reset(rawCodec);
-
-            err = avcodec_parameters_to_context(fCodec.get(), par);
-            if (err < 0)
-                return false;
-
-            err = avcodec_open2(fCodec.get(), dec, nullptr);
-            if (err < 0)
-                return false;
-
-            fFrame.reset(av_frame_alloc());
-            fPkt.reset(av_packet_alloc());
-            if (!fFrame || !fPkt)
-                return false;
-
-            // Prefer coded size if set; otherwise use codec context.
-            fSrcW = fCodec->width;
-            fSrcH = fCodec->height;
-            fSrcFmt = (AVPixelFormat)fCodec->pix_fmt;
-
-            if (fSrcW <= 0 || fSrcH <= 0)
-                return false;
-
-            return true;
-        }
-
+        // This should only be called when the format
+        // changes
         bool ensureSws(int dstW, int dstH, AVPixelFormat dstFmt) noexcept
         {
             // Rebuild sws if parameters changed.
@@ -247,78 +390,12 @@ namespace waavs {
             }
 
             fSws = sws_getContext(
-                fSrcW, fSrcH, fSrcFmt,
+                fCurrentStruct.width, fCurrentStruct.height, fCurrentStruct.format,
                 dstW, dstH, dstFmt,
                 SWS_BILINEAR,
                 nullptr, nullptr, nullptr);
 
             return fSws != nullptr;
-        }
-
-        bool decodeOneFrame() noexcept
-        {
-            // Read packets until we can output one frame.
-            for (;;)
-            {
-                int err = av_read_frame(fFmt.get(), fPkt.get());
-                if (err < 0)
-                {
-                    // EOF or error. If file-like, loop to start.
-                    // For live streams this may block/fail; you can refine policy later.
-                    if (av_seek_frame(fFmt.get(), fVideoStream, 0, AVSEEK_FLAG_BACKWARD) >= 0) {
-                        avcodec_flush_buffers(fCodec.get());
-                        continue;
-                    }
-                    return false;
-                }
-
-                if (fPkt->stream_index != fVideoStream) {
-                    av_packet_unref(fPkt.get());
-                    continue;
-                }
-
-                err = avcodec_send_packet(fCodec.get(), fPkt.get());
-                av_packet_unref(fPkt.get());
-                if (err < 0) {
-                    // Try to continue on decode errors
-                    continue;
-                }
-
-                err = avcodec_receive_frame(fCodec.get(), fFrame.get());
-                if (err == AVERROR(EAGAIN)) {
-                    continue;
-                }
-                if (err < 0) {
-                    return false;
-                }
-
-                // Frame received.
-                // Update source size/format if stream changes mid-flight.
-                if (fFrame->width > 0 && fFrame->height > 0) {
-                    if (fFrame->width != fSrcW || fFrame->height != fSrcH || (AVPixelFormat)fFrame->format != fSrcFmt) {
-                        fSrcW = fFrame->width;
-                        fSrcH = fFrame->height;
-                        fSrcFmt = (AVPixelFormat)fFrame->format;
-                        // Sws will be rebuilt by caller if needed.
-                    }
-                }
-
-                return true;
-            }
-        }
-
-        static INLINE void blitCropBGRA(const Surface& src, Surface& dst, int64_t x, int64_t y, int64_t w, int64_t h) noexcept
-        {
-            // Both are BGRA 4 bytes per pixel in a BLImage backing store.
-            const int64_t bpp = 4;
-            const int64_t rowBytes = w * bpp;
-
-            for (int64_t row = 0; row < h; ++row)
-            {
-                const uint32_t* s = src.rowPointer((size_t)(y + row)) + (size_t)(x * bpp);
-                uint32_t* d = dst.rowPointer((size_t)row);
-                std::memcpy(d, s, (size_t)rowBytes);
-            }
         }
 
     public:
@@ -330,53 +407,55 @@ namespace waavs {
                 return false;
 
             // Throttle
-            if (desc.maxFps > 0.0) setMaxFrameRate(desc.maxFps);
-            else setMaxFrameRate(kDefaultFrameRate);
+            if (desc.maxFps > 0.0) 
+                setFrameRate(desc.maxFps);
+            else 
+                setFrameRate(kDefaultFrameRate);
 
             // Open input + decoder
-            if (!openInput(desc.src))
+            int err = fMedia.open(desc.src);
+            if (err < 0)
                 return false;
+
+            fMedia.setAutoLoop(true);
+
+            // get the current size and format information
+            fCurrentStruct = fMedia.currentStructure();
 
             // Resolve crop against decoded dimensions
-            fCropX = (int64_t)resolveNumberOrPercent(desc.cropX, (double)fSrcW, 0.0);
-            fCropY = (int64_t)resolveNumberOrPercent(desc.cropY, (double)fSrcH, 0.0);
-            fCropW = (int64_t)resolveNumberOrPercent(desc.cropW, (double)fSrcW, (double)fSrcW);
-            fCropH = (int64_t)resolveNumberOrPercent(desc.cropH, (double)fSrcH, (double)fSrcH);
+            fCropX = (int64_t)resolveNumberOrPercent(desc.cropX, (double)fCurrentStruct.width, 0.0);
+            fCropY = (int64_t)resolveNumberOrPercent(desc.cropY, (double)fCurrentStruct.height, 0.0);
+            fCropWidth = (int64_t)resolveNumberOrPercent(desc.cropW, (double)fCurrentStruct.width, (double)fCurrentStruct.width);
+            fCropHeight = (int64_t)resolveNumberOrPercent(desc.cropH, (double)fCurrentStruct.height, (double)fCurrentStruct.height);
 
             clampCropToBounds();
-            if (fCropW <= 0 || fCropH <= 0)
+            if (fCropRect.w <= 0 || fCropRect.h <= 0)
                 return false;
 
-            // Output buffer is crop size
-            if (!fPixels.reset((size_t)fCropW, (size_t)fCropH))
+            // Allocate full buffer to match media size
+            fPixels.reset((size_t)fCurrentStruct.width, (size_t)fCurrentStruct.height);
+            fPixels.clearAll();
+
+            // Crop buffer is a subregion of the full buffer,
+            // possibly the same as the full buffer size
+            if (fPixels.getSubSurface(fCropRect, fCroppedPixels) != WG_SUCCESS)
                 return false;
 
-            // If crop is not full, allocate a full-frame staging buffer
-            if (!fCropIsFull)
-            {
-                if (!fFullPixels.reset((size_t)fSrcW, (size_t)fSrcH))
-                    return false;
-            }
-            else
-            {
-                // Ensure staging buffer is cleared
-                fFullPixels = Surface{};
-            }
+
 
             // Build sws for conversion to BGRA.
-            // We convert into full-size or crop-size depending on path.
-            const int dstW = fCropIsFull ? fSrcW : fSrcW;
-            const int dstH = fCropIsFull ? fSrcH : fSrcH;
-            if (!ensureSws(dstW, dstH, AV_PIX_FMT_BGRA))
+            // just decode the full size and let the cropping
+            // view do what it does
+            if (!ensureSws(fCurrentStruct.width, fCurrentStruct.height, AV_PIX_FMT_BGRA))
                 return false;
 
-            fLastTime = 0.0;
+            fLastCaptureTime = 0.0;
 
             // Prime with first frame
-            if (!update())
-                return false;
+            update();
 
             fIsValid = true;
+
             return true;
         }
 
@@ -384,83 +463,48 @@ namespace waavs {
         {
             // Throttle
             const double now = fTimer.seconds();
-            if ((now - fLastTime) < fMinInterval)
-                return false;
-
-            if (!fFmt || !fCodec || !fFrame || !fPkt)
+            if ((now - fLastCaptureTime) < fMinInterval)
                 return false;
 
             // Decode one frame
-            if (!decodeOneFrame())
+            FFMpegDecodeResult res = fMedia.decodeOneFrame();
+            if (res == FFMpegDecodeResult::Failed)
                 return false;
 
-            // If stream changed size/format, rebuild sws + buffers
-            if (fFrame->width != fSrcW || fFrame->height != fSrcH || (AVPixelFormat)fFrame->format != fSrcFmt)
+            if (res == FFMpegDecodeResult::FrameReadyStructureChanged)
             {
-                fSrcW = fFrame->width;
-                fSrcH = fFrame->height;
-                fSrcFmt = (AVPixelFormat)fFrame->format;
-
+                // Update our current structure information
+                fCurrentStruct = fMedia.currentStructure();
                 clampCropToBounds();
-                if (fCropW <= 0 || fCropH <= 0)
+                if (!ensureSws(fCurrentStruct.width, fCurrentStruct.height, AV_PIX_FMT_BGRA))
                     return false;
 
-                if (!fPixels.reset((size_t)fCropW, (size_t)fCropH))
-                    return false;
-
-                if (!fCropIsFull) {
-                    if (!fFullPixels.reset((size_t)fSrcW, (size_t)fSrcH))
-                        return false;
-                }
-                else {
-                    fFullPixels = Surface{};
-                }
-
-                if (!ensureSws(fSrcW, fSrcH, AV_PIX_FMT_BGRA))
-                    return false;
+                fPixels.reset(fCurrentStruct.width, fCurrentStruct.height);
+            }
+            else if (res == FFMpegDecodeResult::FrameReady)
+            {
             }
 
             // Convert frame to BGRA.
-            // Use fast path when crop is full-frame: write directly into fPixels.
-            if (fCropIsFull)
-            {
-                if (!fPixels.data())
-                    return false;
+            if (!fPixels.data())
+                return false;
 
-                uint8_t* dstData[4] = { (uint8_t*)fPixels.data(), nullptr, nullptr, nullptr};
-                int dstLinesize[4] = { (int)fPixels.stride(), 0, 0, 0};
+            uint8_t* dstData[4] = { (uint8_t*)fPixels.data(), nullptr, nullptr, nullptr };
+            int dstLinesize[4] = { (int)fPixels.stride(), 0, 0, 0 };
 
-                const uint8_t* srcData[4] = {
-                    fFrame->data[0], fFrame->data[1], fFrame->data[2], fFrame->data[3]
-                };
-                int srcLinesize[4] = {
-                    fFrame->linesize[0], fFrame->linesize[1], fFrame->linesize[2], fFrame->linesize[3]
-                };
+            const AVFrame* aFrame = fMedia.currentFrame();
+            const uint8_t* srcData[4] = {
+                aFrame->data[0], aFrame->data[1], aFrame->data[2], aFrame->data[3]
+            };
+            int srcLinesize[4] = {
+                aFrame->linesize[0], aFrame->linesize[1], aFrame->linesize[2], aFrame->linesize[3]
+            };
 
-                sws_scale(fSws, srcData, srcLinesize, 0, fSrcH, dstData, dstLinesize);
-            }
-            else
-            {
-                // Convert full frame into fFullPixels, then crop-copy into fPixels.
-                if (!fFullPixels.data())
-                    return false;
+            sws_scale(fSws, srcData, srcLinesize, 0, fCurrentStruct.height, dstData, dstLinesize);
 
-                uint8_t* dstData[4] = { (uint8_t*)fFullPixels.data(), nullptr, nullptr, nullptr};
-                int dstLinesize[4] = { (int)fFullPixels.stride(), 0, 0, 0};
 
-                const uint8_t* srcData[4] = {
-                    fFrame->data[0], fFrame->data[1], fFrame->data[2], fFrame->data[3]
-                };
-                int srcLinesize[4] = {
-                    fFrame->linesize[0], fFrame->linesize[1], fFrame->linesize[2], fFrame->linesize[3]
-                };
+            fLastCaptureTime = now;
 
-                sws_scale(fSws, srcData, srcLinesize, 0, fSrcH, dstData, dstLinesize);
-
-                blitCropBGRA(fFullPixels, fPixels, fCropX, fCropY, fCropW, fCropH);
-            }
-
-            fLastTime = now;
             return true;
         }
     };

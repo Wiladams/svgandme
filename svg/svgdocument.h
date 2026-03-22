@@ -168,12 +168,11 @@ namespace waavs
             return outFr;
         }
 
-        const WGRectD calculateObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot) const noexcept override
+        const WGRectD getFilterRegion(IRenderSVG* ctx, IAmGroot* groot) noexcept override
         {
             if (fTopLevelNode != nullptr)
             {
-
-                return fTopLevelNode->calculateObjectBoundingBox(ctx, groot);
+                return fTopLevelNode->getFilterRegion(ctx, groot);
             }
 
             if (fCanvasWidth <= 0 || fCanvasHeight <= 0)

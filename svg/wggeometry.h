@@ -44,6 +44,8 @@ namespace waavs
 
         WGPointI() : x(0), y(0) {}
         WGPointI(const int x, const int y) : x(x), y(y) {}
+
+
     };
 
     ASSERT_POD_TYPE(WGPointI);
@@ -54,6 +56,12 @@ namespace waavs
 
         WGRectD() : x(0), y(0), w(0), h(0) {}
         WGRectD(const double x, const double y, const double w, const double h) : x(x), y(y), w(w), h(h) {}
+    
+        bool operator == (const WGRectD& other)
+        {
+            return x == other.x && y == other.y &&
+                w == other.w && h == other.h;
+        }
     };
 
     ASSERT_POD_TYPE(WGRectD);
@@ -62,6 +70,12 @@ namespace waavs
         int x{}, y{}, w{}, h{}; 
         WGRectI() : x(0), y(0), w(0), h(0) {}
         WGRectI(const int x, const int y, const int w, const int h) : x(x), y(y), w(w), h(h) {}
+    
+        bool operator == (const WGRectI& other)
+        {
+            return x == other.x && y == other.y &&
+                w == other.w && h == other.h;
+        }
     };
 
     ASSERT_POD_TYPE(WGRectI);
