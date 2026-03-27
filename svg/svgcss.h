@@ -10,6 +10,7 @@
 #include <iterator>
 
 #include "xmlscan.h"
+#include "svgatoms.h"
 
 // Core data structures and types to support CSS parsing
 
@@ -422,7 +423,7 @@ namespace waavs
             case CSS_SELECTOR_ID:
                 predicate = [info](const XmlElement& elem) {
                     ByteSpan idValue;
-                    return elem.getRawAttributeValue("id", idValue) && idValue == info.name();
+                    return elem.getElementAttribute("id", idValue) && idValue == info.name();
                     };
                 break;
 
@@ -430,7 +431,7 @@ namespace waavs
                 predicate = [info](const XmlElement& elem) {
                     ByteSpan classValue{};
                     ByteSpan nameValue{};
-                    return elem.getRawAttributeValue("class", classValue) && chunk_find(classValue,info.name(), nameValue);
+                    return elem.getElementAttribute("class", classValue) && chunk_find(classValue,info.name(), nameValue);
                     };
                 break;
 
@@ -443,7 +444,7 @@ namespace waavs
             case CSS_SELECTOR_ATTRIBUTE:
                 predicate = [info](const XmlElement& elem) {
                     ByteSpan attrValue;
-                    return elem.getRawAttributeValue(info.name(), attrValue);
+                    return elem.getElementAttribute(info.name(), attrValue);
                     };
                 break;
 

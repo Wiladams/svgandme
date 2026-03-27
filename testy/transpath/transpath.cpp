@@ -9,7 +9,8 @@
 
 using namespace waavs;
 
-namespace waavs {
+namespace waavs 
+{
 	// PathCommandDispatch
 	// 
 	// A topic which will generate SVGSegmentParseState events

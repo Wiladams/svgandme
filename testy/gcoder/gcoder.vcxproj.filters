@@ -14,4 +14,83 @@
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\svg\pathattribute_parser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\pathprogram.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\pathprogram_builder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\pathprogram_dasher.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\pathprogram_flattener.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\pathprogramexec.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gcodeprogram.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gcodeprogram_builder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gcodeprogram_dispatch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gcodeprogram_text_sink.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="toolpathpolicy.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="toolpathpolicy_router.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pathprogram_to_gcodeprogram.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gcodeprogram_text_sink_base.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gcodeprogram_text_sink_debug.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gcodeprogram_text_sink_grbl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gcodeprogram_text_sink_fluidnc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gcodeprogram_text_sink_linuxcnc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gcodeprogram_text_sink_marlin.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="toolpathpolicy_pen.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="toolpathpolicy_laser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="toolpathpolicy_plasma.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="toolpathpolicy_dragknife.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dragknife_compensate_sink.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="gcoder.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
 </Project>

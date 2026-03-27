@@ -1,5 +1,4 @@
 #include "xmlscan.h"
-
 #include "app/xmlutil.h"
 
 using namespace waavs;
@@ -46,7 +45,7 @@ static void testElementFilter(const ByteSpan& s)
     auto onlyStartTags = [](const XmlElement& elem) { return elem.isStart(); };
 
     // a predicate that matches elements that have a 'cx' attribute
-    auto hasCxAttribute = [](const XmlElement& elem) { ByteSpan value{}; return elem.getRawAttributeValue("d", value); };
+    auto hasCxAttribute = [](const XmlElement& elem) { ByteSpan value{}; return elem.getElementAttribute("d", value); };
 
     // create a container
     XmlElementContainer container(s);

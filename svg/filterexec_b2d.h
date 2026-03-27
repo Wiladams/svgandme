@@ -11,7 +11,7 @@
 #include "imageproc.h"
 #include "filterprogramexec.h"   // FilterProgramExecutor + IAmFroot<T>
 #include "filter_noise.h"
-#include "svgstructuretypes.h"
+#include "svggraphicselement.h"
 #include "viewport.h"
 
 

@@ -24,7 +24,7 @@ namespace waavs
         ByteSpan id() const noexcept
         {
             ByteSpan val{};
-            if (this->getRawAttributeValue("id", val))
+            if (this->getElementAttribute("id", val))
                 return val;
          
             return {};

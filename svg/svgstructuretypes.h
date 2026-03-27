@@ -381,7 +381,7 @@ namespace waavs {
 
        bool getRawAttributeBySpan(const ByteSpan & name, ByteSpan &value) const
        {
-           return fSourceElement.getRawAttributeValue(name, value);
+           return fSourceElement.getElementAttribute(name, value);
        }
     };
 }

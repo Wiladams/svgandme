@@ -46,14 +46,8 @@ namespace waavs {
 
 
 
-namespace waavs {
-    // XML_ITERATOR_STATE
-    // An enumeration that represents the control
-    // state of the iterator
-    //enum XML_ITERATOR_STATE {
-    //    XML_ITERATOR_STATE_CONTENT = 0
-    //    , XML_ITERATOR_STATE_START_TAG
-    //};
+namespace waavs 
+{
 
     // XmlIteratorParams
     // 
@@ -103,7 +97,7 @@ namespace waavs {
     static bool parseBangConstructFromTokens(XmlIterator& st, XmlElement& elem) noexcept;
 
     static bool scanAttributes(XmlAttributeCollection& attrs, const ByteSpan& inChunk) noexcept;
-    static bool nextXmlElement(XmlIterator& iter, XmlElement& elem);
+    static bool nextXmlElement(XmlIterator& iter, XmlElement& elem) noexcept;
 
 }
 
@@ -661,7 +655,7 @@ namespace waavs {
     // c++ iteration idioms, as well as a more straight forward C++ style
     // which does not require all the C++ iteration boilerplate
     //    static bool nextXmlElement(const XmlIteratorParams& params, XmlIteratorState& st, XmlElement& elem)
-    static bool nextXmlElement(XmlIterator& iter, XmlElement& elem)
+    static bool nextXmlElement(XmlIterator& iter, XmlElement& elem) noexcept
     {
         elem.reset();
 

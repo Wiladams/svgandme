@@ -3,6 +3,7 @@
 #include "definitions.h"
 #include <vector>
 
+#include "wggeometry.h"
 
 // Machinery for a PathProgram
 // That represents a sequence of path segment operations

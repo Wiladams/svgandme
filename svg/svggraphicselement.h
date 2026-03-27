@@ -292,7 +292,7 @@ namespace waavs {
             // Do something with comments
         }
 
-        // Sometimes we come across a element tag name that we 
+        // Sometimes we come across an element tag name that we 
         // don't know anything about.  We want to just skip over 
         // those nodes without trying to do any processing.
         void skipSubtree(XmlPull& iter)
@@ -357,9 +357,13 @@ namespace waavs {
         // Here, we capture the element name, and the ID field if it exists
         // and the attribute spans for later processing.
         // We explicitly separate out 'id', 'class', 'style', and the rest of the presentation attributes
-        // It's in 'fixupSelfStyleAttributes()', that we actuall bind attributes
-        // to actual fixed values.
-
+        // It's in 'fixupSelfStyleAttributes()', that we actually bind attributes
+        // to base types.
+        //
+        // Note:  We could just use scanAttributes(), and stuff them all into 
+        // fPresentationAttributes collection, then pull out the id, class, and style
+        // from there.  No need for all this special work
+        //
         virtual void loadFromXmlElement(const XmlElement& elem, IAmGroot* groot)
         {
             fSourceElement = elem;
@@ -384,6 +388,10 @@ namespace waavs {
             // Loop through the attributes
             // setting well known attributes directly
             // and presentation attributes into their own collection
+            // BUGBUG: This might be better done by just getting the specific
+            // attributes out of the attributeSpan, but not building up
+            // the presentation attributes collection.  That collection is
+            // largely temporary, as it's used in fixup, and just bloats the size of the structure
             while (readNextKeyAttribute(src, attrName, attrValue))
             {
                 InternedKey attrKey = PSNameTable::INTERN(attrName);

@@ -30,7 +30,7 @@
 #include <vector>
 #include <cstdint>
 #include <cstring>   // memchr/memcpy/memcmp
-#include <cstdlib>   // strtod fallback if you want, but we avoid it
+#include <cstdlib>   // strtod fallback if desired, but we avoid it
 #include <algorithm>
 
 #include "svgstructuretypes.h"

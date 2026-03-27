@@ -307,7 +307,7 @@ namespace waavs {
                 case XPathTokenKind::ATTRIBUTE:
                 {
                     ByteSpan attrValue;
-                    if (!current->getRawAttributeValue(step.attribute, attrValue))
+                    if (!current->getElementAttribute(step.attribute, attrValue))
                         return false; // Attribute missing
 
                     if (!step.value.empty() && attrValue != step.value)
@@ -319,7 +319,7 @@ namespace waavs {
                 {
                     // Evaluate predicate conditions (e.g., `[id="value"]`)
                     ByteSpan attrValue;
-                    if (!current->getRawAttributeValue(step.attribute, attrValue))
+                    if (!current->getElementAttribute(step.attribute, attrValue))
                         return false; // Attribute missing
 
                     if (!step.value.empty() && attrValue != step.value)
