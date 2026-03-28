@@ -369,7 +369,7 @@ namespace waavs {
             fSourceElement = elem;
 
             // Save the name if we've got one
-            name(elem.nameAtom());
+            setName(elem.nameAtom());
 
             // Get the span for all the presentation attributes on the element to start
             fAttributeSpan = elem.data();
@@ -488,9 +488,9 @@ namespace waavs {
             if (groot != nullptr)
             {
                 // CSS based on tagname
-                if (!name().empty())
+                if (nameAtom())
                 {
-                    auto esel = groot->styleSheet()->getSelector(CSS_SELECTOR_ELEMENT, name());
+                    auto esel = groot->styleSheet()->getSelector(CSS_SELECTOR_ELEMENT, nameAtom());
                     if (esel != nullptr)
                     {
                         fAttributes.mergeAttributes(esel->attributes());

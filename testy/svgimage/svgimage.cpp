@@ -15,7 +15,7 @@
 #include "svg.h"
 #include "viewport.h"
 #include "svgb2ddriver.h"
-#include "blend2d_connect.h"
+
 
 
 using namespace waavs;
@@ -23,8 +23,8 @@ using namespace waavs;
 // These determine the size of the output image
 // The drawing is scaled to fit within this size
 // Change it to whatever you want
-#define CAN_WIDTH 1920
-#define CAN_HEIGHT 1280
+static constexpr int CAN_WIDTH = 1920;
+static constexpr int CAN_HEIGHT = 1280;
 
 
 // The SVG library itself doesn't know anything about the

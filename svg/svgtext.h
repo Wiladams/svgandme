@@ -3,11 +3,8 @@
 
 #include "xmlentity.h"
 #include "twobitpu.h"
-
 #include "svgattributes.h"
 #include "svggraphicselement.h"
-
-
 #include "svgtextlayout.h"
 
 
@@ -124,6 +121,8 @@ namespace waavs
                 // copy '&' ... ';' inclusive
                 appendSpan(amp, size_t(semi - amp + 1));
                 };
+
+            // BUGBUG - should use expandXmlEntities() from xmlentity.h
 
             while (r < e)
             {

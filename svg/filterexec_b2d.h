@@ -112,7 +112,7 @@ namespace waavs
         B2DFilterResourceResolver(
             IAmGroot* groot,
             IRenderSVG* render,
-            IAmFroot<Surface>* froot) noexcept
+            IAmFroot<SurfaceT>* froot) noexcept
             : fGroot(groot)
             , fRender(render)
             , fFroot(froot)

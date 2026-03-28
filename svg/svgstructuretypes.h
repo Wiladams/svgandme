@@ -73,7 +73,7 @@ namespace waavs {
         bool fIsVisible{ true };
         bool fIsStructural{ true };
 
-        ByteSpan fName{};
+        InternedKey fName{};
         ByteSpan fId{};      // The id of the element
 
         virtual ~IViewable() = default;
@@ -103,10 +103,11 @@ namespace waavs {
 
         virtual bool contains(double x, double y) { return false; }
         
-        void name(const ByteSpan& aname) { fName = aname; }
-        const ByteSpan& name() const { return fName; }
-        InternedKey nameAtom() const { return PSNameTable::INTERN(fName); }
-
+        //void setNameBySpan(const ByteSpan& aname) { fName = aname; }
+        //void name(const ByteSpan& aname) = delete; // { fName = aname; }
+        //const ByteSpan& name() = delete; // const { return fName; }
+        void setName(InternedKey aname) { fName = aname; }
+        InternedKey nameAtom() const { return fName; }
 
         virtual void fixupStyleAttributes(IAmGroot* groot) = 0;
 

@@ -197,7 +197,7 @@ namespace waavs
 			if (!SVGGraphicsElement::addNode(node, groot))
                 return false;
 
-            if (!fTopLevelNode && node->name() == "svg")
+            if (!fTopLevelNode && node->nameAtom() == svgtag::tag_svg())
             {
                 fTopLevelNode = std::dynamic_pointer_cast<SVGSVGElement>(node);
                 
