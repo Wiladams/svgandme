@@ -475,6 +475,14 @@ namespace waavs::svgtag
     inline InternedKey tag_feTile() { static InternedKey k = PSNameTable::INTERN("feTile");       return k; }
     inline InternedKey tag_feTurbulence() { static InternedKey k = PSNameTable::INTERN("feTurbulence"); return k; }
 
+    // FlowRoot
+    inline InternedKey tag_flowRoot() { static InternedKey k = PSNameTable::INTERN("flowRoot");      return k; }
+    inline InternedKey tag_flowRegion() { static InternedKey k = PSNameTable::INTERN("flowRegion");    return k; }
+    inline InternedKey tag_flowRegionBreak() { static InternedKey k = PSNameTable::INTERN("flowRegionBreak"); return k; }
+    inline InternedKey tag_flowSpan() { static InternedKey k = PSNameTable::INTERN("flowSpan");      return k; }
+    inline InternedKey tag_flowLine() { static InternedKey k = PSNameTable::INTERN("flowLine");      return k; }
+    inline InternedKey tag_flowPara() { static InternedKey k = PSNameTable::INTERN("flowPara");      return k; }
+
     // Animation (SMIL)
     inline InternedKey tag_animate() { static InternedKey k = PSNameTable::INTERN("animate");      return k; }
     inline InternedKey tag_animateMotion() { static InternedKey k = PSNameTable::INTERN("animateMotion"); return k; }

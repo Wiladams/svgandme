@@ -437,7 +437,7 @@ namespace waavs
 
             case CSS_SELECTOR_ELEMENT:
                 predicate = [info](const XmlElement& elem) {
-                    return elem.name() == info.name();
+                    return info.name() == elem.nameAtom();
                     };
                 break;
 

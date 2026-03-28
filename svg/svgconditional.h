@@ -20,7 +20,7 @@ namespace waavs {
     {
         static void registerFactory()
         {
-            registerContainerNodeByName("switch",
+            registerContainerNode(svgtag::tag_switch_(),
                 [](IAmGroot* groot, XmlPull& iter) {
                     auto node = std::make_shared<SVGSwitchElement>(groot);
                     node->loadFromXmlPull(iter, groot);
@@ -63,7 +63,7 @@ namespace waavs {
             auto svgNode = std::dynamic_pointer_cast<ISVGElement>(node);
 
             ByteSpan lang{};
-            if (svgNode->getRawAttributeBySpan(svgattr::systemLanguage(), lang))
+            if (svgNode->getElementAttribute(svgattr::systemLanguage(), lang))
             {
                 fLanguageNodes[lang] = node;
             }

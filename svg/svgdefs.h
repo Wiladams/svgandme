@@ -27,7 +27,7 @@ namespace waavs
         // Static constructor to register factory method in map
         static void registerFactory()
         {
-            registerContainerNodeByName("defs",
+            registerContainerNodeByName(svgtag::tag_defs(),
                 [](IAmGroot* groot, XmlPull& iter) {
                     auto node = std::make_shared<SVGDefsNode>(groot);
                     node->loadFromXmlPull(iter, groot);

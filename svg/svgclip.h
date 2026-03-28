@@ -28,7 +28,7 @@ namespace waavs {
         // Static constructor to register factory method in map
         static void registerFactory()
         {
-            registerContainerNodeByName("clipPath", [](IAmGroot * groot, XmlPull & iter) {
+            registerContainerNodeByName(svgtag::tag_clipPath(), [](IAmGroot * groot, XmlPull & iter) {
                 auto node = std::make_shared<SVGClipPathElement>(groot);
                 node->loadFromXmlPull(iter, groot);
 

@@ -432,12 +432,12 @@ namespace waavs {
                 case XML_ELEMENT_TYPE_START_TAG:
                     depth++;
                     // attributes are on this start tag
-                    if (e.name() == "rect") {
+                    if (e.nameAtom() == svgtag::tag_rect()) {
                         parseRectFromElement(e);
                     }
                     break;
                 case XML_ELEMENT_TYPE_SELF_CLOSING:
-                    if (e.name() == "rect") {
+                    if (e.nameAtom() == svgtag::tag_rect()) {
                         parseRectFromElement(e);
                     }
                     break;
@@ -496,12 +496,12 @@ namespace waavs {
         {
             const XmlElement& elem = *iter;
 
-            if (elem.name() == "flowRegion") {
+            if (elem.nameAtom() == svgtag::tag_flowRegion()) {
                 parseFlowRegion(iter);
                 return;
             }
 
-            if (elem.name() == "flowPara") {
+            if (elem.nameAtom() == svgtag::tag_flowPara()) {
                 parseFlowPara(iter);
                 return;
             }

@@ -379,7 +379,7 @@ namespace waavs {
         
        virtual  std::shared_ptr<SVGVisualProperty> getVisualProperty(InternedKey key) = 0;
 
-       bool getRawAttributeBySpan(const ByteSpan & name, ByteSpan &value) const
+       bool getElementAttribute(const ByteSpan & name, ByteSpan &value) const
        {
            return fSourceElement.getElementAttribute(name, value);
        }

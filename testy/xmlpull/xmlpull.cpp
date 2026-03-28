@@ -49,10 +49,10 @@ static void printXmlElementInfo(const XmlElement& elem)
     
     printf("[[");
     writeChunk(kindname);
-    if (elem.name())
+    if (elem.nameAtom())
     {
-        printf(" - ");
-        writeChunk(elem.name());
+        printf(" - %s", elem.nameAtom());
+        //writeChunk(elem.name());
     }
     printf(" ]]\n");
     

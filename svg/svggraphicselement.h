@@ -369,7 +369,7 @@ namespace waavs {
             fSourceElement = elem;
 
             // Save the name if we've got one
-            name(elem.name());
+            name(elem.nameAtom());
 
             // Get the span for all the presentation attributes on the element to start
             fAttributeSpan = elem.data();

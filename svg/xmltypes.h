@@ -27,16 +27,16 @@ enum XML_ELEMENT_TYPE {
 namespace waavs 
 {
     // readNextCSSKeyValue()
-// 
-// Properties are separated by ';'
-// values are separated from the key with ':'
-// Ex: <tagname style="stroke:black;fill:white" />
-// Return
-//   true - if a valid key/value pair was found
-//      in this case, key, and value will be populated
-//   false - if no key/value pair was found, or end of string
-//      in this case, key, and value will be undefined
-//
+    // 
+    // Properties are separated by ';'
+    // values are separated from the key with ':'
+    // Ex: <tagname style="stroke:black;fill:white" />
+    // Return
+    //   true - if a valid key/value pair was found
+    //      in this case, key, and value will be populated
+    //   false - if no key/value pair was found, or end of string
+    //      in this case, key, and value will be undefined
+    //
     static bool readNextCSSKeyValue(ByteSpan& src, ByteSpan& key, ByteSpan& value, const unsigned char fieldDelimeter = ';', const unsigned char keyValueSeparator = ':') noexcept
     {
         // Trim leading whitespace to begin
@@ -234,14 +234,11 @@ namespace waavs
     {
         uint8_t fElementKind{ XML_ELEMENT_TYPE_INVALID };
 
-        ByteSpan fQName{};          // original raw name (could be "svg:rect")
-        ByteSpan fLocalName{};      // local part ("rect")
-        ByteSpan fPrefix{};         // prefix part ("svg")
         ByteSpan fData{};
 
         const char* fQNameAtom{ nullptr };      // Atomized name for faster comparisons
         const char* fLocalNameAtom{ nullptr };  // Atomized local name (without namespace)
-
+        const char* fPrefixAtom{ nullptr };     // Atomized prefix
 
         XmlElement() = default;
 
@@ -265,30 +262,28 @@ namespace waavs
             fElementKind = XML_ELEMENT_TYPE_INVALID;
             fData.reset();
 
-            fQName.reset();
-            fLocalName.reset();
-            fPrefix.reset();
-
             fQNameAtom = nullptr;
             fLocalNameAtom = nullptr;
+            fPrefixAtom = nullptr;
         }
 
         void reset(int kind, const ByteSpan& data)
         {
             fElementKind = kind;
             fData = data;
-            fQName.reset();
-            fLocalName.reset();
-            fPrefix.reset();
 
             fQNameAtom = nullptr;
             fLocalNameAtom = nullptr;
+            fPrefixAtom = nullptr;
         }
 
         void reset(int kind, const ByteSpan& name, const ByteSpan& data)
         {
             fElementKind = kind;
-            fQName = name;
+            ByteSpan fQName = name;
+            ByteSpan fLocalName{};
+            ByteSpan fPrefix{};
+
             fData = data;
 
             splitQName(fQName, fPrefix, fLocalName);
@@ -299,10 +294,12 @@ namespace waavs
             {
                 fQNameAtom = !fQName.empty() ? PSNameTable::INTERN(fQName) : nullptr;
                 fLocalNameAtom = !fLocalName.empty() ? PSNameTable::INTERN(fLocalName) : nullptr;
+                fPrefixAtom = !fPrefix.empty() ? PSNameTable::INTERN(fPrefix) : nullptr;
             }
             else {
                 fQNameAtom = nullptr;
                 fLocalNameAtom = nullptr;
+                fPrefixAtom = nullptr;
             }
 
         }
@@ -315,12 +312,14 @@ namespace waavs
 
         ByteSpan data() const noexcept { return fData; }
 
-        ByteSpan qname() const noexcept { return fQName; }
-        ByteSpan name() const noexcept { return fLocalName; }
-        ByteSpan prefix() const noexcept { return fPrefix; }
+        //ByteSpan qname() = delete; // const noexcept { return fQName; }
+        //ByteSpan name() = delete; // const noexcept { return fLocalName; }
+        //ByteSpan prefix() = delete; // const noexcept { return fPrefix; }
 
         const char* qNameAtom() const noexcept { return fQNameAtom; }
         const char* nameAtom() const noexcept { return fLocalNameAtom; }
+        const char* prefixAtom() const noexcept { return fPrefixAtom; } 
+
 
         // You can get the bytespan that represents a specific attribute value. 
         // If the attribute is not found, the function returns false
@@ -337,9 +336,6 @@ namespace waavs
 
             return false;
         }
-        
-        //bool getRawAttributeValue(const ByteSpan& key, ByteSpan& value) const { return getElementAttribute(key, value);}
-
 
         // Convenience for what kind of tag it is
 		constexpr bool isElementKind(uint32_t kind) const { return fElementKind == kind; }
