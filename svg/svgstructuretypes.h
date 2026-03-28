@@ -24,6 +24,9 @@
 namespace waavs 
 {
     struct IAmGroot;            // forward declaration
+    struct AnimationProgram; // forward declaration
+    class AnimationValueContext;
+    class CSSStyleSheet;
 
     // Base class of many things.  This is just to ensure a virtual destructor
     // and binding behavior.
@@ -103,9 +106,6 @@ namespace waavs {
 
         virtual bool contains(double x, double y) { return false; }
         
-        //void setNameBySpan(const ByteSpan& aname) { fName = aname; }
-        //void name(const ByteSpan& aname) = delete; // { fName = aname; }
-        //const ByteSpan& name() = delete; // const { return fName; }
         void setName(InternedKey aname) { fName = aname; }
         InternedKey nameAtom() const { return fName; }
 
@@ -264,10 +264,16 @@ namespace waavs
 
 
 
-namespace waavs {
+namespace waavs 
+{
+    
     // I Am Graphics Root (IAmGroot) 
     // Core interface to hold document level state, primarily
     // for the purpose of looking up nodes, but also for style sheets
+    // and animation program
+
+
+
     struct IAmGroot
     {
         std::unordered_map<ByteSpan, std::shared_ptr<IViewable>, ByteSpanHash, ByteSpanEquivalent> fDefinitions{};
@@ -356,9 +362,17 @@ namespace waavs {
         }
 
         // IAmGroot
-        virtual std::shared_ptr<CSSStyleSheet> styleSheet() = 0;
-        virtual void styleSheet(std::shared_ptr<CSSStyleSheet> sheet) = 0;
+        //virtual std::shared_ptr<CSSStyleSheet> styleSheet() = 0;
+        //virtual void styleSheet(std::shared_ptr<CSSStyleSheet> sheet) = 0;
+        virtual const CSSStyleSheet& styleSheet() const = 0;
+        virtual CSSStyleSheet& styleSheet() = 0;
 
+        // Animation support
+        //virtual AnimationProgram& animationProgram() noexcept = 0;
+        //virtual const AnimationProgram& animationProgram() const noexcept = 0;
+
+        //virtual AnimationValueContext& animationValueContext() noexcept = 0;
+        //virtual const AnimationValueContext& animationValueContext() const noexcept = 0;
 
 
         virtual ByteSpan systemLanguage() { return "en"; } // BUGBUG - What a big cheat!!

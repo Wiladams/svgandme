@@ -646,7 +646,7 @@ namespace waavs
             bool preserveSpace = false;
             {
                 ByteSpan v{};
-                if (fPresentationAttributes.getValue(PSNameTable::INTERN("xml:space"), v)) {
+                if (getElementAttribute(PSNameTable::INTERN("xml:space"), v)) {
                     v = chunk_trim(v, chrWspChars);
                     // accept "preserve" (case-sensitive per XML)
                     preserveSpace = (v == "preserve");

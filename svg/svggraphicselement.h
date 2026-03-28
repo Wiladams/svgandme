@@ -15,12 +15,10 @@ namespace waavs {
 
         BLVar fVar{};
 
-        XmlAttributeCollection fPresentationAttributes{};
+        //XmlAttributeCollection fPresentationAttributes{};
         XmlAttributeCollection fAttributes{};
 
         ByteSpan fAttributeSpan{};
-        ByteSpan fStyleAttribute{};
-        ByteSpan fClassAttribute{};
         bool fStyleResolved{ false };
 
 
@@ -373,7 +371,13 @@ namespace waavs {
 
             // Get the span for all the presentation attributes on the element to start
             fAttributeSpan = elem.data();
+            
+            // Get id attribute if it exists, and save it for later
+            ByteSpan idValue{};
+            if (elem.getElementAttribute(svgattr::id(), idValue))
+                setId(idValue);
 
+            /*
             // Scan the list of attributes, separating out the id, style and class attributes
 
             // since the readNextKeyAttribute() function is destructive of the span
@@ -412,6 +416,7 @@ namespace waavs {
                     fPresentationAttributes.addValue(attrKey, attrValue);
                 }
             }
+            */
 
         }
 
@@ -478,19 +483,55 @@ namespace waavs {
         {
             fAttributes.clear();
 
-            // First, do the presentation attributes
-            // which the author specified directly on the element.
-            fAttributes.mergeAttributes(fPresentationAttributes);
+            ByteSpan classAttribute{};
+            ByteSpan styleAttribute{};
 
-            // Then apply various other attributes with increasing specificity
-            // which will override the original presentation attributes if they exist.
+            // Bring in presentation attributes first, since they
+            // have the lowest precedence
+            // skip the id field, and hold out the style and class attributes
+            // for later processing, since they have special handling.
+    
+            // since the readNextKeyAttribute() function is destructive of the span
+            // we need to make a copy of the span to work with
+            ByteSpan src = fAttributeSpan;
 
+            // Create a couple of spans to hold the name and value
+            // pairs.  These will be reused on each iteration
+            ByteSpan attrName{};
+            ByteSpan attrValue{};
+
+            while (readNextKeyAttribute(src, attrName, attrValue))
+            {
+                InternedKey attrKey = PSNameTable::INTERN(attrName);
+
+                if (attrKey == svgattr::id())
+                {
+                    //setId(attrValue);
+                    continue;
+                }
+                else if (attrKey == svgattr::style() && !attrValue.empty())
+                {
+                    styleAttribute = attrValue;
+                }
+                else if (attrKey == svgattr::klass())
+                {
+                    classAttribute = attrValue;
+                }
+                else {
+                    // Add directly to attributes collection
+                    fAttributes.addValue(attrKey, attrValue);
+                }
+            }
+
+            // Next in precedence are the CSS based attributes, which can 
+            // come from multiple selectors, so we need to loop through 
+            // all of them and merge them in order of increasing precedence
             if (groot != nullptr)
             {
                 // CSS based on tagname
                 if (nameAtom())
                 {
-                    auto esel = groot->styleSheet()->getSelector(CSS_SELECTOR_ELEMENT, nameAtom());
+                    auto esel = groot->styleSheet().getSelector(CSS_SELECTOR_ELEMENT, nameAtom());
                     if (esel != nullptr)
                     {
                         fAttributes.mergeAttributes(esel->attributes());
@@ -498,12 +539,17 @@ namespace waavs {
                 }
 
                 // CSS class list specifier
-                ByteSpan classChunk = fClassAttribute;
+                // An element can belong to multiple classes, which
+                // are specified in the 'class' attribute as a whitespace 
+                // delimited list of class names, so we need to loop through 
+                // all of them and merge in any attributes from any matching 
+                // class selectors.
+                ByteSpan classChunk = classAttribute;
                 while (classChunk)
                 {
                     // peel a word off the front
                     auto classId = chunk_token(classChunk, chrWspChars);
-                    auto csel = groot->styleSheet()->getSelector(CSS_SELECTOR_CLASS, classId);
+                    auto csel = groot->styleSheet().getSelector(CSS_SELECTOR_CLASS, classId);
                     if (csel != nullptr)
                     {
                         fAttributes.mergeAttributes(csel->attributes());
@@ -513,10 +559,10 @@ namespace waavs {
                     }
                 }
 
-                // ID based selector if we have one
+                // CSS ID based selector if we have one
                 if (id())
                 {
-                    auto idsel = groot->styleSheet()->getSelector(CSS_SELECTOR_ID, id());
+                    auto idsel = groot->styleSheet().getSelector(CSS_SELECTOR_ID, id());
                     if (idsel != nullptr)
                     {
                         fAttributes.mergeAttributes(idsel->attributes());
@@ -528,8 +574,8 @@ namespace waavs {
             // Highest presedence is the inline 'style' attribute, 
             // which can contain multiple attributes in it, so we need to parse it
             // Upsert any of the attributes associated with 'style' attribute if they exist
-            if (fStyleAttribute) {
-                parseStyleAttribute(fStyleAttribute, fAttributes);
+            if (styleAttribute) {
+                parseStyleAttribute(styleAttribute, fAttributes);
             }
 
 

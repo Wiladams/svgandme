@@ -93,29 +93,29 @@ namespace waavs
                 
         // BUGBUG - this should go away
         // Although there can be multiple <svg> elements in a document
-		// we track only the first one
+        // we track only the first one
         // We only have a single root 'SVGSVGElement' for the whole document
         std::shared_ptr<SVGSVGElement> fTopLevelNode = nullptr;
 
         
         // We need a style sheet for the entire document
-		std::shared_ptr<CSSStyleSheet> fStyleSheet = nullptr;
-        
+        CSSStyleSheet fStyleSheet{};
+
         // IAmGroot
         // Information about the environment
         double fDpi = 96;
         double fCanvasWidth{};
-		double fCanvasHeight{};
+        double fCanvasHeight{};
         
         // Information from the document
         double fDocumentWidth{};
-		double fDocumentHeight{};
+        double fDocumentHeight{};
         
         WGRectD fPortalFrame{};  // used to set viewport and objectframe before drawing
         
         //==========================================
         // Construction / Destruction
-		//==========================================
+        //==========================================
         SVGDocument() = default;
         
         SVGDocument(const double w, const double h, const double ppi)
@@ -125,7 +125,7 @@ namespace waavs
             , fCanvasHeight(h)
         {
             // Create document style sheet that can be filled in
-			fStyleSheet = std::make_shared<CSSStyleSheet>();
+            //fStyleSheet = std::make_shared<CSSStyleSheet>();
         }
 
         ~SVGDocument() = default;
@@ -138,7 +138,8 @@ namespace waavs
 
             setDpi(ppi);
             canvasSize(w, h);
-            fStyleSheet = std::make_shared<CSSStyleSheet>();
+            fStyleSheet.reset();
+
 
             // load the new document
             loadFromChunk(srcChunk);
@@ -146,10 +147,10 @@ namespace waavs
         
         
         double dpi() const override { return fDpi; }
-		void setDpi(const double d) override { fDpi = d; }
+        void setDpi(const double d) override { fDpi = d; }
         
-		double canvasWidth() const override { return fCanvasWidth; }
-		double canvasHeight() const override { return fCanvasHeight; }
+        double canvasWidth() const override { return fCanvasWidth; }
+        double canvasHeight() const override { return fCanvasHeight; }
         void canvasSize(const double w, const double h) { fCanvasWidth = w; fCanvasHeight = h; }
         
         const WGRectD viewPort() const noexcept
@@ -183,18 +184,19 @@ namespace waavs
             return outFr;
         }
 
-
-        std::shared_ptr<CSSStyleSheet> styleSheet() override { return fStyleSheet; }
-        void styleSheet(std::shared_ptr<CSSStyleSheet> sheet) override { fStyleSheet = sheet; }
+        const CSSStyleSheet& styleSheet() const override { return fStyleSheet; }
+        CSSStyleSheet& styleSheet() override { return fStyleSheet; }
+        //std::shared_ptr<CSSStyleSheet> styleSheet() override { return fStyleSheet; }
+        //void styleSheet(std::shared_ptr<CSSStyleSheet> sheet) override { fStyleSheet = sheet; }
         
 
         // retrieve root svg node
-		std::shared_ptr<SVGSVGElement> documentElement() const { return fTopLevelNode; }
+        std::shared_ptr<SVGSVGElement> documentElement() const { return fTopLevelNode; }
 
 
         bool addNode(std::shared_ptr < IViewable > node, IAmGroot* groot) override
         {            
-			if (!SVGGraphicsElement::addNode(node, groot))
+            if (!SVGGraphicsElement::addNode(node, groot))
                 return false;
 
             if (!fTopLevelNode && node->nameAtom() == svgtag::tag_svg())
@@ -276,7 +278,7 @@ namespace waavs
         
         // loadFromChunk
         // 
-		// Assuming we've already got a document mapped into memory
+        // Assuming we've already got a document mapped into memory
         // construct the SVGDocument from the given memory chunk
         bool loadFromChunk(const ByteSpan &srcChunk)
         {
@@ -300,7 +302,7 @@ namespace waavs
             //ByteSpan dstSpan = fSourceMem.span();
             //size_t sz = expandXmlEntities(srcChunk, dstSpan);
 
-			// Create the XML Iterator we're going to use to parse the document
+            // Create the XML Iterator we're going to use to parse the document
             XmlPull iter(fSourceMem.span(), true);
             loadFromXmlPull(iter, this);
             

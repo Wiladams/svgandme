@@ -49,7 +49,7 @@ namespace waavs {
 		{
 			if (groot)
 			{
-				groot->styleSheet()->loadFromSpan(elem.data());
+				groot->styleSheet().loadFromSpan(elem.data());
 			}
 		}
 	};
