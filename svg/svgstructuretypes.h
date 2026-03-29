@@ -90,12 +90,12 @@ namespace waavs {
         bool isVisible() const { return fIsVisible; }
         void setIsVisible(bool visible) { fIsVisible = visible; }
 
-        virtual const WGRectD getFilterArea(IRenderSVG* ctx, IAmGroot* groot, IViewable *subtree)  noexcept
+        virtual const WGRectD resolveFilterRegion(IRenderSVG* ctx, IAmGroot* groot, const WGRectD& bbox)  noexcept
         {
-            return subtree->getFilterRegion(ctx, groot);
+            return bbox;
         }
 
-        virtual const WGRectD getFilterRegion(IRenderSVG* ctx, IAmGroot* groot)  noexcept
+        virtual const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot)  noexcept
         {
             return {};
         }

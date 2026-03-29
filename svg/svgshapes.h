@@ -147,6 +147,22 @@ namespace waavs
             return fFillPath;
         }
 
+        bool hasDashing(IRenderSVG* ctx) const noexcept
+        {
+            if (ctx->hasDashing()) { return true;}
+
+            ByteSpan dashAttr{};
+            if (getAttribute(svgattr::stroke_dasharray(), dashAttr)) 
+            {
+                if (dashAttr == svgval::none())
+                    return false;
+
+                return true;
+            }
+
+           return false;
+        }
+
 
         const BLPath & getStrokePath(IRenderSVG* ctx, IAmGroot* groot) const noexcept
         {
@@ -155,7 +171,7 @@ namespace waavs
 
             fStrokePath.reset();
 
-            if (ctx->hasDashing())
+            if (hasDashing(ctx))
             {
                 const auto &sds = ctx->getStrokeDashState();
 
@@ -210,7 +226,7 @@ namespace waavs
            return bbox;
        }
         
-        const WGRectD getFilterRegion(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot) noexcept override
         {
             bindToContext(ctx, groot);
 

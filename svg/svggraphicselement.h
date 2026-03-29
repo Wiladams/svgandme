@@ -32,7 +32,7 @@ namespace waavs {
         // We have this separate for those cases where you want to traverse
         // the tree asking for bounding boxes, but you don't want to do it all the 
         // time.
-        const WGRectD getFilterRegion(IRenderSVG* ctx, IAmGroot* groot) noexcept
+        const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot) noexcept
         {
             WGRectD bbox{};
             for (auto& node : fNodes)
@@ -40,7 +40,7 @@ namespace waavs {
                 if (!node || !node->isVisible()) continue;
 
                 WGRectD nodeBox{};
-                nodeBox = node->getFilterRegion(ctx, groot);
+                nodeBox = node->getObjectBoundingBox(ctx, groot);
                 wg_rectD_union(bbox, nodeBox);
             }
 
@@ -745,7 +745,7 @@ namespace waavs {
                 tform->applyToContext(ctx, groot);
 
             // Compute bbox in current user space
-            WGRectD bbox = objectBoundingBox();
+            WGRectD bbox = getObjectBoundingBox(ctx, groot);
 
             ctx->setObjectFrame(bbox);
 
@@ -757,29 +757,47 @@ namespace waavs {
             ctx->pop();
         }
 
-        bool drawWithEffects(IRenderSVG* ctx, IAmGroot* groot, const WGRectD &bbox)
+        bool drawWithEffects(IRenderSVG* ctx, IAmGroot* groot, const WGRectD& bbox)
         {
-            if (hasFilter())
-            {
-                auto filterNode = getReferencedFilterNode(groot);
-                if (filterNode) {
-                    //printf("Found filter node for filter reference\n");
-                    const WGRectD filterRect = filterNode->getFilterArea(ctx, groot, this);
-                    auto filterProgram = filterNode->getFilterProgramStream(groot);
+            if (!hasFilter())
+                return false;
 
-                    if (filterProgram)
-                    {
-                        // Use B2DFilterExecutor to apply the filter program to the current context
-                        B2DFilterExecutor filterExec;
-                        filterExec.applyFilter(ctx, groot, this, filterRect, *filterProgram);
+            auto filterNode = getReferencedFilterNode(groot);
+            if (!filterNode)
+                return false;
 
-                        drawEnd(ctx, groot);
-                        return true;
-                    }
-                }
-            }
+            auto filterProgram = filterNode->getFilterProgramStream(groot);
+            if (!filterProgram)
+                return false;
 
-            return false;
+            const WGRectD objectBBoxUS = bbox;
+
+            // Need to get the authored filter region in user space, 
+            // which is defined by the 'x', 'y', 'width', and 'height' 
+            // attributes on the filter element, but are relative to 
+            // the current user space of the element that the filter is 
+            // applied to.  
+            // So we need to take those values, and convert them from 
+            // being relative to the object bounding box, into being 
+            // relative to the current user space.
+            WGRectD filterRectUS = filterNode->resolveFilterRegion(ctx, groot, objectBBoxUS);
+
+            if (filterRectUS.isEmpty())
+                return true;
+
+            //WGRectD visibleUserClipUS = ctx->getViewportUserSpace();
+            //WGRectD visibleFilterUS = intersection(filterRectUS, visibleUserClipUS);
+
+            // If the visible portion of the filter area is empty, 
+            // then we can exit early as there's nothing to be done.
+            // we return 'true' here, because we have effectively drawn the filter, 
+            // even though it didn't actually do anything.
+            //if (visibleFilterUS.isEmpty())
+            //    return true;
+
+            // Use B2DFilterExecutor to apply the filter program to the current context
+            B2DFilterExecutor filterExec;
+            return filterExec.applyFilter(ctx, groot, this, objectBBoxUS, filterRectUS, *filterProgram);
         }
 
         void draw(IRenderSVG* ctx, IAmGroot* groot) override
@@ -795,8 +813,7 @@ namespace waavs {
                 return;
             }
 
-
-
+            // no drawing done using effects, so just draw the content directly
             drawContent(ctx, groot);
             drawEnd(ctx, groot);
         }

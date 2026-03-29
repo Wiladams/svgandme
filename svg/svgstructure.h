@@ -199,7 +199,7 @@ namespace waavs {
 
         // calculate the full extent of the painted area.  Used to calculate
         // ofscreen size for filters.
-        const WGRectD getFilterRegion(IRenderSVG* ctx, IAmGroot* groot)  noexcept override
+        const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot)  noexcept override
         {
             WGRectD pbox{};
 
@@ -208,7 +208,7 @@ namespace waavs {
                 if (!node || !node->isVisible()) continue;
 
                 WGRectD nodeBox{};
-                nodeBox = node->getFilterRegion(ctx, groot);
+                nodeBox = node->getObjectBoundingBox(ctx, groot);
                 wg_rectD_union(pbox, nodeBox);
             }
 

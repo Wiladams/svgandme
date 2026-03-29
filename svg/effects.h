@@ -15,10 +15,10 @@ namespace waavs
         SpaceUnitsKind regionUnits{ SpaceUnitsKind::SVG_SPACE_OBJECT };
         SpaceUnitsKind contentUnits{ SpaceUnitsKind::SVG_SPACE_USER };
 
-        WGRectD objectBBox{};
+        WGRectD objectBBoxUS{};     // Object bounding box in user space
 
-        WGRectD effectRectUS{};
-        WGRectI effectRectPX{};
+        WGRectD effectRectUS{};     // Effect bounding box in user space
+        WGRectI effectRectPX{};     // Effect bounding box in pixel space (integer)
 
         BLMatrix2D userToSurface{};
         BLMatrix2D surfaceToUser{};

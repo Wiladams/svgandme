@@ -324,10 +324,6 @@ namespace waavs
         return L.isSet() ? resolveLengthUserUnits(L, ctx) : fallback;
     }
 
-
-
-
-
 }
 
 namespace waavs

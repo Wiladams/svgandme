@@ -392,34 +392,55 @@ namespace waavs {
         // --------------------------------------------------------
         // Helpers
         // --------------------------------------------------------
-        WGRectI resolveSubregionPx(const WGRectD* subr, const Surface& like) const noexcept
+        WGRectI resolveSubregionPx(
+            const WGRectD* subr,
+            const Surface& like,
+            double padUserX = 0.0,
+            double padUserY = 0.0) const noexcept
         {
             const int W = (int)like.width();
             const int H = (int)like.height();
 
             WGRectI surfArea{ 0, 0, W, H };
-            if (!subr)
-                return surfArea;
 
             WGRectD ur{};
 
-            if (fRunState.primitiveUnits == SpaceUnitsKind::SVG_SPACE_OBJECT)
+            if (!subr)
+            {
+                // No primitive subregion means the whole filter region.
+                ur = fRunState.filterRectUS;
+            }
+            else if (fRunState.primitiveUnits == SpaceUnitsKind::SVG_SPACE_OBJECT)
             {
                 const double bx = fRunState.objectBBoxUS.x;
                 const double by = fRunState.objectBBoxUS.y;
                 const double bw = fRunState.objectBBoxUS.w;
                 const double bh = fRunState.objectBBoxUS.h;
 
+                // Primitive subregion is in objectBoundingBox space.
                 ur = WGRectD(
-                    bx + subr->x,
-                    by + subr->y,
-                    subr->w,
-                    subr->h
+                    bx + subr->x * bw,
+                    by + subr->y * bh,
+                    subr->w * bw,
+                    subr->h * bh
                 );
             }
             else
             {
+                // Primitive subregion is already in current user space.
                 ur = *subr;
+            }
+
+            if (!(ur.w > 0.0) || !(ur.h > 0.0))
+                return WGRectI{};
+
+            // Inflate in user space for sampling kernels such as blur.
+            if (padUserX > 0.0 || padUserY > 0.0)
+            {
+                ur.x -= padUserX;
+                ur.y -= padUserY;
+                ur.w += 2.0 * padUserX;
+                ur.h += 2.0 * padUserY;
             }
 
             const WGRectD subrPX = mapRectAABB(fSpace.ctm, ur);
@@ -429,47 +450,20 @@ namespace waavs {
             int ix1 = (int)std::ceil((subrPX.x + subrPX.w) - fSpace.filterRectPX.x);
             int iy1 = (int)std::ceil((subrPX.y + subrPX.h) - fSpace.filterRectPX.y);
 
-            // create the intersection of the subregion with the surface bounds, 
-            // to avoid out-of-bounds access in primitives that support subregions.
             WGRectI subArea{ ix0, iy0, ix1 - ix0, iy1 - iy0 };
-
-            WGRectI interArea = intersection(subArea, surfArea);
-
-            return interArea;
+            return intersection(subArea, surfArea);
         }
 
-        /*
-        INLINE void pixelCenterToUser(int x, int y, float& ux, float& uy) const noexcept
+
+
+        INLINE void pixelCenterToFilterUser(int x, int y, float& ux, float& uy) const noexcept
         {
-            // Convert tile-local pixel to device-space pixel center.
             const double dx = fSpace.filterRectPX.x + double(x) + 0.5;
             const double dy = fSpace.filterRectPX.y + double(y) + 0.5;
 
-            // Map device-space pixel to user space using inverse CTM.
             const BLMatrix2D& m = fSpace.invCtm;
-
             ux = float(dx * m.m00 + dy * m.m10 + m.m20);
             uy = float(dx * m.m01 + dy * m.m11 + m.m21);
-        }
-        */
-
-        INLINE void pixelCenterToFilterUser(const Surface& s, int x, int y, float& ux, float& uy) const noexcept
-        {
-            const double w = double(s.width());
-            const double h = double(s.height());
-
-            if (w <= 0.0 || h <= 0.0)
-            {
-                ux = float(fSpace.filterRectUS.x);
-                uy = float(fSpace.filterRectUS.y);
-                return;
-            }
-
-            const double fx = (double(x) + 0.5) / w;
-            const double fy = (double(y) + 0.5) / h;
-
-            ux = float(fSpace.filterRectUS.x + fx * fSpace.filterRectUS.w);
-            uy = float(fSpace.filterRectUS.y + fy * fSpace.filterRectUS.h);
         }
 
         // --------------------------------------------------------
@@ -494,7 +488,7 @@ namespace waavs {
 
             for (size_t i = 0; i < n; ++i) {
                 uint8_t a = s[i] >> 24;
-                dst[i] = packPARGB32(a, a, a, a);
+                dst[i] = packPARGB32(a, 0, 0, 0);
             }
 
             return out;
@@ -504,37 +498,52 @@ namespace waavs {
         bool applyFilter(IRenderSVG* ctx,
             IAmGroot* groot,
             SubtreeT* subtree,
+            const WGRectD& objectBBoxUS,
             const WGRectD& filterRectUS,
             const FilterProgramStream& program) noexcept
         {
             if (!ctx || !subtree)
                 return false;
 
+            // bail if the visible bounding box of the subtree
+            // is empty, since the filter result won't be visible anyway.
+            if (!(objectBBoxUS.w > 0.0) || !(objectBBoxUS.h > 0.0))
+                return true;
+
             if (!(filterRectUS.w > 0.0) || !(filterRectUS.h > 0.0))
                 return true;
 
-            // Object bounding box in current drawing user space
-            //const WGRectD objBB = subtree->calculateObjectBoundingBox(ctx, groot);
-            const WGRectD objBB = subtree->getFilterRegion(ctx, groot);
-            if (!(objBB.w > 0.0) || !(objBB.h > 0.0))
-                return true;
 
             // Setup runstate as soon as possible
             fRunState.filterUnits = program.filterUnits;
             fRunState.primitiveUnits = program.primitiveUnits;
             fRunState.filterRectUS = filterRectUS;
-            fRunState.objectBBoxUS = objBB;
+            fRunState.objectBBoxUS = objectBBoxUS;
 
-
+            // get the current CTM from the context, 
+            // which we will need for mapping the filter region 
+            // to pixel space, and for providing space conversion 
+            // to primitives that need it.
             const BLMatrix2D ctm = ctx->getTransform();
 
-            // Map filter region to device pixel space
-            const WGRectD filterRectPX = mapRectAABB(ctm, filterRectUS);
+            // Map the full authored filter region to device space.
+            const WGRectD nominalFilterRectPX = mapRectAABB(ctm, filterRectUS);
 
-            const int tileX = (int)std::floor(filterRectPX.x);
-            const int tileY = (int)std::floor(filterRectPX.y);
-            const int tileW = (int)std::ceil(filterRectPX.x + filterRectPX.w) - tileX;
-            const int tileH = (int)std::ceil(filterRectPX.y + filterRectPX.h) - tileY;
+            // Clip the mapped filter region to the currently visible viewport.
+            // This is the key step that prevents pathological allocations for
+            // huge background geometry.
+            //const WGRectD visibleUserClipUS = ctx->getViewportUserSpace();
+            //const WGRectD visibleClipPX = mapRectAABB(ctm, visibleUserClipUS);
+            //const WGRectD allocRectPX = intersection(nominalFilterRectPX, visibleClipPX);
+            const WGRectD allocRectPX = nominalFilterRectPX;
+
+            if (!(allocRectPX.w > 0.0) || !(allocRectPX.h > 0.0))
+                return true;
+
+            const int tileX = (int)std::floor(allocRectPX.x);
+            const int tileY = (int)std::floor(allocRectPX.y);
+            const int tileW = (int)std::ceil(allocRectPX.x + allocRectPX.w) - tileX;
+            const int tileH = (int)std::ceil(allocRectPX.y + allocRectPX.h) - tileY;
 
             if (tileW <= 0 || tileH <= 0)
                 return true;
@@ -545,10 +554,6 @@ namespace waavs {
             // Reset executor state
             clearSurfaces();
             setLastKey({});
-
-
-
-
 
             fSpace = {};
             fSpace.filterRectUS = filterRectUS;
@@ -592,17 +597,32 @@ namespace waavs {
                 tmp.attach(*srcGraphic, 1);
                 tmp.renew();
 
+                // DEBUG
+                // draw a border to start
+                //tmp.background(BLRgba32(0xFFff0000));
+                //tmp.clearToBackground();
+                //tmp.clear();
+
                 // Establish correct device mapping
                 tmp.transform(off);
 
                 // Root object frame must match main rendering path
-                tmp.setObjectFrame(objBB);
+                tmp.setObjectFrame(objectBBoxUS);
 
                 // Render subtree content only (avoid recursive filter call)
                 subtree->drawContent(&tmp, groot);
 
                 tmp.detach();
             }
+
+            // DEBUG
+            // blit immediately to check drawing
+            //ctx->push();
+            //ctx->background(BLRgba32(0xFF00ff00));
+            //ctx->clearToBackground();
+            //ctx->transform(BLMatrix2D::makeIdentity());
+            //ctx->image(*srcGraphic, 0, 0);
+            //ctx->pop();
 
             // Prime the pump by placing the image we just drew into 
             // the registry as the SourceGraphic.
@@ -641,8 +661,9 @@ namespace waavs {
             // Composite result back to main context
             // --------------------------------------------------
 
-            ctx->push();
 
+            ctx->push();
+            
             // Reset transform so tile is drawn in device space
             ctx->transform(BLMatrix2D::makeIdentity());
 
@@ -666,26 +687,23 @@ namespace waavs {
             return true;
         }
 
+        // =============================================
         // feBlend
-        bool onBlend(const FilterIO& io, const WGRectD*, FilterBlendMode mode) noexcept override
+        // =============================================
+
+        bool onBlend(const FilterIO& io, const WGRectD* subr, FilterBlendMode mode) noexcept override
         {
             InternedKey in1Key = resolveBinaryInput1Key(io);
             InternedKey in2Key = resolveBinaryInput2Key(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
-            Surface* in1 = getImage(in1Key);
-            if (!in1)
-                return false;
-
-            Surface* in2 = nullptr;
             if (!io.hasIn2)
                 return false;
 
-
-            in2 = getImage(in2Key);
-            if (!in2)
+            Surface* in1 = getImage(in1Key);
+            Surface* in2 = getImage(in2Key);
+            if (!in1 || !in2)
                 return false;
-
 
             if (!outKey)
                 outKey = kFilter_Last();
@@ -694,28 +712,110 @@ namespace waavs {
             if (!out)
                 return false;
 
-            SVGB2DDriver bctx{};
-            bctx.attach(*out, 1);
-            bctx.renew();
+            out->clearAll();
 
-            // Layou down the first image
-            bctx.blendMode(BL_COMP_OP_SRC_COPY);
-            bctx.image(*in1, 0, 0);
+            WGRectI area = resolveSubregionPx(subr, *in1);
+            if (area.w <= 0 || area.h <= 0)
+            {
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+                setLastKey(outKey);
+                return true;
+            }
 
-            // out = in2 (blend)
+            const int W = min((int)in1->width(), (int)in2->width());
+            const int H = min((int)in1->height(), (int)in2->height());
 
-                bctx.blendMode(blendModeToCompOp(mode));
-                bctx.image(*in2, 0, 0);
+            const int x0 = max(area.x, 0);
+            const int y0 = max(area.y, 0);
+            const int x1 = min(area.x + area.w, W);
+            const int y1 = min(area.y + area.h, H);
 
-            bctx.detach();
+            if (x0 >= x1 || y0 >= y1)
+            {
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+                setLastKey(outKey);
+                return true;
+            }
+
+            for (int y = y0; y < y1; ++y)
+            {
+                const uint32_t* s1 = (const uint32_t*)in1->rowPointer((size_t)y);
+                const uint32_t* s2 = (const uint32_t*)in2->rowPointer((size_t)y);
+                uint32_t* d = (uint32_t*)out->rowPointer((size_t)y);
+
+                waavs::feBlendRowPRGB32(d + x0, s1 + x0, s2 + x0, x1 - x0, mode);
+            }
 
             if (!putImage(outKey, std::move(out)))
                 return false;
 
             setLastKey(outKey);
-
             return true;
         }
+
+        /*
+        bool onBlend(const FilterIO& io, const WGRectD* subr, FilterBlendMode mode) noexcept override
+        {
+            InternedKey in1Key = resolveBinaryInput1Key(io);
+            InternedKey in2Key = resolveBinaryInput2Key(io);
+            InternedKey outKey = resolveOutKeyStrict(io);
+
+            if (!io.hasIn2)
+                return false;
+
+            Surface* in1 = getImage(in1Key);
+            Surface* in2 = getImage(in2Key);
+            if (!in1 || !in2)
+                return false;
+
+            if (!outKey)
+                outKey = kFilter_Last();
+
+            auto out = createLikeSurfaceHandle(*in1);
+            if (!out)
+                return false;
+
+            out->clearAll();
+
+            WGRectI area = resolveSubregionPx(subr, *in1);
+            if (area.w <= 0 || area.h <= 0)
+            {
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+                setLastKey(outKey);
+                return true;
+            }
+
+            {
+                SVGB2DDriver bctx{};
+                bctx.attach(*out, 1);
+                bctx.renew();
+
+                bctx.push();
+                //bctx.clipRect(WGRectD(area.x, area.y, area.w, area.h));
+
+                // First lay down in1 inside the primitive subregion.
+                bctx.blendMode(BL_COMP_OP_SRC_COPY);
+                bctx.image(*in1, 0, 0);
+
+                // Then blend in2 over it.
+                bctx.blendMode(blendModeToCompOp(mode));
+                bctx.image(*in2, 0, 0);
+
+                bctx.pop();
+                bctx.detach();
+            }
+
+            if (!putImage(outKey, std::move(out)))
+                return false;
+
+            setLastKey(outKey);
+            return true;
+        }
+        */
+
 
         // ------------------------------------------
         // onColorMatrix
@@ -991,13 +1091,10 @@ namespace waavs {
         }
         */
 
-
         bool onComposite(const FilterIO& io, const WGRectD* subr,
             FilterCompositeOp op,
             float k1, float k2, float k3, float k4) noexcept override
         {
-            (void)subr;
-
             if (!io.hasIn2)
                 return false;
 
@@ -1010,24 +1107,49 @@ namespace waavs {
             if (!in1 || !in2)
                 return false;
 
-            const int W = min((int)in1->width(), (int)in2->width());
-            const int H = min((int)in1->height(), (int)in2->height());
+            if (!outKey)
+                outKey = kFilter_Last();
 
             auto out = createLikeSurfaceHandle(*in1);
             if (!out)
                 return false;
 
-            // Arithemetic composite is a special case that doesn't fit the Porter-Duff model, 
-            // so we'll handle it explicitly.
+            out->clearAll();
+
+            WGRectI area = resolveSubregionPx(subr, *in1);
+            if (area.w <= 0 || area.h <= 0)
+            {
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+                setLastKey(outKey);
+                return true;
+            }
+
+            const int W = min((int)in1->width(), (int)in2->width());
+            const int H = min((int)in1->height(), (int)in2->height());
+
+            const int x0 = max(area.x, 0);
+            const int y0 = max(area.y, 0);
+            const int x1 = min(area.x + area.w, W);
+            const int y1 = min(area.y + area.h, H);
+
+            if (x0 >= x1 || y0 >= y1)
+            {
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+                setLastKey(outKey);
+                return true;
+            }
+
             if (op == FILTER_COMPOSITE_ARITHMETIC)
             {
-                for (int y = 0; y < H; ++y)
+                for (int y = y0; y < y1; ++y)
                 {
                     const uint32_t* s1 = (const uint32_t*)in1->rowPointer((size_t)y);
                     const uint32_t* s2 = (const uint32_t*)in2->rowPointer((size_t)y);
                     uint32_t* d = (uint32_t*)out->rowPointer((size_t)y);
 
-                    for (int x = 0; x < W; ++x)
+                    for (int x = x0; x < x1; ++x)
                     {
                         const uint32_t p1 = s1[x];
                         const uint32_t p2 = s2[x];
@@ -1057,83 +1179,38 @@ namespace waavs {
             }
             else
             {
-                switch (op)
-                {
-                case FILTER_COMPOSITE_OVER:
-                    for (int y = 0; y < H; ++y)
-                    {
-                        const uint32_t* s1 = (const uint32_t*)in1->rowPointer((size_t)y);
-                        const uint32_t* s2 = (const uint32_t*)in2->rowPointer((size_t)y);
-                        uint32_t* d = (uint32_t*)out->rowPointer((size_t)y);
-                        composite_over_prgb32_row(d, s1, s2, W);
-                    }
-                    break;
-
-                case FILTER_COMPOSITE_IN:
-                    for (int y = 0; y < H; ++y)
-                    {
-                        const uint32_t* s1 = (const uint32_t*)in1->rowPointer((size_t)y);
-                        const uint32_t* s2 = (const uint32_t*)in2->rowPointer((size_t)y);
-                        uint32_t* d = (uint32_t*)out->rowPointer((size_t)y);
-                        composite_in_prgb32_row(d, s1, s2, W);
-                    }
-                    break;
-
-                case FILTER_COMPOSITE_OUT:
-                    for (int y = 0; y < H; ++y)
-                    {
-                        const uint32_t* s1 = (const uint32_t*)in1->rowPointer((size_t)y);
-                        const uint32_t* s2 = (const uint32_t*)in2->rowPointer((size_t)y);
-                        uint32_t* d = (uint32_t*)out->rowPointer((size_t)y);
-                        composite_out_prgb32_row(d, s1, s2, W);
-                    }
-                    break;
-
-                case FILTER_COMPOSITE_ATOP:
-                    for (int y = 0; y < H; ++y)
-                    {
-                        const uint32_t* s1 = (const uint32_t*)in1->rowPointer((size_t)y);
-                        const uint32_t* s2 = (const uint32_t*)in2->rowPointer((size_t)y);
-                        uint32_t* d = (uint32_t*)out->rowPointer((size_t)y);
-                        composite_atop_prgb32_row(d, s1, s2, W);
-                    }
-                    break;
-
-                case FILTER_COMPOSITE_XOR:
-                    for (int y = 0; y < H; ++y)
-                    {
-                        const uint32_t* s1 = (const uint32_t*)in1->rowPointer((size_t)y);
-                        const uint32_t* s2 = (const uint32_t*)in2->rowPointer((size_t)y);
-                        uint32_t* d = (uint32_t*)out->rowPointer((size_t)y);
-                        composite_xor_prgb32_row(d, s1, s2, W);
-                    }
-                    break;
-
-                default:
-                    return false;
-                }
-                /*
-                // These are standard Porter-Duff style operators.  We'll implement this
-                // simple scalar version for now, and optimize later if needed.
-                // In future, the backend blend2d should be able to handle these directly
-                // so we don't need to, but depending on which version of blend2d you have
-                // these operators may not be working yet.
-                for (int y = 0; y < H; ++y)
+                for (int y = y0; y < y1; ++y)
                 {
                     const uint32_t* s1 = (const uint32_t*)in1->rowPointer((size_t)y);
                     const uint32_t* s2 = (const uint32_t*)in2->rowPointer((size_t)y);
                     uint32_t* d = (uint32_t*)out->rowPointer((size_t)y);
 
-                    for (int x = 0; x < W; ++x)
+                    switch (op)
                     {
-                        const uint32_t p1 = s1[x];
-                        const uint32_t p2 = s2[x];
+                    case FILTER_COMPOSITE_OVER:
+                        composite_over_prgb32_row(d + x0, s1 + x0, s2 + x0, x1 - x0);
+                        break;
 
-                        d[x] = composite_prgb32_scalar(p1, p2, op);
+                    case FILTER_COMPOSITE_IN:
+                        composite_in_prgb32_row(d + x0, s1 + x0, s2 + x0, x1 - x0);
+                        break;
 
+                    case FILTER_COMPOSITE_OUT:
+                        composite_out_prgb32_row(d + x0, s1 + x0, s2 + x0, x1 - x0);
+                        break;
+
+                    case FILTER_COMPOSITE_ATOP:
+                        composite_atop_prgb32_row(d + x0, s1 + x0, s2 + x0, x1 - x0);
+                        break;
+
+                    case FILTER_COMPOSITE_XOR:
+                        composite_xor_prgb32_row(d + x0, s1 + x0, s2 + x0, x1 - x0);
+                        break;
+
+                    default:
+                        return false;
                     }
                 }
-                */
             }
 
             if (!putImage(outKey, std::move(out)))
@@ -1142,101 +1219,6 @@ namespace waavs {
             setLastKey(outKey);
             return true;
         }
-
-
-        /*
-        bool onComposite(const FilterIO& io, const WGRectD* subr,
-            FilterCompositeOp op,
-            float k1, float k2, float k3, float k4) noexcept override
-        {
-            (void)subr;
-
-            if (!io.hasIn2)
-                return false;
-
-            InternedKey in1Key = resolveInKey(io.in1, kFilter_SourceGraphic());
-            InternedKey in2Key = resolveInKey(io.in2, kFilter_SourceGraphic());
-            InternedKey outKey = resolveOutKeyStrict(io);
-
-            Surface* in1 = getImage(in1Key);
-            Surface* in2 = getImage(in2Key);
-            if (!in1 || !in2)
-                return false;
-
-            auto out = createLikeSurfaceHandle(*in1);
-            if (!out)
-                return false;
-            out->clearAll();
-
-
-            if (op == FILTER_COMPOSITE_ARITHMETIC)
-            {
-                const int W = (int)in1->width();
-                const int H = (int)in1->height();
-
-                for (int y = 0; y < H; ++y)
-                {
-                    const uint32_t* s1 = (const uint32_t*)in1->rowPointer((size_t)y);
-                    const uint32_t* s2 = (const uint32_t*)in2->rowPointer((size_t)y);
-                    uint32_t* d = (uint32_t*)out->rowPointer((size_t)y);
-
-                    for (int x = 0; x < W; ++x)
-                    {
-                        const uint32_t p1 = s1[x];
-                        const uint32_t p2 = s2[x];
-
-                        const float a1 = float((p1 >> 24) & 0xFF) / 255.0f;
-                        const float r1 = float((p1 >> 16) & 0xFF) / 255.0f;
-                        const float g1 = float((p1 >> 8) & 0xFF) / 255.0f;
-                        const float b1 = float((p1 >> 0) & 0xFF) / 255.0f;
-
-                        const float a2 = float((p2 >> 24) & 0xFF) / 255.0f;
-                        const float r2 = float((p2 >> 16) & 0xFF) / 255.0f;
-                        const float g2 = float((p2 >> 8) & 0xFF) / 255.0f;
-                        const float b2 = float((p2 >> 0) & 0xFF) / 255.0f;
-
-                        const float aa = clamp01(k1 * a1 * a2 + k2 * a1 + k3 * a2 + k4);
-                        const float rr = clamp01(k1 * r1 * r2 + k2 * r1 + k3 * r2 + k4);
-                        const float gg = clamp01(k1 * g1 * g2 + k2 * g1 + k3 * g2 + k4);
-                        const float bb = clamp01(k1 * b1 * b2 + k2 * b1 + k3 * b2 + k4);
-
-                        d[x] = packPARGB32(
-                            clamp_u8((int)std::lround(aa * 255.0f)),
-                            clamp_u8((int)std::lround(rr * 255.0f)),
-                            clamp_u8((int)std::lround(gg * 255.0f)),
-                            clamp_u8((int)std::lround(bb * 255.0f)));
-                    }
-                }
-            }
-            else
-            {
-                SVGB2DDriver ctx{};
-                ctx.attach(*out, 1);
-
-                ctx.blendMode(BL_COMP_OP_SRC_COPY);
-                ctx.renew();
-
-                ctx.blendMode(BL_COMP_OP_SRC_COPY);
-                ctx.image(*in2, 0, 0);
-
-                // draw the src over the dst
-                BLCompOp compOp = compositeOpToCompOp(op);
-
-                ctx.blendMode(compOp);
-                //ctx.blendMode(BL_COMP_OP_SRC_ATOP);
-                ctx.image(*in1, 0, 0);
-
-                ctx.detach();
-            }
-
-            if (!putImage(outKey, std::move(out)))
-                return false;
-
-            setLastKey(outKey);
-
-            return true;
-        }
-        */
 
 
         // ------------------------------------------
@@ -1449,7 +1431,7 @@ namespace waavs {
                     safeNormalize3(nx, ny, nz);
 
                     float ux, uy;
-                    pixelCenterToFilterUser(*in, x, y, ux, uy);
+                    pixelCenterToFilterUser(x, y, ux, uy);
 
                     const float h = surfaceScale * pixelHeightFromAlpha(*in, x, y);
 
@@ -1527,7 +1509,7 @@ namespace waavs {
                     const float lit = clamp01f(diffuseConstant * ndotl * lightFactor);
 
                     // Premultiplied output.
-                    const float a = lit;
+                    const float a = 1.0f; // lit;
                     const float pr = lcR * lit;
                     const float pg = lcG * lit;
                     const float pb = lcB * lit;
@@ -1897,9 +1879,6 @@ namespace waavs {
             if (!outKey)
                 outKey = kFilter_Last();
 
-            const int W = (int)in->width();
-            const int H = (int)in->height();
-
             auto out = createLikeSurfaceHandle(*in);
             if (!out)
                 return false;
@@ -1937,55 +1916,58 @@ namespace waavs {
             const double sxPx = sxUS * fSpace.sx;
             const double syPx = syUS * fSpace.sy;
 
+            // Primitive result should be written only inside the authored subregion.
+            WGRectI writeArea = resolveSubregionPx(subr, *in);
+
+            out->clearAll();
+
+            if (writeArea.w <= 0 || writeArea.h <= 0)
+            {
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+                setLastKey(outKey);
+                return true;
+            }
+
+            // Degenerate blur: copy only the write area.
             if (!(sxPx > 0.0) && !(syPx > 0.0))
             {
-                SVGB2DDriver bctx{};
-                bctx.attach(*out, 0);
-                bctx.renew();
-                bctx.blendMode(BL_COMP_OP_SRC_COPY);
-
-                bctx.image(*in, 0, 0);
-                bctx.detach();
+                for (int y = writeArea.y; y < writeArea.y + writeArea.h; ++y)
+                {
+                    const uint32_t* srow = (const uint32_t*)in->rowPointer((size_t)y);
+                    uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
+                    std::memcpy(drow + writeArea.x, srow + writeArea.x, (size_t)writeArea.w * 4u);
+                }
 
                 if (!putImage(outKey, std::move(out)))
                     return false;
 
                 setLastKey(outKey);
-
                 return true;
             }
 
+            // Use the larger sigma for the box approximation you already use.
             const double sigma = (sxPx > syPx) ? sxPx : syPx;
             if (!(sigma > 0.0))
-                return false;
-
-            WGRectI area = resolveSubregionPx(subr, *in);
-
-
-            if (area.w <= 0 || area.h <= 0)
             {
-                SVGB2DDriver bctx{};
-                bctx.attach(*out, 1);
-                bctx.renew();
-                bctx.blendMode(BL_COMP_OP_SRC_COPY);
-                bctx.image(*in, 0, 0);
-                bctx.detach();
-
                 if (!putImage(outKey, std::move(out)))
                     return false;
-
                 setLastKey(outKey);
-
                 return true;
             }
 
+            // Blur needs an expanded sampling area.
+            // 3*sigma is a practical kernel reach for Gaussian support.
+            const double padUserX = 3.0 * sxUS;
+            const double padUserY = 3.0 * syUS;
+
+            WGRectI sampleArea = resolveSubregionPx(subr, *in, padUserX, padUserY);
+            if (sampleArea.w <= 0 || sampleArea.h <= 0)
             {
-                SVGB2DDriver bctx{};
-                bctx.attach(*out, 1);
-                bctx.renew();
-                bctx.blendMode(BL_COMP_OP_SRC_COPY);
-                bctx.image(*in, 0, 0);
-                bctx.detach();
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+                setLastKey(outKey);
+                return true;
             }
 
             int box[3];
@@ -1999,6 +1981,9 @@ namespace waavs {
             if (!tmp1.reset(in->width(), in->height()))
                 return false;
 
+            tmp0.clearAll();
+            tmp1.clearAll();
+
             const waavs::Surface* curSrc = in;
             waavs::Surface* curDst = &tmp0;
 
@@ -2006,23 +1991,23 @@ namespace waavs {
             {
                 const int r = (box[pass] - 1) / 2;
 
-                waavs::boxBlurH_PRGB32(*curDst, *curSrc, r, area);
-
+                waavs::boxBlurH_PRGB32(*curDst, *curSrc, r, sampleArea);
                 curSrc = curDst;
                 curDst = (curDst == &tmp0) ? &tmp1 : &tmp0;
 
-                waavs::boxBlurV_PRGB32(*curDst, *curSrc, r, area);
-
+                waavs::boxBlurV_PRGB32(*curDst, *curSrc, r, sampleArea);
                 curSrc = curDst;
                 curDst = (curDst == &tmp0) ? &tmp1 : &tmp0;
             }
 
+            // Copy only the primitive result area to the output.
             {
                 const waavs::Surface& blurred = *curSrc;
-                for (int y = area.y; y < area.y + area.h; ++y) {
+                for (int y = writeArea.y; y < writeArea.y + writeArea.h; ++y)
+                {
                     const uint32_t* srow = (const uint32_t*)blurred.rowPointer((size_t)y);
                     uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
-                    std::memcpy(drow + area.x, srow + area.x, (size_t)area.w * 4u);
+                    std::memcpy(drow + writeArea.x, srow + writeArea.x, (size_t)writeArea.w * 4u);
                 }
             }
 
@@ -2030,7 +2015,6 @@ namespace waavs {
                 return false;
 
             setLastKey(outKey);
-
             return true;
         }
 
@@ -2060,17 +2044,23 @@ namespace waavs {
         // ------------------------------------------
         // onMerge
         // ------------------------------------------
-        bool onMerge(const FilterIO& io, const WGRectD*, KeySpan inputs) noexcept override
+        bool onMerge(const FilterIO& io, const WGRectD* subr, KeySpan inputs) noexcept override
         {
             if (!inputs.n)
                 return true;
 
             Surface* base = nullptr;
-            for (uint32_t i = 0; i < inputs.n; ++i) {
+            for (uint32_t i = 0; i < inputs.n; ++i)
+            {
                 InternedKey k = resolveInKey(inputs.p[i]);
                 Surface* img = getImage(k);
-                if (img) { base = img; break; }
+                if (img)
+                {
+                    base = img;
+                    break;
+                }
             }
+
             if (!base)
                 return false;
 
@@ -2082,27 +2072,44 @@ namespace waavs {
             if (!out)
                 return false;
 
-            SVGB2DDriver bctx{};
-            bctx.attach(*out, 1);
-            bctx.renew();
-            bctx.blendMode(BL_COMP_OP_SRC_OVER);
+            out->clearAll();
 
-
-            for (uint32_t i = 0; i < inputs.n; ++i) {
-                InternedKey k = resolveInKey(inputs.p[i]);
-                Surface* img = getImage(k);
-                if (!img)
-                    continue;
-                bctx.image(*img, 0, 0);
+            WGRectI area = resolveSubregionPx(subr, *base);
+            if (area.w <= 0 || area.h <= 0)
+            {
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+                setLastKey(outKey);
+                return true;
             }
 
-            bctx.detach();
+            {
+                SVGB2DDriver bctx{};
+                bctx.attach(*out, 1);
+                bctx.renew();
+
+                bctx.push();
+                //bctx.clipRect(WGRectD(area.x, area.y, area.w, area.h));
+                bctx.blendMode(BL_COMP_OP_SRC_OVER);
+
+                for (uint32_t i = 0; i < inputs.n; ++i)
+                {
+                    InternedKey k = resolveInKey(inputs.p[i]);
+                    Surface* img = getImage(k);
+                    if (!img)
+                        continue;
+
+                    bctx.image(*img, 0, 0);
+                }
+
+                bctx.pop();
+                bctx.detach();
+            }
 
             if (!putImage(outKey, std::move(out)))
                 return false;
 
             setLastKey(outKey);
-
             return true;
         }
 
@@ -2240,28 +2247,41 @@ namespace waavs {
 
         bool onOffset(const FilterIO& io, const WGRectD* subr, float dx, float dy) noexcept override
         {
-            (void)subr;
-
             InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
-
 
             Surface* in = getImage(inKey);
             if (!in)
                 return false;
 
-            // Resolve output.
             if (!outKey)
                 outKey = kFilter_Last();
 
-            // Create output same size as input tile.
             auto out = createLikeSurfaceHandle(*in);
             if (!out)
                 return false;
 
-            // ------------------------------------------------------------
-            // 1) Convert dx/dy from primitive units to USER SPACE
-            // ------------------------------------------------------------
+            // Start from a copy of the input so pixels outside the primitive subregion
+            // remain unchanged.
+            {
+                SVGB2DDriver bctx{};
+                bctx.attach(*out, 1);
+                bctx.renew();
+                bctx.blendMode(BL_COMP_OP_SRC_COPY);
+                bctx.image(*in, 0, 0);
+                bctx.detach();
+            }
+
+            WGRectI area = resolveSubregionPx(subr, *in);
+            if (area.w <= 0 || area.h <= 0)
+            {
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+                setLastKey(outKey);
+                return true;
+            }
+
+            // Convert dx/dy from primitive units to user space.
             double dxUS = (double)dx;
             double dyUS = (double)dy;
 
@@ -2269,7 +2289,6 @@ namespace waavs {
             {
             default:
             case SpaceUnitsKind::SVG_SPACE_USER:
-                // already in user units
                 break;
 
             case SpaceUnitsKind::SVG_SPACE_OBJECT:
@@ -2278,41 +2297,42 @@ namespace waavs {
                 break;
 
             case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
-                // Placeholder until stroke width is carried in run state.
-                // For now, treat as user units.
                 break;
             }
 
-            // ------------------------------------------------------------
-            // 2) Map USER SPACE offset vector to TILE PIXEL vector
-            // ------------------------------------------------------------
-            // Use the linear part of the CTM, not sx/sy magnitudes.
-            // This correctly handles rotation and shear.
+            // Map the offset vector through the linear part of the CTM.
             const BLMatrix2D& m = fSpace.ctm;
-
             const double dxPx = dxUS * m.m00 + dyUS * m.m10;
             const double dyPx = dxUS * m.m01 + dyUS * m.m11;
 
-            // ------------------------------------------------------------
-            // 3) Render shifted input into transparent output
-            // ------------------------------------------------------------
-            out->clearAll();
-            SVGB2DDriver bctx{};
-            bctx.attach(*out, 1);
-            bctx.renew();
-            bctx.blendMode(BL_COMP_OP_SRC_COPY);
+            const int W = (int)in->width();
+            const int H = (int)in->height();
 
-            // perfor the function, blit to specific positio
-            bctx.transform(BLMatrix2D::makeTranslation(dxPx, dyPx));
-            bctx.image(*in, 0, 0);
+            for (int y = area.y; y < area.y + area.h; ++y)
+            {
+                uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
 
-            bctx.detach();
+                for (int x = area.x; x < area.x + area.w; ++x)
+                {
+                    const int sx = (int)std::lround((double)x - dxPx);
+                    const int sy = (int)std::lround((double)y - dyPx);
+
+                    if ((unsigned)sx < (unsigned)W && (unsigned)sy < (unsigned)H)
+                    {
+                        const uint32_t* srow = (const uint32_t*)in->rowPointer((size_t)sy);
+                        drow[x] = srow[sx];
+                    }
+                    else
+                    {
+                        drow[x] = 0u;
+                    }
+                }
+            }
 
             if (!putImage(outKey, std::move(out)))
                 return false;
 
             setLastKey(outKey);
-
             return true;
         }
 
@@ -2403,7 +2423,7 @@ namespace waavs {
                     safeNormalize3(nx, ny, nz);
 
                     float ux, uy;
-                    pixelCenterToFilterUser(*in, x, y, ux, uy);
+                    pixelCenterToFilterUser(x, y, ux, uy);
 
                     const float h = surfaceScale * pixelHeightFromAlpha(*in, x, y);
 
@@ -2717,7 +2737,7 @@ namespace waavs {
                 for (int x = area.x; x < area.x + area.w; ++x)
                 {
                     float ux, uy;
-                    pixelCenterToFilterUser(*like, x, y, ux, uy);
+                    pixelCenterToFilterUser(x, y, ux, uy);
 
                     float sx = ux;
                     float sy = uy;

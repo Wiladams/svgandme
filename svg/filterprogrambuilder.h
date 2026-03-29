@@ -119,26 +119,7 @@ namespace waavs::filter
 
 namespace waavs
 {
-    // --------------------------------------------------------
-    // Filter enum families for closed vocabularies
-    // These values are emitted into mem[] as u32.
-    // --------------------------------------------------------
-    
-    enum FilterBlendMode : uint32_t
-    {
-        FILTER_BLEND_NORMAL = 0,
-        FILTER_BLEND_MULTIPLY,
-        FILTER_BLEND_SCREEN,
-        FILTER_BLEND_DARKEN,
-        FILTER_BLEND_LIGHTEN,
-        FILTER_BLEND_OVERLAY,
-        FILTER_BLEND_COLOR_DODGE,
-        FILTER_BLEND_COLOR_BURN,
-        FILTER_BLEND_HARD_LIGHT,
-        FILTER_BLEND_SOFT_LIGHT,
-        FILTER_BLEND_DIFFERENCE,
-        FILTER_BLEND_EXCLUSION
-    };
+
 
     enum FilterCompositeOp : uint32_t
     {

@@ -39,20 +39,12 @@
 // If we don't want nametable.h here, replace InternedKey with enum
 // for channel selectors (R,G,B,A) and drop the INTERN usage.
 
-namespace waavs
-{
-
-}
-
 
 namespace waavs {
 
     // ------------------------------------------------------------
     // Rect + kernel context
     // ------------------------------------------------------------
-
-
-
 
     struct PixelKernelCtx {
         // ROI in tile pixel space; if roi.w/h <= 0 => full image.

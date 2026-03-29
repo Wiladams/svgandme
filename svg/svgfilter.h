@@ -2195,8 +2195,8 @@ namespace waavs {
     {
         static void registerSingularNode()
         {
-            registerSVGSingularNodeByName("filter", [](IAmGroot* groot, const XmlElement& elem) {
-                auto node = std::make_shared<SVGFilterElement>(groot);
+            registerSVGSingularNodeByName(svgtag::tag_filter(), [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGFilterElement>();
                 node->loadFromXmlElement(elem, groot);
 
                 return node;
@@ -2205,8 +2205,8 @@ namespace waavs {
 
         static void registerFactory()
         {
-            registerContainerNodeByName("filter", [](IAmGroot* groot, XmlPull& iter) {
-                auto node = std::make_shared<SVGFilterElement>(groot);
+            registerContainerNodeByName(svgtag::tag_filter(), [](IAmGroot* groot, XmlPull& iter) {
+                auto node = std::make_shared<SVGFilterElement>();
                 node->loadFromXmlPull(iter, groot);
 
                 return node;
@@ -2235,7 +2235,7 @@ namespace waavs {
         bool fProgCompiled{ false };
 
 
-        SVGFilterElement(IAmGroot*)
+        SVGFilterElement()
             : SVGGraphicsElement()
         {
             setIsVisible(false);
@@ -2255,14 +2255,13 @@ namespace waavs {
             return std::make_shared<FilterProgramStream>(fProgram);
         }
 
-        const WGRectD getFilterArea(IRenderSVG* ctx, IAmGroot* groot, IViewable* subtree) noexcept override
+        const WGRectD resolveFilterRegion(IRenderSVG* ctx, IAmGroot* groot, const WGRectD &bbox) noexcept override
         {
-            if (!ctx || !subtree)
+            if (!ctx)
                 return {};
 
             // The filter region is resolved against the element being filtered,
             // not against the <filter> element itself.
-            const WGRectD bbox = subtree->getFilterRegion(ctx, groot);
             if (!(bbox.w > 0.0) || !(bbox.h > 0.0))
                 return {};
 

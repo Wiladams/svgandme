@@ -169,11 +169,11 @@ namespace waavs
             return outFr;
         }
 
-        const WGRectD getFilterRegion(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot) noexcept override
         {
             if (fTopLevelNode != nullptr)
             {
-                return fTopLevelNode->getFilterRegion(ctx, groot);
+                return fTopLevelNode->getObjectBoundingBox(ctx, groot);
             }
 
             if (fCanvasWidth <= 0 || fCanvasHeight <= 0)
@@ -186,8 +186,6 @@ namespace waavs
 
         const CSSStyleSheet& styleSheet() const override { return fStyleSheet; }
         CSSStyleSheet& styleSheet() override { return fStyleSheet; }
-        //std::shared_ptr<CSSStyleSheet> styleSheet() override { return fStyleSheet; }
-        //void styleSheet(std::shared_ptr<CSSStyleSheet> sheet) override { fStyleSheet = sheet; }
         
 
         // retrieve root svg node

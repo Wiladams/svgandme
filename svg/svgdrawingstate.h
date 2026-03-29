@@ -185,6 +185,31 @@ namespace waavs {
             return fDrawingState->fViewport; 
         }
 
+        // Map viewport to user space using inverse transform
+        WGRectD getViewportUserSpace() const 
+        {
+            BLMatrix2D invTransform = getTransform();
+            BLResult res = invTransform.invert();
+            if (res != BL_SUCCESS) {
+                printf("IAccessDrawingState::getViewportUserSpace, ERROR: Transform is not invertible\n");
+                return WGRectD{};
+            }
+
+            // Map the viewport rectangle to user space 
+            // using the inverse transform
+            WGRectD vport = viewport();
+            WGRectD viewportUserSpace{};
+            BLPoint origin = invTransform.mapPoint(vport.x, vport.y);
+            BLPoint corner = invTransform.mapPoint(vport.x + vport.w, vport.y + vport.h);
+
+            return WGRectD{
+                origin.x,
+                origin.y,
+                corner.x - origin.x,
+                corner.y - origin.y
+            };
+        }
+
         WGRectD getObjectFrame() const
         {
             if (!fDrawingState) {

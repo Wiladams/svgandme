@@ -66,12 +66,12 @@ namespace waavs
             return fTarget->objectBoundingBox();
         }
 
-        const WGRectD getFilterRegion(IRenderSVG* ctx, IAmGroot* groot)  noexcept override
+        const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot)  noexcept override
         {
             if (!fTarget)
                 return {};
 
-            return fTarget->getFilterRegion(ctx, groot);
+            return fTarget->getObjectBoundingBox(ctx, groot);
         }
 
         void fixupSelfStyleAttributes(IAmGroot* groot) override

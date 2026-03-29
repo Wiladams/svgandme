@@ -179,7 +179,7 @@ namespace waavs
             return { fX, fY, fWidth, fHeight };
         }
         
-        virtual const WGRectD getFilterRegion(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot) noexcept override
         {
             return { fX, fY, fWidth, fHeight };
         }

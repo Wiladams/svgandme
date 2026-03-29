@@ -58,7 +58,7 @@ namespace waavs {
                 return fVar;
 
             // get our extent
-            const WGRectD extent = getFilterRegion(ctx, groot);
+            const WGRectD extent = getObjectBoundingBox(ctx, groot);
 
             // create a surface of that size
             // if it's valid
