@@ -34,6 +34,18 @@ namespace waavs
 
         return surf;
     }
+
+    // blImageFromSurface
+    //
+    // When you've got a Surface, and you need to pass it along to 
+    // a blend2d interface.
+    static INLINE BLImage blImageFromSurface(const Surface& surf) noexcept
+    {
+        BLImage img;
+        img.createFromData((int)surf.width(), (int)surf.height(), BL_FORMAT_PRGB32, (uint8_t*)surf.data(), surf.stride());
+        return img;
+    }
+
 }
 
 namespace waavs
@@ -134,16 +146,7 @@ namespace waavs
     };
 
 
-    // blImageFromSurface
-    //
-    // When you've got a Surface, and you need to pass it along to 
-    // a blend2d interface.
-    static INLINE BLImage blImageFromSurface(const Surface& surf) noexcept
-    {
-        BLImage img;
-        img.createFromData((int)surf.width(), (int)surf.height(), BL_FORMAT_PRGB32, (uint8_t*)surf.data(), surf.stride());
-        return img;
-    }
+
 
     // blPath_from_PathProgram
     //

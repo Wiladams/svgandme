@@ -329,5 +329,8 @@
     <ClInclude Include="..\..\svg\pathprogram_dasher.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\svg\effects.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

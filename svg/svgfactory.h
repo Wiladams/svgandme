@@ -1,34 +1,80 @@
 #pragma once
 
 #include "svgdocument.h"
+#include "nametable.h"
 
 namespace waavs {
     struct SVGFactory
     {
+        PSNameTable fFeatureNames{};
+
         // Disallow copying and assignment
         SVGFactory(const SVGFactory&) = delete;
         SVGFactory& operator=(const SVGFactory&) = delete;
 
         SVGFactory()
         {
+            registerFeatures();
             registerNodeTypes();
         }
+
+
+
+        // Query whether the runtime supports a w3c feature.
+        // Controlled by "Feature String"s defined in https://www.w3.org/TR/SVG11/feature.html
+        void addFeature(const char* feature)
+        {
+            fFeatureNames.intern(feature);
+        }
+
+
+        virtual bool hasFeature(const char* feature) const
+        {
+            return fFeatureNames.hasName(feature);
+        }
+
+        void registerFeatures()
+        {
+            // Register supported features here
+            addFeature("http://www.w3.org/TR/SVG11/feature#BasicStructure");
+            addFeature("http://www.w3.org/TR/SVG11/feature#Clip");
+            addFeature("http://www.w3.org/TR/SVG11/feature#ConditionalProcessing");
+            addFeature("http://www.w3.org/TR/SVG11/feature#Filter");
+            addFeature("http://www.w3.org/TR/SVG11/feature#Font");
+            addFeature("http://www.w3.org/TR/SVG11/feature#Gradient");
+            addFeature("http://www.w3.org/TR/SVG11/feature#Image");
+            addFeature("http://www.w3.org/TR/SVG11/feature#Marker");
+            addFeature("http://www.w3.org/TR/SVG11/feature#Mask");
+            addFeature("http://www.w3.org/TR/SVG11/feature#OpacityAttribute");
+            addFeature("http://www.w3.org/TR/SVG11/feature#PaintAttribute");
+            addFeature("http://www.w3.org/TR/SVG11/feature#Pattern");
+            addFeature("http://www.w3.org/TR/SVG11/feature#Shape");
+            addFeature("http://www.w3.org/TR/SVG11/feature#Style");
+            addFeature("http://www.w3.org/TR/SVG11/feature#Text");
+            addFeature("http://www.w3.org/TR/SVG11/feature#ViewportAttribute");
+            addFeature("http://www.w3.org/TR/SVG11/feature#XlinkAttribute");
+            addFeature("http://www.w3.org/TR/SVG11/feature#SVG-static");
+
+        }
+
 
         void registerNodeTypes()
         {
             //=============================================
             // Register attributes
             //=============================================
-            SVGPaintOrderAttribute::registerFactory();
 
+            // Global paint attributes
+            SVGPaintOrderAttribute::registerFactory();
             SVGOpacity::registerFactory();
-            
             SVGColorPaint::registerFactory();
 
+            // Fill attributes
             SVGFillPaint::registerFactory();
             SVGFillOpacity::registerFactory();
             SVGFillRuleAttribute::registerFactory();
 
+            // Stroke attributes
             SVGStrokePaint::registerFactory();
             SVGStrokeOpacity::registerFactory();
 
@@ -36,10 +82,9 @@ namespace waavs {
             SVGStrokeLineJoin::registerFactory();
             SVGStrokeMiterLimit::registerFactory();
             SVGStrokeWidth::registerFactory();
-
-
-            SVGMarkerAttribute::registerMarkerFactory();
             SVGVectorEffectAttribute::registerFactory();
+
+
 
             // Typography Attributes
             SVGTextAnchorAttribute::registerFactory();
@@ -51,16 +96,20 @@ namespace waavs {
             SVGFontWeightAttribute::registerFactory();
             SVGFontStretchAttribute::registerFactory();
 
-            //SVGClipPathAttribute::registerFactory();
             SVGTransform::registerFactory();
 
+            // stroke dash attributes
             SVGStrokeDashArray::registerFactory();
             SVGStrokeDashOffset::registerFactory();
+
+            // Clipping
+            //SVGClipPathAttribute::registerFactory();        // 'clip-path' attribute
+            //SVGClipPathElement::registerFactory();        // 'clipPath' element
 
             //=============================================
             // Register SVG Node Types
             //=============================================
-            // Register shape nodes
+            // Shape nodes
             SVGCircleElement::registerFactory();               // 'circle'
             SVGEllipseElement::registerFactory();              // 'ellipse'
             SVGLineElement::registerFactory();                 // 'line'
@@ -68,6 +117,10 @@ namespace waavs {
             SVGPolylineElement::registerFactory();             // 'polyline'
             SVGPathElement::registerFactory();                 // 'path'
             SVGRectElement::registerFactory();                 // 'rect'
+
+            SVGMarkerAttribute::registerMarkerFactory();
+            SVGSymbolNode::registerFactory();           // 'symbol'
+
 
             // Register Structural nodes
             SVGAElement::registerFactory();             // 'a'
@@ -86,15 +139,16 @@ namespace waavs {
 
             // Non-Structural Nodes
             SVGSolidColorElement::registerFactory();    // 'solidColor'
-            //SVGClipPathElement::registerFactory();      // 'clipPath'
             SVGDefsNode::registerFactory();             // 'defs'
+
+            // Gradient nodes
             SVGConicGradient::registerFactory();        // 'conicGradient'
             SVGLinearGradient::registerFactory();       // 'linearGradient'
+            SVGRadialGradient::registerFactory();       // 'radialGradient'
+
             SVGMarkerElement::registerFactory();           // 'marker'
             SVGMaskElement::registerFactory();             // 'mask'
             SVGPatternElement::registerFactory();          // 'pattern'
-            SVGRadialGradient::registerFactory();       // 'radialGradient'
-            SVGSymbolNode::registerFactory();           // 'symbol'
 
 
             // Filter node registrations

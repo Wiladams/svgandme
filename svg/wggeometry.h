@@ -62,6 +62,9 @@ namespace waavs
             return x == other.x && y == other.y &&
                 w == other.w && h == other.h;
         }
+
+        bool isEmpty() const { return w <= 0.0 || h <= 0.0; }
+
     };
 
     ASSERT_POD_TYPE(WGRectD);

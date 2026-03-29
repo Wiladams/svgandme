@@ -148,18 +148,9 @@ namespace waavs::svgattr
     // ------------------------------------------------------------
     inline InternedKey vector_effect() { static InternedKey k = PSNameTable::INTERN("vector-effect"); return k; }
     inline InternedKey paint_order() { static InternedKey k = PSNameTable::INTERN("paint-order");   return k; }
-    inline InternedKey shape_rendering()
-    {
-        static InternedKey k = PSNameTable::INTERN("shape-rendering"); return k;
-    }
-    inline InternedKey text_rendering()
-    {
-        static InternedKey k = PSNameTable::INTERN("text-rendering"); return k;
-    }
-    inline InternedKey image_rendering()
-    {
-        static InternedKey k = PSNameTable::INTERN("image-rendering"); return k;
-    }
+    inline InternedKey shape_rendering() { static InternedKey k = PSNameTable::INTERN("shape-rendering"); return k; }
+    inline InternedKey text_rendering() { static InternedKey k = PSNameTable::INTERN("text-rendering"); return k; }
+    inline InternedKey image_rendering() {static InternedKey k = PSNameTable::INTERN("image-rendering"); return k; }
 
     // ------------------------------------------------------------
     // Filters & effects
@@ -189,8 +180,8 @@ namespace waavs::svgattr
     inline InternedKey displayUnits() { static InternedKey k = PSNameTable::INTERN("displayUnits"); return k; }
 
     // ------------------------------------------------------------
-// Event / interactivity attributes (still appear)
-// ------------------------------------------------------------
+    // Event / interactivity attributes (still appear)
+    // ------------------------------------------------------------
     inline InternedKey onclick() { static InternedKey k = PSNameTable::INTERN("onclick");      return k; }
     inline InternedKey onmouseover() { static InternedKey k = PSNameTable::INTERN("onmouseover");  return k; }
     inline InternedKey onmouseout() { static InternedKey k = PSNameTable::INTERN("onmouseout");   return k; }
@@ -342,10 +333,7 @@ namespace waavs::svgval_legacy
 
     // Text layout (SMIL / old text-flow)
     inline InternedKey spacing() { static InternedKey k = PSNameTable::INTERN("spacing");         return k; }
-    inline InternedKey spacingAndGlyphs()
-    {
-        static InternedKey k = PSNameTable::INTERN("spacingAndGlyphs"); return k;
-    }
+    inline InternedKey spacingAndGlyphs() { static InternedKey k = PSNameTable::INTERN("spacingAndGlyphs"); return k; }
 
     // Alignment baseline legacy values
     inline InternedKey auto_baseline() { static InternedKey k = PSNameTable::INTERN("auto");             return k; }

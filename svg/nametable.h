@@ -37,6 +37,12 @@ namespace waavs {
     private:
         std::set<std::string, std::less<> > pool;
 
+    public:
+        bool hasName(const char * name) const
+        {
+            return pool.find(name) != pool.end();
+        }
+
         const char* intern(std::string_view sv)
         {
             // emplace does the lookup; constructs std::string only on insertion

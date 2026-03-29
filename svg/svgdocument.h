@@ -38,7 +38,7 @@
 #include "fonthandler.h"
 #include "svgcss.h"
 
-//#include "svgclip.h"
+#include "svgclip.h"
 #include "svgconditional.h"
 #include "svgdefs.h"
 #include "svgflowroot.h"

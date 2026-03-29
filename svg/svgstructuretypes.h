@@ -280,9 +280,7 @@ namespace waavs
         std::unordered_map<ByteSpan, ByteSpan, ByteSpanHash, ByteSpanEquivalent> fEntities{};
         StopWatch fDocClock{};
 
-        
 
-        StopWatch& documentClock() noexcept { return fDocClock; }
 
         virtual void addElementReference(const ByteSpan& name, std::shared_ptr<IViewable> obj)
         {
@@ -368,6 +366,9 @@ namespace waavs
         virtual CSSStyleSheet& styleSheet() = 0;
 
         // Animation support
+        // Clock that maintains 'document time' for the purposes of animations
+        StopWatch& documentClock() noexcept { return fDocClock; }
+
         //virtual AnimationProgram& animationProgram() noexcept = 0;
         //virtual const AnimationProgram& animationProgram() const noexcept = 0;
 

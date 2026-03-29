@@ -1,9 +1,7 @@
 #pragma once
 
 
-//
-// http://www.w3.org/TR/SVG11/feature#Clip
-//
+
 
 #include <functional>
 #include <unordered_map>
@@ -22,6 +20,10 @@ namespace waavs {
     // 
     // At render time, use the clip path in a pattern and fill
     // based on that.
+    // 
+    // Reference:
+    // http://www.w3.org/TR/SVG11/feature#Clip
+    //
     //============================================================
     struct SVGClipPathElement : public SVGGraphicsElement
     {
@@ -37,17 +39,18 @@ namespace waavs {
             
         }
 
-        BLImage fImage;		// Where we'll render the mask
+        Surface fSurface;		// Where we'll render the mask
+        BLImage fMask;		// The actual mask we use for clipping
 
         // Instance Constructor
         SVGClipPathElement(IAmGroot* )
             : SVGGraphicsElement()
         {
-            setIsStructural(true);
+            setIsVisible(false);
         }
 
         // 
-        // BUGBUG - this needs to happen in resolvePaint, or bingToGroot()
+        // BUGBUG - this needs to happen in resolvePaint, or bindToGroot()
         //
         const BLVar getVariant(IRenderSVG * ctx, IAmGroot *groot) noexcept override
         {
@@ -55,30 +58,37 @@ namespace waavs {
                 return fVar;
 
             // get our extent
-            BLRect extent = calculateObjectBoundingBox(ctx, groot);
+            const WGRectD extent = getFilterRegion(ctx, groot);
 
             // create a surface of that size
             // if it's valid
             if (extent.w > 0 && extent.h > 0)
             {
-                fImage.create((int)floor((float)extent.w + 0.5f), (int)floor((float)extent.h + 0.5f), BL_FORMAT_A8);
+                fSurface.reset((int)floor((float)extent.w + 0.5f), (int)floor((float)extent.h + 0.5f));
+                fMask = blImageFromSurface(fSurface);
 
                 // Draw our content into the image
                 {
                     SVGB2DDriver rctx;
-                    rctx.attach(fImage, 1);
+                    rctx.attach(fSurface, 1);
+
+                    WGRectD bbox = drawBegin(&rctx, groot);
 
                     rctx.blendMode(BL_COMP_OP_SRC_OVER);
                     rctx.clear();
                     rctx.fill(BLRgba32(0xffffffff));
                     rctx.translate(-extent.x, -extent.y);
-                    draw(&rctx, groot);
+
+                    drawContent(&rctx, groot);
+                    drawEnd(&rctx, groot);
+
                     rctx.flush();
                     rctx.detach();
                 }
 
                 // bind our image to fVar for later retrieval
-                fVar.assign(fImage);
+                fVar = fMask;
+
             }
 
             return fVar;

@@ -15,7 +15,6 @@ namespace waavs {
 
         BLVar fVar{};
 
-        //XmlAttributeCollection fPresentationAttributes{};
         XmlAttributeCollection fAttributes{};
 
         ByteSpan fAttributeSpan{};
@@ -48,26 +47,8 @@ namespace waavs {
             return bbox;
         }
 
-        /*
-        virtual const WGRectD calculateObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot) const noexcept
-        {
-            WGRectD bbox{};
-            for (auto& node : fNodes)
-            {
-                if (!node || !node->isVisible()) continue;
-
-                WGRectD nodeBox{};
-                nodeBox = node->objectBoundingBox();
-                wg_rectD_union(bbox, nodeBox);
-            }
-
-            return bbox;
-        }
-        */
-
 
         // Deal with filters
-
         virtual bool hasFilter() const noexcept
         {
             ByteSpan filterRef{};
@@ -776,16 +757,10 @@ namespace waavs {
             ctx->pop();
         }
 
-        void draw(IRenderSVG* ctx, IAmGroot* groot) override
+        bool drawWithEffects(IRenderSVG* ctx, IAmGroot* groot, const WGRectD &bbox)
         {
-            if (!ctx || !groot)
-                return;
-
-            WGRectD bbox = drawBegin(ctx, groot);
-
             if (hasFilter())
             {
-
                 auto filterNode = getReferencedFilterNode(groot);
                 if (filterNode) {
                     //printf("Found filter node for filter reference\n");
@@ -799,10 +774,28 @@ namespace waavs {
                         filterExec.applyFilter(ctx, groot, this, filterRect, *filterProgram);
 
                         drawEnd(ctx, groot);
-                        return;
+                        return true;
                     }
                 }
             }
+
+            return false;
+        }
+
+        void draw(IRenderSVG* ctx, IAmGroot* groot) override
+        {
+            if (!ctx || !groot)
+                return;
+
+            WGRectD bbox = drawBegin(ctx, groot);
+
+            if (drawWithEffects(ctx, groot, bbox))
+            {
+                drawEnd(ctx, groot);
+                return;
+            }
+
+
 
             drawContent(ctx, groot);
             drawEnd(ctx, groot);

@@ -6,7 +6,7 @@
 //
 
 #include <functional>
-#include <unordered_map>
+//#include <unordered_map>
 
 #include "svgattributes.h"
 #include "svggraphicselement.h"
@@ -18,6 +18,7 @@ namespace waavs {
 	// SVGMaskNode
 	// 'mask' element
 	// Similar to SVGClipPath, except uses SRC_OUT
+	// Similar to filtering
 	//================================================
 	struct SVGMaskElement : public SVGGraphicsElement
 	{
