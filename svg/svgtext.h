@@ -60,7 +60,8 @@ namespace waavs
         void fixupStyleAttributes(IAmGroot*) override {}
 
         const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override { return BLVar{}; }
-        //WGRectD objectBoundingBox() const override { return fBBox; }
+
+        
         void setBBox(const WGRectD& box) { fBBox = box; }
 
         // no-op
@@ -225,7 +226,7 @@ namespace waavs
                 fExpanded = fRawText;
             }
 
-            //uint8_t* buf = fOwned.data();
+
             ByteSpan tfl = textForLayout();
             uint8_t* buf = const_cast<uint8_t*>(tfl.data()); // we know we have an owned buffer, so this is safe
             uint8_t* r = buf;
@@ -597,6 +598,11 @@ namespace waavs
             return fBBox; 
         }
 
+        const WGRectD objectBoundingBox() const noexcept override 
+        { 
+            return fBBox; 
+        }
+
         // child loading shared between 'text' and 'tspan'
         void loadContentNode(const XmlElement& elem, IAmGroot* groot) override
         {
@@ -802,8 +808,8 @@ namespace waavs
                 else {
                     node->draw(ctx, groot);
                     WGRectD nodeBox{};
-                    //nodeBox = node->objectBoundingBox();
-                    //expandRect(fBBox, nodeBox);
+                    nodeBox = node->objectBoundingBox();
+                    wg_rectD_union(fBBox, nodeBox);
                 }
             }
 
@@ -933,6 +939,19 @@ namespace waavs {
         }
 
         SVGTextNode(IAmGroot* groot) : SVGTextContainerNode(groot) {}
+
+        const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot)  noexcept override
+        {
+            // draw content into a IRenderSVG context and then return fBBox
+            IRenderSVG offscreenCtx{};
+            WGRectD vp = ctx->viewport();
+            offscreenCtx.setViewport(vp);
+
+            drawContent(&offscreenCtx, groot);
+
+            return fBBox;
+        }
+
 
         WGPointD defaultCursor(IRenderSVG* ctx) const noexcept override
         {

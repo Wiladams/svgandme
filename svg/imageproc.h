@@ -11,12 +11,7 @@
 
 namespace waavs
 {
-    static INLINE float clamp01f(float v) noexcept
-    {
-        if (v < 0.0f) return 0.0f;
-        if (v > 1.0f) return 1.0f;
-        return v;
-    }
+
 
     static INLINE uint8_t clamp_u8f(float v) noexcept
     {

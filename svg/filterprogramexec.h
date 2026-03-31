@@ -124,10 +124,11 @@ namespace waavs
             // Resolve empty / "__last__" sentinel to concrete key.
             InternedKey resolveKey(InternedKey k) const noexcept override
             {
+                static InternedKey kLast = PSNameTable::INTERN("__last__");
+
                 if (!k)
                     return lastKey();
 
-                static InternedKey kLast = PSNameTable::INTERN("__last__");
                 if (k == kLast)
                     return lastKey();
 
@@ -163,8 +164,17 @@ namespace waavs
 
             INLINE InternedKey resolveBinaryInput1Key(const FilterIO& io) const noexcept
             {
-                return resolveExplicitOrImplicitInputKey(io.in1);
+                if (!io.in1)
+                    return implicitInputFallback();
+
+                InternedKey r = resolveKey(io.in1);
+                return r ? r : implicitInputFallback();
             }
+
+            //INLINE InternedKey resolveBinaryInput1Key(const FilterIO& io) const noexcept
+            //{
+            //    return resolveExplicitOrImplicitInputKey(io.in1);
+            //}
 
             INLINE InternedKey resolveBinaryInput2Key(const FilterIO& io) const noexcept
             {
@@ -370,11 +380,11 @@ namespace waavs
             default:
                 return 0;
             }
-            return packPARGB32(
-                (uint8_t)oa,
-                (uint8_t)orr,
-                (uint8_t)og,
-                (uint8_t)ob);
+            return pack_argb32(
+                oa,
+                orr,
+                og,
+                ob);
         }
 
 

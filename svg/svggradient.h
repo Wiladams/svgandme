@@ -9,7 +9,7 @@
 #include <functional>
 
 #include "svgattributes.h"
-#include "svgstructuretypes.h"
+#include "svggraphicselement.h"
 #include "maths.h"
 
 
@@ -389,6 +389,93 @@ namespace waavs {
             fGradient.setType(BL_GRADIENT_TYPE_LINEAR);
         }
 
+        // getVariant()
+        //
+        // Whomever is using us for paint is calling in here to get
+        // our paint variant.  This is the place to construct the thing,
+        // if it hasn't already been constructed.
+        //
+        // It's like a bindToContext essentially, but bindToContext is
+        // only called as part of a drawing chain.
+        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        {
+            BLGradient grad;
+
+            if (!buildBoundGradient(ctx, groot, grad))
+                return BLVar::null();
+
+            BLVar out{};
+            out = grad;
+
+            return out;
+        }
+
+        // fGradient contains stops
+        bool buildBoundGradient(IRenderSVG* ctx, IAmGroot* groot, BLGradient &grad)
+        {
+            grad.setType(BL_GRADIENT_TYPE_LINEAR);
+
+            double dpi = groot ? groot->dpi() : 96.0;
+
+            // Start setting up the gradient
+            BLLinearGradientValues values{ 0,0,1,0 };
+            BLMatrix2D xform = BLMatrix2D::makeIdentity();
+
+            // Parse attributes if present
+            // defaults per SVG:
+            // x1 = 0%, y1 = 0%, x2 = 100%, y2 = 0%
+            SVGLengthValue x1{ 0.0, SVG_LENGTHTYPE_PERCENTAGE, false };
+            SVGLengthValue y1{ 0.0, SVG_LENGTHTYPE_PERCENTAGE, false };
+            SVGLengthValue x2{ 100.0, SVG_LENGTHTYPE_PERCENTAGE, false };
+            SVGLengthValue y2{ 0.0, SVG_LENGTHTYPE_PERCENTAGE, false };
+
+
+            ByteSpan s;
+            if ((s = getAttribute(svgattr::x1()))) { ByteSpan t = s; parseLengthValue(t, x1); }
+            if ((s = getAttribute(svgattr::y1()))) { ByteSpan t = s; parseLengthValue(t, y1); }
+            if ((s = getAttribute(svgattr::x2()))) { ByteSpan t = s; parseLengthValue(t, x2); }
+            if ((s = getAttribute(svgattr::y2()))) { ByteSpan t = s; parseLengthValue(t, y2); }
+
+
+            if (fGradientUnits == SVG_SPACE_USER)
+            {
+                const WGRectD vp = ctx->viewport();
+
+                LengthResolveCtx rx{ dpi, nullptr, vp.w, 0.0, SpaceUnitsKind::SVG_SPACE_USER };
+                LengthResolveCtx ry{ dpi, nullptr, vp.h, 0.0, SpaceUnitsKind::SVG_SPACE_USER };
+
+                // defaults if not set
+                values.x0 = x1.isSet() ? resolveLengthUserUnits(x1, rx) : 0.0;
+                values.y0 = y1.isSet() ? resolveLengthUserUnits(y1, ry) : 0.0;
+                values.x1 = x2.isSet() ? resolveLengthUserUnits(x2, rx) : vp.w;
+                values.y1 = y2.isSet() ? resolveLengthUserUnits(y2, ry) : 0.0;
+
+                if (fHasGradientTransform)
+                    xform = fGradientTransform;
+
+            }
+            else // SVG_SPACE_OBJECT (objectBoundingBox)
+            {
+                const WGRectD objFrame = ctx->getObjectFrame();
+
+                // resolve into bbox space (0..1),
+                // then use transform to map bbox -> user
+                values.x0 = resolveLengthBBoxUnits(x1, 0.0);
+                values.y0 = resolveLengthBBoxUnits(y1, 0.0);
+                values.x1 = resolveLengthBBoxUnits(x2, 1.0);
+                values.y1 = resolveLengthBBoxUnits(y2, 0.0);
+
+                xform = composeGradientTransformBBox(objFrame, fHasGradientTransform, fGradientTransform);
+            }
+
+            grad.setValues(values);
+            grad.setTransform(xform);
+            grad.resetStops();
+            grad.assignStops(fGradient.stopsView());
+
+            return true;
+        }
+
         // Attributes to inherit from the template if
         // it's also linearGradient
         // Values that are set in this instance override any values
@@ -404,6 +491,8 @@ namespace waavs {
             setAttributeIfAbsent(elem, svgattr::y1());
             setAttributeIfAbsent(elem, svgattr::x2());
             setAttributeIfAbsent(elem, svgattr::y2());
+
+
         }
         
 
@@ -415,6 +504,7 @@ namespace waavs {
             resolveReferenceChain(groot);
          
             // Convert the non-variant attributes
+            // spreadMethod / gradientUnits / gradientTransform
             fixupCommonAttributes(groot);
         }
 

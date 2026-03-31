@@ -110,7 +110,8 @@ namespace waavs
     INLINE float max(float a, float b) noexcept { return (a > b) ? a : b; }
     INLINE float min(float a, float b) noexcept { return (a < b) ? a : b; }
     INLINE float clamp(float a, float min_, float max_) noexcept { return min(max(a, min_), max_); }
-    
+    INLINE float clamp01f(float v) noexcept { return clamp(v, 0.0f, 1.0f); }
+
     INLINE float abs(float a) noexcept { return a < 0 ? -a : a; }
     INLINE float acos(float a) noexcept { return std::acos(a); }
     INLINE float asin(float a) noexcept { return std::asin(a); }
@@ -140,7 +141,9 @@ namespace waavs
     INLINE bool isfinite(float a) { return std::isfinite(a); }
     INLINE constexpr float radiansf(float a) { return float(a * 0.017453292519943295); }
     INLINE constexpr float degreesf(float a) { return float(a * 57.29577951308232); }
-    INLINE constexpr float lerp(float a, float b, float u) { return a * (1.0f - u) + b * u; }
+    INLINE constexpr float lerp(float a, float b, float u) noexcept { return fmaf((b - a), u, a); }
+    //INLINE constexpr float lerp(float a, float b, float u) noexcept { return a + (b - a) * u; }
+    //INLINE constexpr float lerp(float a, float b, float u) { return a * (1.0f - u) + b * u; }
     INLINE  void swap(float& a, float& b) { return std::swap(a, b); }
     INLINE float smoothStep(float a, float b, float u) {
         auto t = clamp((u - a) / (b - a), 0.0f, 1.0f);
@@ -161,6 +164,11 @@ namespace waavs
     }
 
     INLINE float floor(float a) { return std::floor(a); }
+    INLINE int floorI(float x) noexcept
+    {
+        int i = (int)x;
+        return (x < (float)i) ? (i - 1) : i;
+    }
     INLINE float ceil(float a) { return std::ceil(a); }
     INLINE bool isNaN(const float a) { return std::isnan(a); }
 
@@ -174,7 +182,8 @@ namespace waavs
     INLINE double min(const double  a, const double b) noexcept { return a < b ? a : b; }
     INLINE double max(const double a, const double b) noexcept { return a > b ? a : b; }
     INLINE double abs(const double a) noexcept { return a < 0 ? -a : a; }
-    INLINE double clamp(const double a, const double min_, const double max_) noexcept { return min(max(a, min_), max_); }
+    INLINE double clamp(const double a, const double minValue, const double maxValue) noexcept { return min(max(a, minValue), maxValue); }
+    INLINE float clamp01(double v) noexcept { return clamp(v, 0.0, 1.0); }
 
     INLINE double atan(double a) noexcept { return std::atan(a); }
     INLINE double atan2(double y, double x) noexcept { return std::atan2(y, x); }
@@ -2534,5 +2543,15 @@ namespace waavs
             }
         };
         return range_helper{ min, max, step };
+    }
+}
+
+namespace waavs
+{
+    static INLINE uint8_t float_to_u8(float v) noexcept
+    {
+        if (v <= 0.0f) return 0;
+        if (v >= 1.0f) return 255;
+        return (uint8_t)(v * 255.0f + 0.5f);
     }
 }

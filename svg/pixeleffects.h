@@ -166,7 +166,7 @@ namespace waavs {
         const uint32_t og = sg + mul255(dg, isa);
         const uint32_t ob = sb + mul255(db, isa);
 
-        return packPARGB32((uint8_t)oa, (uint8_t)orr, (uint8_t)og, (uint8_t)ob);
+        return pack_argb32(oa, orr, og, ob);
     }
 
 
@@ -186,7 +186,7 @@ namespace waavs {
         const uint32_t og = mul255(sg, da);
         const uint32_t ob = mul255(sb, da);
 
-        return packPARGB32((uint8_t)oa, (uint8_t)orr, (uint8_t)og, (uint8_t)ob);
+        return pack_argb32(oa, orr, og, ob);
     }
 
     static INLINE uint32_t composite_out_prgb32_pixel(uint32_t p1, uint32_t p2) noexcept
@@ -207,7 +207,7 @@ namespace waavs {
         const uint32_t og = mul255(sg, ida);
         const uint32_t ob = mul255(sb, ida);
 
-        return packPARGB32((uint8_t)oa, (uint8_t)orr, (uint8_t)og, (uint8_t)ob);
+        return pack_argb32(oa, orr, og, ob);
     }
 
     static INLINE uint32_t composite_atop_prgb32_pixel(uint32_t p1, uint32_t p2) noexcept
@@ -230,7 +230,7 @@ namespace waavs {
             const uint32_t orr = mul255(sr, da);
             const uint32_t og = mul255(sg, da);
             const uint32_t ob = mul255(sb, da);
-            return packPARGB32((uint8_t)oa, (uint8_t)orr, (uint8_t)og, (uint8_t)ob);
+            return pack_argb32(oa, orr, og, ob);
         }
 
         const uint32_t isa = 255 - sa;
@@ -240,7 +240,7 @@ namespace waavs {
         const uint32_t og = mul255(sg, da) + mul255(dg, isa);
         const uint32_t ob = mul255(sb, da) + mul255(db, isa);
 
-        return packPARGB32((uint8_t)oa, (uint8_t)orr, (uint8_t)og, (uint8_t)ob);
+        return pack_argb32(oa, orr, og, ob);
     }
 
     static INLINE uint32_t composite_xor_prgb32_pixel(uint32_t p1, uint32_t p2) noexcept
@@ -270,7 +270,7 @@ namespace waavs {
         const uint32_t og = mul255(sg, ida) + mul255(dg, isa);
         const uint32_t ob = mul255(sb, ida) + mul255(db, isa);
 
-        return packPARGB32((uint8_t)oa, (uint8_t)orr, (uint8_t)og, (uint8_t)ob);
+        return pack_argb32(oa, orr, og, ob);
     }
 }
 

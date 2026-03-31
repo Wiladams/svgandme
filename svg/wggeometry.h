@@ -172,7 +172,12 @@ namespace waavs
     }
 
     static INLINE void wg_rectD_union_point(WGRectD& a, const WGPointD& b) { a = wg_rectd_merge_point(a, b); }
-    static INLINE void wg_rectD_union(WGRectD& a, const WGRectD& b) { a = wg_rectd_merge_rect(a, b); }
+    static INLINE void wg_rectD_union(WGRectD& a, const WGRectD& b) 
+    { 
+        if (a.isEmpty()) { a = b; return; }
+
+        a = wg_rectd_merge_rect(a, b); 
+    }
 
 
     // Boxes

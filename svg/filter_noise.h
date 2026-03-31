@@ -1,6 +1,7 @@
 #pragma once
 
 #include "definitions.h"
+#include "maths.h"
 
 #include <math.h>
 #include <stdint.h>
@@ -17,69 +18,125 @@ namespace waavs
         return t * t * t * (t * (t * 6.0f - 15.0f) + 10.0f);
     }
 
-    static INLINE float noise_lerp(float a, float b, float t) noexcept
-    {
-        return a + (b - a) * t;
-    }
 
-    static INLINE int fastFloor(float x) noexcept
-    {
-        int i = (int)x;
-        return (x < (float)i) ? (i - 1) : i;
-    }
 
     // ------------------------------------------------------------
-    // Classic Perlin helpers
+    // SVG Spec-style PRNG (Park-Miller)
     // ------------------------------------------------------------
-
-    static INLINE float grad(int hash, float x, float y) noexcept
+    struct SVGParkMillerRNG
     {
-        // 2D gradient selection returning a scalar dot product.
-        switch (hash & 7)
+        static constexpr int32_t kM = 2147483647;
+        static constexpr int32_t kA = 16807;
+        static constexpr int32_t kQ = 127773;
+        static constexpr int32_t kR = 2836;
+
+        int32_t fState{ 1 };
+
+        INLINE void init(int32_t seed) noexcept
         {
-        default:
-        case 0: return  x + y;
-        case 1: return -x + y;
-        case 2: return  x - y;
-        case 3: return -x - y;
-        case 4: return  x;
-        case 5: return -x;
-        case 6: return  y;
-        case 7: return -y;
+            if (seed <= 0)
+            {
+                seed = -seed + 1;
+                if (seed <= 0)
+                    seed = 1;
+            }
+
+            if (seed >= kM)
+                seed = kM - 1;
+
+            fState = seed;
+        }
+
+        INLINE int32_t nextInt() noexcept
+        {
+            const int32_t hi = fState / kQ;
+            const int32_t lo = fState % kQ;
+
+            int32_t test = kA * lo - kR * hi;
+            if (test <= 0)
+                test += kM;
+
+            fState = test;
+            return fState;
+        }
+
+        INLINE float nextUnitFloat() noexcept
+        {
+            return (float)nextInt() / (float)kM;
+        }
+    };
+
+    // ------------------------------------------------------------
+    // Gradient basis
+    // ------------------------------------------------------------
+
+    struct TurbulenceGradientTable
+    {
+        float gx[256];
+        float gy[256];
+    };
+
+    static INLINE void buildGradientTable(TurbulenceGradientTable& g, SVGParkMillerRNG& rng) noexcept
+    {
+        static constexpr float kTwoPi = (float)Pi2;
+
+        for (int i = 0; i < 256; ++i)
+        {
+            const float a = rng.nextUnitFloat() * kTwoPi;
+            g.gx[i] = cosf(a);
+            g.gy[i] = sinf(a);
         }
     }
 
-    static INLINE void buildPermutation(uint8_t perm[512], uint32_t seed) noexcept
+    static INLINE float gradDot(
+        const TurbulenceGradientTable& g,
+        int hash,
+        float x,
+        float y) noexcept
+    {
+        const int h = hash & 255;
+        return g.gx[h] * x + g.gy[h] * y;
+    }
+
+    // ------------------------------------------------------------
+    // Permutation table
+    // ------------------------------------------------------------
+
+    static INLINE void buildPermutation(uint8_t perm[512], SVGParkMillerRNG& rng) noexcept
     {
         uint8_t p[256];
-        for (uint32_t i = 0; i < 256; ++i)
+        for (int i = 0; i < 256; ++i)
             p[i] = (uint8_t)i;
 
-        // Deterministic Fisher-Yates using a simple LCG.
-        uint32_t s = seed ? seed : 1u;
         for (int i = 255; i > 0; --i)
         {
-            s = s * 1664525u + 1013904223u;
-            const uint32_t j = s % (uint32_t)(i + 1);
+            const int j = rng.nextInt() % (i + 1);
 
             const uint8_t tmp = p[i];
             p[i] = p[j];
             p[j] = tmp;
         }
 
-        for (uint32_t i = 0; i < 256; ++i)
+        for (int i = 0; i < 256; ++i)
         {
             perm[i] = p[i];
             perm[i + 256] = p[i];
         }
     }
 
-    // Single scalar 2D Perlin-style noise sample.
-    // Output is roughly in [-1, 1].
-    static INLINE float perlin2(float x, float y, const uint8_t perm[512]) noexcept
+    // ------------------------------------------------------------
+    // Base Perlin sample, non-periodic
+    // ------------------------------------------------------------
+
+    // Returns a signed value roughly in [-1, 1].
+    static INLINE float perlin2(
+        float x,
+        float y,
+        const TurbulenceGradientTable& g,
+        const uint8_t perm[512]) noexcept
     {
-        const int ix0 = fastFloor(x);
-        const int iy0 = fastFloor(y);
+        const int ix0 = floorI(x);
+        const int iy0 = floorI(y);
 
         const float fx0 = x - (float)ix0;
         const float fy0 = y - (float)iy0;
@@ -97,107 +154,91 @@ namespace waavs
         const int ba = perm[perm[(X + 1) & 255] + Y];
         const int bb = perm[perm[(X + 1) & 255] + ((Y + 1) & 255)];
 
-        const float x1 = noise_lerp(
-            grad(aa, fx0, fy0),
-            grad(ba, fx1, fy0),
+        const float x1 = lerp(
+            gradDot(g, aa, fx0, fy0),
+            gradDot(g, ba, fx1, fy0),
             u);
 
-        const float x2 = noise_lerp(
-            grad(ab, fx0, fy1),
-            grad(bb, fx1, fy1),
+        const float x2 = lerp(
+            gradDot(g, ab, fx0, fy1),
+            gradDot(g, bb, fx1, fy1),
             u);
 
-        // Normalize the chosen gradient basis to a reasonable range.
-        return noise_lerp(x1, x2, v) * 0.70710678f;
+        // sqrt(2)/2 basis normalization.
+        return lerp(x1, x2, v) * 0.70710678f;
     }
 
     // ------------------------------------------------------------
-    // Periodic hash helpers for stitchTiles="stitch"
+    // Periodic helpers for stitchTiles="stitch"
     // ------------------------------------------------------------
 
-    static INLINE uint64_t splitmix64(uint64_t x) noexcept
+    static INLINE int positive_mod(int x, int m) noexcept
     {
-        x += 0x9E3779B97F4A7C15ull;
-        x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9ull;
-        x = (x ^ (x >> 27)) * 0x94D049BB133111EBull;
-        x ^= (x >> 31);
+        if (m <= 0)
+            return x;
+
+        x %= m;
+        if (x < 0)
+            x += m;
         return x;
     }
 
-    static INLINE uint32_t hash2_u32(int32_t x, int32_t y, uint64_t seed) noexcept
+    static INLINE int periodicIndex(int i, int period) noexcept
     {
-        uint64_t h = seed;
-        h ^= splitmix64((uint64_t)(uint32_t)x + 0x632BE59BD9B4E019ull);
-        h ^= splitmix64((uint64_t)(uint32_t)y + 0x8CB92BA72F3D8DD7ull);
-        h = splitmix64(h);
-        return (uint32_t)(h & 0xFFFFFFFFu);
+        if (period > 0)
+            return positive_mod(i, period);
+        return i;
     }
 
-    static INLINE uint32_t hash2_periodic(
-        int32_t x,
-        int32_t y,
-        int32_t periodX,
-        int32_t periodY,
-        uint64_t seed) noexcept
-    {
-        if (periodX > 0) {
-            x %= periodX;
-            if (x < 0)
-                x += periodX;
-        }
-
-        if (periodY > 0) {
-            y %= periodY;
-            if (y < 0)
-                y += periodY;
-        }
-
-        return hash2_u32(x, y, seed);
-    }
-
-    static INLINE float grad2_dot_periodic(uint32_t h, float x, float y) noexcept
-    {
-        return grad((int)h, x, y);
-    }
-
-    // Periodic gradient noise for stitchTiles="stitch".
-    // Output is roughly in [-1, 1].
+    // Periodic Perlin sample using the same gradient/permutation tables.
+    // periodX/periodY are lattice periods, not pixel counts.
     static INLINE float perlin2_periodic(
         float x,
         float y,
         int32_t periodX,
         int32_t periodY,
-        uint64_t seed) noexcept
+        const TurbulenceGradientTable& g,
+        const uint8_t perm[512]) noexcept
     {
-        const int32_t ix0 = fastFloor(x);
-        const int32_t iy0 = fastFloor(y);
-        const int32_t ix1 = ix0 + 1;
-        const int32_t iy1 = iy0 + 1;
+        const int ix0_raw = floorI(x);
+        const int iy0_raw = floorI(y);
+        const int ix1_raw = ix0_raw + 1;
+        const int iy1_raw = iy0_raw + 1;
 
-        const float fx0 = x - (float)ix0;
-        const float fy0 = y - (float)iy0;
+        const float fx0 = x - (float)ix0_raw;
+        const float fy0 = y - (float)iy0_raw;
         const float fx1 = fx0 - 1.0f;
         const float fy1 = fy0 - 1.0f;
+
+        const int ix0 = periodicIndex(ix0_raw, periodX);
+        const int iy0 = periodicIndex(iy0_raw, periodY);
+        const int ix1 = periodicIndex(ix1_raw, periodX);
+        const int iy1 = periodicIndex(iy1_raw, periodY);
+
+        const int X0 = ix0 & 255;
+        const int Y0 = iy0 & 255;
+        const int X1 = ix1 & 255;
+        const int Y1 = iy1 & 255;
 
         const float u = fade(fx0);
         const float v = fade(fy0);
 
-        const uint32_t aa = hash2_periodic(ix0, iy0, periodX, periodY, seed);
-        const uint32_t ab = hash2_periodic(ix0, iy1, periodX, periodY, seed);
-        const uint32_t ba = hash2_periodic(ix1, iy0, periodX, periodY, seed);
-        const uint32_t bb = hash2_periodic(ix1, iy1, periodX, periodY, seed);
+        const int aa = perm[perm[X0] + Y0];
+        const int ab = perm[perm[X0] + Y1];
+        const int ba = perm[perm[X1] + Y0];
+        const int bb = perm[perm[X1] + Y1];
 
-        const float x1 = noise_lerp(
-            grad2_dot_periodic(aa, fx0, fy0),
-            grad2_dot_periodic(ba, fx1, fy0),
+        const float x1 = lerp(
+            gradDot(g, aa, fx0, fy0),
+            gradDot(g, ba, fx1, fy0),
             u);
 
-        const float x2 = noise_lerp(
-            grad2_dot_periodic(ab, fx0, fy1),
-            grad2_dot_periodic(bb, fx1, fy1),
+        const float x2 = lerp(
+            gradDot(g, ab, fx0, fy1),
+            gradDot(g, bb, fx1, fy1),
             u);
 
-        return noise_lerp(x1, x2, v) * 0.70710678f;
+        return lerp(x1, x2, v) * 0.70710678f;
     }
 
     // ------------------------------------------------------------
@@ -225,78 +266,92 @@ namespace waavs
     }
 
     // ------------------------------------------------------------
-    // Non-stitched accumulation using classic Perlin noise
+    // Per-channel turbulence state
     // ------------------------------------------------------------
 
+    struct TurbulenceChannelState
+    {
+        TurbulenceGradientTable grads{};
+        uint8_t perm[512]{};
+    };
+
+    static INLINE void buildTurbulenceChannelState(
+        TurbulenceChannelState& s,
+        SVGParkMillerRNG& rng) noexcept
+    {
+        buildGradientTable(s.grads, rng);
+        buildPermutation(s.perm, rng);
+    }
+
+    static INLINE void buildTurbulenceChannelStates(
+        TurbulenceChannelState states[4],
+        int32_t seed) noexcept
+    {
+        SVGParkMillerRNG rng;
+        rng.init(seed);
+
+        // Build channels in R, G, B, A order.
+        for (int i = 0; i < 4; ++i)
+            buildTurbulenceChannelState(states[i], rng);
+    }
+
+    // ------------------------------------------------------------
+    // Non-stitched accumulation
+    // ------------------------------------------------------------
+
+    // Returns a signed result. Map later with fractal_to_unit().
     static INLINE float fractalNoise2(
         float x,
         float y,
         const TurbulenceNoiseParams& p,
-        uint64_t channelSeed) noexcept
+        const TurbulenceChannelState& s) noexcept
     {
-        uint8_t perm[512];
-        buildPermutation(perm, (uint32_t)(channelSeed & 0xFFFFFFFFu));
-
         float sum = 0.0f;
         float amp = 1.0f;
         float freqX = p.baseFreqX;
         float freqY = p.baseFreqY;
-        float norm = 0.0f;
 
         for (uint32_t o = 0; o < p.octaves; ++o)
         {
-            const float n = perlin2(x * freqX, y * freqY, perm);
-
+            const float n = perlin2(x * freqX, y * freqY, s.grads, s.perm);
             sum += n * amp;
-            norm += amp;
 
             freqX *= 2.0f;
             freqY *= 2.0f;
             amp *= 0.5f;
         }
-
-        if (norm > 0.0f)
-            sum /= norm;
 
         return sum;
     }
 
+    // Returns a non-negative result. Map later with turbulence_to_unit().
     static INLINE float turbulence2(
         float x,
         float y,
         const TurbulenceNoiseParams& p,
-        uint64_t channelSeed) noexcept
+        const TurbulenceChannelState& s) noexcept
     {
-        uint8_t perm[512];
-        buildPermutation(perm, (uint32_t)(channelSeed & 0xFFFFFFFFu));
-
         float sum = 0.0f;
         float amp = 1.0f;
         float freqX = p.baseFreqX;
         float freqY = p.baseFreqY;
-        float norm = 0.0f;
 
         for (uint32_t o = 0; o < p.octaves; ++o)
         {
-            float n = perlin2(x * freqX, y * freqY, perm);
+            float n = perlin2(x * freqX, y * freqY, s.grads, s.perm);
             n = fabsf(n);
-
             sum += n * amp;
-            norm += amp;
 
             freqX *= 2.0f;
             freqY *= 2.0f;
             amp *= 0.5f;
         }
-
-        if (norm > 0.0f)
-            sum /= norm;
 
         return sum;
     }
 
     // ------------------------------------------------------------
-    // Stitched accumulation using periodic Perlin noise
+    // Stitched accumulation
     // ------------------------------------------------------------
 
     static INLINE float fractalNoise2_stitch(
@@ -305,13 +360,12 @@ namespace waavs
         const TurbulenceNoiseParams& p,
         int32_t basePeriodX,
         int32_t basePeriodY,
-        uint64_t channelSeed) noexcept
+        const TurbulenceChannelState& s) noexcept
     {
         float sum = 0.0f;
         float amp = 1.0f;
         float freqX = p.baseFreqX;
         float freqY = p.baseFreqY;
-        float norm = 0.0f;
 
         int32_t periodX = basePeriodX;
         int32_t periodY = basePeriodY;
@@ -323,10 +377,10 @@ namespace waavs
                 y * freqY,
                 periodX,
                 periodY,
-                channelSeed);
+                s.grads,
+                s.perm);
 
             sum += n * amp;
-            norm += amp;
 
             freqX *= 2.0f;
             freqY *= 2.0f;
@@ -335,9 +389,6 @@ namespace waavs
             if (periodX > 0) periodX *= 2;
             if (periodY > 0) periodY *= 2;
         }
-
-        if (norm > 0.0f)
-            sum /= norm;
 
         return sum;
     }
@@ -348,13 +399,12 @@ namespace waavs
         const TurbulenceNoiseParams& p,
         int32_t basePeriodX,
         int32_t basePeriodY,
-        uint64_t channelSeed) noexcept
+        const TurbulenceChannelState& s) noexcept
     {
         float sum = 0.0f;
         float amp = 1.0f;
         float freqX = p.baseFreqX;
         float freqY = p.baseFreqY;
-        float norm = 0.0f;
 
         int32_t periodX = basePeriodX;
         int32_t periodY = basePeriodY;
@@ -366,12 +416,11 @@ namespace waavs
                 y * freqY,
                 periodX,
                 periodY,
-                channelSeed);
+                s.grads,
+                s.perm);
 
             n = fabsf(n);
-
             sum += n * amp;
-            norm += amp;
 
             freqX *= 2.0f;
             freqY *= 2.0f;
@@ -381,9 +430,54 @@ namespace waavs
             if (periodY > 0) periodY *= 2;
         }
 
-        if (norm > 0.0f)
-            sum /= norm;
-
         return sum;
+    }
+
+    // ------------------------------------------------------------
+    // Final SVG-style mapping helpers
+    // ------------------------------------------------------------
+
+    static INLINE float fractal_to_unit(float v) noexcept
+    {
+        return clamp01(v * 0.5f + 0.5f);
+    }
+
+    static INLINE float turbulence_to_unit(float v) noexcept
+    {
+        return clamp01(v);
+    }
+
+    // ------------------------------------------------------------
+    // Convenience helpers for sampling RGBA
+    // ------------------------------------------------------------
+
+    static INLINE float sampleFractalChannel(
+        float x,
+        float y,
+        const TurbulenceNoiseParams& p,
+        const TurbulenceChannelState& s,
+        bool stitchTiles,
+        int32_t basePeriodX,
+        int32_t basePeriodY) noexcept
+    {
+        if (stitchTiles)
+            return fractal_to_unit(fractalNoise2_stitch(x, y, p, basePeriodX, basePeriodY, s));
+
+        return fractal_to_unit(fractalNoise2(x, y, p, s));
+    }
+
+    static INLINE float sampleTurbulenceChannel(
+        float x,
+        float y,
+        const TurbulenceNoiseParams& p,
+        const TurbulenceChannelState& s,
+        bool stitchTiles,
+        int32_t basePeriodX,
+        int32_t basePeriodY) noexcept
+    {
+        if (stitchTiles)
+            return turbulence_to_unit(turbulence2_stitch(x, y, p, basePeriodX, basePeriodY, s));
+
+        return turbulence_to_unit(turbulence2(x, y, p, s));
     }
 }

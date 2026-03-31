@@ -145,7 +145,7 @@ namespace waavs
         const uint8_t sg = (uint8_t)wg_div255_u32((uint32_t)g * m);
         const uint8_t sb = (uint8_t)wg_div255_u32((uint32_t)b * m);
 
-        return packPARGB32(sa, sr, sg, sb);
+        return pack_argb32(sa, sr, sg, sb);
     }
 
     static INLINE uint32_t wg_src_over_premul_argb32(uint32_t src, uint32_t dst) noexcept
@@ -163,7 +163,7 @@ namespace waavs
         const uint8_t og = (uint8_t)((uint32_t)sg + wg_div255_u32((uint32_t)dg * invA));
         const uint8_t ob = (uint8_t)((uint32_t)sb + wg_div255_u32((uint32_t)db * invA));
 
-        return packPARGB32(oa, or_, og, ob);
+        return pack_argb32(oa, or_, og, ob);
     }
 
     static INLINE void wg_blend_span_mask8_raw(

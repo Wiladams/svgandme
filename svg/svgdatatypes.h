@@ -1516,10 +1516,10 @@ namespace waavs {
             fHasOffset = false;
         }
 
-        void reset() noexcept
-        {
-            clearArray();
-            clearOffset();
+        void reset() noexcept 
+        { 
+            clearArray(); 
+            clearOffset(); 
         }
     };
 

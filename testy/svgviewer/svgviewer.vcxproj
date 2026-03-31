@@ -315,6 +315,7 @@
     <ClInclude Include="..\..\svg\svgmarker.h" />
     <ClInclude Include="..\..\svg\svgmask.h" />
     <ClInclude Include="..\..\svg\svgmisc.h" />
+    <ClInclude Include="..\..\svg\svgobject.h" />
     <ClInclude Include="..\..\svg\svgpattern.h" />
     <ClInclude Include="..\..\svg\svgscript.h" />
     <ClInclude Include="..\..\svg\svgshapes.h" />

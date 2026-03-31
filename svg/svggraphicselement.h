@@ -96,16 +96,16 @@ namespace waavs {
         }
 
 
-        std::shared_ptr<FilterProgramStream> getReferencedFilterProgram(IAmGroot *groot) const noexcept 
-        { 
+        //std::shared_ptr<FilterProgramStream> getReferencedFilterProgram(IAmGroot *groot) const noexcept 
+        //{ 
 
-            auto filterElem = getReferencedFilterNode(groot);
-            if (!filterElem)
-                return nullptr;
+        //    auto filterElem = getReferencedFilterNode(groot);
+        //    if (!filterElem)
+        //        return nullptr;
 
             // If we have a valid filter element, return its program stream
-            return filterElem->getFilterProgramStream(groot);
-        }
+        //    return filterElem->getFilterProgramStream(groot);
+        //}
 
 
 

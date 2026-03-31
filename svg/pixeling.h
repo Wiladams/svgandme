@@ -7,7 +7,7 @@
 
 #include "definitions.h"
 #include "coloring.h"
-
+#include "maths.h"
 
 /*
  * pixeling.h — pixel-pack/unpack and surface ops for WAAVS
@@ -129,11 +129,43 @@ static INLINE __m128i mm_splat_inv_alpha_u16(__m128i argb16) noexcept
 }
 #endif
 
+namespace waavs {
 
-static INLINE uint32_t packPARGB32(uint8_t a, uint8_t r, uint8_t g, uint8_t b) noexcept
-{
-    return (uint32_t(a) << 24) | (uint32_t(r) << 16) | (uint32_t(g) << 8) | uint32_t(b);
+    // pack_argb32()
+    // 
+    // Convert the given float values into 8-bit components and
+    // stuff them into a uint32_t
+    // NOTE:  This routine does NOT do any pre-multiplication.  It 
+    // assumes any pre-multiplication has already occured before calling
+    // into here
+    static INLINE uint32_t pack_argb32(float a, float r, float g, float b) noexcept
+    {
+        // clamp to range [0,1] before converting to 8-bit integers.
+        r = clamp01(r);
+        g = clamp01(g);
+        b = clamp01(b);
+        a = clamp01(a);
+
+        const uint32_t A = (uint32_t)float_to_u8(a);
+        const uint32_t R = (uint32_t)float_to_u8(r);
+        const uint32_t G = (uint32_t)float_to_u8(g);
+        const uint32_t B = (uint32_t)float_to_u8(b);
+
+        return (A << 24) | (R << 16) | (G << 8) | B;
+    }
+
+    static INLINE uint32_t pack_argb32(uint8_t a, uint8_t r, uint8_t g, uint8_t b) noexcept
+    {
+        return (uint32_t(a) << 24) | (uint32_t(r) << 16) | (uint32_t(g) << 8) | uint32_t(b);
+    }
+
+    static INLINE uint32_t pack_argb32(uint32_t a, uint32_t r, uint32_t g, uint32_t b) noexcept
+    {
+        return ((a) << 24) | ((r) << 16) | ((g) << 8) | (b);
+    }
 }
+
+
 
 static INLINE void unpackPARGB32(uint32_t px, uint8_t& a, uint8_t& r, uint8_t& g, uint8_t& b) noexcept
 {
@@ -176,7 +208,7 @@ static inline Pixel_ARGB32 pixeling_prgba_pack_ARGB32(const ColorPRGBA p)
     const uint32_t G8 = (uint32_t)(WAAVS_CLAMP01(s.g) * A * 255.0f + 0.5f);
     const uint32_t B8 = (uint32_t)(WAAVS_CLAMP01(s.b) * A * 255.0f + 0.5f);
 
-    return packPARGB32(A8 , R8 , G8 , B8); // [A:R:G:B] 
+    return waavs::pack_argb32(A8 , R8 , G8 , B8); // [A:R:G:B] 
 }
 
 // ARGB32 (sRGB premultiplied) -> PRGBA (linear) 

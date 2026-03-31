@@ -22,9 +22,10 @@ using namespace waavs;
 // One quarter of a apple studio display is 2560 x 1440
 static constexpr int canvasWidth = 2560, canvasHeight = 1440;
 // 3380x1900 - two thirds
-//static constexpr int canvasWidth = 3880, canvasHeight = 1900;
+//static constexpr int canvasWidth = 2560, canvasHeight = 2300;
 static constexpr float kFrameRate = 30.0f;
 
+static std::unique_ptr<SVGB2DDriver> gDrawingContext{ nullptr };
 
 // Reference to currently active document
 std::shared_ptr<SVGDocument> gDoc{ nullptr };
@@ -33,16 +34,22 @@ ViewNavigator gNavigator{};
 // Animation management
 bool gAnimate{ false };
 bool gPerformTransform{ true };
-bool gAutoGrow{ false };
+bool gAutoGrow{ true };
 
 double gRecordingStart{ 0 };
 
 // retrieve a pointer to a unique drawing context
 static IRenderSVG *getDrawingContext()
 {
-    static std::unique_ptr<SVGB2DDriver> sDrawingContext = std::make_unique<SVGB2DDriver>();
+    if (!gDrawingContext)
+    {
+        gDrawingContext = std::make_unique<SVGB2DDriver>();
+        Surface* s = getAppSurface();
+        if (s)
+            getDrawingContext()->attach(*s, 4);
+    }
 
-    return sDrawingContext.get();
+    return gDrawingContext.get();
 }
 
 // docFromFilename
@@ -65,6 +72,15 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
     aspan.resetFromSize(mapped->data(), mapped->size());
     std::shared_ptr<SVGDocument> aDoc = SVGFactory::createFromChunk(aspan, appFrameWidth, appFrameHeight, physicalDpi);
     
+    // release the mapped file, since we no longer need it.
+    mapped->close();
+
+    // If we successfully created a document, 
+    // release the old drawing context, so that 
+    // it will be re-created anew.
+    gDrawingContext.release();
+    gDrawingContext = nullptr;
+
     return aDoc;
 }
 

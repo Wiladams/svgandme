@@ -10,10 +10,10 @@
 #include "fonthandler.h"
 #include "svgenums.h"
 #include "svgdatatypes.h"
+#include "svgobject.h"
 
 
 namespace waavs {
-
 
 	// Represents the current state of the SVG rendering context
     // this can be used by DOM walkers, as well as rendering context
@@ -30,8 +30,13 @@ namespace waavs {
 
         // PaintState
         uint32_t fPaintOrder{ PaintOrderKind::SVG_PAINT_ORDER_NORMAL };
+        
+        SVGObject *fStrokeServer{};
         BLVar fStrokePaint{};
+        
+        SVGObject *fFillingPaint{};
         BLVar fFillPaint{};
+
         BLVar fDefaultColor{};
         BLVar fBackgroundPaint{};
         double fGlobalOpacity{ 1.0 };
@@ -273,13 +278,16 @@ namespace waavs {
             markModified();
         }
 
-        BLVar getStrokePaint() const { return fDrawingState->fStrokePaint; }
+        BLVar getStrokePaint() const  { return fDrawingState->fStrokePaint; }
         template<typename StyleT>
         void setStrokePaint(const StyleT& paint)
         {
             fDrawingState->fStrokePaint.assign(paint);
             markModified();
         }
+        
+        SVGObject* getStrokeServer() const {return fDrawingState->fStrokeServer;}
+        void setStrokeServer(SVGObject* obj) { fDrawingState->fStrokeServer = obj; }
 
         double getStrokeOpacity() const { return fDrawingState->fStrokeOpacity; }
         void setStrokeOpacity(double opacity)

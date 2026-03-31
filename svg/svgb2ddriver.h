@@ -242,6 +242,7 @@ namespace waavs
         void onStroke() override
         {
             BLVar paint = getStrokePaint();
+
             if (paint.isNull()) {
                 fDrawingContext->disableStrokeStyle();
                 return;

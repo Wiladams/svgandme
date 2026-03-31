@@ -1672,7 +1672,7 @@ namespace waavs
         static void registerFactory()
         {
             registerSVGAttribute(svgattr::stroke_dasharray(), [](const XmlAttributeCollection& attrs) {
-                auto node = std::make_shared<SVGStrokeDashArray>(nullptr);
+                auto node = std::make_shared<SVGStrokeDashArray>();
                 node->loadFromAttributes(attrs);
                 return node;
                 });
@@ -1681,7 +1681,7 @@ namespace waavs
         std::vector<float> fArray{};
         bool fIsNone{ true };
 
-        SVGStrokeDashArray(IAmGroot* groot) : SVGVisualProperty(groot)
+        SVGStrokeDashArray() : SVGVisualProperty(nullptr)
         {
             setName(svgattr::stroke_dasharray());
         }
@@ -1712,13 +1712,15 @@ namespace waavs
         {
             (void)groot;
 
-            if (ctx == nullptr)
+            if (!ctx)
                 return;
 
             if (fIsNone)
             {
                 // No dash pattern.
                 ctx->clearStrokeDashArray();
+                ctx->clearStrokeDashOffset();
+
                 return;
             }
 

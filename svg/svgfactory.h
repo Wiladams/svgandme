@@ -147,7 +147,7 @@ namespace waavs {
             SVGRadialGradient::registerFactory();       // 'radialGradient'
 
             SVGMarkerElement::registerFactory();           // 'marker'
-            SVGMaskElement::registerFactory();             // 'mask'
+            //SVGMaskElement::registerFactory();             // 'mask'
             SVGPatternElement::registerFactory();          // 'pattern'
 
 

@@ -41,13 +41,6 @@ namespace waavs
         }
     }
 
-    static INLINE float clamp01(float v) noexcept
-    {
-        if (v < 0.0f) return 0.0f;
-        if (v > 1.0f) return 1.0f;
-        return v;
-    }
-
 
 
     static INLINE BLCompOp blendModeToCompOp(FilterBlendMode mode) noexcept
@@ -488,7 +481,7 @@ namespace waavs {
 
             for (size_t i = 0; i < n; ++i) {
                 uint8_t a = s[i] >> 24;
-                dst[i] = packPARGB32(a, 0, 0, 0);
+                dst[i] = pack_argb32(a, 0, 0, 0);
             }
 
             return out;
@@ -697,8 +690,6 @@ namespace waavs {
             InternedKey in2Key = resolveBinaryInput2Key(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
-            if (!io.hasIn2)
-                return false;
 
             Surface* in1 = getImage(in1Key);
             Surface* in2 = getImage(in2Key);
@@ -755,66 +746,7 @@ namespace waavs {
             return true;
         }
 
-        /*
-        bool onBlend(const FilterIO& io, const WGRectD* subr, FilterBlendMode mode) noexcept override
-        {
-            InternedKey in1Key = resolveBinaryInput1Key(io);
-            InternedKey in2Key = resolveBinaryInput2Key(io);
-            InternedKey outKey = resolveOutKeyStrict(io);
 
-            if (!io.hasIn2)
-                return false;
-
-            Surface* in1 = getImage(in1Key);
-            Surface* in2 = getImage(in2Key);
-            if (!in1 || !in2)
-                return false;
-
-            if (!outKey)
-                outKey = kFilter_Last();
-
-            auto out = createLikeSurfaceHandle(*in1);
-            if (!out)
-                return false;
-
-            out->clearAll();
-
-            WGRectI area = resolveSubregionPx(subr, *in1);
-            if (area.w <= 0 || area.h <= 0)
-            {
-                if (!putImage(outKey, std::move(out)))
-                    return false;
-                setLastKey(outKey);
-                return true;
-            }
-
-            {
-                SVGB2DDriver bctx{};
-                bctx.attach(*out, 1);
-                bctx.renew();
-
-                bctx.push();
-                //bctx.clipRect(WGRectD(area.x, area.y, area.w, area.h));
-
-                // First lay down in1 inside the primitive subregion.
-                bctx.blendMode(BL_COMP_OP_SRC_COPY);
-                bctx.image(*in1, 0, 0);
-
-                // Then blend in2 over it.
-                bctx.blendMode(blendModeToCompOp(mode));
-                bctx.image(*in2, 0, 0);
-
-                bctx.pop();
-                bctx.detach();
-            }
-
-            if (!putImage(outKey, std::move(out)))
-                return false;
-
-            setLastKey(outKey);
-            return true;
-        }
-        */
 
 
         // ------------------------------------------
@@ -934,11 +866,16 @@ namespace waavs {
                     bb = clamp01(bb);
                     aa = clamp01(aa);
 
-                    drow[x] = packPARGB32(
-                        clamp_u8((int)std::lround(aa * 255.0f)),
-                        clamp_u8((int)std::lround(rr * 255.0f)),
-                        clamp_u8((int)std::lround(gg * 255.0f)),
-                        clamp_u8((int)std::lround(bb * 255.0f)));
+                    rr *= aa;
+                    gg *= aa;
+                    bb *= aa;
+
+                    drow[x] = pack_argb32(aa, rr, gg, bb);
+                    //drow[x] = pack_argb32(
+                    //    clamp_u8((int)std::lround(aa * 255.0f)),
+                    //    clamp_u8((int)std::lround(rr * 255.0f)),
+                    //    clamp_u8((int)std::lround(gg * 255.0f)),
+                    //    clamp_u8((int)std::lround(bb * 255.0f)));
                 }
             }
 
@@ -1049,16 +986,20 @@ namespace waavs {
                     const float g = float((px >> 8) & 0xFF) / 255.0f;
                     const float b = float((px >> 0) & 0xFF) / 255.0f;
 
-                    const float rr = applyTransferFunc(rF, r);
-                    const float gg = applyTransferFunc(gF, g);
-                    const float bb = applyTransferFunc(bF, b);
+                    float rr = applyTransferFunc(rF, r);
+                    float gg = applyTransferFunc(gF, g);
+                    float bb = applyTransferFunc(bF, b);
                     const float aa = applyTransferFunc(aF, a);
 
-                    drow[x] = packPARGB32(
-                        clamp_u8((int)std::lround(aa * 255.0f)),
-                        clamp_u8((int)std::lround(rr * 255.0f)),
-                        clamp_u8((int)std::lround(gg * 255.0f)),
-                        clamp_u8((int)std::lround(bb * 255.0f)));
+                    rr *= aa;
+                    gg *= aa;
+                    bb *= aa;
+                    drow[x] = pack_argb32(aa, rr, gg, bb);
+                    //drow[x] = pack_argb32(
+                    //    clamp_u8((int)std::lround(aa * 255.0f)),
+                    //    clamp_u8((int)std::lround(rr * 255.0f)),
+                    //    clamp_u8((int)std::lround(gg * 255.0f)),
+                    //    clamp_u8((int)std::lround(bb * 255.0f)));
                 }
             }
 
@@ -1074,30 +1015,12 @@ namespace waavs {
         // onComposite() - supports feBlend and feComposite (except arithmetic)
         // Type: binary
         //-----------------------------------------
-        /*
-        static INLINE BLCompOp compositeOpToCompOp(FilterCompositeOp op) noexcept
-        {
-            switch (op)
-            {
-            case FILTER_COMPOSITE_OVER: return BL_COMP_OP_SRC_OVER;
-            case FILTER_COMPOSITE_IN:   return BL_COMP_OP_SRC_IN;
-            case FILTER_COMPOSITE_OUT:  return BL_COMP_OP_SRC_OUT;
-            case FILTER_COMPOSITE_ATOP: return BL_COMP_OP_SRC_ATOP;
-            case FILTER_COMPOSITE_XOR:  return BL_COMP_OP_XOR;
 
-            default:
-                return BL_COMP_OP_SRC_OVER;
-            }
-        }
-        */
 
         bool onComposite(const FilterIO& io, const WGRectD* subr,
             FilterCompositeOp op,
             float k1, float k2, float k3, float k4) noexcept override
         {
-            if (!io.hasIn2)
-                return false;
-
             InternedKey in1Key = resolveBinaryInput1Key(io);
             InternedKey in2Key = resolveBinaryInput2Key(io);
             InternedKey outKey = resolveOutKeyStrict(io);
@@ -1165,11 +1088,15 @@ namespace waavs {
                         const float b2 = float((p2 >> 0) & 0xFF) * (1.0f / 255.0f);
 
                         const float aa = clamp01(k1 * a1 * a2 + k2 * a1 + k3 * a2 + k4);
-                        const float rr = clamp01(k1 * r1 * r2 + k2 * r1 + k3 * r2 + k4);
-                        const float gg = clamp01(k1 * g1 * g2 + k2 * g1 + k3 * g2 + k4);
-                        const float bb = clamp01(k1 * b1 * b2 + k2 * b1 + k3 * b2 + k4);
+                        float rr = clamp01(k1 * r1 * r2 + k2 * r1 + k3 * r2 + k4);
+                        float gg = clamp01(k1 * g1 * g2 + k2 * g1 + k3 * g2 + k4);
+                        float bb = clamp01(k1 * b1 * b2 + k2 * b1 + k3 * b2 + k4);
 
-                        d[x] = packPARGB32(
+                        rr *= aa;
+                        gg *= aa;
+                        bb *= aa;
+
+                        d[x] = pack_argb32(
                             clamp_u8((int)std::lround(aa * 255.0f)),
                             clamp_u8((int)std::lround(rr * 255.0f)),
                             clamp_u8((int)std::lround(gg * 255.0f)),
@@ -1326,16 +1253,12 @@ namespace waavs {
                         aa = accA / divisor + bias;
                     }
 
-                    rr = clamp01(rr);
-                    gg = clamp01(gg);
-                    bb = clamp01(bb);
-                    aa = clamp01(aa);
+                    rr *= aa;
+                    gg *= aa;
+                    bb *= aa;
 
-                    drow[x] = packPARGB32(
-                        clamp_u8((int)std::lround(aa * 255.0f)),
-                        clamp_u8((int)std::lround(rr * 255.0f)),
-                        clamp_u8((int)std::lround(gg * 255.0f)),
-                        clamp_u8((int)std::lround(bb * 255.0f)));
+                    drow[x] = pack_argb32(aa, rr, gg, bb);
+
                 }
             }
 
@@ -1514,7 +1437,7 @@ namespace waavs {
                     const float pg = lcG * lit;
                     const float pb = lcB * lit;
 
-                    drow[x] = packPARGB32(
+                    drow[x] = pack_argb32(
                         clamp_u8((int)std::lround(a * 255.0f)),
                         clamp_u8((int)std::lround(pr * 255.0f)),
                         clamp_u8((int)std::lround(pg * 255.0f)),
@@ -1578,6 +1501,8 @@ namespace waavs {
             const double scaleX = scaleUS * fSpace.sx;
             const double scaleY = scaleUS * fSpace.sy;
 
+
+
             WGRectI area = resolveSubregionPx(subr, *in1);
             if (area.w <= 0 || area.h <= 0) {
                 if (!putImage(outKey, std::move(out)))
@@ -1605,14 +1530,24 @@ namespace waavs {
 
                     int sx = (int)std::lround(double(x) + mx);
                     int sy = (int)std::lround(double(y) + my);
+                    //int sx = (int)std::lround(double(x) - mx);
+                    //int sy = (int)std::lround(double(y) - my);
 
-                    if (sx < 0) sx = 0;
-                    if (sy < 0) sy = 0;
-                    if (sx >= W) sx = W - 1;
-                    if (sy >= H) sy = H - 1;
+                    if (sx < 0 || sy < 0 || sx >= W || sy >= H) {
+                        drow[x] = 0u;   // transparent black
+                    }
+                    else {
+                        const uint32_t* srow = (const uint32_t*)in1->rowPointer((size_t)sy);
+                        drow[x] = srow[sx];
+                    }
 
-                    const uint32_t* srow = (const uint32_t*)in1->rowPointer((size_t)sy);
-                    drow[x] = srow[sx];
+                    //if (sx < 0) sx = 0;
+                    //if (sy < 0) sy = 0;
+                    //if (sx >= W) sx = W - 1;
+                    //if (sy >= H) sy = H - 1;
+
+                    //const uint32_t* srow = (const uint32_t*)in1->rowPointer((size_t)sy);
+                    //drow[x] = srow[sx];
                 }
             }
 
@@ -1685,7 +1620,7 @@ namespace waavs {
                         const uint8_t g = (uint8_t)((uint32_t(sa) * uint32_t(floodG) + 127u) / 255u);
                         const uint8_t b = (uint8_t)((uint32_t(sa) * uint32_t(floodB) + 127u) / 255u);
 
-                        drow[x] = packPARGB32(a, r, g, b);
+                        drow[x] = pack_argb32(a, r, g, b);
                     }
                 }
             }
@@ -2029,6 +1964,8 @@ namespace waavs {
                 return false;
 
             InternedKey outKey = resolveOutKeyStrict(io);
+            if (!outKey)
+                outKey = kFilter_Last();
 
             auto out = fResolver->resolveFeImage(imageKey, fRunState, subr, align, mos);
             if (!out)
@@ -2228,7 +2165,7 @@ namespace waavs {
                         }
                     }
 
-                    drow[x] = packPARGB32(bestA, bestR, bestG, bestB);
+                    drow[x] = pack_argb32(bestA, bestR, bestG, bestB);
                 }
             }
 
@@ -2535,7 +2472,7 @@ namespace waavs {
                     const float pg = lcG * lit;
                     const float pb = lcB * lit;
 
-                    drow[x] = packPARGB32(
+                    drow[x] = pack_argb32(
                         clamp_u8((int)std::lround(a * 255.0f)),
                         clamp_u8((int)std::lround(pr * 255.0f)),
                         clamp_u8((int)std::lround(pg * 255.0f)),
@@ -2613,19 +2550,19 @@ namespace waavs {
         // onTurbulence
         // -----------------------------------------
 
-        static INLINE uint8_t float_to_u8(float v) noexcept
-        {
-            if (v <= 0.0f) return 0;
-            if (v >= 1.0f) return 255;
-            return (uint8_t)(v * 255.0f + 0.5f);
-        }
 
+        /*
         static INLINE uint32_t pack_premul_argb32(float r, float g, float b, float a) noexcept
         {
-            if (r < 0.0f) r = 0.0f; else if (r > 1.0f) r = 1.0f;
-            if (g < 0.0f) g = 0.0f; else if (g > 1.0f) g = 1.0f;
-            if (b < 0.0f) b = 0.0f; else if (b > 1.0f) b = 1.0f;
-            if (a < 0.0f) a = 0.0f; else if (a > 1.0f) a = 1.0f;
+            r = clamp01(r);
+            g = clamp01(g);
+            b = clamp01(b);
+            a = clamp01(a);
+
+            //if (r < 0.0f) r = 0.0f; else if (r > 1.0f) r = 1.0f;
+            //if (g < 0.0f) g = 0.0f; else if (g > 1.0f) g = 1.0f;
+            //if (b < 0.0f) b = 0.0f; else if (b > 1.0f) b = 1.0f;
+            //if (a < 0.0f) a = 0.0f; else if (a > 1.0f) a = 1.0f;
 
             // Premultiply for PRGB32-style storage.
             r *= a;
@@ -2639,6 +2576,9 @@ namespace waavs {
 
             return (A << 24) | (R << 16) | (G << 8) | B;
         }
+        */
+
+
 
         bool onTurbulence(
             const FilterIO& io,
@@ -2654,8 +2594,8 @@ namespace waavs {
             if (!outKey)
                 outKey = kFilter_Last();
 
-            // feTurbulence is a generator. Use the current tile-sized surface
-            // as the shape/template for the output.
+            // feTurbulence is a generator. Use SourceGraphic as the template
+            // surface when available, otherwise fall back to the last image.
             Surface* like = getImage(kFilter_SourceGraphic());
             if (!like)
             {
@@ -2679,6 +2619,7 @@ namespace waavs {
             {
                 if (!putImage(outKey, std::move(out)))
                     return false;
+
                 setLastKey(outKey);
                 return true;
             }
@@ -2691,6 +2632,7 @@ namespace waavs {
             {
                 if (!putImage(outKey, std::move(out)))
                     return false;
+
                 setLastKey(outKey);
                 return true;
             }
@@ -2705,7 +2647,7 @@ namespace waavs {
                 (typeKey == FilterTurbulenceType::FILTER_TURBULENCE_FRACTAL_NOISE);
 
             // Determine the generator rect in user space.
-            // This is needed for stitchTiles local coordinates and stitch period.
+            // This is used for stitchTiles local coordinates and period derivation.
             WGRectD genRectUS = fSpace.filterRectUS;
 
             if (subr)
@@ -2727,8 +2669,16 @@ namespace waavs {
                 }
             }
 
-            const int32_t basePeriodX = safe_period_from_extent((float)genRectUS.w, p.baseFreqX);
-            const int32_t basePeriodY = safe_period_from_extent((float)genRectUS.h, p.baseFreqY);
+            const int32_t basePeriodX =
+                safe_period_from_extent((float)genRectUS.w, p.baseFreqX);
+            const int32_t basePeriodY =
+                safe_period_from_extent((float)genRectUS.h, p.baseFreqY);
+
+            // Build channel states in spec-style R,G,B,A order from one seeded RNG.
+            TurbulenceChannelState chans[4];
+            buildTurbulenceChannelStates(
+                chans,
+                (int32_t)(seed != 0.0f ? seed : 1.0f));
 
             for (int y = area.y; y < area.y + area.h; ++y)
             {
@@ -2754,47 +2704,38 @@ namespace waavs {
 
                     if (isFractal)
                     {
-                        if (stitchTiles)
-                        {
-                            r = fractalNoise2_stitch(sx, sy, p, basePeriodX, basePeriodY, p.seed + 0u);
-                            g = fractalNoise2_stitch(sx, sy, p, basePeriodX, basePeriodY, p.seed + 37u);
-                            b = fractalNoise2_stitch(sx, sy, p, basePeriodX, basePeriodY, p.seed + 73u);
-                            a = fractalNoise2_stitch(sx, sy, p, basePeriodX, basePeriodY, p.seed + 101u);
-                        }
-                        else
-                        {
-                            r = fractalNoise2(sx, sy, p, p.seed + 0u);
-                            g = fractalNoise2(sx, sy, p, p.seed + 37u);
-                            b = fractalNoise2(sx, sy, p, p.seed + 73u);
-                            a = fractalNoise2(sx, sy, p, p.seed + 101u);
-                        }
-
-                        r = r * 0.5f + 0.5f;
-                        g = g * 0.5f + 0.5f;
-                        b = b * 0.5f + 0.5f;
-                        a = a * 0.5f + 0.5f;
+                        r = sampleFractalChannel(
+                            sx, sy, p, chans[0],
+                            stitchTiles, basePeriodX, basePeriodY);
+                        g = sampleFractalChannel(
+                            sx, sy, p, chans[1],
+                            stitchTiles, basePeriodX, basePeriodY);
+                        b = sampleFractalChannel(
+                            sx, sy, p, chans[2],
+                            stitchTiles, basePeriodX, basePeriodY);
+                        a = sampleFractalChannel(
+                            sx, sy, p, chans[3],
+                            stitchTiles, basePeriodX, basePeriodY);
                     }
                     else
                     {
-                        if (stitchTiles)
-                        {
-                            r = turbulence2_stitch(sx, sy, p, basePeriodX, basePeriodY, p.seed + 0u);
-                            g = turbulence2_stitch(sx, sy, p, basePeriodX, basePeriodY, p.seed + 37u);
-                            b = turbulence2_stitch(sx, sy, p, basePeriodX, basePeriodY, p.seed + 73u);
-                            a = turbulence2_stitch(sx, sy, p, basePeriodX, basePeriodY, p.seed + 101u);
-                        }
-                        else
-                        {
-                            r = turbulence2(sx, sy, p, p.seed + 0u);
-                            g = turbulence2(sx, sy, p, p.seed + 37u);
-                            b = turbulence2(sx, sy, p, p.seed + 73u);
-                            a = turbulence2(sx, sy, p, p.seed + 101u);
-                        }
+                        r = sampleTurbulenceChannel(
+                            sx, sy, p, chans[0],
+                            stitchTiles, basePeriodX, basePeriodY);
+                        g = sampleTurbulenceChannel(
+                            sx, sy, p, chans[1],
+                            stitchTiles, basePeriodX, basePeriodY);
+                        b = sampleTurbulenceChannel(
+                            sx, sy, p, chans[2],
+                            stitchTiles, basePeriodX, basePeriodY);
+                        a = sampleTurbulenceChannel(
+                            sx, sy, p, chans[3],
+                            stitchTiles, basePeriodX, basePeriodY);
                     }
 
-                    drow[x] = pack_premul_argb32(r, g, b, a);
-                   // drow[x] = pack_premul_argb32(r, g, b, 1.0f);
-
+                    // Use alpha=1 so stored RGB is not weakened by premultiplication.
+                    // This matters when turbulence is later consumed as a displacement map.
+                    drow[x] = pack_argb32(a, r, g, b);
                 }
             }
 

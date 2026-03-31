@@ -14,59 +14,59 @@
 
 namespace waavs {
 
-	//================================================
-	// SVGMaskNode
-	// 'mask' element
-	// Similar to SVGClipPath, except uses SRC_OUT
-	// Similar to filtering
-	//================================================
-	struct SVGMaskElement : public SVGGraphicsElement
-	{
-		static void registerSingularNode()
-		{
-			registerSVGSingularNodeByName("mask", [](IAmGroot* groot, const XmlElement& elem) {
-				auto node = std::make_shared<SVGMaskElement>(groot);
-				node->loadFromXmlElement(elem, groot);
+    //================================================
+    // SVGMaskNode
+    // 'mask' element
+    // Similar to SVGClipPath, except uses SRC_OUT
+    // Similar to filtering
+    //================================================
+    struct SVGMaskElement : public SVGGraphicsElement
+    {
+        static void registerSingularNode()
+        {
+            registerSVGSingularNodeByName("mask", [](IAmGroot* groot, const XmlElement& elem) {
+                auto node = std::make_shared<SVGMaskElement>(groot);
+                node->loadFromXmlElement(elem, groot);
 
-				return node;
-				});
-		}
+                return node;
+                });
+        }
 
-		// Static constructor to register factory method in map
-		static void registerFactory()
-		{
-			registerContainerNodeByName("mask",
-				[](IAmGroot* groot, XmlPull& iter) {
-					auto node = std::make_shared<SVGMaskElement>(groot);
-					node->loadFromXmlPull(iter, groot);
+        // Static constructor to register factory method in map
+        static void registerFactory()
+        {
+            registerContainerNodeByName("mask",
+                [](IAmGroot* groot, XmlPull& iter) {
+                    auto node = std::make_shared<SVGMaskElement>(groot);
+                    node->loadFromXmlPull(iter, groot);
 
-					return node;
-				});
-			
+                    return node;
+                });
+            
 
-			registerSingularNode();
-		}
-
-
-		// Instance Constructor
-		SVGMaskElement(IAmGroot* groot)
-			: SVGGraphicsElement()
-		{
-			//setIsStructural(false);
-			//fUseCacheIsolation = true;
-		}
+            registerSingularNode();
+        }
 
 
-		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
-		{
-			//The parent graphic should be stuffed into a BLPattern
-			// and set as a fill style, then we can 
-			// do this fillMask
-			// parent->getVar()
-			// BLPattern* pattern = new BLPattern(parent->getVar());
-			// ctx->setFillStyle(pattern);
-			//ctx->fillMask(BLPoint(0, 0), fCachedImage);
+        // Instance Constructor
+        SVGMaskElement(IAmGroot* groot)
+            : SVGGraphicsElement()
+        {
+            //setIsStructural(false);
+            //fUseCacheIsolation = true;
+        }
 
-		}
-	};
+
+        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        {
+            //The parent graphic should be stuffed into a BLPattern
+            // and set as a fill style, then we can 
+            // do this fillMask
+            // parent->getVar()
+            // BLPattern* pattern = new BLPattern(parent->getVar());
+            // ctx->setFillStyle(pattern);
+            //ctx->fillMask(BLPoint(0, 0), fCachedImage);
+
+        }
+    };
 }

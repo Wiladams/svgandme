@@ -435,7 +435,7 @@ namespace waavs
             onDashArray();
         }
 
-        virtual void onDashOffset(float offset) {}
+        virtual void onDashOffset(float offset) { (void)offset; }
         void dashOffset(const float offset)
         {
             setStrokeDashOffsetRaw(offset);

@@ -13,6 +13,7 @@
 
 #include "xmlscan.h"
 
+#include "svgobject.h"
 #include "svgdatatypes.h"
 #include "svgcss.h"
 #include "irendersvg.h"
@@ -21,12 +22,13 @@
 
 #include "svgatoms.h"
 
+/*
 namespace waavs 
 {
     struct IAmGroot;            // forward declaration
     struct AnimationProgram; // forward declaration
     class AnimationValueContext;
-    class CSSStyleSheet;
+    struct CSSStyleSheet;
 
     // Base class of many things.  This is just to ensure a virtual destructor
     // and binding behavior.
@@ -66,7 +68,7 @@ namespace waavs
 
     };
 }
-
+*/
 
 
 namespace waavs {
@@ -92,6 +94,9 @@ namespace waavs {
 
         virtual const WGRectD resolveFilterRegion(IRenderSVG* ctx, IAmGroot* groot, const WGRectD& bbox)  noexcept
         {
+            (void)ctx;
+            (void)groot;
+
             return bbox;
         }
 
@@ -115,7 +120,6 @@ namespace waavs {
         virtual void draw(IRenderSVG*, IAmGroot*) = 0;
 
     };
-
 
 }
 
