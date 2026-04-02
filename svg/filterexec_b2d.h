@@ -771,6 +771,159 @@ namespace waavs {
             if (!out)
                 return false;
 
+            // Start from a copy so unchanged pixels outside the primitive write area
+            // remain as they were in the current implementation model.
+            {
+                SVGB2DDriver bctx{};
+                bctx.attach(*out, 1);
+                bctx.renew();
+                bctx.blendMode(BL_COMP_OP_SRC_COPY);
+                bctx.image(*in, 0, 0);
+                bctx.detach();
+            }
+
+            WGRectI area = resolveSubregionPx(subr, *in);
+            if (area.w <= 0 || area.h <= 0)
+            {
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+
+                setLastKey(outKey);
+                return true;
+            }
+
+            float M[20]{};
+
+            if (type == FILTER_COLOR_MATRIX_MATRIX)
+            {
+                if (!matrix.p || matrix.n != 20)
+                    return false;
+
+                for (int i = 0; i < 20; ++i)
+                    M[i] = matrix.p[i];
+            }
+            else if (type == FILTER_COLOR_MATRIX_SATURATE)
+            {
+                const float s = param;
+
+                M[0] = 0.213f + 0.787f * s;  M[1] = 0.715f - 0.715f * s;  M[2] = 0.072f - 0.072f * s;  M[3] = 0.0f; M[4] = 0.0f;
+                M[5] = 0.213f - 0.213f * s;  M[6] = 0.715f + 0.285f * s;  M[7] = 0.072f - 0.072f * s;  M[8] = 0.0f; M[9] = 0.0f;
+                M[10] = 0.213f - 0.213f * s;  M[11] = 0.715f - 0.715f * s;  M[12] = 0.072f + 0.928f * s;  M[13] = 0.0f; M[14] = 0.0f;
+                M[15] = 0.0f;                 M[16] = 0.0f;                 M[17] = 0.0f;                 M[18] = 1.0f; M[19] = 0.0f;
+            }
+            else if (type == FILTER_COLOR_MATRIX_HUE_ROTATE)
+            {
+                const float a = param * 3.14159265358979323846f / 180.0f;
+                const float c = std::cos(a);
+                const float s = std::sin(a);
+
+                M[0] = 0.213f + 0.787f * c - 0.213f * s;
+                M[1] = 0.715f - 0.715f * c - 0.715f * s;
+                M[2] = 0.072f - 0.072f * c + 0.928f * s;
+                M[3] = 0.0f;
+                M[4] = 0.0f;
+
+                M[5] = 0.213f - 0.213f * c + 0.143f * s;
+                M[6] = 0.715f + 0.285f * c + 0.140f * s;
+                M[7] = 0.072f - 0.072f * c - 0.283f * s;
+                M[8] = 0.0f;
+                M[9] = 0.0f;
+
+                M[10] = 0.213f - 0.213f * c - 0.787f * s;
+                M[11] = 0.715f - 0.715f * c + 0.715f * s;
+                M[12] = 0.072f + 0.928f * c + 0.072f * s;
+                M[13] = 0.0f;
+                M[14] = 0.0f;
+
+                M[15] = 0.0f;
+                M[16] = 0.0f;
+                M[17] = 0.0f;
+                M[18] = 1.0f;
+                M[19] = 0.0f;
+            }
+            else
+            {
+                // luminanceToAlpha
+                M[0] = 0.0f;   M[1] = 0.0f;   M[2] = 0.0f;   M[3] = 0.0f;   M[4] = 0.0f;
+                M[5] = 0.0f;   M[6] = 0.0f;   M[7] = 0.0f;   M[8] = 0.0f;   M[9] = 0.0f;
+                M[10] = 0.0f;   M[11] = 0.0f;   M[12] = 0.0f;   M[13] = 0.0f;   M[14] = 0.0f;
+                M[15] = 0.2125f; M[16] = 0.7154f; M[17] = 0.0721f; M[18] = 0.0f; M[19] = 0.0f;
+            }
+
+            for (int y = area.y; y < area.y + area.h; ++y)
+            {
+                const uint32_t* srow = (const uint32_t*)in->rowPointer((size_t)y);
+                uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
+
+                for (int x = area.x; x < area.x + area.w; ++x)
+                {
+                    const uint32_t px = srow[x];
+
+                    // Stored pixels are premultiplied.
+                    const float a_p = float((px >> 24) & 0xFF) * (1.0f / 255.0f);
+                    float r_p = float((px >> 16) & 0xFF) * (1.0f / 255.0f);
+                    float g_p = float((px >> 8) & 0xFF) * (1.0f / 255.0f);
+                    float b_p = float((px >> 0) & 0xFF) * (1.0f / 255.0f);
+
+                    // feColorMatrix operates on non-premultiplied color values.
+                    float r = 0.0f;
+                    float g = 0.0f;
+                    float b = 0.0f;
+                    const float a = a_p;
+
+                    if (a_p > 0.0f)
+                    {
+                        const float invA = 1.0f / a_p;
+                        r = clamp01(r_p * invA);
+                        g = clamp01(g_p * invA);
+                        b = clamp01(b_p * invA);
+                    }
+
+                    // Apply the 5x4 color matrix to straight RGBA.
+                    float rr = M[0] * r + M[1] * g + M[2] * b + M[3] * a + M[4];
+                    float gg = M[5] * r + M[6] * g + M[7] * b + M[8] * a + M[9];
+                    float bb = M[10] * r + M[11] * g + M[12] * b + M[13] * a + M[14];
+                    float aa = M[15] * r + M[16] * g + M[17] * b + M[18] * a + M[19];
+
+                    rr = clamp01(rr);
+                    gg = clamp01(gg);
+                    bb = clamp01(bb);
+                    aa = clamp01(aa);
+
+                    // Re-premultiply for storage.
+                    rr *= aa;
+                    gg *= aa;
+                    bb *= aa;
+
+                    drow[x] = pack_argb32(aa, rr, gg, bb);
+                }
+            }
+
+            if (!putImage(outKey, std::move(out)))
+                return false;
+
+            setLastKey(outKey);
+            return true;
+        }
+
+        /*
+        bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
+            FilterColorMatrixType type, float param, F32Span matrix) noexcept override
+        {
+            InternedKey inKey = resolveUnaryInputKey(io);
+            InternedKey outKey = resolveOutKeyStrict(io);
+
+            Surface* in = getImage(inKey);
+            if (!in)
+                return false;
+
+            if (!outKey)
+                outKey = kFilter_Last();
+
+            auto out = createLikeSurfaceHandle(*in);
+            if (!out)
+                return false;
+
             {
                 SVGB2DDriver bctx{};
                 bctx.attach(*out, 1);
@@ -871,11 +1024,7 @@ namespace waavs {
                     bb *= aa;
 
                     drow[x] = pack_argb32(aa, rr, gg, bb);
-                    //drow[x] = pack_argb32(
-                    //    clamp_u8((int)std::lround(aa * 255.0f)),
-                    //    clamp_u8((int)std::lround(rr * 255.0f)),
-                    //    clamp_u8((int)std::lround(gg * 255.0f)),
-                    //    clamp_u8((int)std::lround(bb * 255.0f)));
+
                 }
             }
 
@@ -884,6 +1033,7 @@ namespace waavs {
             
             return true;
         }
+        */
 
         // ----------------------------------------
         // onComponentTransfer()
@@ -909,13 +1059,21 @@ namespace waavs {
             {
                 if (!f.table.p || f.table.n == 0)
                     return x;
+
                 if (f.table.n == 1)
                     return clamp01(f.table.p[0]);
 
+                if (x >= 1.0f)
+                    return clamp01(f.table.p[f.table.n - 1]);
+
                 const float pos = x * float(f.table.n - 1);
-                const uint32_t i0 = (uint32_t)std::floor(pos);
-                const uint32_t i1 = (i0 + 1 < f.table.n) ? (i0 + 1) : i0;
+                uint32_t i0 = (uint32_t)std::floor(pos);
+                if (i0 >= f.table.n - 1)
+                    i0 = f.table.n - 2;
+
+                const uint32_t i1 = i0 + 1;
                 const float t = pos - float(i0);
+
                 return clamp01(f.table.p[i0] * (1.0f - t) + f.table.p[i1] * t);
             }
 
@@ -924,9 +1082,13 @@ namespace waavs {
                 if (!f.table.p || f.table.n == 0)
                     return x;
 
+                if (x >= 1.0f)
+                    return clamp01(f.table.p[f.table.n - 1]);
+
                 uint32_t idx = (uint32_t)std::floor(x * float(f.table.n));
                 if (idx >= f.table.n)
                     idx = f.table.n - 1;
+
                 return clamp01(f.table.p[idx]);
             }
             }
@@ -952,23 +1114,24 @@ namespace waavs {
             if (!out)
                 return false;
 
+            // Preserve your current executor behavior:
+            // copy input first, then rewrite only the primitive area.
             {
                 SVGB2DDriver bctx{};
                 bctx.attach(*out, 1);
                 bctx.renew();
                 bctx.blendMode(BL_COMP_OP_SRC_COPY);
-
                 bctx.image(*in, 0, 0);
                 bctx.detach();
             }
 
             WGRectI area = resolveSubregionPx(subr, *in);
-            if (area.w <= 0 || area.h <= 0) {
+            if (area.w <= 0 || area.h <= 0)
+            {
                 if (!putImage(outKey, std::move(out)))
                     return false;
 
                 setLastKey(outKey);
-
                 return true;
             }
 
@@ -981,25 +1144,43 @@ namespace waavs {
                 {
                     const uint32_t px = srow[x];
 
-                    const float a = float((px >> 24) & 0xFF) / 255.0f;
-                    const float r = float((px >> 16) & 0xFF) / 255.0f;
-                    const float g = float((px >> 8) & 0xFF) / 255.0f;
-                    const float b = float((px >> 0) & 0xFF) / 255.0f;
+                    // Stored pixels are premultiplied.
+                    const float a_p = float((px >> 24) & 0xFF) * (1.0f / 255.0f);
+                    const float r_p = float((px >> 16) & 0xFF) * (1.0f / 255.0f);
+                    const float g_p = float((px >> 8) & 0xFF) * (1.0f / 255.0f);
+                    const float b_p = float((px >> 0) & 0xFF) * (1.0f / 255.0f);
 
+                    // feComponentTransfer operates on non-premultiplied values.
+                    float a = a_p;
+                    float r = 0.0f;
+                    float g = 0.0f;
+                    float b = 0.0f;
+
+                    if (a_p > 0.0f)
+                    {
+                        const float invA = 1.0f / a_p;
+                        r = clamp01(r_p * invA);
+                        g = clamp01(g_p * invA);
+                        b = clamp01(b_p * invA);
+                    }
+
+                    // Apply transfer functions in straight RGBA space.
                     float rr = applyTransferFunc(rF, r);
                     float gg = applyTransferFunc(gF, g);
                     float bb = applyTransferFunc(bF, b);
-                    const float aa = applyTransferFunc(aF, a);
+                    float aa = applyTransferFunc(aF, a);
 
+                    rr = clamp01(rr);
+                    gg = clamp01(gg);
+                    bb = clamp01(bb);
+                    aa = clamp01(aa);
+
+                    // Re-premultiply for storage.
                     rr *= aa;
                     gg *= aa;
                     bb *= aa;
+
                     drow[x] = pack_argb32(aa, rr, gg, bb);
-                    //drow[x] = pack_argb32(
-                    //    clamp_u8((int)std::lround(aa * 255.0f)),
-                    //    clamp_u8((int)std::lround(rr * 255.0f)),
-                    //    clamp_u8((int)std::lround(gg * 255.0f)),
-                    //    clamp_u8((int)std::lround(bb * 255.0f)));
                 }
             }
 
@@ -1007,12 +1188,11 @@ namespace waavs {
                 return false;
 
             setLastKey(outKey);
-
             return true;
         }
 
         //-----------------------------------------
-        // onComposite() - supports feBlend and feComposite (except arithmetic)
+        // onComposite() 
         // Type: binary
         //-----------------------------------------
 
@@ -1092,9 +1272,9 @@ namespace waavs {
                         float gg = clamp01(k1 * g1 * g2 + k2 * g1 + k3 * g2 + k4);
                         float bb = clamp01(k1 * b1 * b2 + k2 * b1 + k3 * b2 + k4);
 
-                        rr *= aa;
-                        gg *= aa;
-                        bb *= aa;
+                        //rr *= aa;
+                        //gg *= aa;
+                        //bb *= aa;
 
                         d[x] = pack_argb32(
                             clamp_u8((int)std::lround(aa * 255.0f)),
@@ -1476,6 +1656,7 @@ namespace waavs {
             if (!out)
                 return false;
 
+            // Preserve current executor behavior outside the primitive write area.
             {
                 SVGB2DDriver bctx{};
                 bctx.attach(*out, 1);
@@ -1491,9 +1672,11 @@ namespace waavs {
             default:
             case SpaceUnitsKind::SVG_SPACE_USER:
                 break;
+
             case SpaceUnitsKind::SVG_SPACE_OBJECT:
                 scaleUS *= 0.5 * (fRunState.objectBBoxUS.w + fRunState.objectBBoxUS.h);
                 break;
+
             case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
                 break;
             }
@@ -1501,53 +1684,102 @@ namespace waavs {
             const double scaleX = scaleUS * fSpace.sx;
             const double scaleY = scaleUS * fSpace.sy;
 
-
-
             WGRectI area = resolveSubregionPx(subr, *in1);
-            if (area.w <= 0 || area.h <= 0) {
+            if (area.w <= 0 || area.h <= 0)
+            {
                 if (!putImage(outKey, std::move(out)))
                     return false;
 
                 setLastKey(outKey);
-
                 return true;
             }
 
-            const int W = (int)in1->width();
-            const int H = (int)in1->height();
+            const int W1 = (int)in1->width();
+            const int H1 = (int)in1->height();
+            const int W2 = (int)in2->width();
+            const int H2 = (int)in2->height();
+
+            const int W = min(W1, W2);
+            const int H = min(H1, H2);
+
+            if (W <= 0 || H <= 0)
+            {
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+
+                setLastKey(outKey);
+                return true;
+            }
+
+            auto unpackMapChannelStraight = [](uint32_t px, FilterChannelSelector ch) noexcept -> float
+                {
+                    const float a = float((px >> 24) & 0xFF) * (1.0f / 255.0f);
+                    const float r_p = float((px >> 16) & 0xFF) * (1.0f / 255.0f);
+                    const float g_p = float((px >> 8) & 0xFF) * (1.0f / 255.0f);
+                    const float b_p = float((px >> 0) & 0xFF) * (1.0f / 255.0f);
+
+                    switch (ch)
+                    {
+                    default:
+                    case FILTER_CHANNEL_A:
+                        return a;
+
+                    case FILTER_CHANNEL_R:
+                        if (a > 0.0f)
+                            return clamp01(r_p / a);
+                        return 0.0f;
+
+                    case FILTER_CHANNEL_G:
+                        if (a > 0.0f)
+                            return clamp01(g_p / a);
+                        return 0.0f;
+
+                    case FILTER_CHANNEL_B:
+                        if (a > 0.0f)
+                            return clamp01(b_p / a);
+                        return 0.0f;
+                    }
+                };
 
             for (int y = area.y; y < area.y + area.h; ++y)
             {
+                if ((unsigned)y >= (unsigned)H)
+                    continue;
+
                 uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
                 const uint32_t* mapRow = (const uint32_t*)in2->rowPointer((size_t)y);
 
                 for (int x = area.x; x < area.x + area.w; ++x)
                 {
+                    if ((unsigned)x >= (unsigned)W)
+                    {
+                        drow[x] = 0u;
+                        continue;
+                    }
+
                     const uint32_t mp = mapRow[x];
 
-                    const double mx = (double(getChannelU8(mp, xChannel)) / 255.0 - 0.5) * scaleX;
-                    const double my = (double(getChannelU8(mp, yChannel)) / 255.0 - 0.5) * scaleY;
+                    // feDisplacementMap channel selectors conceptually operate on the
+                    // channel values, not on premultiplied storage bytes. Recover
+                    // straight RGB from PRGB storage before using them as map values.
+                    const double mxv = double(unpackMapChannelStraight(mp, xChannel));
+                    const double myv = double(unpackMapChannelStraight(mp, yChannel));
 
-                    int sx = (int)std::lround(double(x) + mx);
-                    int sy = (int)std::lround(double(y) + my);
-                    //int sx = (int)std::lround(double(x) - mx);
-                    //int sy = (int)std::lround(double(y) - my);
+                    const double mx = (mxv - 0.5) * scaleX;
+                    const double my = (myv - 0.5) * scaleY;
 
-                    if (sx < 0 || sy < 0 || sx >= W || sy >= H) {
-                        drow[x] = 0u;   // transparent black
-                    }
-                    else {
+                    const int sx = (int)std::lround(double(x) + mx);
+                    const int sy = (int)std::lround(double(y) + my);
+
+                    if ((unsigned)sx < (unsigned)W1 && (unsigned)sy < (unsigned)H1)
+                    {
                         const uint32_t* srow = (const uint32_t*)in1->rowPointer((size_t)sy);
                         drow[x] = srow[sx];
                     }
-
-                    //if (sx < 0) sx = 0;
-                    //if (sy < 0) sy = 0;
-                    //if (sx >= W) sx = W - 1;
-                    //if (sy >= H) sy = H - 1;
-
-                    //const uint32_t* srow = (const uint32_t*)in1->rowPointer((size_t)sy);
-                    //drow[x] = srow[sx];
+                    else
+                    {
+                        drow[x] = 0u;
+                    }
                 }
             }
 
@@ -1555,7 +1787,6 @@ namespace waavs {
                 return false;
 
             setLastKey(outKey);
-
             return true;
         }
 
@@ -2276,6 +2507,271 @@ namespace waavs {
         // -----------------------------------------
         // onSpecularLighting
         // ------------------------------------------
+
+        bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
+            uint32_t lightingRGBA, float surfaceScale,
+            float specularConstant, float specularExponent,
+            float kernelUnitLengthX, float kernelUnitLengthY,
+            uint32_t lightType, const LightPayload& light) noexcept override
+        {
+            InternedKey inKey = resolveUnaryInputKey(io);
+            InternedKey outKey = resolveOutKeyStrict(io);
+
+            Surface* in = getImage(inKey);
+            if (!in)
+                return false;
+
+            if (!outKey)
+                outKey = kFilter_Last();
+
+            auto out = createLikeSurfaceHandle(*in);
+            if (!out)
+                return false;
+
+            out->clearAll();
+
+            WGRectI area = resolveSubregionPx(subr, *in);
+            if (area.w <= 0 || area.h <= 0)
+            {
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+
+                setLastKey(outKey);
+                return true;
+            }
+
+            const float lcR = float((lightingRGBA >> 16) & 0xFF) * (1.0f / 255.0f);
+            const float lcG = float((lightingRGBA >> 8) & 0xFF) * (1.0f / 255.0f);
+            const float lcB = float((lightingRGBA >> 0) & 0xFF) * (1.0f / 255.0f);
+
+            const float kPi = 3.14159265358979323846f;
+
+            specularExponent = clamp(specularExponent, 1.0f, 128.0f);
+
+            auto safeNormalize3 = [](float& x, float& y, float& z) noexcept -> bool
+                {
+                    const float len2 = x * x + y * y + z * z;
+                    if (len2 <= 1e-20f)
+                    {
+                        x = 0.0f;
+                        y = 0.0f;
+                        z = 1.0f;
+                        return false;
+                    }
+
+                    const float invLen = 1.0f / std::sqrt(len2);
+                    x *= invLen;
+                    y *= invLen;
+                    z *= invLen;
+                    return true;
+                };
+
+            auto computeLocalPixelStep = [this](int px, int py, float& duxOut, float& duyOut) noexcept
+                {
+                    float ux0, uy0;
+                    float ux1, uy1;
+                    float ux2, uy2;
+
+                    pixelCenterToFilterUser(px, py, ux0, uy0);
+                    pixelCenterToFilterUser(px + 1, py, ux1, uy1);
+                    pixelCenterToFilterUser(px, py + 1, ux2, uy2);
+
+                    const float ddx0 = ux1 - ux0;
+                    const float ddy0 = uy1 - uy0;
+                    const float ddx1 = ux2 - ux0;
+                    const float ddy1 = uy2 - uy0;
+
+                    duxOut = std::sqrt(ddx0 * ddx0 + ddy0 * ddy0);
+                    duyOut = std::sqrt(ddx1 * ddx1 + ddy1 * ddy1);
+
+                    if (!(duxOut > 0.0f))
+                        duxOut = 1.0f;
+                    if (!(duyOut > 0.0f))
+                        duyOut = 1.0f;
+                };
+
+            for (int y = area.y; y < area.y + area.h; ++y)
+            {
+                uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
+
+                for (int x = area.x; x < area.x + area.w; ++x)
+                {
+                    float dux = 1.0f;
+                    float duy = 1.0f;
+                    computeLocalPixelStep(x, y, dux, duy);
+
+                    if (kernelUnitLengthX > 0.0f)
+                        dux = kernelUnitLengthX;
+                    if (kernelUnitLengthY > 0.0f)
+                        duy = kernelUnitLengthY;
+
+                    const float h00 = pixelHeightFromAlpha(*in, x - 1, y - 1);
+                    const float h10 = pixelHeightFromAlpha(*in, x, y - 1);
+                    const float h20 = pixelHeightFromAlpha(*in, x + 1, y - 1);
+
+                    const float h01 = pixelHeightFromAlpha(*in, x - 1, y);
+                    const float h11 = pixelHeightFromAlpha(*in, x, y);
+                    const float h21 = pixelHeightFromAlpha(*in, x + 1, y);
+
+                    const float h02 = pixelHeightFromAlpha(*in, x - 1, y + 1);
+                    const float h12 = pixelHeightFromAlpha(*in, x, y + 1);
+                    const float h22 = pixelHeightFromAlpha(*in, x + 1, y + 1);
+
+                    float dHx = 0.0f;
+                    float dHy = 0.0f;
+
+                    if (dux > 0.0f)
+                    {
+                        dHx =
+                            ((h20 + 2.0f * h21 + h22) -
+                                (h00 + 2.0f * h01 + h02)) / (8.0f * dux);
+                    }
+
+                    if (duy > 0.0f)
+                    {
+                        dHy =
+                            ((h02 + 2.0f * h12 + h22) -
+                                (h00 + 2.0f * h10 + h20)) / (8.0f * duy);
+                    }
+
+                    float nx = -surfaceScale * dHx;
+                    float ny = -surfaceScale * dHy;
+                    float nz = 1.0f;
+                    safeNormalize3(nx, ny, nz);
+
+                    float ux, uy;
+                    pixelCenterToFilterUser(x, y, ux, uy);
+
+                    const float h = surfaceScale * h11;
+
+                    float lx = 0.0f;
+                    float ly = 0.0f;
+                    float lz = 1.0f;
+
+                    if (lightType == FILTER_LIGHT_DISTANT)
+                    {
+                        const float az = light.L[0] * (kPi / 180.0f);
+                        const float el = light.L[1] * (kPi / 180.0f);
+
+                        lx = std::cos(el) * std::cos(az);
+                        ly = std::cos(el) * std::sin(az);
+                        lz = std::sin(el);
+                        safeNormalize3(lx, ly, lz);
+                    }
+                    else if (lightType == FILTER_LIGHT_POINT || lightType == FILTER_LIGHT_SPOT)
+                    {
+                        lx = light.L[0] - ux;
+                        ly = light.L[1] - uy;
+                        lz = light.L[2] - h;
+                        safeNormalize3(lx, ly, lz);
+                    }
+                    else
+                    {
+                        lx = 0.0f;
+                        ly = 0.0f;
+                        lz = 1.0f;
+                    }
+
+                    float lightFactor = 1.0f;
+
+                    if (lightType == FILTER_LIGHT_SPOT)
+                    {
+                        float ax = light.L[3] - light.L[0];
+                        float ay = light.L[4] - light.L[1];
+                        float az = light.L[5] - light.L[2];
+
+                        float sx = ux - light.L[0];
+                        float sy = uy - light.L[1];
+                        float sz = h - light.L[2];
+
+                        const bool axisOk = safeNormalize3(ax, ay, az);
+                        const bool rayOk = safeNormalize3(sx, sy, sz);
+
+                        if (axisOk && rayOk)
+                        {
+                            float cosAng = ax * sx + ay * sy + az * sz;
+                            cosAng = clamp01f(cosAng);
+
+                            float spotExp = light.L[6];
+                            if (!(spotExp > 0.0f))
+                                spotExp = 1.0f;
+
+                            lightFactor = std::pow(cosAng, spotExp);
+
+                            const float limitDeg = light.L[7];
+                            if (limitDeg > 0.0f)
+                            {
+                                const float limitCos = std::cos(limitDeg * (kPi / 180.0f));
+                                if (cosAng < limitCos)
+                                    lightFactor = 0.0f;
+                            }
+                        }
+                        else
+                        {
+                            lightFactor = 1.0f;
+                        }
+                    }
+
+                    const float ex = 0.0f;
+                    const float ey = 0.0f;
+                    const float ez = 1.0f;
+
+                    float hx = lx + ex;
+                    float hy = ly + ey;
+                    float hz = lz + ez;
+                    const bool halfOk = safeNormalize3(hx, hy, hz);
+
+                    float ndoth = 0.0f;
+                    if (halfOk)
+                    {
+                        ndoth = nx * hx + ny * hy + nz * hz;
+                        if (ndoth < 0.0f)
+                            ndoth = 0.0f;
+                    }
+
+                    float lit = 0.0f;
+                    if (ndoth > 0.0f)
+                        lit = specularConstant * std::pow(ndoth, specularExponent) * lightFactor;
+
+                    lit = clamp01f(lit);
+
+                    float sr = lcR * lit;
+                    float sg = lcG * lit;
+                    float sb = lcB * lit;
+
+                    sr = clamp01f(sr);
+                    sg = clamp01f(sg);
+                    sb = clamp01f(sb);
+
+                    float a = sr;
+                    if (sg > a) a = sg;
+                    if (sb > a) a = sb;
+
+                    a = clamp01f(a);
+
+                    float pr = 0.0f;
+                    float pg = 0.0f;
+                    float pb = 0.0f;
+
+                    if (a > 0.0f)
+                    {
+                        pr = sr;
+                        pg = sg;
+                        pb = sb;
+                    }
+
+                    drow[x] = pack_argb32(a, pr, pg, pb);
+                }
+            }
+
+            if (!putImage(outKey, std::move(out)))
+                return false;
+
+            setLastKey(outKey);
+            return true;
+        }
+
+/*
         bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
             uint32_t lightingRGBA, float surfaceScale,
             float specularConstant, float specularExponent,
@@ -2311,13 +2807,14 @@ namespace waavs {
                 return true;
             }
 
-            const float lcR = float((lightingRGBA >> 16) & 0xFF) / 255.0f;
-            const float lcG = float((lightingRGBA >> 8) & 0xFF) / 255.0f;
-            const float lcB = float((lightingRGBA >> 0) & 0xFF) / 255.0f;
+            const float lcR = float((lightingRGBA >> 16) & 0xFF) * (1.0f / 255.0f);
+            const float lcG = float((lightingRGBA >> 8) & 0xFF) * (1.0f / 255.0f);
+            const float lcB = float((lightingRGBA >> 0) & 0xFF) * (1.0f / 255.0f);
 
             const float kPi = 3.14159265358979323846f;
 
             specularExponent = clamp(specularExponent, 1.0f, 128.0f);
+
 
             const float dux = (in->width() > 0) ? float(fSpace.filterRectUS.w / double(in->width())) : 1.0f;
             const float duy = (in->height() > 0) ? float(fSpace.filterRectUS.h / double(in->height())) : 1.0f;
@@ -2340,15 +2837,6 @@ namespace waavs {
                     return true;
                 };
 
-            auto clamp01f = [](float v) noexcept -> float
-                {
-                    if (v < 0.0f)
-                        return 0.0f;
-                    if (v > 1.0f)
-                        return 1.0f;
-                    return v;
-                };
-
             for (int y = area.y; y < area.y + area.h; ++y)
             {
                 uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
@@ -2364,7 +2852,7 @@ namespace waavs {
 
                     const float h = surfaceScale * pixelHeightFromAlpha(*in, x, y);
 
-                    // L is surface point -> light.
+                    // L = surface point -> light
                     float lx = 0.0f;
                     float ly = 0.0f;
                     float lz = 1.0f;
@@ -2393,20 +2881,16 @@ namespace waavs {
                         lz = 1.0f;
                     }
 
-                    float ndotl = nx * lx + ny * ly + nz * lz;
-                    if (ndotl < 0.0f)
-                        ndotl = 0.0f;
-
                     float lightFactor = 1.0f;
 
                     if (lightType == FILTER_LIGHT_SPOT)
                     {
-                        // Spotlight axis: light position -> pointsAt.
+                        // Spotlight axis: light position -> pointsAt
                         float ax = light.L[3] - light.L[0];
                         float ay = light.L[4] - light.L[1];
                         float az = light.L[5] - light.L[2];
 
-                        // Spotlight ray: light position -> current surface point.
+                        // Spotlight ray: light position -> current surface point
                         float sx = ux - light.L[0];
                         float sy = uy - light.L[1];
                         float sz = h - light.L[2];
@@ -2435,20 +2919,19 @@ namespace waavs {
                         }
                         else
                         {
-                            // Degenerate spotlight: fall back to point-light behavior.
                             lightFactor = 1.0f;
                         }
                     }
 
-                    // Viewer vector. For this first-pass implementation, viewer is along +Z.
-                    float vx = 0.0f;
-                    float vy = 0.0f;
-                    float vz = 1.0f;
+                    // Viewer vector E is along +Z in this implementation.
+                    const float ex = 0.0f;
+                    const float ey = 0.0f;
+                    const float ez = 1.0f;
 
-                    // Half vector H = normalize(L + V)
-                    float hx = lx + vx;
-                    float hy = ly + vy;
-                    float hz = lz + vz;
+                    // H = normalize(L + E)
+                    float hx = lx + ex;
+                    float hy = ly + ey;
+                    float hz = lz + ez;
                     const bool halfOk = safeNormalize3(hx, hy, hz);
 
                     float ndoth = 0.0f;
@@ -2460,23 +2943,40 @@ namespace waavs {
                     }
 
                     float lit = 0.0f;
-                    if (ndotl > 0.0f && ndoth > 0.0f)
+                    if (ndoth > 0.0f)
                         lit = specularConstant * std::pow(ndoth, specularExponent) * lightFactor;
 
                     lit = clamp01f(lit);
 
-                    // Keep output premultiplied and browser-like.
-                    // Alpha tracks the visible light contribution.
-                    const float a = lit;
-                    const float pr = lcR * lit;
-                    const float pg = lcG * lit;
-                    const float pb = lcB * lit;
+                    // Straight color result from lighting color.
+                    float sr = lcR * lit;
+                    float sg = lcG * lit;
+                    float sb = lcB * lit;
 
-                    drow[x] = pack_argb32(
-                        clamp_u8((int)std::lround(a * 255.0f)),
-                        clamp_u8((int)std::lround(pr * 255.0f)),
-                        clamp_u8((int)std::lround(pg * 255.0f)),
-                        clamp_u8((int)std::lround(pb * 255.0f)));
+                    sr = clamp01f(sr);
+                    sg = clamp01f(sg);
+                    sb = clamp01f(sb);
+
+                    // Specular lighting is not opaque. In premultiplied storage,
+                    // alpha should track the visible light contribution.
+                    float a = sr;
+                    if (sg > a) a = sg;
+                    if (sb > a) a = sb;
+
+                    a = clamp01f(a);
+
+                    float pr = 0.0f;
+                    float pg = 0.0f;
+                    float pb = 0.0f;
+
+                    if (a > 0.0f)
+                    {
+                        pr = sr;
+                        pg = sg;
+                        pb = sb;
+                    }
+
+                    drow[x] = pack_argb32(a, pr, pg, pb);
                 }
             }
 
@@ -2486,7 +2986,7 @@ namespace waavs {
             setLastKey(outKey);
             return true;
         }
-
+        */
 
 
         // -----------------------------------------
@@ -2637,17 +3137,20 @@ namespace waavs {
                 return true;
             }
 
+            if (baseFreqX < 0.0f) baseFreqX = 0.0f;
+            if (baseFreqY < 0.0f) baseFreqY = 0.0f;
+
             TurbulenceNoiseParams p;
             p.baseFreqX = baseFreqX;
             p.baseFreqY = baseFreqY;
             p.octaves = numOctaves ? numOctaves : 1;
-            p.seed = (uint64_t)(seed != 0.0f ? seed : 1.0f);
+            //p.seed = (uint64_t)(int32_t)std::floor(seed);
 
             const bool isFractal =
                 (typeKey == FilterTurbulenceType::FILTER_TURBULENCE_FRACTAL_NOISE);
 
-            // Determine the generator rect in user space.
-            // This is used for stitchTiles local coordinates and period derivation.
+            // Determine the generator region in user space.
+            // This is the authored region that stitchTiles should repeat over.
             WGRectD genRectUS = fSpace.filterRectUS;
 
             if (subr)
@@ -2656,12 +3159,14 @@ namespace waavs {
                 {
                     const double bx = fRunState.objectBBoxUS.x;
                     const double by = fRunState.objectBBoxUS.y;
+                    const double bw = fRunState.objectBBoxUS.w;
+                    const double bh = fRunState.objectBBoxUS.h;
 
                     genRectUS = WGRectD(
-                        bx + subr->x,
-                        by + subr->y,
-                        subr->w,
-                        subr->h);
+                        bx + subr->x * bw,
+                        by + subr->y * bh,
+                        subr->w * bw,
+                        subr->h * bh);
                 }
                 else
                 {
@@ -2669,16 +3174,17 @@ namespace waavs {
                 }
             }
 
+            // Build four true channels: R, G, B, A.
+            TurbulenceChannelState states[4]{};
+            buildTurbulenceChannelStates(states, 1);
+
+            // For the current noise helpers, stitched mode uses explicit lattice periods.
+            // These are derived from the generator extent in the same authored coordinate
+            // space that pixelCenterToFilterUser() returns.
             const int32_t basePeriodX =
                 safe_period_from_extent((float)genRectUS.w, p.baseFreqX);
             const int32_t basePeriodY =
                 safe_period_from_extent((float)genRectUS.h, p.baseFreqY);
-
-            // Build channel states in spec-style R,G,B,A order from one seeded RNG.
-            TurbulenceChannelState chans[4];
-            buildTurbulenceChannelStates(
-                chans,
-                (int32_t)(seed != 0.0f ? seed : 1.0f));
 
             for (int y = area.y; y < area.y + area.h; ++y)
             {
@@ -2689,53 +3195,33 @@ namespace waavs {
                     float ux, uy;
                     pixelCenterToFilterUser(x, y, ux, uy);
 
-                    float sx = ux;
-                    float sy = uy;
-
-                    if (stitchTiles)
-                    {
-                        // For stitch mode, sample in primitive-local user space
-                        // so the periodic wrapping matches the primitive bounds.
-                        sx = ux - (float)genRectUS.x;
-                        sy = uy - (float)genRectUS.y;
-                    }
-
-                    float r, g, b, a;
+                    float r = 0.0f;
+                    float g = 0.0f;
+                    float b = 0.0f;
+                    float a = 0.0f;
 
                     if (isFractal)
                     {
-                        r = sampleFractalChannel(
-                            sx, sy, p, chans[0],
-                            stitchTiles, basePeriodX, basePeriodY);
-                        g = sampleFractalChannel(
-                            sx, sy, p, chans[1],
-                            stitchTiles, basePeriodX, basePeriodY);
-                        b = sampleFractalChannel(
-                            sx, sy, p, chans[2],
-                            stitchTiles, basePeriodX, basePeriodY);
-                        a = sampleFractalChannel(
-                            sx, sy, p, chans[3],
-                            stitchTiles, basePeriodX, basePeriodY);
+                        r = sampleFractalChannel(ux, uy, p, states[0], stitchTiles, basePeriodX, basePeriodY);
+                        g = sampleFractalChannel(ux, uy, p, states[1], stitchTiles, basePeriodX, basePeriodY);
+                        b = sampleFractalChannel(ux, uy, p, states[2], stitchTiles, basePeriodX, basePeriodY);
+                        a = sampleFractalChannel(ux, uy, p, states[3], stitchTiles, basePeriodX, basePeriodY);
                     }
                     else
                     {
-                        r = sampleTurbulenceChannel(
-                            sx, sy, p, chans[0],
-                            stitchTiles, basePeriodX, basePeriodY);
-                        g = sampleTurbulenceChannel(
-                            sx, sy, p, chans[1],
-                            stitchTiles, basePeriodX, basePeriodY);
-                        b = sampleTurbulenceChannel(
-                            sx, sy, p, chans[2],
-                            stitchTiles, basePeriodX, basePeriodY);
-                        a = sampleTurbulenceChannel(
-                            sx, sy, p, chans[3],
-                            stitchTiles, basePeriodX, basePeriodY);
+                        r = sampleTurbulenceChannel(ux, uy, p, states[0], stitchTiles, basePeriodX, basePeriodY);
+                        g = sampleTurbulenceChannel(ux, uy, p, states[1], stitchTiles, basePeriodX, basePeriodY);
+                        b = sampleTurbulenceChannel(ux, uy, p, states[2], stitchTiles, basePeriodX, basePeriodY);
+                        a = sampleTurbulenceChannel(ux, uy, p, states[3], stitchTiles, basePeriodX, basePeriodY);
                     }
 
-                    // Use alpha=1 so stored RGB is not weakened by premultiplication.
-                    // This matters when turbulence is later consumed as a displacement map.
-                    drow[x] = pack_argb32(a, r, g, b);
+                    r = clamp01(r);
+                    g = clamp01(g);
+                    b = clamp01(b);
+                    a = clamp01(a);
+
+                    // Store as premultiplied ARGB32, consistent with the rest of the executor.
+                    drow[x] = pack_argb32(a, r * a, g * a, b * a);
                 }
             }
 

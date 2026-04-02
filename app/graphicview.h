@@ -6,199 +6,215 @@
 #include "svgcamera.h"
 
 namespace waavs {
-	//
-	// GraphicView
-	//
-	// The primary purpose of this class is to act as a basis for any visuals
-	// the user can interact with.  There are a few primary things it provides
-	// interfaces for
-	// 
-	// 1) Input device handling - Mouse, Keyboard, Joystick, Touch
-	//		onMouseEvent()
-	//		onKeyboardEvent()
-	// 2) Drawing to a context - an SVG aware context
-	//		draw()
-	// 3) Mapping between its position in the world space, and local coordinate space
-	//		frame()
-	//		bounds()
-	//
-	struct GraphicView
-	{
-	private:
-		BLMatrix2D fSceneToSurfaceTransform{};
-		BLMatrix2D fSurfaceToSceneTransform{};
+    //
+    // GraphicView
+    //
+    // The primary purpose of this class is to act as a basis for any visuals
+    // the user can interact with.  There are a few primary things it provides
+    // interfaces for
+    // 
+    // 1) Input device handling - Mouse, Keyboard, Joystick, Touch
+    //		onMouseEvent()
+    //		onKeyboardEvent()
+    // 2) Drawing to a context - an SVG aware context
+    //		draw()
+    // 3) Mapping between its position in the world space, and local coordinate space
+    //		frame()
+    //		bounds()
+    //
+    struct GraphicView
+    {
+    private:
+        BLMatrix2D fSceneToSurfaceTransform{};
+        BLMatrix2D fSurfaceToSceneTransform{};
 
         PortalView fPortalView{};
 
 
-	public:
-		GraphicView()
-		{
-		}
+    public:
+        GraphicView()
+        {
+        }
 
-		GraphicView(const WGRectD& aframe)
-		{
+        GraphicView(const WGRectD& aframe)
+        {
             fPortalView.setViewportFrame(aframe);
             fPortalView.setViewBoxFrame({ 0,0,aframe.w, aframe.h });
 
-			fSceneToSurfaceTransform.reset();
-			fSurfaceToSceneTransform.reset();
-		}
+            fSceneToSurfaceTransform.reset();
+            fSurfaceToSceneTransform.reset();
+        }
 
-		// Transformation used to map from scene to our backing buffer surface
-		const BLMatrix2D& sceneToSurfaceTransform() const { return fSceneToSurfaceTransform; }
-		void setSceneToSurfaceTransform(const BLMatrix2D& tform) { fSceneToSurfaceTransform = tform; }
+        // Transformation used to map from scene to our backing buffer surface
+        const BLMatrix2D& sceneToSurfaceTransform() const { return fSceneToSurfaceTransform; }
+        void setSceneToSurfaceTransform(const BLMatrix2D& tform) { fSceneToSurfaceTransform = tform; }
 
 
-		const WGRectD frame() const 
-		{ 
-			WGRectD vpFrame{};
+        const WGRectD frame() const 
+        { 
+            WGRectD vpFrame{};
             fPortalView.getViewportFrame(vpFrame);
 
-			return vpFrame; 
-		}
-		virtual void setFrame(const WGRectD& arect) 
-		{ 
+            return vpFrame; 
+        }
+        virtual void setFrame(const WGRectD& arect) 
+        { 
             fPortalView.setViewportFrame(arect);
-		}
+        }
 
 
-		const WGRectD bounds() const 
-		{ 
-			WGRectD vbFrame{};
+        const WGRectD bounds() const 
+        { 
+            WGRectD vbFrame{};
             fPortalView.getViewBoxFrame(vbFrame);
-			return vbFrame; 
-		}
-		virtual void setBounds(const WGRectD& arect) { fPortalView.setViewBoxFrame(arect); }
+            return vbFrame; 
+        }
+        virtual void setBounds(const WGRectD& arect) { fPortalView.setViewBoxFrame(arect); }
 
-		virtual bool contains(double x, double y) {
-			const auto & fr = frame();
-			return (x >= fr.x && x < fr.x + fr.w && y >= fr.y && y < fr.y + fr.h);
-		}
+        virtual bool contains(double x, double y) {
+            const auto & fr = frame();
+            return (x >= fr.x && x < fr.x + fr.w && y >= fr.y && y < fr.y + fr.h);
+        }
 
-		virtual void onMouseEvent(const MouseEvent& e){}
+        virtual void onMouseEvent(const MouseEvent& e){}
 
-		virtual void onKeyboardEvent(const KeyboardEvent& ke){}
+        virtual void onKeyboardEvent(const KeyboardEvent& ke){}
 
-		// For animation
-		void onFrameEvent(const FrameCountEvent& fe) {}
+        // For animation
+        void onFrameEvent(const FrameCountEvent& fe) {}
 
-		// This is meant to be rendered without any transformation applied
-		// except translation based on our frame offset
-		virtual void drawBackground(IRenderSVG* ctx){}
+        // This is meant to be rendered without any transformation applied
+        // except translation based on our frame offset
+        virtual void drawBackground(IRenderSVG* ctx){}
 
-		// This is where the content should be drawn
-		virtual void drawSelf(IRenderSVG* ctx){}
+        // This is where the content should be drawn
+        virtual void drawSelf(IRenderSVG* ctx){}
 
-		virtual void drawForeground(IRenderSVG* ctx){}
+        virtual void drawForeground(IRenderSVG* ctx){}
 
-		virtual void draw(IRenderSVG* ctx)
-		{
-			WGRectD fr = frame();
+        virtual void draw(IRenderSVG* ctx)
+        {
+            WGRectD fr = frame();
 
 
-			ctx->push();
-			ctx->translate(fr.x, fr.y);
-			ctx->clipRect(WGRectD(0,0,fr.w, fr.h));
-			drawBackground(ctx);
-			ctx->noClip();
-			ctx->pop();
+            ctx->push();
+            ctx->translate(fr.x, fr.y);
+            ctx->clipRect(WGRectD(0,0,fr.w, fr.h));
+            drawBackground(ctx);
+            ctx->noClip();
+            ctx->pop();
 
-			// Apply viewport transformation
-			ctx->push();
-			ctx->translate(fr.x, fr.y);
-			ctx->clipRect(WGRectD(0, 0, fr.w, fr.h));
-			//ctx->setTransform(sceneToSurfaceTransform());
-			drawSelf(ctx);
-			ctx->noClip();
-			ctx->pop();
+            // Apply viewport transformation
+            ctx->push();
+            ctx->translate(fr.x, fr.y);
+            ctx->clipRect(WGRectD(0, 0, fr.w, fr.h));
+            //ctx->setTransform(sceneToSurfaceTransform());
+            drawSelf(ctx);
+            ctx->noClip();
+            ctx->pop();
 
-			ctx->push();
-			ctx->translate(frame().x, frame().y);
-			ctx->clipRect(WGRectD(0, 0, fr.w, fr.h));
-			drawForeground(ctx);
-			ctx->noClip();
-			ctx->pop();
+            ctx->push();
+            ctx->translate(frame().x, frame().y);
+            ctx->clipRect(WGRectD(0, 0, fr.w, fr.h));
+            drawForeground(ctx);
+            ctx->noClip();
+            ctx->pop();
 
-		}
-	};
+        }
+    };
 }
 
 namespace waavs {
-	struct SVGCachedView : public GraphicView
-	{
-		Surface fCachedImage{};
-		SVGB2DDriver fCacheContext;
+    struct SVGCachedView : public GraphicView
+    {
+        Surface fCachedImage{};
+        std::unique_ptr<SVGB2DDriver> fCacheContext{ nullptr };
         int fDrawingThreads{ 0 };
-		bool fNeedsRedraw{ true };
+        bool fNeedsRedraw{ true };
 
-		SVGCachedView(const WGRectD& aframe, int drawingThreads=0)
-			:GraphicView(aframe)
+        SVGCachedView(const WGRectD& aframe, int drawingThreads=0)
+            :GraphicView(aframe)
             , fDrawingThreads(drawingThreads)
-		{
-			setFrame(aframe);
-		}
+        {
+            setFrame(aframe);
+        }
 
-		virtual ~SVGCachedView() = default;
+        virtual ~SVGCachedView() = default;
 
-		void setNeedsRedraw(const bool needsIt) { fNeedsRedraw = needsIt; }
-		bool needsRedraw() const { return fNeedsRedraw; }
+        SVGB2DDriver* cacheContext() 
+        {
+            if (!fCacheContext)
+            {
+                fCacheContext = std::make_unique<SVGB2DDriver>();
+                fCacheContext->attach(fCachedImage, fDrawingThreads);
+                fCacheContext->setViewport(frame());
+            }
 
-		void setFrame(const WGRectD& arect) override
-		{
-			GraphicView::setFrame(arect);
+            return fCacheContext.get(); 
+        }
 
-			fCachedImage.reset(arect.w, arect.h);
-			
-			fCacheContext.attach(fCachedImage, fDrawingThreads);
-			fCacheContext.setViewport(arect);
-			
-			setNeedsRedraw(true);
-		}
+        void setNeedsRedraw(const bool needsIt) { fNeedsRedraw = needsIt; }
+        bool needsRedraw() const { return fNeedsRedraw; }
+
+        void setFrame(const WGRectD& arect) override
+        {
+            GraphicView::setFrame(arect);
+
+            fCachedImage.reset(arect.w, arect.h);
+            
+            fCacheContext = nullptr;
+            //fCacheContext.attach(fCachedImage, fDrawingThreads);
+            //fCacheContext.setViewport(arect);
+            
+            setNeedsRedraw(true);
+        }
 
 
-		void draw(IRenderSVG* ctx) override
-		{
-			if (needsRedraw())
-			{
-				fCacheContext.renew();
-				fCacheContext.clear();
+        void draw(IRenderSVG* ctx) override
+        {
+            if (needsRedraw())
+            {
+                auto ctx = cacheContext();
+                if (!ctx)
+                    return;
 
-				WGRectD fr = frame();
-				
-				//ctx->clipToRect(fr);
+                ctx->renew();
+                //fCacheContext.clear();
 
-				//ctx->push();
-				//ctx->translate(-frame().x, -frame().y);
-				drawBackground(&fCacheContext);
-				//ctx->pop();
+                WGRectD fr = frame();
+                
+                //ctx->clipToRect(fr);
 
-				// Apply viewport transformation
-				fCacheContext.push();
-				//ctx->translate(frame().x, frame().y);
-				fCacheContext.transform(sceneToSurfaceTransform());
-				drawSelf(&fCacheContext);
-				fCacheContext.pop();
+                //ctx->push();
+                //ctx->translate(-frame().x, -frame().y);
+                drawBackground(ctx);
+                //ctx->pop();
 
-				//ctx->push();
-				//ctx->translate(frame().x, frame().y);
-				drawForeground(&fCacheContext);
-				//ctx->pop();
+                // Apply viewport transformation
+                ctx->push();
+                //ctx->translate(frame().x, frame().y);
+                ctx->transform(sceneToSurfaceTransform());
+                drawSelf(ctx);
+                ctx->pop();
 
-				//ctx->noClip();
+                //ctx->push();
+                //ctx->translate(frame().x, frame().y);
+                drawForeground(ctx);
+                //ctx->pop();
+
+                //ctx->noClip();
 
                 // Make sure to flush the drawing operations
-				// or the bitmap won't be updated
+                // or the bitmap won't be updated
                 // this is particularly acute when using multiple threads
-                fCacheContext.flush();
+                ctx->flush();
 
+                setNeedsRedraw(false);
+            }
 
-				setNeedsRedraw(false);
-			}
-
-			// just do a blt of the cached image
-			WGRectD fr = frame();
-			ctx->image(fCachedImage, static_cast<int>(fr.x), static_cast<int>(fr.y));
-		}
-	};
+            // just do a blt of the cached image
+            WGRectD fr = frame();
+            ctx->image(fCachedImage, static_cast<int>(fr.x), static_cast<int>(fr.y));
+        }
+    };
 }

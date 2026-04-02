@@ -157,9 +157,6 @@ static void onResizeEvent(const ResizeEvent& re)
 }
 
 
-
-
-
 static void portalChanged(const bool& changed)
 {
 	refreshDoc();

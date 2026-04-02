@@ -9,70 +9,74 @@
 
 namespace waavs {
 
-	
-	struct SVGCachedDocument : public SVGCachedView
-	{
-		SVGDocumentHandle fDocument{nullptr};
+    
+    struct SVGCachedDocument : public SVGCachedView
+    {
+        SVGDocumentHandle fDocument{nullptr};
 
 
-		SVGCachedDocument(const WGRectD& aframe, int drawingThreads=0)
-			:SVGCachedView(aframe, drawingThreads)
-		{
-		}
-		
-		virtual ~SVGCachedDocument() = default;
+        SVGCachedDocument(const WGRectD& aframe, int drawingThreads=0)
+            :SVGCachedView(aframe, drawingThreads)
+        {
+        }
+        
+        virtual ~SVGCachedDocument() = default;
 
-		void moveTo(const BLPoint& pt) noexcept
-		{
-			auto fr = frame();
-			fr.x = pt.x;
-			fr.y = pt.y;
-			setFrame(fr);
-		}
-
-
-		virtual void onFrameEvent(const FrameCountEvent& fe)
-		{
-			if (fDocument != nullptr)
-			{
-				setNeedsRedraw(true);
-				fDocument->update(fDocument.get());
-			}
-		}
-		
-		virtual void onDocumentLoad()
-		{
-			// clear background
-		}
-		
-		virtual void resetFromDocument(SVGDocumentHandle doc) noexcept
-		{
-			// clear context
-			fCacheContext.clear();
-
-			fDocument = doc;
-
-			WGRectD sFrame{};
-			auto rootElem = doc->documentElement();
-			if (rootElem != nullptr)
-			{
-				sFrame = rootElem->objectBoundingBox();
-			}
+        void moveTo(const BLPoint& pt) noexcept
+        {
+            auto fr = frame();
+            fr.x = pt.x;
+            fr.y = pt.y;
+            setFrame(fr);
+        }
 
 
-			setBounds(sFrame);
-			setNeedsRedraw(true);
-			onDocumentLoad();
-		}
+        virtual void onFrameEvent(const FrameCountEvent& fe)
+        {
+            if (fDocument != nullptr)
+            {
+                setNeedsRedraw(true);
+                fDocument->update(fDocument.get());
+            }
+        }
+        
+        virtual void onDocumentLoad()
+        {
+            // clear background
+        }
+        
+        virtual void resetFromDocument(SVGDocumentHandle doc) noexcept
+        {
+            // we've got a new document, we should re-constitute
+            // a drawing context from scratch
+            // clear context
+            fCacheContext = nullptr;
+            //auto ctx = cacheContext();
 
-		void drawSelf(IRenderSVG* ctx)
-		{
-			if (nullptr != fDocument) {
-				fDocument->draw(ctx, fDocument.get());
-			}
-		}
+            fDocument = doc;
+            fDocument->setNeedsBinding(true);
+
+            WGRectD sFrame{};
+            auto rootElem = doc->documentElement();
+            if (rootElem != nullptr)
+            {
+                sFrame = rootElem->objectBoundingBox();
+            }
 
 
-	};
+            setBounds(sFrame);
+            setNeedsRedraw(true);
+            onDocumentLoad();
+        }
+
+        void drawSelf(IRenderSVG* ctx)
+        {
+            if (nullptr != fDocument) {
+                fDocument->draw(ctx, fDocument.get());
+            }
+        }
+
+
+    };
 
 }

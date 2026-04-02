@@ -12,17 +12,16 @@ namespace waavs
     // Basic interpolation helpers
     // ------------------------------------------------------------
 
-    static INLINE float fade(float t) noexcept
+    static INLINE float cubic_smoothstep(float t) noexcept
     {
-        // Perlin fade curve: 6t^5 - 15t^4 + 10t^3
-        return t * t * t * (t * (t * 6.0f - 15.0f) + 10.0f);
+        // Cubic smoothstep: 3t^2 - 2t^3
+        return t * t * (3.0f - 2.0f * t);
     }
 
-
-
     // ------------------------------------------------------------
-    // SVG Spec-style PRNG (Park-Miller)
+    // SVG spec-style PRNG (Park-Miller)
     // ------------------------------------------------------------
+
     struct SVGParkMillerRNG
     {
         static constexpr int32_t kM = 2147483647;
@@ -78,13 +77,22 @@ namespace waavs
 
     static INLINE void buildGradientTable(TurbulenceGradientTable& g, SVGParkMillerRNG& rng) noexcept
     {
-        static constexpr float kTwoPi = (float)Pi2;
-
+        // Build normalized random 2D vectors using the classic
+        // "random x/y then normalize" style.
         for (int i = 0; i < 256; ++i)
         {
-            const float a = rng.nextUnitFloat() * kTwoPi;
-            g.gx[i] = cosf(a);
-            g.gy[i] = sinf(a);
+            float x = 0.0f;
+            float y = 0.0f;
+
+            do
+            {
+                x = float((rng.nextInt() % 512) - 256) * (1.0f / 256.0f);
+                y = float((rng.nextInt() % 512) - 256) * (1.0f / 256.0f);
+            } while (x == 0.0f && y == 0.0f);
+
+            const float len = std::sqrt(x * x + y * y);
+            g.gx[i] = x / len;
+            g.gy[i] = y / len;
         }
     }
 
@@ -105,6 +113,7 @@ namespace waavs
     static INLINE void buildPermutation(uint8_t perm[512], SVGParkMillerRNG& rng) noexcept
     {
         uint8_t p[256];
+
         for (int i = 0; i < 256; ++i)
             p[i] = (uint8_t)i;
 
@@ -146,8 +155,8 @@ namespace waavs
         const int X = ix0 & 255;
         const int Y = iy0 & 255;
 
-        const float u = fade(fx0);
-        const float v = fade(fy0);
+        const float u = cubic_smoothstep(fx0);
+        const float v = cubic_smoothstep(fy0);
 
         const int aa = perm[perm[X] + Y];
         const int ab = perm[perm[X] + ((Y + 1) & 255)];
@@ -187,6 +196,7 @@ namespace waavs
     {
         if (period > 0)
             return positive_mod(i, period);
+
         return i;
     }
 
@@ -220,8 +230,8 @@ namespace waavs
         const int X1 = ix1 & 255;
         const int Y1 = iy1 & 255;
 
-        const float u = fade(fx0);
-        const float v = fade(fy0);
+        const float u = cubic_smoothstep(fx0);
+        const float v = cubic_smoothstep(fy0);
 
         const int aa = perm[perm[X0] + Y0];
         const int ab = perm[perm[X0] + Y1];
@@ -250,7 +260,6 @@ namespace waavs
         float baseFreqX{ 0.01f };
         float baseFreqY{ 0.01f };
         uint32_t octaves{ 1 };
-        uint64_t seed{ 1 };
     };
 
     static INLINE int32_t safe_period_from_extent(float extent, float baseFreq) noexcept
@@ -324,7 +333,7 @@ namespace waavs
         return sum;
     }
 
-    // Returns a non-negative result. Map later with turbulence_to_unit().
+    // Returns a non-negative result normalized to roughly [0, 1].
     static INLINE float turbulence2(
         float x,
         float y,
@@ -333,6 +342,7 @@ namespace waavs
     {
         float sum = 0.0f;
         float amp = 1.0f;
+        float ampSum = 0.0f;
         float freqX = p.baseFreqX;
         float freqY = p.baseFreqY;
 
@@ -340,12 +350,17 @@ namespace waavs
         {
             float n = perlin2(x * freqX, y * freqY, s.grads, s.perm);
             n = fabsf(n);
+
             sum += n * amp;
+            ampSum += amp;
 
             freqX *= 2.0f;
             freqY *= 2.0f;
             amp *= 0.5f;
         }
+
+        if (ampSum > 0.0f)
+            sum /= ampSum;
 
         return sum;
     }
@@ -403,6 +418,7 @@ namespace waavs
     {
         float sum = 0.0f;
         float amp = 1.0f;
+        float ampSum = 0.0f;
         float freqX = p.baseFreqX;
         float freqY = p.baseFreqY;
 
@@ -420,7 +436,9 @@ namespace waavs
                 s.perm);
 
             n = fabsf(n);
+
             sum += n * amp;
+            ampSum += amp;
 
             freqX *= 2.0f;
             freqY *= 2.0f;
@@ -429,6 +447,9 @@ namespace waavs
             if (periodX > 0) periodX *= 2;
             if (periodY > 0) periodY *= 2;
         }
+
+        if (ampSum > 0.0f)
+            sum /= ampSum;
 
         return sum;
     }
@@ -448,7 +469,7 @@ namespace waavs
     }
 
     // ------------------------------------------------------------
-    // Convenience helpers for sampling RGBA
+    // Convenience helpers for sampling RGBA channels
     // ------------------------------------------------------------
 
     static INLINE float sampleFractalChannel(
@@ -461,9 +482,11 @@ namespace waavs
         int32_t basePeriodY) noexcept
     {
         if (stitchTiles)
-            return fractal_to_unit(fractalNoise2_stitch(x, y, p, basePeriodX, basePeriodY, s));
+            return fractal_to_unit(
+                fractalNoise2_stitch(x, y, p, basePeriodX, basePeriodY, s));
 
-        return fractal_to_unit(fractalNoise2(x, y, p, s));
+        return fractal_to_unit(
+            fractalNoise2(x, y, p, s));
     }
 
     static INLINE float sampleTurbulenceChannel(
@@ -476,8 +499,10 @@ namespace waavs
         int32_t basePeriodY) noexcept
     {
         if (stitchTiles)
-            return turbulence_to_unit(turbulence2_stitch(x, y, p, basePeriodX, basePeriodY, s));
+            return turbulence_to_unit(
+                turbulence2_stitch(x, y, p, basePeriodX, basePeriodY, s));
 
-        return turbulence_to_unit(turbulence2(x, y, p, s));
+        return turbulence_to_unit(
+            turbulence2(x, y, p, s));
     }
 }
