@@ -8,40 +8,21 @@
 #include "nametable.h"
 #include "svgb2ddriver.h"
 
-#include "imageproc.h"
 #include "filterprogramexec.h"   // FilterProgramExecutor + IAmFroot<T>
 #include "filter_noise.h"
 #include "svggraphicselement.h"
 #include "viewport.h"
+#include "pixeling.h"
 
+#include "filter_fecomposite.h"
+#include "filter_feblend.h"
+#include "filter_fegaussian.h"
+#include "filter_fecolormatrix.h"
 
 
 namespace waavs
 {
     struct IAmGroot;
-
-    // Some decoding helpers that are common enough to 
-    // be shared across primitives and executors.
-    static INLINE uint8_t clamp_u8(int v) noexcept
-    {
-        if (v < 0) return 0;
-        if (v > 255) return 255;
-        return (uint8_t)v;
-    }
-
-    static INLINE uint8_t getChannelU8(uint32_t px, FilterChannelSelector ch) noexcept
-    {
-        switch (ch)
-        {
-        case FILTER_CHANNEL_R: return (uint8_t)((px >> 16) & 0xFF);
-        case FILTER_CHANNEL_G: return (uint8_t)((px >> 8) & 0xFF);
-        case FILTER_CHANNEL_B: return (uint8_t)((px >> 0) & 0xFF);
-        case FILTER_CHANNEL_A:
-        default:               return (uint8_t)((px >> 24) & 0xFF);
-        }
-    }
-
-
 
     static INLINE BLCompOp blendModeToCompOp(FilterBlendMode mode) noexcept
     {
@@ -73,22 +54,7 @@ namespace waavs
 {
 
 
-    // Resolver interface for filter primitives that need to fetch images by key (e.g. feImage).
 
-    template<class ImageT>
-    struct IFilterResourceResolver
-    {
-        using SurfaceHandle = std::unique_ptr<ImageT>;
-
-        virtual ~IFilterResourceResolver() = default;
-
-        virtual SurfaceHandle resolveFeImage(
-            InternedKey imageKey,
-            const FilterRunState& runState,
-            const WGRectD* subr,
-            AspectRatioAlignKind align,
-            AspectRatioMeetOrSliceKind meetOrSlice) noexcept = 0;
-    };
 
 
     template<class SurfaceT>
@@ -282,14 +248,9 @@ namespace waavs {
         double toPxY(double du) const noexcept { return du * sy; }
     };
 
-
-
     struct B2DFilterExecutor final : FilterProgramExecutor, IAmFroot<Surface>
     {
         std::unique_ptr<B2DFilterResourceResolver<Surface> > fResolver{nullptr};
-
-
-
 
         // --------------------------------------------------------
         // Registry storage
@@ -459,6 +420,86 @@ namespace waavs {
             uy = float(dx * m.m01 + dy * m.m11 + m.m21);
         }
 
+        // --------------------------------------
+        // SourceAlpha implementation
+        // --------------------------------------
+
+        static INLINE void extractAlpha_row_scalar(
+            uint32_t* dst,
+            const uint32_t* src,
+            size_t n) noexcept
+        {
+            for (size_t i = 0; i < n; ++i)
+                dst[i] = src[i] & 0xFF000000u;
+        }
+
+#if defined(__ARM_NEON) || defined(__aarch64__)
+        static INLINE void extractAlpha_row_neon(
+            uint32_t* dst,
+            const uint32_t* src,
+            size_t n) noexcept
+        {
+            const uint32x4_t kAlphaMask = vdupq_n_u32(0xFF000000u);
+
+            size_t i = 0;
+            for (; i + 4 <= n; i += 4)
+            {
+                const uint32x4_t px = vld1q_u32(src + i);
+                const uint32x4_t a = vandq_u32(px, kAlphaMask);
+                vst1q_u32(dst + i, a);
+            }
+
+            // cleanup tail
+            for (; i < n; ++i)
+                dst[i] = src[i] & 0xFF000000u;
+        }
+#endif
+        static INLINE void extractAlpha_row(
+            uint32_t* dst,
+            const uint32_t* src,
+            size_t n) noexcept
+        {
+#if defined(__ARM_NEON) || defined(__aarch64__)
+            extractAlpha_row_neon(dst, src, n);
+#else
+            extractAlpha_row_scalar(dst, src, n);
+#endif
+        }
+
+
+        std::unique_ptr<Surface> makeSourceAlpha(const Surface& src)
+        {
+            auto out = createLikeSurfaceHandle(src);
+            if (!out)
+                return nullptr;
+
+            const size_t w = src.width();
+            const size_t h = src.height();
+
+            // If they're both contiguous, we can treat the source
+            // as one giant row
+            if (src.isContiguous() && out->isContiguous())
+            {
+                const uint32_t* s = (const uint32_t*)src.data();
+                uint32_t* d = (uint32_t*)out->data();
+
+                extractAlpha_row(d, s, w * h);
+                return out;
+            }
+
+            // If not contiguous, we have to go row by row
+            for (size_t y = 0; y < h; ++y)
+            {
+                const uint32_t* s = (const uint32_t*)src.rowPointer(y);
+                uint32_t* d = (uint32_t*)out->rowPointer(y);
+
+                extractAlpha_row(d, s, w);
+            }
+
+            return out;
+        }
+
+
         // --------------------------------------------------------
         // applyFilter()
         //
@@ -468,25 +509,10 @@ namespace waavs {
         //   void draw(IRenderSVG*, IAmGroot*);
         // --------------------------------------------------------
 
-        std::unique_ptr<Surface> makeSourceAlpha(const Surface& src)
-        {
-            auto out = createLikeSurfaceHandle(src);
-            if (!out)
-                return nullptr;
 
-            uint32_t* dst = (uint32_t*)out->data();
-            const uint32_t* s = (const uint32_t *)src.data();
 
-            size_t n = src.width() * src.height();
 
-            for (size_t i = 0; i < n; ++i) {
-                uint8_t a = s[i] >> 24;
-                dst[i] = pack_argb32(a, 0, 0, 0);
-            }
-
-            return out;
-        }
-
+        // -------------------------------------------
         template<class SubtreeT>
         bool applyFilter(IRenderSVG* ctx,
             IAmGroot* groot,
@@ -752,8 +778,12 @@ namespace waavs {
         // ------------------------------------------
         // onColorMatrix
         // unary
+        // integer / fixed-point
         // -------------------------------------------
 
+
+        /*
+        // Scalar, reference implementation
         bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             FilterColorMatrixType type, float param, F32Span matrix) noexcept override
         {
@@ -905,135 +935,191 @@ namespace waavs {
             setLastKey(outKey);
             return true;
         }
+        */
 
-        /*
-        bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
-            FilterColorMatrixType type, float param, F32Span matrix) noexcept override
+
+
+
+        //==================================================
+        // ------------------------------------------
+        // onColorMatrix
+        // unary
+        // integer / half way to NEON
+        // -------------------------------------------
+
+
+bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
+    FilterColorMatrixType type, float param, F32Span matrix) noexcept override
+{
+    InternedKey inKey = resolveUnaryInputKey(io);
+    InternedKey outKey = resolveOutKeyStrict(io);
+
+    Surface* in = getImage(inKey);
+    if (!in)
+        return false;
+
+    if (!outKey)
+        outKey = kFilter_Last();
+
+    auto out = createLikeSurfaceHandle(*in);
+    if (!out)
+        return false;
+
+    // Preserve current executor behavior:
+    // start from a copy so pixels outside primitive write area remain unchanged.
+    {
+        SVGB2DDriver bctx{};
+        bctx.attach(*out, 1);
+        bctx.renew();
+        bctx.blendMode(BL_COMP_OP_SRC_COPY);
+        bctx.image(*in, 0, 0);
+        bctx.detach();
+    }
+
+    WGRectI area = resolveSubregionPx(subr, *in);
+    if (area.w <= 0 || area.h <= 0)
+    {
+        if (!putImage(outKey, std::move(out)))
+            return false;
+
+        setLastKey(outKey);
+        return true;
+    }
+
+    float Mf[20]{};
+
+    if (type == FILTER_COLOR_MATRIX_MATRIX)
+    {
+        if (!matrix.p || matrix.n != 20)
+            return false;
+
+        for (int i = 0; i < 20; ++i)
+            Mf[i] = matrix.p[i];
+    }
+    else if (type == FILTER_COLOR_MATRIX_SATURATE)
+    {
+        const float s = param;
+
+        Mf[0]  = 0.213f + 0.787f * s;  Mf[1]  = 0.715f - 0.715f * s;  Mf[2]  = 0.072f - 0.072f * s;  Mf[3]  = 0.0f;  Mf[4]  = 0.0f;
+        Mf[5]  = 0.213f - 0.213f * s;  Mf[6]  = 0.715f + 0.285f * s;  Mf[7]  = 0.072f - 0.072f * s;  Mf[8]  = 0.0f;  Mf[9]  = 0.0f;
+        Mf[10] = 0.213f - 0.213f * s;  Mf[11] = 0.715f - 0.715f * s;  Mf[12] = 0.072f + 0.928f * s;  Mf[13] = 0.0f;  Mf[14] = 0.0f;
+        Mf[15] = 0.0f;                 Mf[16] = 0.0f;                 Mf[17] = 0.0f;                 Mf[18] = 1.0f;  Mf[19] = 0.0f;
+    }
+    else if (type == FILTER_COLOR_MATRIX_HUE_ROTATE)
+    {
+        const float a = param * 3.14159265358979323846f / 180.0f;
+        const float c = std::cos(a);
+        const float s = std::sin(a);
+
+        Mf[0]  = 0.213f + 0.787f * c - 0.213f * s;
+        Mf[1]  = 0.715f - 0.715f * c - 0.715f * s;
+        Mf[2]  = 0.072f - 0.072f * c + 0.928f * s;
+        Mf[3]  = 0.0f;
+        Mf[4]  = 0.0f;
+
+        Mf[5]  = 0.213f - 0.213f * c + 0.143f * s;
+        Mf[6]  = 0.715f + 0.285f * c + 0.140f * s;
+        Mf[7]  = 0.072f - 0.072f * c - 0.283f * s;
+        Mf[8]  = 0.0f;
+        Mf[9]  = 0.0f;
+
+        Mf[10] = 0.213f - 0.213f * c - 0.787f * s;
+        Mf[11] = 0.715f - 0.715f * c + 0.715f * s;
+        Mf[12] = 0.072f + 0.928f * c + 0.072f * s;
+        Mf[13] = 0.0f;
+        Mf[14] = 0.0f;
+
+        Mf[15] = 0.0f;
+        Mf[16] = 0.0f;
+        Mf[17] = 0.0f;
+        Mf[18] = 1.0f;
+        Mf[19] = 0.0f;
+    }
+    else
+    {
+        // luminanceToAlpha
+        Mf[0]  = 0.0f;    Mf[1]  = 0.0f;    Mf[2]  = 0.0f;    Mf[3]  = 0.0f;    Mf[4]  = 0.0f;
+        Mf[5]  = 0.0f;    Mf[6]  = 0.0f;    Mf[7]  = 0.0f;    Mf[8]  = 0.0f;    Mf[9]  = 0.0f;
+        Mf[10] = 0.0f;    Mf[11] = 0.0f;    Mf[12] = 0.0f;    Mf[13] = 0.0f;    Mf[14] = 0.0f;
+        Mf[15] = 0.2125f; Mf[16] = 0.7154f; Mf[17] = 0.0721f; Mf[18] = 0.0f;    Mf[19] = 0.0f;
+    }
+
+    // Fast identity bypass.
+    {
+        static constexpr float kId[20] =
         {
-            InternedKey inKey = resolveUnaryInputKey(io);
-            InternedKey outKey = resolveOutKeyStrict(io);
+            1,0,0,0,0,
+            0,1,0,0,0,
+            0,0,1,0,0,
+            0,0,0,1,0
+        };
 
-            Surface* in = getImage(inKey);
-            if (!in)
+        bool isIdentity = true;
+        for (int i = 0; i < 20; ++i)
+        {
+            if (std::fabs(Mf[i] - kId[i]) > 1.0e-6f)
+            {
+                isIdentity = false;
+                break;
+            }
+        }
+
+        if (isIdentity)
+        {
+            if (!putImage(outKey, std::move(out)))
                 return false;
 
-            if (!outKey)
-                outKey = kFilter_Last();
-
-            auto out = createLikeSurfaceHandle(*in);
-            if (!out)
-                return false;
-
-            {
-                SVGB2DDriver bctx{};
-                bctx.attach(*out, 1);
-                bctx.renew();
-                bctx.blendMode(BL_COMP_OP_SRC_COPY);
-                bctx.image(*in, 0, 0);
-                bctx.detach();
-            }
-
-            WGRectI area = resolveSubregionPx(subr, *in);
-            if (area.w <= 0 || area.h <= 0) {
-                if (!putImage(outKey, std::move(out)))
-                    return false;
-
-                setLastKey(outKey);
-
-                return true;
-            }
-
-            float M[20]{};
-
-            if (type == FILTER_COLOR_MATRIX_MATRIX)
-            {
-                if (matrix.n != 20 || !matrix.p) {
-                    return false;
-                }
-
-
-                for (int i = 0; i < 20; ++i)
-                    M[i] = matrix.p[i];
-            }
-            else if (type == FILTER_COLOR_MATRIX_SATURATE)
-            {
-                const float s = param;
-                M[0] = 0.213f + 0.787f * s; M[1] = 0.715f - 0.715f * s; M[2] = 0.072f - 0.072f * s; M[3] = 0; M[4] = 0;
-                M[5] = 0.213f - 0.213f * s; M[6] = 0.715f + 0.285f * s; M[7] = 0.072f - 0.072f * s; M[8] = 0; M[9] = 0;
-                M[10] = 0.213f - 0.213f * s; M[11] = 0.715f - 0.715f * s; M[12] = 0.072f + 0.928f * s; M[13] = 0; M[14] = 0;
-                M[15] = 0;                   M[16] = 0;                   M[17] = 0;                   M[18] = 1; M[19] = 0;
-            }
-            else if (type == FILTER_COLOR_MATRIX_HUE_ROTATE)
-            {
-                const float a = param * 3.14159265358979323846f / 180.0f;
-                const float c = std::cos(a);
-                const float s = std::sin(a);
-
-                M[0] = 0.213f + c * 0.787f + s * -0.213f;
-                M[1] = 0.715f + c * -0.715f + s * -0.715f;
-                M[2] = 0.072f + c * -0.072f + s * 0.928f;
-                M[3] = 0; M[4] = 0;
-
-                M[5] = 0.213f + c * -0.213f + s * 0.143f;
-                M[6] = 0.715f + c * 0.285f + s * 0.140f;
-                M[7] = 0.072f + c * -0.072f + s * -0.283f;
-                M[8] = 0; M[9] = 0;
-
-                M[10] = 0.213f + c * -0.213f + s * -0.787f;
-                M[11] = 0.715f + c * -0.715f + s * 0.715f;
-                M[12] = 0.072f + c * 0.928f + s * 0.072f;
-                M[13] = 0; M[14] = 0;
-
-                M[15] = 0; M[16] = 0; M[17] = 0; M[18] = 1; M[19] = 0;
-            }
-            else
-            {
-                // luminanceToAlpha
-                M[0] = M[1] = M[2] = M[3] = M[4] = 0;
-                M[5] = M[6] = M[7] = M[8] = M[9] = 0;
-                M[10] = M[11] = M[12] = M[13] = M[14] = 0;
-                M[15] = 0.2125f; M[16] = 0.7154f; M[17] = 0.0721f; M[18] = 0.0f; M[19] = 0.0f;
-            }
-
-            for (int y = area.y; y < area.y + area.h; ++y)
-            {
-                const uint32_t* srow = (const uint32_t*)in->rowPointer((size_t)y);
-                uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
-
-                for (int x = area.x; x < area.x + area.w; ++x)
-                {
-                    const uint32_t px = srow[x];
-
-                    const float a = float((px >> 24) & 0xFF) / 255.0f;
-                    const float r = float((px >> 16) & 0xFF) / 255.0f;
-                    const float g = float((px >> 8) & 0xFF) / 255.0f;
-                    const float b = float((px >> 0) & 0xFF) / 255.0f;
-
-                    float rr = M[0] * r + M[1] * g + M[2] * b + M[3] * a + M[4];
-                    float gg = M[5] * r + M[6] * g + M[7] * b + M[8] * a + M[9];
-                    float bb = M[10] * r + M[11] * g + M[12] * b + M[13] * a + M[14];
-                    float aa = M[15] * r + M[16] * g + M[17] * b + M[18] * a + M[19];
-
-                    rr = clamp01(rr);
-                    gg = clamp01(gg);
-                    bb = clamp01(bb);
-                    aa = clamp01(aa);
-
-                    rr *= aa;
-                    gg *= aa;
-                    bb *= aa;
-
-                    drow[x] = pack_argb32(aa, rr, gg, bb);
-
-                }
-            }
-
-            putImage(outKey, std::move(out));
             setLastKey(outKey);
-            
             return true;
         }
-        */
+    }
+
+    ColorMatrixQ88 Mq{};
+    for (int row = 0; row < 4; ++row)
+    {
+        const int b = row * 5;
+
+        Mq.c[b + 0] = (int32_t)std::lround(Mf[b + 0] * 256.0f);
+        Mq.c[b + 1] = (int32_t)std::lround(Mf[b + 1] * 256.0f);
+        Mq.c[b + 2] = (int32_t)std::lround(Mf[b + 2] * 256.0f);
+        Mq.c[b + 3] = (int32_t)std::lround(Mf[b + 3] * 256.0f);
+
+        // Bias is specified in normalized color space.
+        // Convert to byte domain first, then to Q8.8.
+        Mq.c[b + 4] = (int32_t)std::lround(Mf[b + 4] * 255.0f * 256.0f);
+    }
+
+    static uint16_t sInvAlphaQ8[256];
+    static bool sInvAlphaInit = false;
+
+    if (!sInvAlphaInit)
+    {
+        sInvAlphaQ8[0] = 0;
+        for (int a = 1; a < 256; ++a)
+            sInvAlphaQ8[a] = (uint16_t)((255u << 8) / (uint32_t)a);
+
+        sInvAlphaInit = true;
+    }
+
+    for (int y = area.y; y < area.y + area.h; ++y)
+    {
+        const uint32_t* srow = (const uint32_t*)in->rowPointer((size_t)y);
+        uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
+
+        colorMatrix_q88_row(
+            drow + area.x,
+            srow + area.x,
+            (size_t)area.w,
+            Mq,
+            sInvAlphaQ8);
+    }
+
+    if (!putImage(outKey, std::move(out)))
+        return false;
+
+    setLastKey(outKey);
+    return true;
+}
 
         // ----------------------------------------
         // onComponentTransfer()
@@ -1041,7 +1127,7 @@ namespace waavs {
         // ----------------------------------------
         static float applyTransferFunc(const ComponentFunc& f, float x) noexcept
         {
-            x = clamp01(x);
+            x = clamp01f(x);
 
             switch (f.type)
             {
@@ -1050,10 +1136,10 @@ namespace waavs {
                 return x;
 
             case FILTER_TRANSFER_LINEAR:
-                return clamp01(f.p0 * x + f.p1);
+                return clamp01f(f.p0 * x + f.p1);
 
             case FILTER_TRANSFER_GAMMA:
-                return clamp01(f.p0 * std::pow(x, f.p1) + f.p2);
+                return clamp01f(f.p0 * std::pow(x, f.p1) + f.p2);
 
             case FILTER_TRANSFER_TABLE:
             {
@@ -1061,10 +1147,10 @@ namespace waavs {
                     return x;
 
                 if (f.table.n == 1)
-                    return clamp01(f.table.p[0]);
+                    return clamp01f(f.table.p[0]);
 
                 if (x >= 1.0f)
-                    return clamp01(f.table.p[f.table.n - 1]);
+                    return clamp01f(f.table.p[f.table.n - 1]);
 
                 const float pos = x * float(f.table.n - 1);
                 uint32_t i0 = (uint32_t)std::floor(pos);
@@ -1074,7 +1160,7 @@ namespace waavs {
                 const uint32_t i1 = i0 + 1;
                 const float t = pos - float(i0);
 
-                return clamp01(f.table.p[i0] * (1.0f - t) + f.table.p[i1] * t);
+                return clamp01f(f.table.p[i0] * (1.0f - t) + f.table.p[i1] * t);
             }
 
             case FILTER_TRANSFER_DISCRETE:
@@ -1083,13 +1169,13 @@ namespace waavs {
                     return x;
 
                 if (x >= 1.0f)
-                    return clamp01(f.table.p[f.table.n - 1]);
+                    return clamp01f(f.table.p[f.table.n - 1]);
 
                 uint32_t idx = (uint32_t)std::floor(x * float(f.table.n));
                 if (idx >= f.table.n)
                     idx = f.table.n - 1;
 
-                return clamp01(f.table.p[idx]);
+                return clamp01f(f.table.p[idx]);
             }
             }
         }
@@ -1114,16 +1200,9 @@ namespace waavs {
             if (!out)
                 return false;
 
-            // Preserve your current executor behavior:
             // copy input first, then rewrite only the primitive area.
-            {
-                SVGB2DDriver bctx{};
-                bctx.attach(*out, 1);
-                bctx.renew();
-                bctx.blendMode(BL_COMP_OP_SRC_COPY);
-                bctx.image(*in, 0, 0);
-                bctx.detach();
-            }
+            out->blit(*in, 0, 0);
+
 
             WGRectI area = resolveSubregionPx(subr, *in);
             if (area.w <= 0 || area.h <= 0)
@@ -1135,6 +1214,11 @@ namespace waavs {
                 return true;
             }
 
+            // go row by row, applying the transfer functions to each pixel. 
+            // This is not the fastest way to do this, but it's straightforward 
+            // and serves as a reference implementation for now. 
+            // If this becomes a bottleneck, we can optimize it with SIMD 
+            // or by precomputing lookup tables for common transfer function types.
             for (int y = area.y; y < area.y + area.h; ++y)
             {
                 const uint32_t* srow = (const uint32_t*)in->rowPointer((size_t)y);
@@ -1159,9 +1243,9 @@ namespace waavs {
                     if (a_p > 0.0f)
                     {
                         const float invA = 1.0f / a_p;
-                        r = clamp01(r_p * invA);
-                        g = clamp01(g_p * invA);
-                        b = clamp01(b_p * invA);
+                        r = clamp01f(r_p * invA);
+                        g = clamp01f(g_p * invA);
+                        b = clamp01f(b_p * invA);
                     }
 
                     // Apply transfer functions in straight RGBA space.
@@ -1170,10 +1254,10 @@ namespace waavs {
                     float bb = applyTransferFunc(bF, b);
                     float aa = applyTransferFunc(aF, a);
 
-                    rr = clamp01(rr);
-                    gg = clamp01(gg);
-                    bb = clamp01(bb);
-                    aa = clamp01(aa);
+                    rr = clamp01f(rr);
+                    gg = clamp01f(gg);
+                    bb = clamp01f(bb);
+                    aa = clamp01f(aa);
 
                     // Re-premultiply for storage.
                     rr *= aa;
@@ -1191,16 +1275,15 @@ namespace waavs {
             return true;
         }
 
-        //-----------------------------------------
-        // onComposite() 
-        // Type: binary
-        //-----------------------------------------
 
+
+        //-----------------------------------------
 
         bool onComposite(const FilterIO& io, const WGRectD* subr,
             FilterCompositeOp op,
             float k1, float k2, float k3, float k4) noexcept override
         {
+
             InternedKey in1Key = resolveBinaryInput1Key(io);
             InternedKey in2Key = resolveBinaryInput2Key(io);
             InternedKey outKey = resolveOutKeyStrict(io);
@@ -1246,41 +1329,71 @@ namespace waavs {
 
             if (op == FILTER_COMPOSITE_ARITHMETIC)
             {
+                const ArithmeticCompositeKind arithmeticKind = classifyArithmetic(k1, k2, k3, k4);
+                const ArithmeticCoeffFx fx = makeArithmeticCoeffFx(k1, k2, k3, k4);
+
                 for (int y = y0; y < y1; ++y)
                 {
                     const uint32_t* s1 = (const uint32_t*)in1->rowPointer((size_t)y);
                     const uint32_t* s2 = (const uint32_t*)in2->rowPointer((size_t)y);
                     uint32_t* d = (uint32_t*)out->rowPointer((size_t)y);
 
-                    for (int x = x0; x < x1; ++x)
+                    switch (arithmeticKind)
                     {
-                        const uint32_t p1 = s1[x];
-                        const uint32_t p2 = s2[x];
+                    case ARITH_ZERO:
+                        arithmetic_fill_prgb32_row(d + x0, size_t(x1 - x0), 0);
+                        //arithmetic_zero_prgb32_row(d + x0, size_t(x1 - x0));
+                        break;
 
-                        const float a1 = float((p1 >> 24) & 0xFF) * (1.0f / 255.0f);
-                        const float r1 = float((p1 >> 16) & 0xFF) * (1.0f / 255.0f);
-                        const float g1 = float((p1 >> 8) & 0xFF) * (1.0f / 255.0f);
-                        const float b1 = float((p1 >> 0) & 0xFF) * (1.0f / 255.0f);
+                    case ARITH_K1_ONLY:
+                        arithmetic_k1_only_prgb32_row(d + x0, s1 + x0, s2 + x0, size_t(x1 - x0), fx);
+                        break;
 
-                        const float a2 = float((p2 >> 24) & 0xFF) * (1.0f / 255.0f);
-                        const float r2 = float((p2 >> 16) & 0xFF) * (1.0f / 255.0f);
-                        const float g2 = float((p2 >> 8) & 0xFF) * (1.0f / 255.0f);
-                        const float b2 = float((p2 >> 0) & 0xFF) * (1.0f / 255.0f);
+                    case ARITH_K2_ONLY:
+                        if (arithmetic_is_zero(fx.k2))
+                            arithmetic_zero_prgb32_row(d + x0, size_t(x1 - x0));
+                        else if (arithmetic_is_one(fx.k2, fx.shift))
+                            copy_prgb32_row(d + x0, s1 + x0, size_t(x1 - x0));
+                        else
+                            arithmetic_k2_only_prgb32_row(d + x0, s1 + x0, size_t(x1 - x0), fx);
+                        break;
 
-                        const float aa = clamp01(k1 * a1 * a2 + k2 * a1 + k3 * a2 + k4);
-                        float rr = clamp01(k1 * r1 * r2 + k2 * r1 + k3 * r2 + k4);
-                        float gg = clamp01(k1 * g1 * g2 + k2 * g1 + k3 * g2 + k4);
-                        float bb = clamp01(k1 * b1 * b2 + k2 * b1 + k3 * b2 + k4);
+                    case ARITH_K3_ONLY:
+                        if (arithmetic_is_zero(fx.k3))
+                            arithmetic_zero_prgb32_row(d + x0, size_t(x1 - x0));
+                        else if (arithmetic_is_one(fx.k3, fx.shift))
+                            copy_prgb32_row(d + x0, s2 + x0, size_t(x1 - x0));
+                        else
+                            arithmetic_k3_only_prgb32_row(d + x0, s2 + x0, size_t(x1 - x0), fx);
+                        break;
+                    
+                    case ARITH_K4_ONLY:
+                    {
+                        const uint8_t c = arith_k4_only_u8(fx.k4, fx.shift);
+                        const uint32_t px = pack_argb32(c, c, c, c);
+                        arithmetic_fill_prgb32_row(d + x0, size_t(x1 - x0), px);
+                        break;
+                    }
 
-                        //rr *= aa;
-                        //gg *= aa;
-                        //bb *= aa;
+                    case ARITH_K2_K3:
+                        if (arithmetic_is_zero(fx.k2) && arithmetic_is_zero(fx.k3))
+                            arithmetic_zero_prgb32_row(d + x0, size_t(x1 - x0));
+                        else if (arithmetic_is_one(fx.k2, fx.shift) && arithmetic_is_zero(fx.k3))
+                            copy_prgb32_row(d + x0, s1 + x0, size_t(x1 - x0));
+                        else if (arithmetic_is_zero(fx.k2) && arithmetic_is_one(fx.k3, fx.shift))
+                            copy_prgb32_row(d + x0, s2 + x0, size_t(x1 - x0));
+                        else
+                            arithmetic_k2_k3_prgb32_row(d + x0, s1 + x0, s2 + x0, size_t(x1 - x0), fx);
+                        break;
 
-                        d[x] = pack_argb32(
-                            clamp_u8((int)std::lround(aa * 255.0f)),
-                            clamp_u8((int)std::lround(rr * 255.0f)),
-                            clamp_u8((int)std::lround(gg * 255.0f)),
-                            clamp_u8((int)std::lround(bb * 255.0f)));
+                    case ARITH_K1_K2_K3:
+                        arithmetic_k1_k2_k3_prgb32_row(d + x0, s1 + x0, s2 + x0, size_t(x1 - x0), fx);
+                        break;
+
+                    case ARITH_GENERAL:
+                    default:
+                        arithmetic_general_prgb32_row(d + x0, s1 + x0, s2 + x0, size_t(x1 - x0), fx);
+                        break;
                     }
                 }
             }
@@ -2049,35 +2162,25 @@ namespace waavs {
             if (!out)
                 return false;
 
-            auto primLenToUserX = [&](double v) noexcept -> double {
+            auto primLenToUser = [&](double v, double range) noexcept -> double {
                 switch (fRunState.primitiveUnits) {
                 default:
                 case SpaceUnitsKind::SVG_SPACE_USER:
                     return v;
                 case SpaceUnitsKind::SVG_SPACE_OBJECT:
-                    return v * (double)fRunState.objectBBoxUS.w;
+                    return v * (double)range;
                 case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
                     return v;
                 }
                 };
 
-            auto primLenToUserY = [&](double v) noexcept -> double {
-                switch (fRunState.primitiveUnits) {
-                default:
-                case SpaceUnitsKind::SVG_SPACE_USER:
-                    return v;
-                case SpaceUnitsKind::SVG_SPACE_OBJECT:
-                    return v * (double)fRunState.objectBBoxUS.h;
-                case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
-                    return v;
-                }
-                };
+    
 
             if (sx < 0.0f) sx = 0.0f;
             if (sy < 0.0f) sy = 0.0f;
 
-            const double sxUS = primLenToUserX((double)sx);
-            const double syUS = primLenToUserY((double)sy);
+            const double sxUS = primLenToUser((double)sx, (double)fRunState.objectBBoxUS.w);
+            const double syUS = primLenToUser((double)sy, (double)fRunState.objectBBoxUS.h);
 
             const double sxPx = sxUS * fSpace.sx;
             const double syPx = syUS * fSpace.sy;
@@ -2112,7 +2215,7 @@ namespace waavs {
                 return true;
             }
 
-            // Use the larger sigma for the box approximation you already use.
+            // Use the larger sigma for the box approximation we already use.
             const double sigma = (sxPx > syPx) ? sxPx : syPx;
             if (!(sigma > 0.0))
             {
@@ -2217,6 +2320,8 @@ namespace waavs {
             if (!inputs.n)
                 return true;
 
+            // Check that at least one of the inputs resolves to an actual image,
+            // choose the first valid image as the basis for output image parameters.
             Surface* base = nullptr;
             for (uint32_t i = 0; i < inputs.n; ++i)
             {
@@ -2229,6 +2334,8 @@ namespace waavs {
                 }
             }
 
+            // if we didn't find at leastt one valid input image,
+            // we have nothing to do, so fail.
             if (!base)
                 return false;
 
@@ -2247,14 +2354,19 @@ namespace waavs {
             {
                 if (!putImage(outKey, std::move(out)))
                     return false;
+                
                 setLastKey(outKey);
+
                 return true;
             }
 
+            // Setup a drawing context to compose the inputs
+            // one by one.
+            // 
             {
                 SVGB2DDriver bctx{};
                 bctx.attach(*out, 1);
-                bctx.renew();
+                //bctx.renew();
 
                 bctx.push();
                 //bctx.clipRect(WGRectD(area.x, area.y, area.w, area.h));
@@ -2771,222 +2883,7 @@ namespace waavs {
             return true;
         }
 
-/*
-        bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
-            uint32_t lightingRGBA, float surfaceScale,
-            float specularConstant, float specularExponent,
-            float kernelUnitLengthX, float kernelUnitLengthY,
-            uint32_t lightType, const LightPayload& light) noexcept override
-        {
-            (void)kernelUnitLengthX;
-            (void)kernelUnitLengthY;
 
-            InternedKey inKey = resolveUnaryInputKey(io);
-            InternedKey outKey = resolveOutKeyStrict(io);
-
-            Surface* in = getImage(inKey);
-            if (!in)
-                return false;
-
-            if (!outKey)
-                outKey = kFilter_Last();
-
-            auto out = createLikeSurfaceHandle(*in);
-            if (!out)
-                return false;
-
-            out->clearAll();
-
-            WGRectI area = resolveSubregionPx(subr, *in);
-            if (area.w <= 0 || area.h <= 0)
-            {
-                if (!putImage(outKey, std::move(out)))
-                    return false;
-
-                setLastKey(outKey);
-                return true;
-            }
-
-            const float lcR = float((lightingRGBA >> 16) & 0xFF) * (1.0f / 255.0f);
-            const float lcG = float((lightingRGBA >> 8) & 0xFF) * (1.0f / 255.0f);
-            const float lcB = float((lightingRGBA >> 0) & 0xFF) * (1.0f / 255.0f);
-
-            const float kPi = 3.14159265358979323846f;
-
-            specularExponent = clamp(specularExponent, 1.0f, 128.0f);
-
-
-            const float dux = (in->width() > 0) ? float(fSpace.filterRectUS.w / double(in->width())) : 1.0f;
-            const float duy = (in->height() > 0) ? float(fSpace.filterRectUS.h / double(in->height())) : 1.0f;
-
-            auto safeNormalize3 = [](float& x, float& y, float& z) noexcept -> bool
-                {
-                    const float len2 = x * x + y * y + z * z;
-                    if (len2 <= 1e-20f)
-                    {
-                        x = 0.0f;
-                        y = 0.0f;
-                        z = 1.0f;
-                        return false;
-                    }
-
-                    const float invLen = 1.0f / std::sqrt(len2);
-                    x *= invLen;
-                    y *= invLen;
-                    z *= invLen;
-                    return true;
-                };
-
-            for (int y = area.y; y < area.y + area.h; ++y)
-            {
-                uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
-
-                for (int x = area.x; x < area.x + area.w; ++x)
-                {
-                    float nx, ny, nz;
-                    computeHeightNormal(*in, x, y, surfaceScale, dux, duy, nx, ny, nz);
-                    safeNormalize3(nx, ny, nz);
-
-                    float ux, uy;
-                    pixelCenterToFilterUser(x, y, ux, uy);
-
-                    const float h = surfaceScale * pixelHeightFromAlpha(*in, x, y);
-
-                    // L = surface point -> light
-                    float lx = 0.0f;
-                    float ly = 0.0f;
-                    float lz = 1.0f;
-
-                    if (lightType == FILTER_LIGHT_DISTANT)
-                    {
-                        const float az = light.L[0] * (kPi / 180.0f);
-                        const float el = light.L[1] * (kPi / 180.0f);
-
-                        lx = std::cos(el) * std::cos(az);
-                        ly = std::cos(el) * std::sin(az);
-                        lz = std::sin(el);
-                        safeNormalize3(lx, ly, lz);
-                    }
-                    else if (lightType == FILTER_LIGHT_POINT || lightType == FILTER_LIGHT_SPOT)
-                    {
-                        lx = light.L[0] - ux;
-                        ly = light.L[1] - uy;
-                        lz = light.L[2] - h;
-                        safeNormalize3(lx, ly, lz);
-                    }
-                    else
-                    {
-                        lx = 0.0f;
-                        ly = 0.0f;
-                        lz = 1.0f;
-                    }
-
-                    float lightFactor = 1.0f;
-
-                    if (lightType == FILTER_LIGHT_SPOT)
-                    {
-                        // Spotlight axis: light position -> pointsAt
-                        float ax = light.L[3] - light.L[0];
-                        float ay = light.L[4] - light.L[1];
-                        float az = light.L[5] - light.L[2];
-
-                        // Spotlight ray: light position -> current surface point
-                        float sx = ux - light.L[0];
-                        float sy = uy - light.L[1];
-                        float sz = h - light.L[2];
-
-                        const bool axisOk = safeNormalize3(ax, ay, az);
-                        const bool rayOk = safeNormalize3(sx, sy, sz);
-
-                        if (axisOk && rayOk)
-                        {
-                            float cosAng = ax * sx + ay * sy + az * sz;
-                            cosAng = clamp01f(cosAng);
-
-                            float spotExp = light.L[6];
-                            if (!(spotExp > 0.0f))
-                                spotExp = 1.0f;
-
-                            lightFactor = std::pow(cosAng, spotExp);
-
-                            const float limitDeg = light.L[7];
-                            if (limitDeg > 0.0f)
-                            {
-                                const float limitCos = std::cos(limitDeg * (kPi / 180.0f));
-                                if (cosAng < limitCos)
-                                    lightFactor = 0.0f;
-                            }
-                        }
-                        else
-                        {
-                            lightFactor = 1.0f;
-                        }
-                    }
-
-                    // Viewer vector E is along +Z in this implementation.
-                    const float ex = 0.0f;
-                    const float ey = 0.0f;
-                    const float ez = 1.0f;
-
-                    // H = normalize(L + E)
-                    float hx = lx + ex;
-                    float hy = ly + ey;
-                    float hz = lz + ez;
-                    const bool halfOk = safeNormalize3(hx, hy, hz);
-
-                    float ndoth = 0.0f;
-                    if (halfOk)
-                    {
-                        ndoth = nx * hx + ny * hy + nz * hz;
-                        if (ndoth < 0.0f)
-                            ndoth = 0.0f;
-                    }
-
-                    float lit = 0.0f;
-                    if (ndoth > 0.0f)
-                        lit = specularConstant * std::pow(ndoth, specularExponent) * lightFactor;
-
-                    lit = clamp01f(lit);
-
-                    // Straight color result from lighting color.
-                    float sr = lcR * lit;
-                    float sg = lcG * lit;
-                    float sb = lcB * lit;
-
-                    sr = clamp01f(sr);
-                    sg = clamp01f(sg);
-                    sb = clamp01f(sb);
-
-                    // Specular lighting is not opaque. In premultiplied storage,
-                    // alpha should track the visible light contribution.
-                    float a = sr;
-                    if (sg > a) a = sg;
-                    if (sb > a) a = sb;
-
-                    a = clamp01f(a);
-
-                    float pr = 0.0f;
-                    float pg = 0.0f;
-                    float pb = 0.0f;
-
-                    if (a > 0.0f)
-                    {
-                        pr = sr;
-                        pg = sg;
-                        pb = sb;
-                    }
-
-                    drow[x] = pack_argb32(a, pr, pg, pb);
-                }
-            }
-
-            if (!putImage(outKey, std::move(out)))
-                return false;
-
-            setLastKey(outKey);
-            return true;
-        }
-        */
 
 
         // -----------------------------------------
@@ -3094,8 +2991,7 @@ namespace waavs {
             if (!outKey)
                 outKey = kFilter_Last();
 
-            // feTurbulence is a generator. Use SourceGraphic as the template
-            // surface when available, otherwise fall back to the last image.
+            // feTurbulence is a generator. Use the filter tile size.
             Surface* like = getImage(kFilter_SourceGraphic());
             if (!like)
             {
@@ -3113,21 +3009,7 @@ namespace waavs {
 
             out->clearAll();
 
-            const int W = (int)out->width();
-            const int H = (int)out->height();
-            if (W <= 0 || H <= 0)
-            {
-                if (!putImage(outKey, std::move(out)))
-                    return false;
-
-                setLastKey(outKey);
-                return true;
-            }
-
-            WGRectI area{ 0, 0, W, H };
-            if (subr)
-                area = resolveSubregionPx(subr, *out);
-
+            WGRectI area = resolveSubregionPx(subr, *out);
             if (area.w <= 0 || area.h <= 0)
             {
                 if (!putImage(outKey, std::move(out)))
@@ -3137,54 +3019,114 @@ namespace waavs {
                 return true;
             }
 
-            if (baseFreqX < 0.0f) baseFreqX = 0.0f;
-            if (baseFreqY < 0.0f) baseFreqY = 0.0f;
+            TurbulenceNoiseParams params{};
+            params.baseFreqX = baseFreqX;
+            params.baseFreqY = baseFreqY;
+            params.seed = seed;
+            params.octaves = numOctaves;
 
-            TurbulenceNoiseParams p;
-            p.baseFreqX = baseFreqX;
-            p.baseFreqY = baseFreqY;
-            p.octaves = numOctaves ? numOctaves : 1;
-            //p.seed = (uint64_t)(int32_t)std::floor(seed);
+            TurbulenceState turb{};
+            buildTurbulenceState(turb, (int32_t)seed);
 
-            const bool isFractal =
-                (typeKey == FilterTurbulenceType::FILTER_TURBULENCE_FRACTAL_NOISE);
+            auto userToPrimitive = [&](float ux, float uy, float& px, float& py) noexcept
+                {
+                    switch (fRunState.primitiveUnits)
+                    {
+                    default:
+                    case SpaceUnitsKind::SVG_SPACE_USER:
+                        px = ux;
+                        py = uy;
+                        break;
 
-            // Determine the generator region in user space.
-            // This is the authored region that stitchTiles should repeat over.
-            WGRectD genRectUS = fSpace.filterRectUS;
+                    case SpaceUnitsKind::SVG_SPACE_OBJECT:
+                    {
+                        const double bx = fRunState.objectBBoxUS.x;
+                        const double by = fRunState.objectBBoxUS.y;
+                        const double bw = fRunState.objectBBoxUS.w;
+                        const double bh = fRunState.objectBBoxUS.h;
 
-            if (subr)
+                        if (bw > 0.0 && bh > 0.0)
+                        {
+                            px = float((double(ux) - bx) / bw);
+                            py = float((double(uy) - by) / bh);
+                        }
+                        else
+                        {
+                            px = 0.0f;
+                            py = 0.0f;
+                        }
+                        break;
+                    }
+
+                    case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
+                        // No dedicated conversion implemented elsewhere either.
+                        // Fall back to user space for now.
+                        px = ux;
+                        py = uy;
+                        break;
+                    }
+                };
+
+            auto primitiveSubregionRect = [&]() noexcept -> WGRectD
+                {
+                    if (subr)
+                    {
+                        if (fRunState.primitiveUnits == SpaceUnitsKind::SVG_SPACE_OBJECT)
+                            return *subr;
+
+                        return *subr;
+                    }
+
+                    if (fRunState.primitiveUnits == SpaceUnitsKind::SVG_SPACE_OBJECT)
+                    {
+                        const double bx = fRunState.objectBBoxUS.x;
+                        const double by = fRunState.objectBBoxUS.y;
+                        const double bw = fRunState.objectBBoxUS.w;
+                        const double bh = fRunState.objectBBoxUS.h;
+
+                        if (bw > 0.0 && bh > 0.0)
+                        {
+                            return WGRectD(
+                                (fRunState.filterRectUS.x - bx) / bw,
+                                (fRunState.filterRectUS.y - by) / bh,
+                                fRunState.filterRectUS.w / bw,
+                                fRunState.filterRectUS.h / bh);
+                        }
+
+                        return WGRectD{};
+                    }
+
+                    return fRunState.filterRectUS;
+                };
+
+            TurbulenceStitchInfo stitchInfo{};
+            const TurbulenceStitchInfo* stitchPtr = nullptr;
+
+            if (stitchTiles)
             {
-                if (fRunState.primitiveUnits == SpaceUnitsKind::SVG_SPACE_OBJECT)
-                {
-                    const double bx = fRunState.objectBBoxUS.x;
-                    const double by = fRunState.objectBBoxUS.y;
-                    const double bw = fRunState.objectBBoxUS.w;
-                    const double bh = fRunState.objectBBoxUS.h;
+                WGRectD tileRect = primitiveSubregionRect();
 
-                    genRectUS = WGRectD(
-                        bx + subr->x * bw,
-                        by + subr->y * bh,
-                        subr->w * bw,
-                        subr->h * bh);
-                }
-                else
+                if (tileRect.w > 0.0 && tileRect.h > 0.0)
                 {
-                    genRectUS = *subr;
+                    adjust_base_frequencies_for_stitch(
+                        (float)tileRect.w,
+                        (float)tileRect.h,
+                        params.baseFreqX,
+                        params.baseFreqY);
+
+                    stitchInfo = prepare_stitch_info(
+                        (float)tileRect.x,
+                        (float)tileRect.y,
+                        (float)tileRect.w,
+                        (float)tileRect.h,
+                        params.baseFreqX,
+                        params.baseFreqY);
+
+                    stitchPtr = &stitchInfo;
                 }
             }
 
-            // Build four true channels: R, G, B, A.
-            TurbulenceChannelState states[4]{};
-            buildTurbulenceChannelStates(states, 1);
-
-            // For the current noise helpers, stitched mode uses explicit lattice periods.
-            // These are derived from the generator extent in the same authored coordinate
-            // space that pixelCenterToFilterUser() returns.
-            const int32_t basePeriodX =
-                safe_period_from_extent((float)genRectUS.w, p.baseFreqX);
-            const int32_t basePeriodY =
-                safe_period_from_extent((float)genRectUS.h, p.baseFreqY);
+            const bool fractalNoise = (typeKey == FILTER_TURBULENCE_FRACTAL_NOISE);
 
             for (int y = area.y; y < area.y + area.h; ++y)
             {
@@ -3195,24 +3137,24 @@ namespace waavs {
                     float ux, uy;
                     pixelCenterToFilterUser(x, y, ux, uy);
 
-                    float r = 0.0f;
-                    float g = 0.0f;
-                    float b = 0.0f;
-                    float a = 0.0f;
+                    float tx, ty;
+                    userToPrimitive(ux, uy, tx, ty);
 
-                    if (isFractal)
+                    float r, g, b, a;
+
+                    if (fractalNoise)
                     {
-                        r = sampleFractalChannel(ux, uy, p, states[0], stitchTiles, basePeriodX, basePeriodY);
-                        g = sampleFractalChannel(ux, uy, p, states[1], stitchTiles, basePeriodX, basePeriodY);
-                        b = sampleFractalChannel(ux, uy, p, states[2], stitchTiles, basePeriodX, basePeriodY);
-                        a = sampleFractalChannel(ux, uy, p, states[3], stitchTiles, basePeriodX, basePeriodY);
+                        r = sampleFractalChannel(tx, ty, params, turb, 0, stitchTiles, stitchPtr);
+                        g = sampleFractalChannel(tx, ty, params, turb, 1, stitchTiles, stitchPtr);
+                        b = sampleFractalChannel(tx, ty, params, turb, 2, stitchTiles, stitchPtr);
+                        a = sampleFractalChannel(tx, ty, params, turb, 3, stitchTiles, stitchPtr);
                     }
                     else
                     {
-                        r = sampleTurbulenceChannel(ux, uy, p, states[0], stitchTiles, basePeriodX, basePeriodY);
-                        g = sampleTurbulenceChannel(ux, uy, p, states[1], stitchTiles, basePeriodX, basePeriodY);
-                        b = sampleTurbulenceChannel(ux, uy, p, states[2], stitchTiles, basePeriodX, basePeriodY);
-                        a = sampleTurbulenceChannel(ux, uy, p, states[3], stitchTiles, basePeriodX, basePeriodY);
+                        r = sampleTurbulenceChannel(tx, ty, params, turb, 0, stitchTiles, stitchPtr);
+                        g = sampleTurbulenceChannel(tx, ty, params, turb, 1, stitchTiles, stitchPtr);
+                        b = sampleTurbulenceChannel(tx, ty, params, turb, 2, stitchTiles, stitchPtr);
+                        a = sampleTurbulenceChannel(tx, ty, params, turb, 3, stitchTiles, stitchPtr);
                     }
 
                     r = clamp01(r);
@@ -3220,8 +3162,13 @@ namespace waavs {
                     b = clamp01(b);
                     a = clamp01(a);
 
-                    // Store as premultiplied ARGB32, consistent with the rest of the executor.
-                    drow[x] = pack_argb32(a, r * a, g * a, b * a);
+                    // Store in the executor's normal premultiplied surface format.
+                    // This keeps downstream consumers like feDisplacementMap consistent.
+                    r *= a;
+                    g *= a;
+                    b *= a;
+
+                    drow[x] = pack_argb32(a, r, g, b);
                 }
             }
 

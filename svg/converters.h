@@ -438,7 +438,6 @@ namespace waavs {
     {
         // typical whitespace found in lists of numbers, 
         // like on paths and polylines
-        //static const charset nextNumWsp = chrWspChars + ",+"; // (",+\t\n\r ");
         static const charset nextNumWsp = chrWspChars + ","; // (",+\t\n\r ");
 
 		s.skipWhile(nextNumWsp);

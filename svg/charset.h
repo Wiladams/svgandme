@@ -26,269 +26,269 @@ namespace waavs {
 
 
 
-	// charset
-	// Data structure to hold character set and provide
-	// convenient C++ implementation for working with them
-	// The character set is limited to values of 0 - 255, so not
-	// suitable for Unicode or other multi-byte character sets
-	//
-	// The character set makes a tradeoff of size vs speed.  It 
-	// could be implemented as an array of 32 bytes, but that would 
-	// introduce bit manipulations to set and clear bits.
-	// The current implementation favors the usage of a straight forward
-	// array of 256 bytes, which is fast to set and clear bits, but takes
-	// up more space.
-	//
-	// Alignment is 64 byte boundary, which should hopefully make it more cache
-	// friendly, and possibly facilitate SIMD operations in the future.
-	//
-	// The constructors are constexpr, which makes it easy to statically
-	// implement characters sets, either at compile time, or at runtime
-	struct charset final
-	{
-		// Scoped fast-path toggle
-		static constexpr bool kUseFastPath = true;
+    // charset
+    // Data structure to hold character set and provide
+    // convenient C++ implementation for working with them
+    // The character set is limited to values of 0 - 255, so not
+    // suitable for Unicode or other multi-byte character sets
+    //
+    // The character set makes a tradeoff of size vs speed.  It 
+    // could be implemented as an array of 32 bytes, but that would 
+    // introduce bit manipulations to set and clear bits.
+    // The current implementation favors the usage of a straight forward
+    // array of 256 bytes, which is fast to set and clear bits, but takes
+    // up more space.
+    //
+    // Alignment is 64 byte boundary, which should hopefully make it more cache
+    // friendly, and possibly facilitate SIMD operations in the future.
+    //
+    // The constructors are constexpr, which makes it easy to statically
+    // implement characters sets, either at compile time, or at runtime
+    struct charset final
+    {
+        // Scoped fast-path toggle
+        static constexpr bool kUseFastPath = true;
 
-		alignas(64) uint8_t bits[256] = {};
+        alignas(64) uint8_t bits[256] = {};
 
-		// Common Constructors
-		constexpr charset() noexcept = default;
-		constexpr explicit charset(const char achar) noexcept
-		{
-			bits[static_cast<unsigned char>(achar)] = 1;
-		}
+        // Common Constructors
+        constexpr charset() noexcept = default;
+        constexpr explicit charset(const char achar) noexcept
+        {
+            bits[static_cast<unsigned char>(achar)] = 1;
+        }
 
-		constexpr charset(const char* chars) noexcept
-		{
-			for (size_t i = 0; chars[i] != 0; ++i) {
-				bits[static_cast<unsigned char>(chars[i])] = 1;
-			}
-		}
+        constexpr charset(const char* chars) noexcept
+        {
+            for (size_t i = 0; chars[i] != 0; ++i) {
+                bits[static_cast<unsigned char>(chars[i])] = 1;
+            }
+        }
 
-		constexpr charset(const charset& aset) noexcept
-		{
-			for (size_t i = 0; i < 256; ++i)
-				bits[i] = aset.bits[i];
-		}
+        constexpr charset(const charset& aset) noexcept
+        {
+            for (size_t i = 0; i < 256; ++i)
+                bits[i] = aset.bits[i];
+        }
 
-		charset& add(const char achar) noexcept
-		{
-			bits[static_cast<unsigned char>(achar)] = 1;
+        charset& add(const char achar) noexcept
+        {
+            bits[static_cast<unsigned char>(achar)] = 1;
 
-			return *this;
-		}
+            return *this;
+        }
 
-		charset& add(const char* chars) noexcept
-		{
-			const char* s = chars;
-			while (0 != *s) {
-				bits[static_cast<unsigned char>(*s)] = 1;
-				++s;
-			}
+        charset& add(const char* chars) noexcept
+        {
+            const char* s = chars;
+            while (0 != *s) {
+                bits[static_cast<unsigned char>(*s)] = 1;
+                ++s;
+            }
 
-			return *this;
-		}
+            return *this;
+        }
 
-		charset& add(const charset& aset) noexcept
-		{
-			for (size_t i = 0; i < 256; ++i)
-				bits[i] |= aset.bits[i];
+        charset& add(const charset& aset) noexcept
+        {
+            for (size_t i = 0; i < 256; ++i)
+                bits[i] |= aset.bits[i];
 
-			return *this;
-		}
+            return *this;
+        }
 
-		charset& remove(const char achar) noexcept
-		{
-			bits[static_cast<unsigned char>(achar)] = 0;
-			return *this;
-		}
-		charset& remove(const char* chars) noexcept
-		{
-			const char* s = chars;
-			while (0 != *s) {
-				bits[static_cast<unsigned char>(*s)] = 0;
-				++s;
-			}
-			return *this;
-		}
-		charset& remove(const charset& aset) noexcept
-		{
-			for (size_t i = 0; i < 256; ++i)
-				bits[i] &= ~aset.bits[i];
-			return *this;
-		}
+        charset& remove(const char achar) noexcept
+        {
+            bits[static_cast<unsigned char>(achar)] = 0;
+            return *this;
+        }
+        charset& remove(const char* chars) noexcept
+        {
+            const char* s = chars;
+            while (0 != *s) {
+                bits[static_cast<unsigned char>(*s)] = 0;
+                ++s;
+            }
+            return *this;
+        }
+        charset& remove(const charset& aset) noexcept
+        {
+            for (size_t i = 0; i < 256; ++i)
+                bits[i] &= ~aset.bits[i];
+            return *this;
+        }
 
-		// Convenience for adding characters and strings
-		charset& operator+=(const char achar) noexcept { this->add(achar); return *this; }
-		charset& operator+=(const char* chars) noexcept { this->add(chars); return *this; }
-		charset& operator+=(const charset& aset) noexcept { this->add(aset); return *this; }
+        // Convenience for adding characters and strings
+        charset& operator+=(const char achar) noexcept { this->add(achar); return *this; }
+        charset& operator+=(const char* chars) noexcept { this->add(chars); return *this; }
+        charset& operator+=(const charset& aset) noexcept { this->add(aset); return *this; }
 
-		// Convenience for removing characters and ranges from a set
-		charset& operator-=(const char achar) noexcept { bits[achar]=0; return *this; }
-		charset& operator-=(const char* chars) noexcept 
-		{ 
-			return this->remove(chars);
-		}
-		charset& operator-=(const charset& aset) noexcept 
-		{ 
-			return this->remove(aset);
-		}
+        // Convenience for removing characters and ranges from a set
+        charset& operator-=(const char achar) noexcept { bits[achar]=0; return *this; }
+        charset& operator-=(const char* chars) noexcept 
+        { 
+            return this->remove(chars);
+        }
+        charset& operator-=(const charset& aset) noexcept 
+        { 
+            return this->remove(aset);
+        }
 
 
-		// get an inverse of the set
-		constexpr charset operator~() const noexcept
-		{
-			return inversion();
+        // get an inverse of the set
+        constexpr charset operator~() const noexcept
+        {
+            return inversion();
             //charset copy(*this);
             //return copy.invert();
-		}
+        }
 
-		constexpr charset inversion() const noexcept
-		{
-			charset copy(*this);
-			for (size_t i = 0; i < 256; ++i)
-			{
-				copy.bits[i] = copy.bits[i] ? 0 : 1;
+        constexpr charset inversion() const noexcept
+        {
+            charset copy(*this);
+            for (size_t i = 0; i < 256; ++i)
+            {
+                copy.bits[i] = copy.bits[i] ? 0 : 1;
 
-				return std::move(copy);
-			}
-		}
+                return std::move(copy);
+            }
+        }
 
-		charset& invert() noexcept
-		{
-			for (size_t i = 0; i < 256; ++i)
-			{
-				bits[i] = bits[i] ? 0 : 1;
-			}
+        charset& invert() noexcept
+        {
+            for (size_t i = 0; i < 256; ++i)
+            {
+                bits[i] = bits[i] ? 0 : 1;
+            }
 
-			return *this;
-		}
+            return *this;
+        }
 
-		// Checking for set membership
-		constexpr bool test(unsigned char c) const noexcept { return bits[c] != 0; }
+        // Checking for set membership
+        constexpr bool test(unsigned char c) const noexcept { return bits[c] != 0; }
 
-		// This one makes it look like an array
-		constexpr bool operator [](const size_t idx) const noexcept { return bits[idx] != 0; }
+        // This one makes it look like an array
+        constexpr bool operator [](const size_t idx) const noexcept { return bits[idx] != 0; }
 
-		// This one makes it look like a function
-		constexpr bool operator ()(const unsigned char c) const noexcept { return bits[c] != 0; }
-
-
-		// Creating a new set
-		constexpr charset operator+(const char achar) const noexcept
-		{
-			charset result(*this);
-			result.bits[static_cast<unsigned char>(achar)] = 1;
-			return result;
-		}
-
-		constexpr charset operator+(const char* chars) const noexcept 
-		{
-			charset result(*this);
-			for (const char* p = chars; *p; ++p)
-				result.bits[static_cast<unsigned char>(*p)] = 1;
-			return result;
-		}
-
-		constexpr charset operator+(const charset& aset) const noexcept 
-		{
-			charset result;
-			for (size_t i = 0; i < 256; ++i)
-				result.bits[i] = this->bits[i] | aset.bits[i];
-			return result;
-		}
-
-		constexpr charset operator-(const char achar) const noexcept 
-		{ 
-			charset result(*this); 
-			result.bits[static_cast<unsigned char>(achar)] = 0;
-
-			return result; 
-		}
-		constexpr charset operator-(const char* chars) const noexcept
-		{
-			charset result(*this);
-			for (const char* p = chars; *p; ++p)
-				result.bits[static_cast<unsigned char>(*p)] = 0;
-			return result;
-		}
-		constexpr charset operator-(const charset& aset) const noexcept
-		{
-			charset result;
-			for (size_t i = 0; i < 256; ++i)
-				result.bits[i] = this->bits[i] & ~aset.bits[i];
-			return result;
-		}
-
-		// Configurable skipWhile
-		inline const unsigned char* skipWhile(const unsigned char* p, const unsigned char* end) const noexcept 
-		{
-			if constexpr (kUseFastPath) {
-				// 4-at-a-time fast scan
-				while (p + 3 < end) {
-					const unsigned char c0 = p[0];
-					const unsigned char c1 = p[1];
-					const unsigned char c2 = p[2];
-					const unsigned char c3 = p[3];
-
-					if ((bits[c0] & bits[c1] & bits[c2] & bits[c3]) == 0)
-						break;
-
-					p += 4;
-				}
-			}
-			else {
-				// 2-at-a-time fallback
-				while (p + 1 < end) {
-					if (!bits[static_cast<unsigned char>(p[0])]) return p;
-					if (!bits[static_cast<unsigned char>(p[1])]) return p + 1;
-					p += 2;
-				}
-			}
-
-			// Cleanup remaining characters
-			while (p < end && bits[static_cast<unsigned char>(*p)])
-				++p;
-
-			return p;
-		}
+        // This one makes it look like a function
+        constexpr bool operator ()(const unsigned char c) const noexcept { return bits[c] != 0; }
 
 
-		inline const unsigned char* skipUntil(const unsigned char* p, const unsigned char* end) const noexcept 
-		{
-			if constexpr (kUseFastPath) {
-				// 4-at-a-time fast scan
-				while (p + 3 < end) {
-					const unsigned char c0 = p[0];
-					const unsigned char c1 = p[1];
-					const unsigned char c2 = p[2];
-					const unsigned char c3 = p[3];
+        // Creating a new set
+        constexpr charset operator+(const char achar) const noexcept
+        {
+            charset result(*this);
+            result.bits[static_cast<unsigned char>(achar)] = 1;
+            return result;
+        }
 
-					if ((bits[c0] | bits[c1] | bits[c2] | bits[c3]) != 0)
-						break;
+        constexpr charset operator+(const char* chars) const noexcept 
+        {
+            charset result(*this);
+            for (const char* p = chars; *p; ++p)
+                result.bits[static_cast<unsigned char>(*p)] = 1;
+            return result;
+        }
 
-					p += 4;
-				}
-			}
-			else {
-				// 2-at-a-time fallback
-				while (p + 1 < end) {
-					if (bits[static_cast<unsigned char>(p[0])]) return p;
-					if (bits[static_cast<unsigned char>(p[1])]) return p + 1;
-					p += 2;
-				}
-			}
+        constexpr charset operator+(const charset& aset) const noexcept 
+        {
+            charset result;
+            for (size_t i = 0; i < 256; ++i)
+                result.bits[i] = this->bits[i] | aset.bits[i];
+            return result;
+        }
 
-			// Cleanup remaining characters
-			while (p < end && !bits[static_cast<unsigned char>(*p)])
-				++p;
+        constexpr charset operator-(const char achar) const noexcept 
+        { 
+            charset result(*this); 
+            result.bits[static_cast<unsigned char>(achar)] = 0;
 
-			return p;
-		}
+            return result; 
+        }
+        constexpr charset operator-(const char* chars) const noexcept
+        {
+            charset result(*this);
+            for (const char* p = chars; *p; ++p)
+                result.bits[static_cast<unsigned char>(*p)] = 0;
+            return result;
+        }
+        constexpr charset operator-(const charset& aset) const noexcept
+        {
+            charset result;
+            for (size_t i = 0; i < 256; ++i)
+                result.bits[i] = this->bits[i] & ~aset.bits[i];
+            return result;
+        }
+
+        // Configurable skipWhile
+        inline const unsigned char* skipWhile(const unsigned char* p, const unsigned char* end) const noexcept 
+        {
+            if constexpr (kUseFastPath) {
+                // 4-at-a-time fast scan
+                while (p + 3 < end) {
+                    const unsigned char c0 = p[0];
+                    const unsigned char c1 = p[1];
+                    const unsigned char c2 = p[2];
+                    const unsigned char c3 = p[3];
+
+                    if ((bits[c0] & bits[c1] & bits[c2] & bits[c3]) == 0)
+                        break;
+
+                    p += 4;
+                }
+            }
+            else {
+                // 2-at-a-time fallback
+                while (p + 1 < end) {
+                    if (!bits[static_cast<unsigned char>(p[0])]) return p;
+                    if (!bits[static_cast<unsigned char>(p[1])]) return p + 1;
+                    p += 2;
+                }
+            }
+
+            // Cleanup remaining characters
+            while (p < end && bits[static_cast<unsigned char>(*p)])
+                ++p;
+
+            return p;
+        }
+
+
+        inline const unsigned char* skipUntil(const unsigned char* p, const unsigned char* end) const noexcept 
+        {
+            if constexpr (kUseFastPath) {
+                // 4-at-a-time fast scan
+                while (p + 3 < end) {
+                    const unsigned char c0 = p[0];
+                    const unsigned char c1 = p[1];
+                    const unsigned char c2 = p[2];
+                    const unsigned char c3 = p[3];
+
+                    if ((bits[c0] | bits[c1] | bits[c2] | bits[c3]) != 0)
+                        break;
+
+                    p += 4;
+                }
+            }
+            else {
+                // 2-at-a-time fallback
+                while (p + 1 < end) {
+                    if (bits[static_cast<unsigned char>(p[0])]) return p;
+                    if (bits[static_cast<unsigned char>(p[1])]) return p + 1;
+                    p += 2;
+                }
+            }
+
+            // Cleanup remaining characters
+            while (p < end && !bits[static_cast<unsigned char>(*p)])
+                ++p;
+
+            return p;
+        }
 
 
 
-	};
+    };
 
 
 
@@ -297,87 +297,129 @@ namespace waavs {
 
 
 namespace waavs {
-	// The classic character ccategorizers (isdigit(), isalpha(), etc.) from ctype.h
-	// are replicated here.  They are implemented as constexpr functions, so they can
-	// be used in other constexpr functions.
-	static constexpr bool is_digit(const unsigned char c) noexcept { return ((c >= '0') && (c <= '9')); }
-	static constexpr bool is_xdigit(const unsigned char c) noexcept { return (((c >= '0') && (c <= '9')) || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')); }
-	static constexpr bool is_alpha(const unsigned char c) noexcept { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'); }
-	static constexpr bool is_alnum(const unsigned char c) noexcept { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || ((c >= '0') && (c <= '9')); }
-	static constexpr bool is_space(const unsigned char c) noexcept { return c == 0x20 || c == 0x09 || c == 0x0A || c == 0x0D; }
-	static constexpr bool is_upper(const unsigned char c) noexcept { return (c >= 'A' && c <= 'Z'); }
-	static constexpr bool is_lower(const unsigned char c) noexcept { return (c >= 'a' && c <= 'z'); }
-	static constexpr bool is_print(const unsigned char c) noexcept { return (c >= 0x20 && c <= 0x7E); }
-	static constexpr bool is_punct(const unsigned char c) noexcept { return (c >= 0x21 && c <= 0x2F) || (c >= 0x3A && c <= 0x40) || (c >= 0x5B && c <= 0x60) || (c >= 0x7B && c <= 0x7E); }
-	static constexpr bool is_cntrl(const unsigned char c) noexcept { return (c < 0x20) || (c == 0x7F); }
-	static constexpr bool is_graph(const unsigned char c) noexcept { return (c >= 0x21 && c <= 0x7E); }
+    // The classic character ccategorizers (isdigit(), isalpha(), etc.) from ctype.h
+    // are replicated here.  They are implemented as constexpr functions, so they can
+    // be used in other constexpr functions.
+    static constexpr bool is_digit(const unsigned char c) noexcept { return ((c >= '0') && (c <= '9')); }
+    static constexpr bool is_xdigit(const unsigned char c) noexcept { return (((c >= '0') && (c <= '9')) || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')); }
+    static constexpr bool is_alpha(const unsigned char c) noexcept { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'); }
+    static constexpr bool is_alnum(const unsigned char c) noexcept { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || ((c >= '0') && (c <= '9')); }
+    static constexpr bool is_space(const unsigned char c) noexcept { return c == 0x20 || c == 0x09 || c == 0x0A || c == 0x0D; }
+    static constexpr bool is_upper(const unsigned char c) noexcept { return (c >= 'A' && c <= 'Z'); }
+    static constexpr bool is_lower(const unsigned char c) noexcept { return (c >= 'a' && c <= 'z'); }
+    static constexpr bool is_print(const unsigned char c) noexcept { return (c >= 0x20 && c <= 0x7E); }
+    static constexpr bool is_punct(const unsigned char c) noexcept { return (c >= 0x21 && c <= 0x2F) || (c >= 0x3A && c <= 0x40) || (c >= 0x5B && c <= 0x60) || (c >= 0x7B && c <= 0x7E); }
+    static constexpr bool is_cntrl(const unsigned char c) noexcept { return (c < 0x20) || (c == 0x7F); }
+    static constexpr bool is_graph(const unsigned char c) noexcept { return (c >= 0x21 && c <= 0x7E); }
+
+    // Returns true if all 16 bytes in v are XML whitespace:
+    // ' ', '\t', '\n', '\r'
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+    static INLINE bool neon_is_all_wsp_16(uint8x16_t v) noexcept
+    {
+        const uint8x16_t vsp = vdupq_n_u8(' ');
+        const uint8x16_t vtb = vdupq_n_u8('\t');
+        const uint8x16_t vnl = vdupq_n_u8('\n');
+        const uint8x16_t vcr = vdupq_n_u8('\r');
+
+        const uint8x16_t msp = vceqq_u8(v, vsp);
+        const uint8x16_t mtb = vceqq_u8(v, vtb);
+        const uint8x16_t mnl = vceqq_u8(v, vnl);
+        const uint8x16_t mcr = vceqq_u8(v, vcr);
+
+        const uint8x16_t mw1 = vorrq_u8(msp, mtb);
+        const uint8x16_t mw2 = vorrq_u8(mnl, mcr);
+        const uint8x16_t mw = vorrq_u8(mw1, mw2);
+
+#if defined(__aarch64__)
+        return vminvq_u8(mw) == 0xFF;
+#else
+        alignas(16) uint8_t tmp[16];
+        vst1q_u8(tmp, mw);
+
+        for (int i = 0; i < 16; ++i)
+        {
+            if (tmp[i] != 0xFF)
+                return false;
+        }
+
+        return true;
+#endif
+    }
+
+    // Returns true if the 16-byte chunk beginning at p is all XML whitespace.
+    static INLINE bool neon_chunk_is_all_xml_wsp_16(const uint8_t* p) noexcept
+    {
+        return neon_is_all_wsp_16(vld1q_u8(p));
+    }
+#endif
 
 
 
-	/*
-	struct Whitespace
-	{
-		static unsigned char test(unsigned char ch) noexcept
-		{
-			static const unsigned char data[256] =
-			{
-				// 0   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
-				0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  0,  0,  1,  0,  0,  // 0
-				0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 1
-				1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 2
-				0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 3
-				0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 4
-				0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 5
-				0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 6
-				0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 7
-				0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 8
-				0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 9
-				0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // A
-				0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // B
-				0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // C
-				0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // D
-				0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // E
-				0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0   // F
-			};
-			return data[static_cast<unsigned char>(ch)];
-		}
+    /*
+    struct Whitespace
+    {
+        static unsigned char test(unsigned char ch) noexcept
+        {
+            static const unsigned char data[256] =
+            {
+                // 0   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
+                0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  0,  0,  1,  0,  0,  // 0
+                0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 1
+                1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 2
+                0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 3
+                0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 4
+                0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 5
+                0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 6
+                0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 7
+                0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 8
+                0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 9
+                0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // A
+                0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // B
+                0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // C
+                0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // D
+                0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // E
+                0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0   // F
+            };
+            return data[static_cast<unsigned char>(ch)];
+        }
 
-		constexpr bool operator()(unsigned char c) const noexcept {
-			return test(c);
-		}
-	};
-	
+        constexpr bool operator()(unsigned char c) const noexcept {
+            return test(c);
+        }
+    };
+    
 
-	struct IsDigit {
-		constexpr bool operator()(unsigned char c) const noexcept {
-			return waavs::is_digit(c);
-		}
-	};
+    struct IsDigit {
+        constexpr bool operator()(unsigned char c) const noexcept {
+            return waavs::is_digit(c);
+        }
+    };
 
-	struct IsXDigit {
-		constexpr bool operator()(unsigned char c) const noexcept {
-			return waavs::is_xdigit(c);
-		}
-	};
-	*/
+    struct IsXDigit {
+        constexpr bool operator()(unsigned char c) const noexcept {
+            return waavs::is_xdigit(c);
+        }
+    };
+    */
 }
 
 namespace waavs {
-	static constexpr unsigned char to_lower(const unsigned char c) noexcept {
-		return (c >= 'A' && c <= 'Z') ? (c | 32) : c;
-	}
+    static constexpr unsigned char to_lower(const unsigned char c) noexcept {
+        return (c >= 'A' && c <= 'Z') ? (c | 32) : c;
+    }
 
-	static constexpr unsigned char to_upper(const unsigned char c) noexcept {
-		return (c >= 'a' && c <= 'z') ? (c & ~32) : c;
-	}
+    static constexpr unsigned char to_upper(const unsigned char c) noexcept {
+        return (c >= 'a' && c <= 'z') ? (c & ~32) : c;
+    }
 }
 
 namespace waavs {
-	// Some common character sets
-	static constexpr charset chrWspChars("\t\r\n\f\v ");          // whitespace characters
+    // Some common character sets
+    static constexpr charset chrWspChars("\t\r\n\f\v ");          // whitespace characters
     static constexpr charset chrWspComma = chrWspChars + ",";		// whitespace + comma	
-	static constexpr charset chrAlphaChars("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
-	static constexpr charset chrDecDigits("0123456789");
-	static constexpr charset chrHexDigits("0123456789ABCDEFabcdef");
+    static constexpr charset chrAlphaChars("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
+    static constexpr charset chrDecDigits("0123456789");
+    static constexpr charset chrHexDigits("0123456789ABCDEFabcdef");
 }
 

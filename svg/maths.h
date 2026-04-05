@@ -96,21 +96,43 @@ namespace waavs {
 }
 */
 
-//==================================
-// IMPLEMENTATION of FUNCTIONS
-//==================================
 
+//=======================================
+// IMPLEMENTATION for singular integers
+//=======================================
+
+namespace waavs
+{
+    INLINE int abs(int a) noexcept { return a < 0 ? -a : a; }
+    INLINE int min(const int a, const int b) noexcept { return (a < b) ? a : b; }
+    INLINE int max(const int a, const int b) noexcept { return (a > b) ? a : b; }
+    INLINE int clamp(const int a, const int min_, const int max_) noexcept { return min(max(a, min_), max_); }
+    INLINE int sign(int a) noexcept { return a < 0 ? -1 : 1; }
+    INLINE int pow2(int a) noexcept { return 1 << a; }
+    INLINE void swap(int& a, int& b) noexcept { return std::swap(a, b); };
+
+    INLINE size_t min(const size_t a, const size_t b) noexcept { return (a < b) ? a : b; }
+    INLINE size_t max(const size_t a, const size_t b) noexcept { return (a > b) ? a : b; }
+
+    INLINE uint8_t clamp_u8(int64_t v) noexcept
+    {
+        if (v < 0)   return 0;
+        if (v > 255) return 255;
+        return (uint8_t)v;
+    }
+}
 
 //=================================
 // DECLARATIONS for floats
 //=================================
 namespace waavs
 {
-    INLINE float sign(float a) noexcept { return a < 0 ? -1.0f : 1.0f; }
-    INLINE float max(float a, float b) noexcept { return (a > b) ? a : b; }
-    INLINE float min(float a, float b) noexcept { return (a < b) ? a : b; }
-    INLINE float clamp(float a, float min_, float max_) noexcept { return min(max(a, min_), max_); }
-    INLINE float clamp01f(float v) noexcept { return clamp(v, 0.0f, 1.0f); }
+    INLINE float sign(const float a) noexcept { return a < 0 ? -1.0f : 1.0f; }
+    INLINE float max(const float a, const float b) noexcept { return (a > b) ? a : b; }
+    INLINE float min(const float a, const float b) noexcept { return (a < b) ? a : b; }
+    INLINE float clamp(const float a, const float min_, const float max_) noexcept { return min(max(a, min_), max_); }
+    INLINE float clamp01f(const float v) noexcept { return clamp(v, 0.0f, 1.0f); }
+    INLINE uint8_t clamp_u8f(const float v) noexcept { return (uint8_t)std::lround(clamp(v, 0.0f, 255.0f)); }
 
     INLINE float abs(float a) noexcept { return a < 0 ? -a : a; }
     INLINE float acos(float a) noexcept { return std::acos(a); }
@@ -183,7 +205,7 @@ namespace waavs
     INLINE double max(const double a, const double b) noexcept { return a > b ? a : b; }
     INLINE double abs(const double a) noexcept { return a < 0 ? -a : a; }
     INLINE double clamp(const double a, const double minValue, const double maxValue) noexcept { return min(max(a, minValue), maxValue); }
-    INLINE float clamp01(double v) noexcept { return clamp(v, 0.0, 1.0); }
+    INLINE double clamp01(double v) noexcept { return clamp(v, 0.0, 1.0); }
 
     INLINE double atan(double a) noexcept { return std::atan(a); }
     INLINE double atan2(double y, double x) noexcept { return std::atan2(y, x); }
@@ -222,25 +244,7 @@ namespace waavs
     }
 }
 
-//=======================================
-// DECLARATIONS for singular integers
-//=======================================
 
-
-namespace waavs
-{
-    INLINE int abs(int a);
-    INLINE int min(int a, int b);
-    INLINE int max(int a, int b);
-    INLINE int clamp(int a, int min, int max);
-    INLINE int sign(int a);
-    INLINE int pow2(int a);
-    INLINE void swap(int& a, int& b);
-
-    INLINE size_t min(size_t a, size_t b);
-    INLINE size_t max(size_t a, size_t b);
-
-}
 
 // Some useful types
 // Vectors, matrices, etc
@@ -1197,23 +1201,7 @@ namespace waavs {
 
 
 
-//=======================================
-// IMPLEMENTATION for singular integers
-//=======================================
 
-namespace waavs
-{
-    INLINE int abs(int a) { return a < 0 ? -a : a; }
-    INLINE int min(int a, int b) { return (a < b) ? a : b; }
-    INLINE int max(int a, int b) { return (a > b) ? a : b; }
-    INLINE int clamp(int a, int min_, int max_) { return min(max(a, min_), max_); }
-    INLINE int sign(int a) { return a < 0 ? -1 : 1; }
-    INLINE int pow2(int a) { return 1 << a; }
-    INLINE void swap(int& a, int& b) { return std::swap(a, b); };
-
-    INLINE size_t min(size_t a, size_t b) { return (a < b) ? a : b; }
-    INLINE size_t max(size_t a, size_t b) { return (a > b) ? a : b; }
-}
 
 
 

@@ -33,14 +33,13 @@ namespace waavs
 
         INLINE void init(int32_t seed) noexcept
         {
+            // Match the classic SVG/resvg normalization:
+            // if (seed <= 0) seed = -seed % (kM - 1) + 1;
+            // if (seed >  kM - 1) seed = kM - 1;
             if (seed <= 0)
-            {
-                seed = -seed + 1;
-                if (seed <= 0)
-                    seed = 1;
-            }
+                seed = (-seed % (kM - 1)) + 1;
 
-            if (seed >= kM)
+            if (seed > (kM - 1))
                 seed = kM - 1;
 
             fState = seed;
@@ -66,29 +65,32 @@ namespace waavs
     };
 
     // ------------------------------------------------------------
+    // Constants matching the classic SVG turbulence implementation
+    // ------------------------------------------------------------
+
+    static constexpr int32_t kTurbulenceTableSize = 256;
+    static constexpr int32_t kTurbulenceTableMask = 255;
+    static constexpr int32_t kPerlinN = 0x1000;
+
+    // ------------------------------------------------------------
     // Gradient basis
     // ------------------------------------------------------------
 
     struct TurbulenceGradientTable
     {
-        float gx[256];
-        float gy[256];
+        float gx[kTurbulenceTableSize];
+        float gy[kTurbulenceTableSize];
     };
 
     static INLINE void buildGradientTable(TurbulenceGradientTable& g, SVGParkMillerRNG& rng) noexcept
     {
-        // Build normalized random 2D vectors using the classic
-        // "random x/y then normalize" style.
-        for (int i = 0; i < 256; ++i)
+        for (int i = 0; i < kTurbulenceTableSize; ++i)
         {
-            float x = 0.0f;
-            float y = 0.0f;
+            float x = float((rng.nextInt() % 512) - 256) * (1.0f / 256.0f);
+            float y = float((rng.nextInt() % 512) - 256) * (1.0f / 256.0f);
 
-            do
-            {
-                x = float((rng.nextInt() % 512) - 256) * (1.0f / 256.0f);
-                y = float((rng.nextInt() % 512) - 256) * (1.0f / 256.0f);
-            } while (x == 0.0f && y == 0.0f);
+            if (x == 0.0f && y == 0.0f)
+                x = 1.0f;
 
             const float len = std::sqrt(x * x + y * y);
             g.gx[i] = x / len;
@@ -102,153 +104,190 @@ namespace waavs
         float x,
         float y) noexcept
     {
-        const int h = hash & 255;
+        const int h = hash & kTurbulenceTableMask;
         return g.gx[h] * x + g.gy[h] * y;
     }
 
     // ------------------------------------------------------------
-    // Permutation table
+    // Shared permutation table
     // ------------------------------------------------------------
 
-    static INLINE void buildPermutation(uint8_t perm[512], SVGParkMillerRNG& rng) noexcept
+    struct TurbulencePermutationTable
     {
-        uint8_t p[256];
+        uint8_t perm[512]{};
+    };
 
-        for (int i = 0; i < 256; ++i)
-            p[i] = (uint8_t)i;
+    static INLINE void buildPermutation(
+        TurbulencePermutationTable& p,
+        SVGParkMillerRNG& rng) noexcept
+    {
+        for (int i = 0; i < kTurbulenceTableSize; ++i)
+            p.perm[i] = (uint8_t)i;
 
-        for (int i = 255; i > 0; --i)
+        for (int i = kTurbulenceTableSize - 1; i > 0; --i)
         {
-            const int j = rng.nextInt() % (i + 1);
-
-            const uint8_t tmp = p[i];
-            p[i] = p[j];
-            p[j] = tmp;
+            const uint8_t tmp = p.perm[i];
+            const int j = rng.nextInt() % kTurbulenceTableSize;
+            p.perm[i] = p.perm[j];
+            p.perm[j] = tmp;
         }
 
-        for (int i = 0; i < 256; ++i)
-        {
-            perm[i] = p[i];
-            perm[i + 256] = p[i];
-        }
+        for (int i = 0; i < kTurbulenceTableSize; ++i)
+            p.perm[kTurbulenceTableSize + i] = p.perm[i];
     }
 
     // ------------------------------------------------------------
-    // Base Perlin sample, non-periodic
+    // Stitch helpers
     // ------------------------------------------------------------
 
-    // Returns a signed value roughly in [-1, 1].
+    struct TurbulenceStitchInfo
+    {
+        int32_t width{ 0 };
+        int32_t height{ 0 };
+        int32_t wrapX{ 0 };
+        int32_t wrapY{ 0 };
+    };
+
+    static INLINE float snap_stitch_frequency(float baseFreq, float extent) noexcept
+    {
+        if (!(baseFreq > 0.0f) || !(extent > 0.0f))
+            return baseFreq;
+
+        const float scaled = extent * baseFreq;
+        const float lo = floorf(scaled) / extent;
+        const float hi = ceilf(scaled) / extent;
+
+        if (!(lo > 0.0f))
+            return hi;
+
+        if (!(hi > 0.0f))
+            return lo;
+
+        return (baseFreq / lo < hi / baseFreq) ? lo : hi;
+    }
+
+    static INLINE TurbulenceStitchInfo make_stitch_info(
+        float tileX,
+        float tileY,
+        float tileWidth,
+        float tileHeight,
+        float baseFreqX,
+        float baseFreqY) noexcept
+    {
+        TurbulenceStitchInfo s{};
+        s.width = (int32_t)floorf(tileWidth * baseFreqX + 0.5f);
+        s.height = (int32_t)floorf(tileHeight * baseFreqY + 0.5f);
+        s.wrapX = (int32_t)floorf(tileX * baseFreqX + (float)kPerlinN + (float)s.width);
+        s.wrapY = (int32_t)floorf(tileY * baseFreqY + (float)kPerlinN + (float)s.height);
+        return s;
+    }
+
+    static INLINE void update_stitch_info_for_next_octave(TurbulenceStitchInfo& s) noexcept
+    {
+        s.width *= 2;
+        s.height *= 2;
+        s.wrapX = 2 * s.wrapX - kPerlinN;
+        s.wrapY = 2 * s.wrapY - kPerlinN;
+    }
+
+    // ------------------------------------------------------------
+    // Base Perlin sample, matching classic SVG/resvg layout
+    // ------------------------------------------------------------
+
     static INLINE float perlin2(
         float x,
         float y,
         const TurbulenceGradientTable& g,
-        const uint8_t perm[512]) noexcept
+        const TurbulencePermutationTable& p) noexcept
     {
-        const int ix0 = floorI(x);
-        const int iy0 = floorI(y);
+        float t = x + (float)kPerlinN;
+        int32_t bx0 = (int32_t)t;
+        int32_t bx1 = bx0 + 1;
+        float rx0 = t - (float)((int64_t)bx0);
+        float rx1 = rx0 - 1.0f;
 
-        const float fx0 = x - (float)ix0;
-        const float fy0 = y - (float)iy0;
-        const float fx1 = fx0 - 1.0f;
-        const float fy1 = fy0 - 1.0f;
+        t = y + (float)kPerlinN;
+        int32_t by0 = (int32_t)t;
+        int32_t by1 = by0 + 1;
+        float ry0 = t - (float)((int64_t)by0);
+        float ry1 = ry0 - 1.0f;
 
-        const int X = ix0 & 255;
-        const int Y = iy0 & 255;
+        bx0 &= kTurbulenceTableMask;
+        bx1 &= kTurbulenceTableMask;
+        by0 &= kTurbulenceTableMask;
+        by1 &= kTurbulenceTableMask;
 
-        const float u = cubic_smoothstep(fx0);
-        const float v = cubic_smoothstep(fy0);
+        const int i = p.perm[bx0];
+        const int j = p.perm[bx1];
 
-        const int aa = perm[perm[X] + Y];
-        const int ab = perm[perm[X] + ((Y + 1) & 255)];
-        const int ba = perm[perm[(X + 1) & 255] + Y];
-        const int bb = perm[perm[(X + 1) & 255] + ((Y + 1) & 255)];
+        const int b00 = p.perm[i + by0];
+        const int b10 = p.perm[j + by0];
+        const int b01 = p.perm[i + by1];
+        const int b11 = p.perm[j + by1];
 
-        const float x1 = lerp(
-            gradDot(g, aa, fx0, fy0),
-            gradDot(g, ba, fx1, fy0),
-            u);
+        const float sx = cubic_smoothstep(rx0);
+        const float sy = cubic_smoothstep(ry0);
 
-        const float x2 = lerp(
-            gradDot(g, ab, fx0, fy1),
-            gradDot(g, bb, fx1, fy1),
-            u);
+        const float u00 = gradDot(g, b00, rx0, ry0);
+        const float u10 = gradDot(g, b10, rx1, ry0);
+        const float a = lerp(u00, u10, sx);
 
-        // sqrt(2)/2 basis normalization.
-        return lerp(x1, x2, v) * 0.70710678f;
+        const float u01 = gradDot(g, b01, rx0, ry1);
+        const float u11 = gradDot(g, b11, rx1, ry1);
+        const float b = lerp(u01, u11, sx);
+
+        return lerp(a, b, sy);
     }
 
-    // ------------------------------------------------------------
-    // Periodic helpers for stitchTiles="stitch"
-    // ------------------------------------------------------------
-
-    static INLINE int positive_mod(int x, int m) noexcept
-    {
-        if (m <= 0)
-            return x;
-
-        x %= m;
-        if (x < 0)
-            x += m;
-        return x;
-    }
-
-    static INLINE int periodicIndex(int i, int period) noexcept
-    {
-        if (period > 0)
-            return positive_mod(i, period);
-
-        return i;
-    }
-
-    // Periodic Perlin sample using the same gradient/permutation tables.
-    // periodX/periodY are lattice periods, not pixel counts.
-    static INLINE float perlin2_periodic(
+    static INLINE float perlin2_stitch(
         float x,
         float y,
-        int32_t periodX,
-        int32_t periodY,
         const TurbulenceGradientTable& g,
-        const uint8_t perm[512]) noexcept
+        const TurbulencePermutationTable& p,
+        const TurbulenceStitchInfo& stitch) noexcept
     {
-        const int ix0_raw = floorI(x);
-        const int iy0_raw = floorI(y);
-        const int ix1_raw = ix0_raw + 1;
-        const int iy1_raw = iy0_raw + 1;
+        float t = x + (float)kPerlinN;
+        int32_t bx0 = (int32_t)t;
+        int32_t bx1 = bx0 + 1;
+        float rx0 = t - (float)((int64_t)bx0);
+        float rx1 = rx0 - 1.0f;
 
-        const float fx0 = x - (float)ix0_raw;
-        const float fy0 = y - (float)iy0_raw;
-        const float fx1 = fx0 - 1.0f;
-        const float fy1 = fy0 - 1.0f;
+        t = y + (float)kPerlinN;
+        int32_t by0 = (int32_t)t;
+        int32_t by1 = by0 + 1;
+        float ry0 = t - (float)((int64_t)by0);
+        float ry1 = ry0 - 1.0f;
 
-        const int ix0 = periodicIndex(ix0_raw, periodX);
-        const int iy0 = periodicIndex(iy0_raw, periodY);
-        const int ix1 = periodicIndex(ix1_raw, periodX);
-        const int iy1 = periodicIndex(iy1_raw, periodY);
+        if (bx0 >= stitch.wrapX) bx0 -= stitch.width;
+        if (bx1 >= stitch.wrapX) bx1 -= stitch.width;
+        if (by0 >= stitch.wrapY) by0 -= stitch.height;
+        if (by1 >= stitch.wrapY) by1 -= stitch.height;
 
-        const int X0 = ix0 & 255;
-        const int Y0 = iy0 & 255;
-        const int X1 = ix1 & 255;
-        const int Y1 = iy1 & 255;
+        bx0 &= kTurbulenceTableMask;
+        bx1 &= kTurbulenceTableMask;
+        by0 &= kTurbulenceTableMask;
+        by1 &= kTurbulenceTableMask;
 
-        const float u = cubic_smoothstep(fx0);
-        const float v = cubic_smoothstep(fy0);
+        const int i = p.perm[bx0];
+        const int j = p.perm[bx1];
 
-        const int aa = perm[perm[X0] + Y0];
-        const int ab = perm[perm[X0] + Y1];
-        const int ba = perm[perm[X1] + Y0];
-        const int bb = perm[perm[X1] + Y1];
+        const int b00 = p.perm[i + by0];
+        const int b10 = p.perm[j + by0];
+        const int b01 = p.perm[i + by1];
+        const int b11 = p.perm[j + by1];
 
-        const float x1 = lerp(
-            gradDot(g, aa, fx0, fy0),
-            gradDot(g, ba, fx1, fy0),
-            u);
+        const float sx = cubic_smoothstep(rx0);
+        const float sy = cubic_smoothstep(ry0);
 
-        const float x2 = lerp(
-            gradDot(g, ab, fx0, fy1),
-            gradDot(g, bb, fx1, fy1),
-            u);
+        const float u00 = gradDot(g, b00, rx0, ry0);
+        const float u10 = gradDot(g, b10, rx1, ry0);
+        const float a = lerp(u00, u10, sx);
 
-        return lerp(x1, x2, v) * 0.70710678f;
+        const float u01 = gradDot(g, b01, rx0, ry1);
+        const float u11 = gradDot(g, b11, rx1, ry1);
+        const float b = lerp(u01, u11, sx);
+
+        return lerp(a, b, sy);
     }
 
     // ------------------------------------------------------------
@@ -259,20 +298,9 @@ namespace waavs
     {
         float baseFreqX{ 0.01f };
         float baseFreqY{ 0.01f };
+        float seed{ 0.0f };
         uint32_t octaves{ 1 };
     };
-
-    static INLINE int32_t safe_period_from_extent(float extent, float baseFreq) noexcept
-    {
-        if (!(extent > 0.0f) || !(baseFreq > 0.0f))
-            return 1;
-
-        int32_t period = (int32_t)lroundf(extent * baseFreq);
-        if (period < 1)
-            period = 1;
-
-        return period;
-    }
 
     // ------------------------------------------------------------
     // Per-channel turbulence state
@@ -281,128 +309,97 @@ namespace waavs
     struct TurbulenceChannelState
     {
         TurbulenceGradientTable grads{};
-        uint8_t perm[512]{};
     };
 
-    static INLINE void buildTurbulenceChannelState(
-        TurbulenceChannelState& s,
-        SVGParkMillerRNG& rng) noexcept
+    struct TurbulenceState
     {
-        buildGradientTable(s.grads, rng);
-        buildPermutation(s.perm, rng);
-    }
+        TurbulencePermutationTable perm{};
+        TurbulenceChannelState channels[4]{};
+    };
 
-    static INLINE void buildTurbulenceChannelStates(
-        TurbulenceChannelState states[4],
+    static INLINE void buildTurbulenceState(
+        TurbulenceState& s,
         int32_t seed) noexcept
     {
         SVGParkMillerRNG rng;
         rng.init(seed);
 
-        // Build channels in R, G, B, A order.
         for (int i = 0; i < 4; ++i)
-            buildTurbulenceChannelState(states[i], rng);
+            buildGradientTable(s.channels[i].grads, rng);
+
+        buildPermutation(s.perm, rng);
     }
 
     // ------------------------------------------------------------
-    // Non-stitched accumulation
+    // Raw accumulation helpers
     // ------------------------------------------------------------
 
-    // Returns a signed result. Map later with fractal_to_unit().
     static INLINE float fractalNoise2(
         float x,
         float y,
         const TurbulenceNoiseParams& p,
-        const TurbulenceChannelState& s) noexcept
+        const TurbulenceChannelState& s,
+        const TurbulencePermutationTable& perm) noexcept
     {
         float sum = 0.0f;
-        float amp = 1.0f;
-        float freqX = p.baseFreqX;
-        float freqY = p.baseFreqY;
+        float ratio = 1.0f;
+        float px = x * p.baseFreqX;
+        float py = y * p.baseFreqY;
 
         for (uint32_t o = 0; o < p.octaves; ++o)
         {
-            const float n = perlin2(x * freqX, y * freqY, s.grads, s.perm);
-            sum += n * amp;
-
-            freqX *= 2.0f;
-            freqY *= 2.0f;
-            amp *= 0.5f;
+            sum += perlin2(px, py, s.grads, perm) / ratio;
+            px *= 2.0f;
+            py *= 2.0f;
+            ratio *= 2.0f;
         }
 
         return sum;
     }
 
-    // Returns a non-negative result normalized to roughly [0, 1].
     static INLINE float turbulence2(
         float x,
         float y,
         const TurbulenceNoiseParams& p,
-        const TurbulenceChannelState& s) noexcept
+        const TurbulenceChannelState& s,
+        const TurbulencePermutationTable& perm) noexcept
     {
         float sum = 0.0f;
-        float amp = 1.0f;
-        float ampSum = 0.0f;
-        float freqX = p.baseFreqX;
-        float freqY = p.baseFreqY;
+        float ratio = 1.0f;
+        float px = x * p.baseFreqX;
+        float py = y * p.baseFreqY;
 
         for (uint32_t o = 0; o < p.octaves; ++o)
         {
-            float n = perlin2(x * freqX, y * freqY, s.grads, s.perm);
-            n = fabsf(n);
-
-            sum += n * amp;
-            ampSum += amp;
-
-            freqX *= 2.0f;
-            freqY *= 2.0f;
-            amp *= 0.5f;
+            sum += fabsf(perlin2(px, py, s.grads, perm)) / ratio;
+            px *= 2.0f;
+            py *= 2.0f;
+            ratio *= 2.0f;
         }
-
-        if (ampSum > 0.0f)
-            sum /= ampSum;
 
         return sum;
     }
-
-    // ------------------------------------------------------------
-    // Stitched accumulation
-    // ------------------------------------------------------------
 
     static INLINE float fractalNoise2_stitch(
         float x,
         float y,
         const TurbulenceNoiseParams& p,
-        int32_t basePeriodX,
-        int32_t basePeriodY,
-        const TurbulenceChannelState& s) noexcept
+        TurbulenceStitchInfo stitch,
+        const TurbulenceChannelState& s,
+        const TurbulencePermutationTable& perm) noexcept
     {
         float sum = 0.0f;
-        float amp = 1.0f;
-        float freqX = p.baseFreqX;
-        float freqY = p.baseFreqY;
-
-        int32_t periodX = basePeriodX;
-        int32_t periodY = basePeriodY;
+        float ratio = 1.0f;
+        float px = x * p.baseFreqX;
+        float py = y * p.baseFreqY;
 
         for (uint32_t o = 0; o < p.octaves; ++o)
         {
-            const float n = perlin2_periodic(
-                x * freqX,
-                y * freqY,
-                periodX,
-                periodY,
-                s.grads,
-                s.perm);
-
-            sum += n * amp;
-
-            freqX *= 2.0f;
-            freqY *= 2.0f;
-            amp *= 0.5f;
-
-            if (periodX > 0) periodX *= 2;
-            if (periodY > 0) periodY *= 2;
+            sum += perlin2_stitch(px, py, s.grads, perm, stitch) / ratio;
+            px *= 2.0f;
+            py *= 2.0f;
+            ratio *= 2.0f;
+            update_stitch_info_for_next_octave(stitch);
         }
 
         return sum;
@@ -412,44 +409,23 @@ namespace waavs
         float x,
         float y,
         const TurbulenceNoiseParams& p,
-        int32_t basePeriodX,
-        int32_t basePeriodY,
-        const TurbulenceChannelState& s) noexcept
+        TurbulenceStitchInfo stitch,
+        const TurbulenceChannelState& s,
+        const TurbulencePermutationTable& perm) noexcept
     {
         float sum = 0.0f;
-        float amp = 1.0f;
-        float ampSum = 0.0f;
-        float freqX = p.baseFreqX;
-        float freqY = p.baseFreqY;
-
-        int32_t periodX = basePeriodX;
-        int32_t periodY = basePeriodY;
+        float ratio = 1.0f;
+        float px = x * p.baseFreqX;
+        float py = y * p.baseFreqY;
 
         for (uint32_t o = 0; o < p.octaves; ++o)
         {
-            float n = perlin2_periodic(
-                x * freqX,
-                y * freqY,
-                periodX,
-                periodY,
-                s.grads,
-                s.perm);
-
-            n = fabsf(n);
-
-            sum += n * amp;
-            ampSum += amp;
-
-            freqX *= 2.0f;
-            freqY *= 2.0f;
-            amp *= 0.5f;
-
-            if (periodX > 0) periodX *= 2;
-            if (periodY > 0) periodY *= 2;
+            sum += fabsf(perlin2_stitch(px, py, s.grads, perm, stitch)) / ratio;
+            px *= 2.0f;
+            py *= 2.0f;
+            ratio *= 2.0f;
+            update_stitch_info_for_next_octave(stitch);
         }
-
-        if (ampSum > 0.0f)
-            sum /= ampSum;
 
         return sum;
     }
@@ -469,6 +445,34 @@ namespace waavs
     }
 
     // ------------------------------------------------------------
+    // Convenience helpers for preparing stitch frequencies/state
+    // ------------------------------------------------------------
+
+    static INLINE void adjust_base_frequencies_for_stitch(
+        float tileWidth,
+        float tileHeight,
+        float& baseFreqX,
+        float& baseFreqY) noexcept
+    {
+        if (baseFreqX > 0.0f)
+            baseFreqX = snap_stitch_frequency(baseFreqX, tileWidth);
+
+        if (baseFreqY > 0.0f)
+            baseFreqY = snap_stitch_frequency(baseFreqY, tileHeight);
+    }
+
+    static INLINE TurbulenceStitchInfo prepare_stitch_info(
+        float tileX,
+        float tileY,
+        float tileWidth,
+        float tileHeight,
+        float baseFreqX,
+        float baseFreqY) noexcept
+    {
+        return make_stitch_info(tileX, tileY, tileWidth, tileHeight, baseFreqX, baseFreqY);
+    }
+
+    // ------------------------------------------------------------
     // Convenience helpers for sampling RGBA channels
     // ------------------------------------------------------------
 
@@ -476,33 +480,57 @@ namespace waavs
         float x,
         float y,
         const TurbulenceNoiseParams& p,
-        const TurbulenceChannelState& s,
+        const TurbulenceState& s,
+        int channel,
         bool stitchTiles,
-        int32_t basePeriodX,
-        int32_t basePeriodY) noexcept
+        const TurbulenceStitchInfo* stitchInfo) noexcept
     {
-        if (stitchTiles)
+        if ((unsigned)channel >= 4u)
+            return 0.0f;
+
+        if (stitchTiles && stitchInfo != nullptr)
+        {
             return fractal_to_unit(
-                fractalNoise2_stitch(x, y, p, basePeriodX, basePeriodY, s));
+                fractalNoise2_stitch(
+                    x, y, p,
+                    *stitchInfo,
+                    s.channels[channel],
+                    s.perm));
+        }
 
         return fractal_to_unit(
-            fractalNoise2(x, y, p, s));
+            fractalNoise2(
+                x, y, p,
+                s.channels[channel],
+                s.perm));
     }
 
     static INLINE float sampleTurbulenceChannel(
         float x,
         float y,
         const TurbulenceNoiseParams& p,
-        const TurbulenceChannelState& s,
+        const TurbulenceState& s,
+        int channel,
         bool stitchTiles,
-        int32_t basePeriodX,
-        int32_t basePeriodY) noexcept
+        const TurbulenceStitchInfo* stitchInfo) noexcept
     {
-        if (stitchTiles)
+        if ((unsigned)channel >= 4u)
+            return 0.0f;
+
+        if (stitchTiles && stitchInfo != nullptr)
+        {
             return turbulence_to_unit(
-                turbulence2_stitch(x, y, p, basePeriodX, basePeriodY, s));
+                turbulence2_stitch(
+                    x, y, p,
+                    *stitchInfo,
+                    s.channels[channel],
+                    s.perm));
+        }
 
         return turbulence_to_unit(
-            turbulence2(x, y, p, s));
+            turbulence2(
+                x, y, p,
+                s.channels[channel],
+                s.perm));
     }
 }

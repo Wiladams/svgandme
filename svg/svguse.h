@@ -66,12 +66,20 @@ namespace waavs
             return fTarget->objectBoundingBox();
         }
 
-        const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot)  noexcept override
+        const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot) noexcept override
         {
             if (!fTarget)
                 return {};
 
-            return fTarget->getObjectBoundingBox(ctx, groot);
+            // Make sure placement is resolved.
+            if (!fHasPlacedRect && ctx)
+                bindSelfToContext(ctx, groot);
+
+            WGRectD r = fTarget->getObjectBoundingBox(ctx, groot);
+
+            r.x += fPlacedRect.x;
+            r.y += fPlacedRect.y;
+            return r;
         }
 
         void fixupSelfStyleAttributes(IAmGroot* groot) override

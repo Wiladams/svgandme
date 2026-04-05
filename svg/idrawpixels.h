@@ -124,7 +124,7 @@ namespace waavs
         if (clippedLen <= 0)
             return WG_SUCCESS;
 
-        uint32_t* row = pixeling_ARGB32_row_ptr(&dst, y);
+        uint32_t* row = Surface_ARGB32_row_pointer(&dst, y);
         wg_fill_hspan_raw(row + x0, clippedLen, rgbaPremul);
 
         return WG_SUCCESS;
@@ -138,7 +138,7 @@ namespace waavs
     static INLINE uint32_t wg_scale_premul_argb32_u8(uint32_t c, uint32_t m) noexcept
     {
         uint8_t a, r, g, b;
-        unpackPARGB32(c, a, r, g, b);
+        argb32_unpack(c, a, r, g, b);
 
         const uint8_t sa = (uint8_t)wg_div255_u32((uint32_t)a * m);
         const uint8_t sr = (uint8_t)wg_div255_u32((uint32_t)r * m);
@@ -153,8 +153,8 @@ namespace waavs
         uint8_t sa, sr, sg, sb;
         uint8_t da, dr, dg, db;
 
-        unpackPARGB32(src, sa, sr, sg, sb);
-        unpackPARGB32(dst, da, dr, dg, db);
+        argb32_unpack(src, sa, sr, sg, sb);
+        argb32_unpack(dst, da, dr, dg, db);
 
         const uint32_t invA = 255u - (uint32_t)sa;
 
@@ -178,7 +178,7 @@ namespace waavs
             return;
 
         uint8_t srcA, srcR, srcG, srcB;
-        unpackPARGB32(srcColor, srcA, srcR, srcG, srcB);
+        argb32_unpack(srcColor, srcA, srcR, srcG, srcB);
 
         if (srcA == 0)
             return;
@@ -235,7 +235,7 @@ namespace waavs
 
         const int maskOffset = (int)(x0 - (int64_t)x);
 
-        uint32_t* row = pixeling_ARGB32_row_ptr(&dst, y);
+        uint32_t* row = Surface_ARGB32_row_pointer(&dst, y);
         wg_blend_span_mask8_raw(
             row + (int)x0,
             mask + maskOffset,
@@ -263,7 +263,7 @@ namespace waavs
         else {
             for (int row = 0; row < s.height; ++row)
             {
-                uint32_t* rPtr = pixeling_ARGB32_row_ptr(&s, row);
+                uint32_t* rPtr = Surface_ARGB32_row_pointer(&s, row);
                 memset(rPtr, 0, s.width * 4);
             }
         }
@@ -278,13 +278,13 @@ namespace waavs
 
         if (s.contiguous)
         {
-            uint32_t* rPtr = pixeling_ARGB32_row_ptr(&s, 0);
+            uint32_t* rPtr = Surface_ARGB32_row_pointer(&s, 0);
             memset_l(rPtr, rgbaPremul, s.width * s.height);
         }
         else {
             for (int row = 0; row < s.height; ++row)
             {
-                uint32_t* rPtr = pixeling_ARGB32_row_ptr(&s, row);
+                uint32_t* rPtr = Surface_ARGB32_row_pointer(&s, row);
                 memset_l(rPtr, (int32_t)rgbaPremul, s.width);
             }
         }
@@ -348,12 +348,12 @@ namespace waavs
 
         // Copy row by row. Since both views have same width/height now,
         // each row is a straight memcpy.
-        const size_t rowBytes = dstView.width * 4;
+        const size_t rowBytes = dstView.stride;
 
         for (int y = 0; y < dstView.height; ++y)
         {
-            uint8_t* dstRow = (uint8_t*)pixeling_ARGB32_row_ptr(&dstView, y);
-            const uint8_t* srcRow = (const uint8_t*)pixeling_ARGB32_row_ptr(&srcView, y);
+            uint8_t* dstRow = (uint8_t*)Surface_ARGB32_row_pointer(&dstView, y);
+            const uint8_t* srcRow = (const uint8_t*)Surface_ARGB32_row_pointer(&srcView, y);
             memcpy(dstRow, srcRow, rowBytes);
         }
 
@@ -369,7 +369,7 @@ namespace waavs
         sx = wg_clampi(sx, 0, src.width - 1);
         sy = wg_clampi(sy, 0, src.height - 1);
 
-        const uint32_t* row = pixeling_ARGB32_row_ptr((Surface_ARGB32*)&src, sy);
+        const uint32_t* row = Surface_ARGB32_row_pointer((Surface_ARGB32*)&src, sy);
         return row[sx];
     }
 
@@ -390,8 +390,8 @@ namespace waavs
         x1 = wg_clampi(x1, 0, src.width - 1);
         y1 = wg_clampi(y1, 0, src.height - 1);
 
-        const uint32_t* row0 = pixeling_ARGB32_row_ptr_const(&src, y0);
-        const uint32_t* row1 = pixeling_ARGB32_row_ptr_const(&src, y1);
+        const uint32_t* row0 = Surface_ARGB32_row_pointer_const(&src, y0);
+        const uint32_t* row1 = Surface_ARGB32_row_pointer_const(&src, y1);
 
         const uint32_t c00 = row0[x0];
         const uint32_t c10 = row0[x1];
@@ -484,8 +484,8 @@ namespace waavs
             const size_t rowBytes = (size_t)dstView.width * 4;
             for (int y = 0; y < dstView.height; ++y)
             {
-                uint8_t* dstRow = (uint8_t*)pixeling_ARGB32_row_ptr(&dstView, y);
-                const uint8_t* srcRow = (const uint8_t*)pixeling_ARGB32_row_ptr(&srcView, y);
+                uint8_t* dstRow = (uint8_t*)Surface_ARGB32_row_pointer(&dstView, y);
+                const uint8_t* srcRow = (const uint8_t*)Surface_ARGB32_row_pointer(&srcView, y);
                 memcpy(dstRow, srcRow, rowBytes);
             }
 
@@ -518,7 +518,7 @@ namespace waavs
 
         for (int dy = 0; dy < dstRect.h; ++dy)
         {
-            uint32_t* dstRow = pixeling_ARGB32_row_ptr(&dst, dstRect.y + dy);
+            uint32_t* dstRow = Surface_ARGB32_row_pointer(&dst, dstRect.y + dy);
             int64_t fx = startX;
 
             if (filter == WG_BLIT_FILTER_Nearest)

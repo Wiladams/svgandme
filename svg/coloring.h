@@ -13,17 +13,18 @@
 #define WAAVS_CLAMP01(v) ((v) < 0.0f ? 0.0f : ((v) > 1.0f ? 1.0f : (v)))
 #endif
 
- /* FMA macro (portable fallback if no C99 fmaf) */
-#ifndef WAAVS_FMAF
-# if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
-#   define WAAVS_FMAF(a,b,c) fmaf((a),(b),(c))
-# else
-#   define WAAVS_FMAF(a,b,c) ((a)*(b)+(c))
-# endif
-#endif
 
 
 // ----- representations -----
+// Generic representation of a color with 4 float components. 
+// No particular color space or alpha mode is implied.
+typedef struct 
+{
+    float r;
+    float g;
+    float b;
+    float a;
+} Color4f;
 
 // This structure should be used when you're parsing a value from SVG or CSS
 // It is in gamma-encoded sRGB space, with straight (unpremultiplied) alpha

@@ -258,6 +258,10 @@
     <ClInclude Include="..\..\svg\filterprogrambuilder.h" />
     <ClInclude Include="..\..\svg\filterprogramexec.h" />
     <ClInclude Include="..\..\svg\filter_codec.h" />
+    <ClInclude Include="..\..\svg\filter_feblend.h" />
+    <ClInclude Include="..\..\svg\filter_fecolormatrix.h" />
+    <ClInclude Include="..\..\svg\filter_fecomposite.h" />
+    <ClInclude Include="..\..\svg\filter_fegaussian.h" />
     <ClInclude Include="..\..\svg\frames_blend2d_source.h" />
     <ClInclude Include="..\..\svg\bspan.h" />
     <ClInclude Include="..\..\svg\charset.h" />
@@ -266,7 +270,6 @@
     <ClInclude Include="..\..\svg\fonthandler.h" />
     <ClInclude Include="..\..\svg\framesource.h" />
     <ClInclude Include="..\..\svg\idrawpixels.h" />
-    <ClInclude Include="..\..\svg\imageproc.h" />
     <ClInclude Include="..\..\svg\imanagesvgstate.h" />
     <ClInclude Include="..\..\svg\irendersvg.h" />
     <ClInclude Include="..\..\svg\maths.h" />

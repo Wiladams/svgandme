@@ -131,6 +131,7 @@ namespace waavs
         FILTER_COMPOSITE_ARITHMETIC
     };
 
+
     enum FilterColorMatrixType : uint32_t
     {
         FILTER_COLOR_MATRIX_MATRIX = 0,
@@ -190,6 +191,22 @@ namespace waavs
 // for filter attributes that have a closed vocabulary
 namespace waavs
 {
+    enum FilterBlendMode : uint32_t
+    {
+        FILTER_BLEND_NORMAL = 0,
+        FILTER_BLEND_MULTIPLY,
+        FILTER_BLEND_SCREEN,
+        FILTER_BLEND_DARKEN,
+        FILTER_BLEND_LIGHTEN,
+        FILTER_BLEND_OVERLAY,
+        FILTER_BLEND_COLOR_DODGE,
+        FILTER_BLEND_COLOR_BURN,
+        FILTER_BLEND_HARD_LIGHT,
+        FILTER_BLEND_SOFT_LIGHT,
+        FILTER_BLEND_DIFFERENCE,
+        FILTER_BLEND_EXCLUSION
+    };
+
     static INLINE FilterBlendMode parseFilterBlendMode(InternedKey k) noexcept
     {
         if (!k) return FILTER_BLEND_NORMAL;

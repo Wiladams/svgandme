@@ -3,8 +3,8 @@
 #include "definitions.h"
 #include "maths.h"
 
-namespace waavs
-{
+//namespace waavs
+//{
     // Very core low level geometry types.  Use type assertions here
     // so they remain usable in C interfaces, and to ensure they are 
     // POD types that can be safely memcpy'd and used in unions and the like.
@@ -19,21 +19,23 @@ namespace waavs
         WGPointD(const double x, const double y) : x(x), y(y) {}
 
         WGPointD operator-(const WGPointD& rhs) const { return { x - rhs.x, y - rhs.y }; }
-		WGPointD operator+(const WGPointD& rhs) const { return { x + rhs.x, y + rhs.y }; }
-		WGPointD operator*(double s) const { return { x * s, y * s }; }
-		
+        WGPointD operator+(const WGPointD& rhs) const { return { x + rhs.x, y + rhs.y }; }
+        WGPointD operator*(double s) const { return { x * s, y * s }; }
+        
+#ifdef __cplusplus
         // Calculate the midpoint between two points
         WGPointD midpoint(const WGPointD& b) const { return (*this + b) * 0.5; }
 
         // Treat the point as a vector, and convert to a unit
         // vector (divide by length)
         void normalize() {
-			double len = std::sqrt(x * x + y * y);
-			if (len > dbl_eps) {
-				x /= len;
-				y /= len;
-			}
-		}
+            double len = std::sqrt(x * x + y * y);
+            if (len > waavs::dbl_eps) {
+                x /= len;
+                y /= len;
+            }
+        }
+#endif
     };
     
     ASSERT_POD_TYPE(WGPointD);
@@ -82,7 +84,7 @@ namespace waavs
     };
 
     ASSERT_POD_TYPE(WGRectI);
-}
+//}
 
 
 namespace waavs 

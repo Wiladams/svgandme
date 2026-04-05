@@ -11,7 +11,6 @@
 // Dependencies:
 //   - coloring.h  : linear/sRGB conversions + Porter-Duff "over"
 //   - pixeling.h  : ARGB32<->linear PRGBA pack/unpack, sampling, basic fills
-//   - imageproc.h : (optional) your box blur kernels + boxesForGauss
 //
 // Notes:
 //   - Surface_ARGB32 holds packed ARGB32 pixels in logical layout:
@@ -34,7 +33,8 @@
 #include "coloring.h"
 #include "pixeling.h"
 #include "wggeometry.h"
-#include "imageproc.h"  // boxesForGauss, boxBlurH_PRGB32, boxBlurV_PRGB32 (optional)
+
+
 
 // If we don't want nametable.h here, replace InternedKey with enum
 // for channel selectors (R,G,B,A) and drop the INTERN usage.
@@ -54,25 +54,21 @@ namespace waavs {
         bool allowSubpixel{ true };
     };
 
-    // rectangle convenience
-    static INLINE WGRectI rectI_full(const Surface_ARGB32& s) noexcept
-    {
-        return WGRectI{ 0, 0, s.width, s.height };
-    }
+
 
     static INLINE WGRectI roiOrFull(const PixelKernelCtx& k, const Surface_ARGB32& s) noexcept
     {
         if (k.roi.w > 0 && k.roi.h > 0)
-            return intersection(k.roi, rectI_full(s));
+            return intersection(k.roi, Surface_ARGB32_bounds(&s));
 
-        return rectI_full(s);
+        return Surface_ARGB32_bounds(&s);
     }
 
     // ------------------------------------------------------------
     // Basic surface ops (ARGB32 packed)
     // ------------------------------------------------------------
 
-    // surface_clear_ARGB32
+    // surface_argb32_clear
     // 
     // Clear to transparent black (0x00000000)
     // You might be tempted to just memset width*height*4, but
@@ -81,9 +77,9 @@ namespace waavs {
     // 
     // Note: memset is likely SIMD-optimized in libc, so this should be reasonably fast.
     //
-    static INLINE void surface_clear_ARGB32(Surface_ARGB32* s) noexcept {
+    static INLINE void surface_argb32_clear(Surface_ARGB32* s) noexcept {
         for (int y = 0; y < s->height; ++y) {
-            uint32_t* row = pixeling_ARGB32_row_ptr(s, y);
+            uint32_t* row = Surface_ARGB32_row_pointer(s, y);
             std::memset(row, 0, s->stride);
         }
     }
@@ -98,8 +94,8 @@ namespace waavs {
     {
         WAAVS_ASSERT(dst->width == src->width && dst->height == src->height);
         for (int y = 0; y < dst->height; ++y) {
-            uint32_t* d = pixeling_ARGB32_row_ptr(dst, y);
-            const uint32_t* s = pixeling_ARGB32_row_ptr_const(src, y);
+            uint32_t* d = Surface_ARGB32_row_pointer(dst, y);
+            const uint32_t* s = Surface_ARGB32_row_pointer_const(src, y);
             std::memcpy(d, s, (size_t)dst->width * 4u);
         }
     }
@@ -114,8 +110,8 @@ namespace waavs {
         if (r.w <= 0 || r.h <= 0) return;
 
         for (int y = 0; y < r.h; ++y) {
-            uint32_t* d = pixeling_ARGB32_row_ptr(dst, r.y + y) + r.x;
-            const uint32_t* s = pixeling_ARGB32_row_ptr_const(src, r.y + y) + r.x;
+            uint32_t* d = Surface_ARGB32_row_pointer(dst, r.y + y) + r.x;
+            const uint32_t* s = Surface_ARGB32_row_pointer_const(src, r.y + y) + r.x;
             std::memcpy(d, s, (size_t)r.w * 4u);
         }
     }
@@ -147,7 +143,7 @@ namespace waavs {
         // we only need alpha initially to do a quick return
         // but, we unpack them all at once anyway as it's easy.
         uint32_t sa, sr, sg, sb;
-        unpackPARGB32(p1, sa, sr, sg, sb);
+        argb32_unpack(p1, sa, sr, sg, sb);
 
         if (sa == 255)
             return p1;
@@ -156,7 +152,7 @@ namespace waavs {
 
         // unpack the rgb values of the destination
         uint32_t da, dr, dg, db;
-        unpackPARGB32(p2, da, dr, dg, db);
+        argb32_unpack(p2, da, dr, dg, db);
 
         const uint32_t isa = 255 - sa;
 
@@ -172,14 +168,14 @@ namespace waavs {
 
     static INLINE uint32_t composite_in_prgb32_pixel(uint32_t p1, uint32_t p2) noexcept
     {
-        const uint32_t da = unpackAlphaPARGB32(p2);
+        const uint32_t da = argb32_unpack_alpha(p2);
         if (da == 255)
             return p1;
         if (da == 0)
             return 0u;
 
         uint32_t sa, sr, sg, sb;
-        unpackPARGB32(p1, sa, sr, sg, sb);
+        argb32_unpack(p1, sa, sr, sg, sb);
 
         const uint32_t oa = mul255(sa, da);
         const uint32_t orr = mul255(sr, da);
@@ -191,14 +187,14 @@ namespace waavs {
 
     static INLINE uint32_t composite_out_prgb32_pixel(uint32_t p1, uint32_t p2) noexcept
     {
-        const uint32_t da = unpackAlphaPARGB32(p2);
+        const uint32_t da = argb32_unpack_alpha(p2);
         if (da == 255)
             return 0u;
         if (da == 0)
             return p1;
 
         uint32_t sa, sr, sg, sb;
-        unpackPARGB32(p1, sa, sr, sg, sb);
+        argb32_unpack(p1, sa, sr, sg, sb);
 
         const uint32_t ida = 255 - da;
 
@@ -216,10 +212,10 @@ namespace waavs {
         //   C = Cs * Ad + Cd * (1 - As)
         //   A = Ad
         uint32_t sa, sr, sg, sb;
-        unpackPARGB32(p1, sa, sr, sg, sb);
+        argb32_unpack(p1, sa, sr, sg, sb);
 
         uint32_t da, dr, dg, db;
-        unpackPARGB32(p2, da, dr, dg, db);
+        argb32_unpack(p2, da, dr, dg, db);
 
         if (da == 0)
             return 0u;
@@ -249,10 +245,10 @@ namespace waavs {
         //   C = Cs * (1 - Ad) + Cd * (1 - As)
         //   A = As * (1 - Ad) + Ad * (1 - As)
         uint32_t sa, sr, sg, sb;
-        unpackPARGB32(p1, sa, sr, sg, sb);
+        argb32_unpack(p1, sa, sr, sg, sb);
 
         uint32_t da, dr, dg, db;
-        unpackPARGB32(p2, da, dr, dg, db);
+        argb32_unpack(p2, da, dr, dg, db);
 
         if (sa == 0)
             return p2;
@@ -394,59 +390,6 @@ namespace waavs {
 } // namespace waavs
 
 
-//
-// SIMD enhanced row operators
-//
-namespace waavs
-{
-    // ------------------------------------------------------------
-    // Porter-Duff Row helpers (PARGB32
-    // ------------------------------------------------------------
-    static  INLINE void composite_in_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
-    {
-//#if defined(_M_ARM64) || defined(__aarch64__)
-//        composite_in_prgb32_row_neon(d, s1, s2, w);
-//#else
-        for (int x = 0; x < w; ++x)
-            d[x] = composite_in_prgb32_pixel(s1[x], s2[x]);
-//#endif
-    }
-
-    static INLINE void composite_over_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
-    {
-//#if defined(_M_ARM64) || defined(__aarch64__)
-//        composite_over_prgb32_row_neon(d, s1, s2, w);
-//#else
-        for (int x = 0; x < w; ++x)
-            d[x] = composite_over_prgb32_pixel(s1[x], s2[x]);
-//#endif
-    }
-
-    static INLINE void composite_out_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
-    {
-//#if defined(_M_ARM64) || defined(__aarch64__)
-//        composite_out_prgb32_row_neon(d, s1, s2, w);
-//#else
-        for (int x = 0; x < w; ++x)
-            d[x] = composite_out_prgb32_pixel(s1[x], s2[x]);
-//#endif
-    }
-
-
-
-    static INLINE void composite_atop_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
-    {
-        for (int x = 0; x < w; ++x)
-            d[x] = composite_atop_prgb32_pixel(s1[x], s2[x]);
-    }
-
-    static INLINE void composite_xor_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
-    {
-        for (int x = 0; x < w; ++x)
-            d[x] = composite_xor_prgb32_pixel(s1[x], s2[x]);
-    }
-}
-
 
 
 namespace waavs {
@@ -457,7 +400,7 @@ namespace waavs {
     {
         (void)k;
         for (int y = 0; y < out->height; ++y) {
-            uint32_t* row = pixeling_ARGB32_row_ptr(out, y);
+            uint32_t* row = Surface_ARGB32_row_pointer(out, y);
             for (int x = 0; x < out->width; ++x) row[x] = argb32_premul;
         }
         return true;
@@ -472,7 +415,7 @@ namespace waavs {
         Surface_ARGB32* out,
         double dxPx, double dyPx) noexcept
     {
-        surface_clear_ARGB32(out);
+        surface_argb32_clear(out);
 
         const int W = in->width;
         const int H = in->height;
@@ -500,8 +443,8 @@ namespace waavs {
             if (cw <= 0 || ch <= 0) return true;
 
             for (int y = 0; y < ch; ++y) {
-                const uint32_t* s = pixeling_ARGB32_row_ptr_const(in, srcY0 + y) + srcX0;
-                uint32_t* d = pixeling_ARGB32_row_ptr(out, dstY0 + y) + dstX0;
+                const uint32_t* s = Surface_ARGB32_row_pointer_const(in, srcY0 + y) + srcX0;
+                uint32_t* d = Surface_ARGB32_row_pointer(out, dstY0 + y) + dstX0;
                 std::memcpy(d, s, (size_t)cw * 4u);
             }
             return true;
@@ -513,7 +456,7 @@ namespace waavs {
         const float invHm1 = (H > 1) ? (1.0f / (float)(H - 1)) : 0.0f;
 
         for (int y = 0; y < H; ++y) {
-            uint32_t* drow = pixeling_ARGB32_row_ptr(out, y);
+            uint32_t* drow = Surface_ARGB32_row_pointer(out, y);
             for (int x = 0; x < W; ++x) {
                 const float sx = (float)((double)x - dxPx);
                 const float sy = (float)((double)y - dyPx);
@@ -528,138 +471,7 @@ namespace waavs {
         return true;
     }
 
-    // ============================================================
-    // feGaussianBlur
-    //
-    // Reference: copy-through outside ROI, blur only ROI.
-    // Uses your existing boxBlurH_PRGB32/boxBlurV_PRGB32 which take PixelArray.
-    //
-    // To keep Surface-only API, this function instead provides a SURFACE-ONLY
-    // fallback separable box blur implementation (not the fastest, but correct).
-    //
-    // If you want to keep using your existing optimized PixelArray blur code,
-    // do that in the adapter layer (PixelArray->Surface) and keep this kernel
-    // as the fallback/reference. This is fully isolated.
-    // ============================================================
 
-    static INLINE uint8_t clampU8(int v) noexcept {
-        if (v < 0) return 0;
-        if (v > 255) return 255;
-        return (uint8_t)v;
-    }
-
-    // 1D box blur over ARGB32 packed by unpacking to PRGBA linear and averaging.
-    // This is intentionally simple (O(r) per pixel). Replace with your fast blur
-    // in the adapter layer if desired.
-    static INLINE void boxBlurH_linearPRGBA(Surface_ARGB32* dst, const Surface_ARGB32* src,
-        int r, WGRectI area) noexcept
-    {
-        const int W = src->width;
-        for (int y = area.y; y < area.y + area.h; ++y) {
-            const uint32_t* srow = pixeling_ARGB32_row_ptr_const(src, y);
-            uint32_t* drow = pixeling_ARGB32_row_ptr(dst, y);
-
-            for (int x = area.x; x < area.x + area.w; ++x) {
-                ColorPRGBA acc{ 0,0,0,0 };
-                int n = 0;
-                const int x0 = (x - r < 0) ? 0 : (x - r);
-                const int x1 = (x + r >= W) ? (W - 1) : (x + r);
-                for (int xx = x0; xx <= x1; ++xx) {
-                    const ColorPRGBA p = pixeling_ARGB32_unpack_prgba(srow[xx]);
-                    acc.r += p.r; acc.g += p.g; acc.b += p.b; acc.a += p.a;
-                    ++n;
-                }
-                const float inv = 1.0f / (float)n;
-                acc.r *= inv; acc.g *= inv; acc.b *= inv; acc.a *= inv;
-                drow[x] = pixeling_prgba_pack_ARGB32(acc);
-            }
-        }
-    }
-
-    static INLINE void boxBlurV_linearPRGBA(Surface_ARGB32* dst, const Surface_ARGB32* src,
-        int r, WGRectI area) noexcept
-    {
-        const int H = src->height;
-        for (int y = area.y; y < area.y + area.h; ++y) {
-            uint32_t* drow = pixeling_ARGB32_row_ptr(dst, y);
-
-            const int y0 = (y - r < 0) ? 0 : (y - r);
-            const int y1 = (y + r >= H) ? (H - 1) : (y + r);
-
-            for (int x = area.x; x < area.x + area.w; ++x) {
-                ColorPRGBA acc{ 0,0,0,0 };
-                int n = 0;
-                for (int yy = y0; yy <= y1; ++yy) {
-                    const uint32_t* srow = pixeling_ARGB32_row_ptr_const(src, yy);
-                    const ColorPRGBA p = pixeling_ARGB32_unpack_prgba(srow[x]);
-                    acc.r += p.r; acc.g += p.g; acc.b += p.b; acc.a += p.a;
-                    ++n;
-                }
-                const float inv = 1.0f / (float)n;
-                acc.r *= inv; acc.g *= inv; acc.b *= inv; acc.a *= inv;
-                drow[x] = pixeling_prgba_pack_ARGB32(acc);
-            }
-        }
-    }
-
-    static INLINE bool feGaussianBlur(const PixelKernelCtx& k,
-        const Surface_ARGB32* in,
-        Surface_ARGB32* out,
-        double sigmaXpx, double sigmaYpx) noexcept
-    {
-        // Copy-through first.
-        surface_copy_ARGB32(out, in);
-
-        const double sigma = (sigmaXpx > sigmaYpx) ? sigmaXpx : sigmaYpx;
-        if (!(sigma > 0.0))
-            return true;
-
-        WGRectI area = roiOrFull(k, *in);
-        if (area.w <= 0 || area.h <= 0)
-            return true;
-
-        int box[3];
-        waavs::boxesForGauss(sigma, 3, box);
-
-        // Temporary full-size surfaces (simple reference)
-        // Allocate as raw buffers (caller can provide scratch in future).
-        const size_t bytes = (size_t)in->stride * (size_t)in->height;
-        uint8_t* mem0 = (uint8_t*)malloc(bytes);
-        uint8_t* mem1 = (uint8_t*)malloc(bytes);
-        if (!mem0 || !mem1) { if (mem0) free(mem0); if (mem1) free(mem1); return false; }
-
-        Surface_ARGB32 tmp0{ mem0, in->width, in->height, in->stride };
-        Surface_ARGB32 tmp1{ mem1, in->width, in->height, in->stride };
-
-        // Start from input
-        const Surface_ARGB32* curSrc = in;
-        Surface_ARGB32* curDst = &tmp0;
-
-        for (int pass = 0; pass < 3; ++pass) {
-            const int r = (box[pass] - 1) / 2;
-
-            boxBlurH_linearPRGBA(curDst, curSrc, r, area);
-
-            curSrc = curDst;
-            curDst = (curDst == &tmp0) ? &tmp1 : &tmp0;
-
-            boxBlurV_linearPRGBA(curDst, curSrc, r, area);
-
-            curSrc = curDst;
-            curDst = (curDst == &tmp0) ? &tmp1 : &tmp0;
-        }
-
-        // Copy ROI from blurred temp into out.
-        for (int y = area.y; y < area.y + area.h; ++y) {
-            const uint32_t* srow = pixeling_ARGB32_row_ptr_const(curSrc, y);
-            uint32_t* drow = pixeling_ARGB32_row_ptr(out, y);
-            std::memcpy(drow + area.x, srow + area.x, (size_t)area.w * 4u);
-        }
-
-        free(mem0);
-        free(mem1);
-        return true;
-    }
 
     // ============================================================
     // feMerge (N -> 1)
@@ -671,7 +483,7 @@ namespace waavs {
 
     static INLINE bool feMerge(const PixelKernelCtx& k, SurfaceSpan inputs, Surface_ARGB32* out) noexcept {
         (void)k;
-        surface_clear_ARGB32(out);
+        surface_argb32_clear(out);
 
         const int W = out->width;
         const int H = out->height;
@@ -682,8 +494,8 @@ namespace waavs {
             WAAVS_ASSERT(src->width == W && src->height == H);
 
             for (int y = 0; y < H; ++y) {
-                const uint32_t* srow = pixeling_ARGB32_row_ptr_const(src, y);
-                uint32_t* drow = pixeling_ARGB32_row_ptr(out, y);
+                const uint32_t* srow = Surface_ARGB32_row_pointer_const(src, y);
+                uint32_t* drow = Surface_ARGB32_row_pointer(out, y);
                 for (int x = 0; x < W; ++x) {
                     const ColorPRGBA s = pixeling_ARGB32_unpack_prgba(srow[x]);
                     const ColorPRGBA d = pixeling_ARGB32_unpack_prgba(drow[x]);
@@ -703,11 +515,11 @@ namespace waavs {
         (void)k;
         const int W = out->width, H = out->height;
         const int SW = in->width, SH = in->height;
-        if (SW <= 0 || SH <= 0) { surface_clear_ARGB32(out); return true; }
+        if (SW <= 0 || SH <= 0) { surface_argb32_clear(out); return true; }
 
         for (int y = 0; y < H; ++y) {
-            uint32_t* drow = pixeling_ARGB32_row_ptr(out, y);
-            const uint32_t* srow = pixeling_ARGB32_row_ptr_const(in, y % SH);
+            uint32_t* drow = Surface_ARGB32_row_pointer(out, y);
+            const uint32_t* srow = Surface_ARGB32_row_pointer_const(in, y % SH);
             for (int x = 0; x < W; ++x)
                 drow[x] = srow[x % SW];
         }
@@ -717,6 +529,213 @@ namespace waavs {
     // ============================================================
     // feColorMatrix (4x5)
     // ============================================================
+
+
+    /*
+
+        static INLINE int16_t clamp_i16(int v) noexcept
+        {
+            if (v < -32768) return -32768;
+            if (v > 32767) return  32767;
+            return (int16_t)v;
+        }
+
+        static INLINE int32_t clamp_i32(long long v) noexcept
+        {
+            if (v < -2147483648LL) return -2147483648LL;
+            if (v > 2147483647LL) return  2147483647LL;
+            return (int32_t)v;
+        }
+
+        static INLINE ColorMatrixQ88 quantizeColorMatrixQ88(const float m[20]) noexcept
+        {
+            ColorMatrixQ88 q{};
+
+            for (int row = 0; row < 4; ++row)
+            {
+                const int base = row * 5;
+
+                q.c[base + 0] = clamp_i16((int)std::lround(m[base + 0] * 256.0f));
+                q.c[base + 1] = clamp_i16((int)std::lround(m[base + 1] * 256.0f));
+                q.c[base + 2] = clamp_i16((int)std::lround(m[base + 2] * 256.0f));
+                q.c[base + 3] = clamp_i16((int)std::lround(m[base + 3] * 256.0f));
+
+                // Bias is in normalized color space in SVG-like math.
+                // Convert bias to byte domain first, then to Q8.8.
+                q.c[base + 4] = (int16_t)clamp_i32((long long)std::lround(m[base + 4] * 255.0f * 256.0f));
+            }
+
+            return q;
+        }
+
+        static INLINE uint32_t packARGB32(uint32_t a, uint32_t r, uint32_t g, uint32_t b) noexcept
+        {
+            return (a << 24) | (r << 16) | (g << 8) | b;
+        }
+
+        static INLINE uint32_t colorMatrixPixel_scalar_q88(uint32_t px, const ColorMatrixQ88& m) noexcept
+        {
+            const int r = (int)((px >> 16) & 0xFFu);
+            const int g = (int)((px >> 8) & 0xFFu);
+            const int b = (int)((px) & 0xFFu);
+            const int a = (int)((px >> 24) & 0xFFu);
+
+            auto evalRow = [&](int base) -> uint32_t
+                {
+                    int acc =
+                        int(m.c[base + 0]) * r +
+                        int(m.c[base + 1]) * g +
+                        int(m.c[base + 2]) * b +
+                        int(m.c[base + 3]) * a +
+                        int(m.c[base + 4]);
+
+                    // Round from Q8.8 to integer.
+                    acc = (acc + 128) >> 8;
+
+                    if (acc < 0)   acc = 0;
+                    if (acc > 255) acc = 255;
+                    return (uint32_t)acc;
+                };
+
+            const uint32_t rr = evalRow(0);
+            const uint32_t gg = evalRow(5);
+            const uint32_t bb = evalRow(10);
+            const uint32_t aa = evalRow(15);
+
+            return packARGB32(aa, rr, gg, bb);
+        }
+
+#if defined(__aarch64__) && defined(__ARM_NEON)
+
+        static INLINE int32x4_t evalRow4_q88_neon(
+            const int16x4_t r4,
+            const int16x4_t g4,
+            const int16x4_t b4,
+            const int16x4_t a4,
+            const int16_t* row) noexcept
+        {
+            int32x4_t acc = vdupq_n_s32((int32_t)row[4]);
+
+            acc = vmlal_n_s16(acc, r4, row[0]);
+            acc = vmlal_n_s16(acc, g4, row[1]);
+            acc = vmlal_n_s16(acc, b4, row[2]);
+            acc = vmlal_n_s16(acc, a4, row[3]);
+
+            // Round and shift Q8.8 -> integer.
+            acc = vaddq_s32(acc, vdupq_n_s32(128));
+            acc = vshrq_n_s32(acc, 8);
+
+            return acc;
+        }
+
+        static INLINE uint32x4_t packARGB4_u32(
+            const uint32x4_t aa,
+            const uint32x4_t rr,
+            const uint32x4_t gg,
+            const uint32x4_t bb) noexcept
+        {
+            uint32x4_t out = vshlq_n_u32(aa, 24);
+            out = vorrq_u32(out, vshlq_n_u32(rr, 16));
+            out = vorrq_u32(out, vshlq_n_u32(gg, 8));
+            out = vorrq_u32(out, bb);
+            return out;
+        }
+
+        static INLINE void colorMatrixRow_neon_q88(
+            uint32_t* dst,
+            const uint32_t* src,
+            size_t count,
+            const ColorMatrixQ88& m) noexcept
+        {
+            size_t i = 0;
+
+            for (; i + 8 <= count; i += 8)
+            {
+                const uint32x4_t p0 = vld1q_u32(src + i + 0);
+                const uint32x4_t p1 = vld1q_u32(src + i + 4);
+
+                // Extract channels from packed ARGB32.
+                const uint32x4_t a0_u32 = vshrq_n_u32(p0, 24);
+                const uint32x4_t r0_u32 = vandq_u32(vshrq_n_u32(p0, 16), vdupq_n_u32(0xFF));
+                const uint32x4_t g0_u32 = vandq_u32(vshrq_n_u32(p0, 8), vdupq_n_u32(0xFF));
+                const uint32x4_t b0_u32 = vandq_u32(p0, vdupq_n_u32(0xFF));
+
+                const uint32x4_t a1_u32 = vshrq_n_u32(p1, 24);
+                const uint32x4_t r1_u32 = vandq_u32(vshrq_n_u32(p1, 16), vdupq_n_u32(0xFF));
+                const uint32x4_t g1_u32 = vandq_u32(vshrq_n_u32(p1, 8), vdupq_n_u32(0xFF));
+                const uint32x4_t b1_u32 = vandq_u32(p1, vdupq_n_u32(0xFF));
+
+                // Narrow 32 -> 16. Values are guaranteed 0..255.
+                const uint16x4_t a0_u16 = vmovn_u32(a0_u32);
+                const uint16x4_t r0_u16 = vmovn_u32(r0_u32);
+                const uint16x4_t g0_u16 = vmovn_u32(g0_u32);
+                const uint16x4_t b0_u16 = vmovn_u32(b0_u32);
+
+                const uint16x4_t a1_u16 = vmovn_u32(a1_u32);
+                const uint16x4_t r1_u16 = vmovn_u32(r1_u32);
+                const uint16x4_t g1_u16 = vmovn_u32(g1_u32);
+                const uint16x4_t b1_u16 = vmovn_u32(b1_u32);
+
+                // Combine low/high groups to 8 lanes, then reinterpret as signed.
+                const int16x8_t a_u16 = vreinterpretq_s16_u16(vcombine_u16(a0_u16, a1_u16));
+                const int16x8_t r_u16 = vreinterpretq_s16_u16(vcombine_u16(r0_u16, r1_u16));
+                const int16x8_t g_u16 = vreinterpretq_s16_u16(vcombine_u16(g0_u16, g1_u16));
+                const int16x8_t b_u16 = vreinterpretq_s16_u16(vcombine_u16(b0_u16, b1_u16));
+
+                const int16x4_t r_lo = vget_low_s16(r_u16);
+                const int16x4_t g_lo = vget_low_s16(g_u16);
+                const int16x4_t b_lo = vget_low_s16(b_u16);
+                const int16x4_t a_lo = vget_low_s16(a_u16);
+
+                const int16x4_t r_hi = vget_high_s16(r_u16);
+                const int16x4_t g_hi = vget_high_s16(g_u16);
+                const int16x4_t b_hi = vget_high_s16(b_u16);
+                const int16x4_t a_hi = vget_high_s16(a_u16);
+
+                int32x4_t rr_lo = evalRow4_q88_neon(r_lo, g_lo, b_lo, a_lo, &m.c[0]);
+                int32x4_t gg_lo = evalRow4_q88_neon(r_lo, g_lo, b_lo, a_lo, &m.c[5]);
+                int32x4_t bb_lo = evalRow4_q88_neon(r_lo, g_lo, b_lo, a_lo, &m.c[10]);
+                int32x4_t aa_lo = evalRow4_q88_neon(r_lo, g_lo, b_lo, a_lo, &m.c[15]);
+
+                int32x4_t rr_hi = evalRow4_q88_neon(r_hi, g_hi, b_hi, a_hi, &m.c[0]);
+                int32x4_t gg_hi = evalRow4_q88_neon(r_hi, g_hi, b_hi, a_hi, &m.c[5]);
+                int32x4_t bb_hi = evalRow4_q88_neon(r_hi, g_hi, b_hi, a_hi, &m.c[10]);
+                int32x4_t aa_hi = evalRow4_q88_neon(r_hi, g_hi, b_hi, a_hi, &m.c[15]);
+
+                // Clamp signed 32 -> unsigned 16.
+                const uint16x4_t rr0 = vqmovun_s32(rr_lo);
+                const uint16x4_t gg0 = vqmovun_s32(gg_lo);
+                const uint16x4_t bb0 = vqmovun_s32(bb_lo);
+                const uint16x4_t aa0 = vqmovun_s32(aa_lo);
+
+                const uint16x4_t rr1 = vqmovun_s32(rr_hi);
+                const uint16x4_t gg1 = vqmovun_s32(gg_hi);
+                const uint16x4_t bb1 = vqmovun_s32(bb_hi);
+                const uint16x4_t aa1 = vqmovun_s32(aa_hi);
+
+                const uint32x4_t out0 = packARGB4_u32(
+                    vmovl_u16(aa0),
+                    vmovl_u16(rr0),
+                    vmovl_u16(gg0),
+                    vmovl_u16(bb0));
+
+                const uint32x4_t out1 = packARGB4_u32(
+                    vmovl_u16(aa1),
+                    vmovl_u16(rr1),
+                    vmovl_u16(gg1),
+                    vmovl_u16(bb1));
+
+                vst1q_u32(dst + i + 0, out0);
+                vst1q_u32(dst + i + 4, out1);
+            }
+
+            for (; i < count; ++i)
+                dst[i] = colorMatrixPixel_scalar_q88(src[i], m);
+        }
+
+#endif
+
+
     static INLINE bool feColorMatrix(const PixelKernelCtx& k,
         const Surface_ARGB32* in,
         Surface_ARGB32* out,
@@ -729,8 +748,8 @@ namespace waavs {
         const int H = in->height;
 
         for (int y = 0; y < H; ++y) {
-            const uint32_t* srow = pixeling_ARGB32_row_ptr_const(in, y);
-            uint32_t* drow = pixeling_ARGB32_row_ptr(out, y);
+            const uint32_t* srow = Surface_ARGB32_row_pointer_const(in, y);
+            uint32_t* drow = Surface_ARGB32_row_pointer(out, y);
 
             for (int x = 0; x < W; ++x) {
                 const ColorPRGBA sp = pixeling_ARGB32_unpack_prgba(srow[x]);
@@ -753,7 +772,7 @@ namespace waavs {
 
         return true;
     }
-
+    */
     // ============================================================
     // feComponentTransfer
     // ============================================================
@@ -820,8 +839,8 @@ namespace waavs {
         const int H = in->height;
 
         for (int y = 0; y < H; ++y) {
-            const uint32_t* srow = pixeling_ARGB32_row_ptr_const(in, y);
-            uint32_t* drow = pixeling_ARGB32_row_ptr(out, y);
+            const uint32_t* srow = Surface_ARGB32_row_pointer_const(in, y);
+            uint32_t* drow = Surface_ARGB32_row_pointer(out, y);
 
             for (int x = 0; x < W; ++x) {
                 const ColorPRGBA sp = pixeling_ARGB32_unpack_prgba(srow[x]);
@@ -875,9 +894,9 @@ namespace waavs {
         const int H = out->height;
 
         for (int y = 0; y < H; ++y) {
-            const uint32_t* bRow = pixeling_ARGB32_row_ptr_const(in1, y);
-            const uint32_t* sRow = pixeling_ARGB32_row_ptr_const(in2, y);
-            uint32_t* oRow = pixeling_ARGB32_row_ptr(out, y);
+            const uint32_t* bRow = Surface_ARGB32_row_pointer_const(in1, y);
+            const uint32_t* sRow = Surface_ARGB32_row_pointer_const(in2, y);
+            uint32_t* oRow = Surface_ARGB32_row_pointer(out, y);
 
             for (int x = 0; x < W; ++x) {
                 const ColorPRGBA bp = pixeling_ARGB32_unpack_prgba(bRow[x]);
@@ -937,9 +956,9 @@ namespace waavs {
         const int H = out->height;
 
         for (int y = 0; y < H; ++y) {
-            const uint32_t* sRow = pixeling_ARGB32_row_ptr_const(in1, y);
-            const uint32_t* dRow = pixeling_ARGB32_row_ptr_const(in2, y);
-            uint32_t* oRow = pixeling_ARGB32_row_ptr(out, y);
+            const uint32_t* sRow = Surface_ARGB32_row_pointer_const(in1, y);
+            const uint32_t* dRow = Surface_ARGB32_row_pointer_const(in2, y);
+            uint32_t* oRow = Surface_ARGB32_row_pointer(out, y);
 
             for (int x = 0; x < W; ++x) {
                 const ColorPRGBA sP = pixeling_ARGB32_unpack_prgba(sRow[x]);
@@ -1000,8 +1019,8 @@ namespace waavs {
         const float invHm1 = (H > 1) ? (1.0f / (float)(H - 1)) : 0.0f;
 
         for (int y = 0; y < H; ++y) {
-            const uint32_t* mRow = pixeling_ARGB32_row_ptr_const(in2, y);
-            uint32_t* oRow = pixeling_ARGB32_row_ptr(out, y);
+            const uint32_t* mRow = Surface_ARGB32_row_pointer_const(in2, y);
+            uint32_t* oRow = Surface_ARGB32_row_pointer(out, y);
 
             for (int x = 0; x < W; ++x) {
                 const ColorPRGBA mp = pixeling_ARGB32_unpack_prgba(mRow[x]);
@@ -1048,7 +1067,7 @@ namespace waavs {
         const int H = in->height;
 
         for (int y = 0; y < H; ++y) {
-            uint32_t* oRow = pixeling_ARGB32_row_ptr(out, y);
+            uint32_t* oRow = Surface_ARGB32_row_pointer(out, y);
 
             const int y0 = (y - ryPx < 0) ? 0 : (y - ryPx);
             const int y1 = (y + ryPx >= H) ? (H - 1) : (y + ryPx);
@@ -1062,7 +1081,7 @@ namespace waavs {
                 else                  best = ColorPRGBA{ 0,0,0,0 };
 
                 for (int yy = y0; yy <= y1; ++yy) {
-                    const uint32_t* sRow = pixeling_ARGB32_row_ptr_const(in, yy);
+                    const uint32_t* sRow = Surface_ARGB32_row_pointer_const(in, yy);
                     for (int xx = x0; xx <= x1; ++xx) {
                         const ColorPRGBA p = pixeling_ARGB32_unpack_prgba(sRow[xx]);
                         if (op == MORPH_ERODE) {

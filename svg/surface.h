@@ -60,7 +60,7 @@ namespace waavs
             fInfo.data = fDataBuffer.begin();
             
             // Start out with a clean slate by default
-            wg_clear_all(fInfo);
+            //wg_clear_all(fInfo);
 
             return true;
         }
@@ -69,6 +69,8 @@ namespace waavs
         Surface_ARGB32 info() const noexcept { return fInfo; }
 
         // Convenience accessors
+        bool isContiguous() const noexcept { return fInfo.contiguous; }
+
         // Two forms of bounds: integer and double.  The double form is useful for geometry calculations, 
         // and the integer form is useful for pixel loops.
         WGRectI boundsI() const noexcept { return WGRectI{ 0, 0, (int)width(), (int)height() }; }
@@ -80,8 +82,8 @@ namespace waavs
         const uint8_t* data() const noexcept { return fInfo.data; }
         uint8_t* data() noexcept { return fInfo.data; }
 
-        const uint32_t* rowPointer(int y) const noexcept { return pixeling_ARGB32_row_ptr_const(&fInfo, y); }
-        uint32_t* rowPointer(int y) noexcept { return pixeling_ARGB32_row_ptr(&fInfo, y); }
+        const uint32_t* rowPointer(int y) const noexcept { return Surface_ARGB32_row_pointer_const(&fInfo, y); }
+        uint32_t* rowPointer(int y) noexcept { return Surface_ARGB32_row_pointer(&fInfo, y); }
 
         // createFromData
         // 

@@ -137,10 +137,10 @@ namespace waavs {
     //============================================================
     // Whitespace normalization helpers using charset
     //============================================================
-    static inline bool spanAllWsp(const ByteSpan& s) noexcept
-    {
-        return isAll(s, chrWspChars);
-    }
+    //static inline bool spanAllWsp(const ByteSpan& s) noexcept
+    //{
+    //    return isAll(s, chrWspChars);
+    //}
 
     // Trim left/right whitespace with your chunk_trim()
     static inline ByteSpan trimOuterWsp(const ByteSpan& s) noexcept
@@ -634,7 +634,7 @@ namespace waavs {
                 ByteSpan para = fParas[pi].span();
 
                 // blank para => blank line
-                if (!para || spanAllWsp(para)) {
+                if (!para || is_all_whitespace(para)) {
                     penY += lineAdvance;
                     if (penY > maxBaselineY) break;
                     continue;

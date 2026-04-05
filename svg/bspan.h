@@ -13,6 +13,29 @@
 #include "bithacks.h"
 #include "charset.h"
 
+// Forward declaration of some useful functions
+namespace waavs
+{
+    struct ByteSpan;
+
+    INLINE size_t copy_to_cstr(char* str, size_t len, const ByteSpan& a) noexcept;
+    INLINE ByteSpan chunk_ltrim(const ByteSpan& a, const charset& skippable) noexcept;
+    INLINE ByteSpan chunk_rtrim(const ByteSpan& a, const charset& skippable) noexcept;
+    INLINE ByteSpan chunk_trim(const ByteSpan& a, const charset& skippable) noexcept;
+    INLINE ByteSpan chunk_skip_wsp(const ByteSpan& a) noexcept;
+
+    INLINE bool chunk_starts_with_char(const ByteSpan& a, const uint8_t b) noexcept;
+    INLINE bool chunk_starts_with_cstr(const ByteSpan& a, const char* b) noexcept;
+
+    INLINE bool chunk_ends_with_char(const ByteSpan& a, const uint8_t b) noexcept;
+    INLINE bool chunk_ends_with_cstr(const ByteSpan& a, const char* b) noexcept;
+
+    INLINE ByteSpan chunk_token(ByteSpan& a, const charset& delims) noexcept;
+    INLINE ByteSpan chunk_find_char(const ByteSpan& a, char c) noexcept;
+    INLINE bool chunk_find(const ByteSpan& src, const ByteSpan& str, ByteSpan& value) noexcept;
+    INLINE ByteSpan chunk_find_cstr(const ByteSpan& a, const char* c) noexcept;
+
+}
 
 namespace waavs 
 {
@@ -256,6 +279,11 @@ namespace waavs
             return (subSpan(size() - b.size(), b.size()) == b);
         }
 
+        void skipWhitespace() noexcept 
+        {
+            *this = chunk_skip_wsp(*this);
+        }
+
         // Move the start of the span forward while the predicate
         // returns true for the current starting pointer
         // Example: Skipping whitespace
@@ -307,7 +335,8 @@ namespace waavs
 }
 
 
-namespace waavs {
+namespace waavs 
+{
     // isAll()
     // Check if all characters in the span are in the specified charset.
     // This is typically used when you're trying to determine if the 
@@ -318,7 +347,34 @@ namespace waavs {
         return found == src.fEnd;
     }
 
+    // Check if all characters in the span are 
+    // whitespace (space, tab, newline, carriage return)
+    INLINE bool is_all_whitespace(const ByteSpan& s) noexcept
+    {
+        const uint8_t* p = s.fStart;
+        const uint8_t* end = s.fEnd;
+
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+        while ((end - p) >= 16)
+        {
+            if (!neon_chunk_is_all_xml_wsp_16(p))
+                return false;
+
+            p += 16;
+        }
+#endif
+
+        while (p < end)
+        {
+            if (!chrWspChars(*p))
+                return false;
+            ++p;
+        }
+
+        return true;
+    }
 }
+
 
 namespace waavs {
     INLINE size_t copy(ByteSpan& a, const ByteSpan& b) noexcept;
@@ -435,26 +491,7 @@ namespace waavs {
 
 // Functions that are implemented here
 
-namespace waavs
-{
-    INLINE size_t copy_to_cstr(char* str, size_t len, const ByteSpan& a) noexcept;
-    INLINE ByteSpan chunk_ltrim(const ByteSpan& a, const charset& skippable) noexcept;
-    INLINE ByteSpan chunk_rtrim(const ByteSpan& a, const charset& skippable) noexcept;
-    INLINE ByteSpan chunk_trim(const ByteSpan& a, const charset& skippable) noexcept;
-    INLINE ByteSpan chunk_skip_wsp(const ByteSpan& a) noexcept;
 
-    INLINE bool chunk_starts_with_char(const ByteSpan& a, const uint8_t b) noexcept;
-    INLINE bool chunk_starts_with_cstr(const ByteSpan& a, const char* b) noexcept;
-
-    INLINE bool chunk_ends_with_char(const ByteSpan& a, const uint8_t b) noexcept;
-    INLINE bool chunk_ends_with_cstr(const ByteSpan& a, const char* b) noexcept;
-
-    INLINE ByteSpan chunk_token(ByteSpan& a, const charset& delims) noexcept;
-    INLINE ByteSpan chunk_find_char(const ByteSpan& a, char c) noexcept;
-    INLINE bool chunk_find(const ByteSpan& src, const ByteSpan& str, ByteSpan& value) noexcept;
-    INLINE ByteSpan chunk_find_cstr(const ByteSpan& a, const char* c) noexcept;
-
-}
 
 
 
@@ -508,17 +545,74 @@ namespace waavs
         return ByteSpan::fromPointers( start, end );
     }
 
+#include <arm_neon.h>
+#include <cstdint>
+#include <cstddef>
+
+
+
+    static inline const uint8_t* skip_space(const uint8_t* p, const uint8_t* end) noexcept
+    {
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+        const uint8x16_t sp = vdupq_n_u8(' ');
+        const uint8x16_t tb = vdupq_n_u8('\t');
+        const uint8x16_t nl = vdupq_n_u8('\n');
+        const uint8x16_t cr = vdupq_n_u8('\r');
+
+        while (p + 16 <= end)
+        {
+            uint8x16_t v = vld1q_u8(p);
+            uint8x16_t m0 = vceqq_u8(v, sp);
+            uint8x16_t m1 = vceqq_u8(v, tb);
+            uint8x16_t m2 = vceqq_u8(v, nl);
+            uint8x16_t m3 = vceqq_u8(v, cr);
+            uint8x16_t m = vorrq_u8(vorrq_u8(m0, m1), vorrq_u8(m2, m3));
+
+#if defined(__aarch64__)
+            if (vminvq_u8(m) != 0xFF)
+            {
+                alignas(16) uint8_t tmp[16];
+                vst1q_u8(tmp, m);
+                for (int i = 0; i < 16; ++i)
+                {
+                    if (tmp[i] != 0xFF)
+                        return p + i;
+                }
+            }
+#else
+            // Portable reduction for older ARM NEON.
+            alignas(16) uint8_t tmp[16];
+            vst1q_u8(tmp, m);
+
+            bool all_space = true;
+            for (int i = 0; i < 16; ++i)
+            {
+                if (tmp[i] != 0xFF)
+                {
+                    all_space = false;
+                    return p + i;
+                }
+            }
+            if (!all_space)
+                return p;
+#endif
+
+            p += 16;
+        }
+#endif
+
+        while (p < end && is_space(*p))
+            ++p;
+
+        return p;
+    }
+
     INLINE ByteSpan chunk_skip_wsp(const ByteSpan& a) noexcept
     {
-                
-        const uint8_t* start = a.fStart;
-        const uint8_t* end = a.fEnd;
-
-        while (start < end && chrWspChars(*start))
-            ++start;
-
-        return ByteSpan::fromPointers( start, end );
+        const uint8_t* start = skip_space(a.fStart, a.fEnd);
+        return ByteSpan::fromPointers(start, a.fEnd);
     }
+
 
     INLINE ByteSpan chunk_skip_until_cstr(const ByteSpan& inChunk, const char* str) noexcept
     {
@@ -857,15 +951,6 @@ namespace waavs
 
         return true;
     }
-
-}
-
-
-
-
-
-namespace waavs {
-
 
 }
 

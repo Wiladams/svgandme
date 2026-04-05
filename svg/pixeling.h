@@ -8,6 +8,7 @@
 #include "definitions.h"
 #include "coloring.h"
 #include "maths.h"
+#include "wggeometry.h"
 
 /*
  * pixeling.h — pixel-pack/unpack and surface ops for WAAVS
@@ -135,6 +136,7 @@ namespace waavs {
     // 
     // Convert the given float values into 8-bit components and
     // stuff them into a uint32_t
+    // 
     // NOTE:  This routine does NOT do any pre-multiplication.  It 
     // assumes any pre-multiplication has already occured before calling
     // into here
@@ -163,31 +165,40 @@ namespace waavs {
     {
         return ((a) << 24) | ((r) << 16) | ((g) << 8) | (b);
     }
-}
 
 
 
-static INLINE void unpackPARGB32(uint32_t px, uint8_t& a, uint8_t& r, uint8_t& g, uint8_t& b) noexcept
-{
-    a = (uint8_t)((px >> 24) & 0xFF);
-    r = (uint8_t)((px >> 16) & 0xFF);
-    g = (uint8_t)((px >> 8) & 0xFF);
-    b = (uint8_t)(px & 0xFF);
-}
 
-static INLINE void unpackPARGB32(uint32_t px, uint32_t& a, uint32_t& r, uint32_t& g, uint32_t& b) noexcept
-{
-    a = (uint32_t)((px >> 24) & 0xFF);
-    r = (uint32_t)((px >> 16) & 0xFF);
-    g = (uint32_t)((px >> 8) & 0xFF);
-    b = (uint32_t)(px & 0xFF);
-}
+    static INLINE void argb32_unpack(uint32_t px, uint8_t& a, uint8_t& r, uint8_t& g, uint8_t& b) noexcept
+    {
+        a = (uint8_t)((px >> 24) & 0xFF);
+        r = (uint8_t)((px >> 16) & 0xFF);
+        g = (uint8_t)((px >> 8) & 0xFF);
+        b = (uint8_t)(px & 0xFF);
+    }
 
-// Get only the alpha channel from a PRGB32 pixel 
-// Useful for some operations where we only care about alpha
-static INLINE uint32_t unpackAlphaPARGB32(uint32_t p) noexcept
-{
-    return (p >> 24) & 0xFF;
+    static INLINE void argb32_unpack(uint32_t px, int& a, int& r, int& g, int& b) noexcept
+    {
+        a = (int)((px >> 24) & 0xFF);
+        r = (int)((px >> 16) & 0xFF);
+        g = (int)((px >> 8) & 0xFF);
+        b = (int)(px & 0xFF);
+    }
+
+    static INLINE void argb32_unpack(uint32_t px, uint32_t& a, uint32_t& r, uint32_t& g, uint32_t& b) noexcept
+    {
+        a = (uint32_t)((px >> 24) & 0xFF);
+        r = (uint32_t)((px >> 16) & 0xFF);
+        g = (uint32_t)((px >> 8) & 0xFF);
+        b = (uint32_t)(px & 0xFF);
+    }
+
+    // Get only the alpha channel from a PRGB32 pixel 
+    // Useful for some operations where we only care about alpha
+    static INLINE uint32_t argb32_unpack_alpha(uint32_t p) noexcept
+    {
+        return (p >> 24) & 0xFF;
+    }
 }
 
 //------------------------------------------------------------------------- 
@@ -273,11 +284,9 @@ static inline ColorPRGBA pixeling_RGBA32_unpack_prgba(const Pixel_RGBA32 px)
     return p;
 }
 
-/* ------------------------------------------------------------- */
-/* Straight sRGBA8 helpers (no premultiplication; asset handling)*/
-/* ------------------------------------------------------------- */
-
-
+// ------------------------------------------------------------- 
+// Straight sRGBA8 helpers (no premultiplication; asset handling)
+// ------------------------------------------------------------- 
 
 static inline Pixel_SRGBA8_ARGB32 pixeling_srgba_pack_ARGB32(const ColorSRGB s)
 {
@@ -331,36 +340,46 @@ typedef struct {
     bool     contiguous;    // whether the memory is contiguous (no gap between rows)
 } Surface_ARGB32;
 
+// rectangle convenience
+static INLINE WGRectI Surface_ARGB32_bounds(const Surface_ARGB32 * s) noexcept
+{
+    return WGRectI{ 0, 0, s->width, s->height };
+}
 
-static  uint32_t* pixeling_ARGB32_row_ptr(const Surface_ARGB32* s, int y) {
+static  INLINE uint32_t* Surface_ARGB32_row_pointer(const Surface_ARGB32* s, int y) {
     return (uint32_t*)(s->data + ((size_t)y * (size_t)s->stride));
 }
 
-static  const uint32_t* pixeling_ARGB32_row_ptr_const(const Surface_ARGB32* s, int y) {
+static  const uint32_t* Surface_ARGB32_row_pointer_const(const Surface_ARGB32* s, int y) {
     return (const uint32_t*)(s->data + (size_t)y * (size_t)s->stride);
 }
 
-/* Fill a span with a constant PRGBA color */
-static inline void pixeling_prgba_fill_span_ARGB32(uint32_t* dst, int n, const ColorPRGBA c)
+// Fill a span with a constant PRGBA color
+static inline void Surface_ARGB32_fill_span(uint32_t* dst, int n, const ColorPRGBA c)
 {
     const uint32_t px = pixeling_prgba_pack_ARGB32(c);
-    for (int i = 0; i < n; ++i) dst[i] = px;
+    for (int i = 0; i < n; ++i) 
+        dst[i] = px;
 }
 
 /* Fill a rectangle (clamped) with a constant PRGBA color */
-static inline void pixeling_prgba_fill_rect_ARGB32(Surface_ARGB32* s,
+static inline void Surface_ARGB32_fill_rect(Surface_ARGB32* s,
     int x, int y, int w, int h,
     const ColorPRGBA c)
 {
+    // get the intersection of the rect with the surface bounds, 
+    // and skip if empty
     if (x < 0) { w += x; x = 0; }
     if (y < 0) { h += y; y = 0; }
     if (x + w > s->width)  w = s->width - x;
     if (y + h > s->height) h = s->height - y;
     if (w <= 0 || h <= 0) return;
 
+    // Convert color value to a packed pixel
+    // Then fill each row of the rectangle with that pixel value
     const uint32_t px = pixeling_prgba_pack_ARGB32(c);
     for (int j = 0; j < h; ++j) {
-        uint32_t* row = pixeling_ARGB32_row_ptr(s, y + j) + x;
+        uint32_t* row = Surface_ARGB32_row_pointer(s, y + j) + x;
         for (int i = 0; i < w; ++i) row[i] = px;
     }
 }
@@ -375,11 +394,11 @@ static inline void pixeling_prgba_over_span_ARGB32(const ColorPRGBA src, uint32_
     }
 }
 
-/* ---------------------------------------------------- */
-/* Sampling and resampling                              */
-/* ---------------------------------------------------- */
+// ----------------------------------------------------
+// Sampling and resampling                             
+// ----------------------------------------------------
 
-/* Bilinear sample from ARGB32 surface (normalized 0..1 UV), returns linear PRGBA */
+// Bilinear sample from ARGB32 surface (normalized 0..1 UV), returns linear PRGBA */
 static inline ColorPRGBA pixeling_ARGB32_sample_bilinear_prgba(const Surface_ARGB32* s,
     float u, float v)
 {
@@ -394,8 +413,8 @@ static inline ColorPRGBA pixeling_ARGB32_sample_bilinear_prgba(const Surface_ARG
     const int y1 = (y0 + 1 < s->height) ? (y0 + 1) : y0;
     const float tx = fx - (float)x0, ty = fy - (float)y0;
 
-    const uint32_t* r0 = pixeling_ARGB32_row_ptr_const(s, y0);
-    const uint32_t* r1 = pixeling_ARGB32_row_ptr_const(s, y1);
+    const uint32_t* r0 = Surface_ARGB32_row_pointer_const(s, y0);
+    const uint32_t* r1 = Surface_ARGB32_row_pointer_const(s, y1);
 
     const ColorPRGBA c00 = pixeling_ARGB32_unpack_prgba(r0[x0]);
     const ColorPRGBA c10 = pixeling_ARGB32_unpack_prgba(r0[x1]);
@@ -416,9 +435,9 @@ static inline void pixeling_ARGB32_downsample2x_ARGB32(const Surface_ARGB32* src
         const int sy = y * 2;
         const int sy1 = (sy + 1 < src->height) ? (sy + 1) : sy;
 
-        const uint32_t* r0 = pixeling_ARGB32_row_ptr_const(src, sy);
-        const uint32_t* r1 = pixeling_ARGB32_row_ptr_const(src, sy1);
-        uint32_t* rd = pixeling_ARGB32_row_ptr(dst, y);
+        const uint32_t* r0 = Surface_ARGB32_row_pointer_const(src, sy);
+        const uint32_t* r1 = Surface_ARGB32_row_pointer_const(src, sy1);
+        uint32_t* rd = Surface_ARGB32_row_pointer(dst, y);
 
         for (int x = 0; x < dst->width; ++x) {
             const int sx = x * 2;
@@ -446,9 +465,9 @@ static inline void pixeling_ARGB32_downsample2x_ARGB32(const Surface_ARGB32* src
     }
 }
 
-/* ---------------------------------------------------- */
-/* Optional LUT path for faster sRGB->linear for 8-bit  */
-/* ---------------------------------------------------- */
+// ---------------------------------------------------- */
+// Optional LUT path for faster sRGB->linear for 8-bit  */
+// ---------------------------------------------------- */
 
 typedef struct {
     float toLinear[256];
@@ -497,6 +516,43 @@ static inline ColorPRGBA pixeling_ARGB32_unpack_prgba_LUT(const Pixel_ARGB32 px)
     return p;
 }
 
+INLINE void memset_l(void* dstvoid, uint32_t pixel, size_t count) noexcept
+{
+    if (count == 0)
+        return;
+
+    uint32_t* dst32 = static_cast<uint32_t*>(dstvoid);
+    // If all bytes of the pixel are the same, 
+    // we can use memset for a faster fill
+    const uint8_t b = uint8_t(pixel & 0xFF);
+    if (pixel == (uint32_t(b) * 0x01010101u)) {
+        std::memset(dst32, b, count * sizeof(uint32_t));
+        return;
+    }
+
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+    size_t i = 0;
+    uint32x4_t v = vdupq_n_u32(pixel);
+
+    for (; i + 16 <= count; i += 16) {
+        vst1q_u32(dst32 + i + 0, v);
+        vst1q_u32(dst32 + i + 4, v);
+        vst1q_u32(dst32 + i + 8, v);
+        vst1q_u32(dst32 + i + 12, v);
+    }
+    for (; i + 4 <= count; i += 4) {
+        vst1q_u32(dst32 + i, v);
+    }
+    for (; i < count; ++i) {
+        dst32[i] = pixel;
+    }
+#else
+    for (size_t i = 0; i < count; ++i)
+        dst32[i] = pixel;
+#endif
+}
+
+/*
 // Used to rapidly copy 32 bit values 
 static void memset_l(void* adr, uint32_t val, size_t count)
 {
@@ -522,5 +578,6 @@ static void memset_l(void* adr, uint32_t val, size_t count)
     for (i = 0; i < n; i++)
         *p++ = val;
 }
+*/
 
 #endif // PIXELING_H_INCLUDED

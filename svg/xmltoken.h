@@ -93,7 +93,7 @@ namespace waavs {
     // === Inside tag ===
     static inline bool readTagToken(XmlTokenState& state, XmlToken& out)
     {
-        state.input.skipWhile(chrWspChars);
+        state.input.skipWhitespace();
         if (state.input.empty())
             return false;
 

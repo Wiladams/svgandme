@@ -22,6 +22,41 @@ namespace waavs
 {
 
 
+    // For feComposite, arithmetic operator parameters k1..k4 
+    // often have special cases when they are zero.
+    enum ArithmeticCompositeKind : uint32_t
+    {
+        ARITH_ZERO = 0,
+        ARITH_K1_ONLY,
+        ARITH_K2_ONLY,
+        ARITH_K3_ONLY,
+        ARITH_K4_ONLY,
+        ARITH_K2_K3,
+        ARITH_K1_K2_K3,
+        ARITH_GENERAL
+    };
+
+    // Classify the arithmetic composite operator based on which of k1..k4 are zero.
+    // Then use that later to specialize the inner loop for common cases.
+    static INLINE ArithmeticCompositeKind classifyArithmetic(
+        float k1, float k2, float k3, float k4) noexcept
+    {
+        const bool z1 = k1 == 0.0f;
+        const bool z2 = k2 == 0.0f;
+        const bool z3 = k3 == 0.0f;
+        const bool z4 = k4 == 0.0f;
+
+        if (z1 && z2 && z3 && z4) return ARITH_ZERO;
+        if (!z1 && z2 && z3 && z4) return ARITH_K1_ONLY;
+        if (z1 && !z2 && z3 && z4) return ARITH_K2_ONLY;
+        if (z1 && z2 && !z3 && z4) return ARITH_K3_ONLY;
+        if (z1 && z2 && z3 && !z4) return ARITH_K4_ONLY;
+        if (z1 && !z2 && !z3 && z4) return ARITH_K2_K3;
+        if (!z1 && !z2 && !z3 && z4) return ARITH_K1_K2_K3;
+
+        return ARITH_GENERAL;
+    }
+
     // -----------------------------------------
     // Small decode helpers
     // -----------------------------------------
@@ -210,6 +245,23 @@ namespace waavs
             WGRectD filterRectUS;
         };
 
+        // Resolver interface for filter primitives that need to fetch images by key (e.g. feImage).
+
+        template<class ImageT>
+        struct IFilterResourceResolver
+        {
+            using SurfaceHandle = std::unique_ptr<ImageT>;
+
+            virtual ~IFilterResourceResolver() = default;
+
+            virtual SurfaceHandle resolveFeImage(
+                InternedKey imageKey,
+                const FilterRunState& runState,
+                const WGRectD* subr,
+                AspectRatioAlignKind align,
+                AspectRatioMeetOrSliceKind meetOrSlice) noexcept = 0;
+        };
+
     // =========================================================================
     // FilterProgramExecutor
     //
@@ -299,8 +351,7 @@ namespace waavs
         // onComposite
         // ----------------------------------------------
         // default implementation of operator per row and per pixel operations
-        // BUGBUG, maybe this should land in Surface, as part of the blit
-        // operations
+
 
 
         //static void composite_over_prgb32_row(uint32_t* d, const uint32_t* s, const uint32_t* b, int w) noexcept
