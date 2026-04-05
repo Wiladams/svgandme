@@ -18,7 +18,7 @@
 #include "filter_feblend.h"
 #include "filter_fegaussian.h"
 #include "filter_fecolormatrix.h"
-
+#include "filter_femorphology.h"
 
 namespace waavs
 {
@@ -967,14 +967,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
 
     // Preserve current executor behavior:
     // start from a copy so pixels outside primitive write area remain unchanged.
-    {
-        SVGB2DDriver bctx{};
-        bctx.attach(*out, 1);
-        bctx.renew();
-        bctx.blendMode(BL_COMP_OP_SRC_COPY);
-        bctx.image(*in, 0, 0);
-        bctx.detach();
-    }
+    out->blit(*in, 0, 0);
 
     WGRectI area = resolveSubregionPx(subr, *in);
     if (area.w <= 0 || area.h <= 0)
@@ -1771,12 +1764,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
 
             // Preserve current executor behavior outside the primitive write area.
             {
-                SVGB2DDriver bctx{};
-                bctx.attach(*out, 1);
-                bctx.renew();
-                bctx.blendMode(BL_COMP_OP_SRC_COPY);
-                bctx.image(*in1, 0, 0);
-                bctx.detach();
+                out->blit(*in1, 0, 0);
             }
 
             double scaleUS = (double)scale;
@@ -2397,6 +2385,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
         // onMorphology()
         // Type: unary
         // -----------------------------------------
+
         bool onMorphology(const FilterIO& io, const WGRectD* subr,
             FilterMorphologyOp op, float rx, float ry) noexcept override
         {
@@ -2414,15 +2403,308 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             if (!out)
                 return false;
 
-            {
-                SVGB2DDriver bctx{};
-                bctx.attach(*out, 1);
-                bctx.renew();
-                bctx.blendMode(BL_COMP_OP_SRC_COPY);
+            double rxUS = (double)rx;
+            double ryUS = (double)ry;
 
-                bctx.image(*in, 0, 0);
-                bctx.detach();
+            switch (fRunState.primitiveUnits)
+            {
+            default:
+            case SpaceUnitsKind::SVG_SPACE_USER:
+                break;
+            case SpaceUnitsKind::SVG_SPACE_OBJECT:
+                rxUS *= fRunState.objectBBoxUS.w;
+                ryUS *= fRunState.objectBBoxUS.h;
+                break;
+            case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
+                break;
             }
+
+            int rpx = (int)std::floor(rxUS * fSpace.sx + 0.5);
+            int rpy = (int)std::floor(ryUS * fSpace.sy + 0.5);
+
+            if (rpx < 0) rpx = 0;
+            if (rpy < 0) rpy = 0;
+
+            WGRectI area = resolveSubregionPx(subr, *in);
+            if (area.w <= 0 || area.h <= 0)
+            {
+                out->clearAll();
+
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+
+                setLastKey(outKey);
+                return true;
+            }
+
+            const int W = (int)in->width();
+            const int H = (int)in->height();
+
+            auto tmp = createLikeSurfaceHandle(*in);
+            if (!tmp)
+                return false;
+
+            out->clearAll();
+            tmp->clearAll();
+
+            const int x0 = area.x;
+            const int x1 = area.x + area.w - 1;
+            const int y0 = area.y;
+            const int y1 = area.y + area.h - 1;
+
+            const int tmpY0 = (y0 - rpy < 0) ? 0 : (y0 - rpy);
+            const int tmpY1 = (y1 + rpy >= H) ? (H - 1) : (y1 + rpy);
+
+            MorphDequeScratch rowScratch;
+            MorphDequeScratch colScratch;
+
+            if (!rowScratch.ensureCapacity((x1 - x0 + 1) + (rpx * 2)))
+                return false;
+
+            if (!colScratch.ensureCapacity((y1 - y0 + 1) + (rpy * 2)))
+                return false;
+
+            if (op == FILTER_MORPHOLOGY_ERODE)
+            {
+                for (int y = tmpY0; y <= tmpY1; ++y)
+                {
+                    uint32_t* drow = (uint32_t*)tmp->rowPointer((size_t)y);
+                    const uint32_t* srow = (const uint32_t*)in->rowPointer((size_t)y);
+
+                    if (!erode_row(drow, srow, x0, x1, W, rpx, rowScratch))
+                        return false;
+                }
+
+                if (!erode_col(*out, *tmp, x0, x1, y0, y1, H, rpy, colScratch))
+                    return false;
+            }
+            else
+            {
+                for (int y = tmpY0; y <= tmpY1; ++y)
+                {
+                    uint32_t* drow = (uint32_t*)tmp->rowPointer((size_t)y);
+                    const uint32_t* srow = (const uint32_t*)in->rowPointer((size_t)y);
+
+                    if (!dilate_row(drow, srow, x0, x1, W, rpx, rowScratch))
+                        return false;
+                }
+
+                if (!dilate_col(*out, *tmp, x0, x1, y0, y1, H, rpy, colScratch))
+                    return false;
+            }
+
+            if (!putImage(outKey, std::move(out)))
+                return false;
+
+            setLastKey(outKey);
+
+            return true;
+        }
+
+        /*
+        bool onMorphology(const FilterIO& io, const WGRectD* subr,
+            FilterMorphologyOp op, float rx, float ry) noexcept override
+        {
+            InternedKey inKey = resolveUnaryInputKey(io);
+            InternedKey outKey = resolveOutKeyStrict(io);
+
+            Surface* in = getImage(inKey);
+            if (!in)
+                return false;
+
+            if (!outKey)
+                outKey = kFilter_Last();
+
+            auto out = createLikeSurfaceHandle(*in);
+            if (!out)
+                return false;
+
+            double rxUS = (double)rx;
+            double ryUS = (double)ry;
+
+            switch (fRunState.primitiveUnits)
+            {
+            default:
+            case SpaceUnitsKind::SVG_SPACE_USER:
+                break;
+            case SpaceUnitsKind::SVG_SPACE_OBJECT:
+                rxUS *= fRunState.objectBBoxUS.w;
+                ryUS *= fRunState.objectBBoxUS.h;
+                break;
+            case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
+                break;
+            }
+
+            int rpx = (int)std::floor(rxUS * fSpace.sx + 0.5);
+            int rpy = (int)std::floor(ryUS * fSpace.sy + 0.5);
+
+            if (rpx < 0) rpx = 0;
+            if (rpy < 0) rpy = 0;
+
+            WGRectI area = resolveSubregionPx(subr, *in);
+            if (area.w <= 0 || area.h <= 0)
+            {
+                out->clearAll();
+
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+
+                setLastKey(outKey);
+
+                return true;
+            }
+
+            const int W = (int)in->width();
+            const int H = (int)in->height();
+
+            auto tmp = createLikeSurfaceHandle(*in);
+            if (!tmp)
+                return false;
+
+            out->clearAll();
+            tmp->clearAll();
+
+            // We only need horizontal-pass values for x in the output area,
+            // but we need rows expanded by the vertical radius because the
+            // vertical pass samples neighboring rows from tmp.
+            const int tmpY0 = (area.y - rpy < 0) ? 0 : (area.y - rpy);
+            const int tmpY1 = (area.y + area.h - 1 + rpy >= H) ? (H - 1) : (area.y + area.h - 1 + rpy);
+
+            const int x0 = area.x;
+            const int x1 = area.x + area.w - 1;
+            const int y0 = area.y;
+            const int y1 = area.y + area.h - 1;
+
+            // --------------------------------------------------------
+            // Horizontal pass: in -> tmp
+            // Compute only the columns we will ultimately output,
+            // but for rows expanded by rpy.
+            // --------------------------------------------------------
+            for (int y = tmpY0; y <= tmpY1; ++y)
+            {
+                uint32_t* drow = (uint32_t*)tmp->rowPointer((size_t)y);
+                const uint32_t* srow = (const uint32_t*)in->rowPointer((size_t)y);
+
+                for (int x = x0; x <= x1; ++x)
+                {
+                    uint8_t bestA = (op == FILTER_MORPHOLOGY_ERODE) ? 255 : 0;
+                    uint8_t bestR = bestA;
+                    uint8_t bestG = bestA;
+                    uint8_t bestB = bestA;
+
+                    for (int kx = -rpx; kx <= rpx; ++kx)
+                    {
+                        int sx = x + kx;
+                        if (sx < 0) sx = 0;
+                        if (sx >= W) sx = W - 1;
+
+                        const uint32_t px = srow[sx];
+                        const uint8_t a = (uint8_t)((px >> 24) & 0xFF);
+                        const uint8_t r = (uint8_t)((px >> 16) & 0xFF);
+                        const uint8_t g = (uint8_t)((px >> 8) & 0xFF);
+                        const uint8_t b = (uint8_t)((px >> 0) & 0xFF);
+
+                        if (op == FILTER_MORPHOLOGY_ERODE)
+                        {
+                            if (a < bestA) bestA = a;
+                            if (r < bestR) bestR = r;
+                            if (g < bestG) bestG = g;
+                            if (b < bestB) bestB = b;
+                        }
+                        else
+                        {
+                            if (a > bestA) bestA = a;
+                            if (r > bestR) bestR = r;
+                            if (g > bestG) bestG = g;
+                            if (b > bestB) bestB = b;
+                        }
+                    }
+
+                    drow[x] = pack_argb32(bestA, bestR, bestG, bestB);
+                }
+            }
+
+            // --------------------------------------------------------
+            // Vertical pass: tmp -> out
+            // Only compute the actual output area.
+            // --------------------------------------------------------
+            for (int y = y0; y <= y1; ++y)
+            {
+                uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
+
+                for (int x = x0; x <= x1; ++x)
+                {
+                    uint8_t bestA = (op == FILTER_MORPHOLOGY_ERODE) ? 255 : 0;
+                    uint8_t bestR = bestA;
+                    uint8_t bestG = bestA;
+                    uint8_t bestB = bestA;
+
+                    for (int ky = -rpy; ky <= rpy; ++ky)
+                    {
+                        int sy = y + ky;
+                        if (sy < 0) sy = 0;
+                        if (sy >= H) sy = H - 1;
+
+                        const uint32_t* srow = (const uint32_t*)tmp->rowPointer((size_t)sy);
+                        const uint32_t px = srow[x];
+
+                        const uint8_t a = (uint8_t)((px >> 24) & 0xFF);
+                        const uint8_t r = (uint8_t)((px >> 16) & 0xFF);
+                        const uint8_t g = (uint8_t)((px >> 8) & 0xFF);
+                        const uint8_t b = (uint8_t)((px >> 0) & 0xFF);
+
+                        if (op == FILTER_MORPHOLOGY_ERODE)
+                        {
+                            if (a < bestA) bestA = a;
+                            if (r < bestR) bestR = r;
+                            if (g < bestG) bestG = g;
+                            if (b < bestB) bestB = b;
+                        }
+                        else
+                        {
+                            if (a > bestA) bestA = a;
+                            if (r > bestR) bestR = r;
+                            if (g > bestG) bestG = g;
+                            if (b > bestB) bestB = b;
+                        }
+                    }
+
+                    drow[x] = pack_argb32(bestA, bestR, bestG, bestB);
+                }
+            }
+
+            if (!putImage(outKey, std::move(out)))
+                return false;
+
+            setLastKey(outKey);
+
+            return true;
+        }
+        */
+
+        /*
+        bool onMorphology(const FilterIO& io, const WGRectD* subr,
+            FilterMorphologyOp op, float rx, float ry) noexcept override
+        {
+            InternedKey inKey = resolveUnaryInputKey(io);
+            InternedKey outKey = resolveOutKeyStrict(io);
+
+            Surface* in = getImage(inKey);
+            if (!in)
+                return false;
+
+            if (!outKey)
+                outKey = kFilter_Last();
+
+            auto out = createLikeSurfaceHandle(*in);
+            if (!out)
+                return false;
+
+            // Don't really need to do a copy first
+            // since we'll replace every pixel that's needed
+            //{
+            //    out->blit(*in, 0, 0);
+            //}
 
             double rxUS = (double)rx;
             double ryUS = (double)ry;
@@ -2519,6 +2801,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
 
             return true;
         }
+        */
 
         // -----------------------------------------
         // onOffset

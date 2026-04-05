@@ -137,10 +137,6 @@ namespace waavs {
     //============================================================
     // Whitespace normalization helpers using charset
     //============================================================
-    //static inline bool spanAllWsp(const ByteSpan& s) noexcept
-    //{
-    //    return isAll(s, chrWspChars);
-    //}
 
     // Trim left/right whitespace with your chunk_trim()
     static inline ByteSpan trimOuterWsp(const ByteSpan& s) noexcept
@@ -211,7 +207,7 @@ namespace waavs {
     {
         absolutePx = false;
 
-        ByteSpan t = trimOuterWsp(s);
+        ByteSpan t = chunk_trim(s, chrWspChars);
         if (!t) return 1.25;
 
         // percent
@@ -523,7 +519,7 @@ namespace waavs {
             // xml:space preserve?
             {
                 ByteSpan xs = getAttributeByName("xml:space");
-                xs = trimOuterWsp(xs);
+                xs = chunk_trim(xs, chrWspChars);
                 if (xs && xs == "preserve")
                     fPreserveSpace = true;
             }
@@ -612,7 +608,7 @@ namespace waavs {
             enum Align { ALIGN_START, ALIGN_MIDDLE, ALIGN_END };
             Align align = ALIGN_START;
             {
-                ByteSpan ta = trimOuterWsp(getAttributeByName("text-align"));
+                ByteSpan ta = chunk_trim(getAttributeByName("text-align"), chrWspChars);
                 if (ta) {
                     InternedKey tak = PSNameTable::INTERN(ta);
 

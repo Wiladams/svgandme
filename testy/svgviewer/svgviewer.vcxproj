@@ -262,6 +262,7 @@
     <ClInclude Include="..\..\svg\filter_fecolormatrix.h" />
     <ClInclude Include="..\..\svg\filter_fecomposite.h" />
     <ClInclude Include="..\..\svg\filter_fegaussian.h" />
+    <ClInclude Include="..\..\svg\filter_femorphology.h" />
     <ClInclude Include="..\..\svg\frames_blend2d_source.h" />
     <ClInclude Include="..\..\svg\bspan.h" />
     <ClInclude Include="..\..\svg\charset.h" />

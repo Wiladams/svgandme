@@ -344,5 +344,8 @@
     <ClInclude Include="..\..\svg\filter_fecolormatrix.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\svg\filter_femorphology.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
