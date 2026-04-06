@@ -157,6 +157,7 @@ namespace waavs
         }
     }
 
+    //----------------------------------------------------
     // Blend two non-premultiplied colors with source-over alpha composition.
     // backdrop = in1, source = in2
     static INLINE Color4f feBlendPixel(FilterBlendMode mode, const Color4f & backdropPRGB, const Color4f & sourcePRGB) noexcept
@@ -204,6 +205,7 @@ namespace waavs
         return out;
     }
 
+    //----------------------------------------------------
     static INLINE uint32_t feBlendPRGB32_normal_pixel(uint32_t backdrop, uint32_t source) noexcept
     {
         return composite_over_prgb32_pixel(backdrop, source);
@@ -227,7 +229,7 @@ namespace waavs
         return pack_float_to_prgb32(o);
     }
 
-    /*
+    ///*
     static INLINE void feBlendRowPRGB32(
         uint32_t* dst,
         const uint32_t* in1,
@@ -236,10 +238,11 @@ namespace waavs
         FilterBlendMode mode) noexcept
     {
         for (int i = 0; i < count; ++i)
-            dst[i] = feBlendPixelPRGB32(mode, in1[i], in2[i]);
+            dst[i] = feBlendPRGB32_pixel(mode, in1[i], in2[i]);
     }
-    */
+    //*/
 
+    /*
     static INLINE void feBlendRowPRGB32(
         uint32_t* dst,
         const uint32_t* in1,
@@ -247,6 +250,7 @@ namespace waavs
         int count,
         FilterBlendMode mode) noexcept
     {
+
 #if defined(__ARM_NEON) || defined(__ARM_NEON__)
         switch (mode)
         {
@@ -294,4 +298,5 @@ namespace waavs
         for (int i = 0; i < count; ++i)
             dst[i] = feBlendPRGB32_pixel(mode, in1[i], in2[i]);
     }
+            */
 }

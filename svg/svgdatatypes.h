@@ -46,7 +46,7 @@
 
 namespace waavs
 {
-    static INLINE WGRectD mapRectAABB(const BLMatrix2D& m, const WGRectD& r) noexcept
+    static INLINE WGRectD mapRectAABB(const WGMatrix3x3 & m, const WGRectD& r) noexcept
     {
         // Treat empty/degenerate as-is (or return empty).
         if (!(r.w > 0.0) || !(r.h > 0.0))
@@ -58,15 +58,15 @@ namespace waavs
         const double y1 = r.y + r.h;
 
         // Transform 4 corners.
-        BLPoint p0 = m.mapPoint(x0, y0);
-        BLPoint p1 = m.mapPoint(x1, y0);
-        BLPoint p2 = m.mapPoint(x1, y1);
-        BLPoint p3 = m.mapPoint(x0, y1);
+        WGPointD p0 = m.mapPoint(x0, y0);
+        WGPointD p1 = m.mapPoint(x1, y0);
+        WGPointD p2 = m.mapPoint(x1, y1);
+        WGPointD p3 = m.mapPoint(x0, y1);
 
         double minX = p0.x, maxX = p0.x;
         double minY = p0.y, maxY = p0.y;
 
-        auto expand = [&](const BLPoint& p) noexcept {
+        auto expand = [&](const WGPointD& p) noexcept {
             if (p.x < minX) minX = p.x;
             if (p.x > maxX) maxX = p.x;
             if (p.y < minY) minY = p.y;

@@ -10,7 +10,7 @@
 #include "filterprogrambuilder.h"
 #include "pixeleffects.h"
 
-#include "wggeometry.h"
+#include "filter_util.h"
 
 //
 // FilterProgramExecutor: a base class for executing filter programs.
@@ -20,42 +20,6 @@
 
 namespace waavs
 {
-
-
-    // For feComposite, arithmetic operator parameters k1..k4 
-    // often have special cases when they are zero.
-    enum ArithmeticCompositeKind : uint32_t
-    {
-        ARITH_ZERO = 0,
-        ARITH_K1_ONLY,
-        ARITH_K2_ONLY,
-        ARITH_K3_ONLY,
-        ARITH_K4_ONLY,
-        ARITH_K2_K3,
-        ARITH_K1_K2_K3,
-        ARITH_GENERAL
-    };
-
-    // Classify the arithmetic composite operator based on which of k1..k4 are zero.
-    // Then use that later to specialize the inner loop for common cases.
-    static INLINE ArithmeticCompositeKind classifyArithmetic(
-        float k1, float k2, float k3, float k4) noexcept
-    {
-        const bool z1 = k1 == 0.0f;
-        const bool z2 = k2 == 0.0f;
-        const bool z3 = k3 == 0.0f;
-        const bool z4 = k4 == 0.0f;
-
-        if (z1 && z2 && z3 && z4) return ARITH_ZERO;
-        if (!z1 && z2 && z3 && z4) return ARITH_K1_ONLY;
-        if (z1 && !z2 && z3 && z4) return ARITH_K2_ONLY;
-        if (z1 && z2 && !z3 && z4) return ARITH_K3_ONLY;
-        if (z1 && z2 && z3 && !z4) return ARITH_K4_ONLY;
-        if (z1 && !z2 && !z3 && z4) return ARITH_K2_K3;
-        if (!z1 && !z2 && !z3 && z4) return ARITH_K1_K2_K3;
-
-        return ARITH_GENERAL;
-    }
 
     // -----------------------------------------
     // Small decode helpers
@@ -289,7 +253,7 @@ namespace waavs
             F32Span table{};
         };
 
-        struct LightPayload { float L[8]{}; };
+
 
         // Program execution state (set by execute())
         const FilterProgramStream* fProg{ nullptr };

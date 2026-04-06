@@ -3,6 +3,7 @@
 
 
 #include "filterprogram.h"
+#include "filter_util.h"
 #include "nametable.h"
 #include "svgdatatypes.h"
 #include "surface.h"
@@ -117,72 +118,7 @@ namespace waavs::filter
 
 }
 
-namespace waavs
-{
 
-
-    enum FilterCompositeOp : uint32_t
-    {
-        FILTER_COMPOSITE_OVER = 0,
-        FILTER_COMPOSITE_IN,
-        FILTER_COMPOSITE_OUT,
-        FILTER_COMPOSITE_ATOP,
-        FILTER_COMPOSITE_XOR,
-        FILTER_COMPOSITE_ARITHMETIC
-    };
-
-
-    enum FilterColorMatrixType : uint32_t
-    {
-        FILTER_COLOR_MATRIX_MATRIX = 0,
-        FILTER_COLOR_MATRIX_SATURATE,
-        FILTER_COLOR_MATRIX_HUE_ROTATE,
-        FILTER_COLOR_MATRIX_LUMINANCE_TO_ALPHA
-    };
-
-    enum FilterTransferFuncType : uint32_t
-    {
-        FILTER_TRANSFER_IDENTITY = 0,
-        FILTER_TRANSFER_TABLE,
-        FILTER_TRANSFER_DISCRETE,
-        FILTER_TRANSFER_LINEAR,
-        FILTER_TRANSFER_GAMMA
-    };
-
-    enum FilterMorphologyOp : uint32_t
-    {
-        FILTER_MORPHOLOGY_ERODE = 0,
-        FILTER_MORPHOLOGY_DILATE
-    };
-
-    enum FilterEdgeMode : uint32_t
-    {
-        FILTER_EDGE_DUPLICATE = 0,
-        FILTER_EDGE_WRAP,
-        FILTER_EDGE_NONE
-    };
-
-    enum FilterChannelSelector : uint32_t
-    {
-        FILTER_CHANNEL_R = 0,
-        FILTER_CHANNEL_G,
-        FILTER_CHANNEL_B,
-        FILTER_CHANNEL_A
-    };
-
-    enum FilterTurbulenceType : uint32_t
-    {
-        FILTER_TURBULENCE_TURBULENCE = 0,
-        FILTER_TURBULENCE_FRACTAL_NOISE
-    };
-
-    enum FilterLightType : uint32_t
-    {
-        FILTER_LIGHT_DISTANT = 1,
-        FILTER_LIGHT_POINT = 2,
-        FILTER_LIGHT_SPOT = 3
-    };
-}
 
 
 

@@ -8,17 +8,21 @@
 #include "nametable.h"
 #include "svgb2ddriver.h"
 
+#include "filter_util.h"
 #include "filterprogramexec.h"   // FilterProgramExecutor + IAmFroot<T>
 #include "filter_noise.h"
 #include "svggraphicselement.h"
 #include "viewport.h"
-#include "pixeling.h"
+
+
 
 #include "filter_fecomposite.h"
 #include "filter_feblend.h"
 #include "filter_fegaussian.h"
 #include "filter_fecolormatrix.h"
 #include "filter_femorphology.h"
+#include "filter_fespecularlight.h"
+#include "filter_fediffuselight.h"
 
 namespace waavs
 {
@@ -237,10 +241,22 @@ namespace waavs {
     //============================================================
         // Provide space conversion to primitives (dx/dy, stdDeviation, etc.).
     struct FilterSpace {
+        // semantic filter region as authored/resolved 
+        // in user space.  Use this if you need the actual 
+        // authored region.
         WGRectD filterRectUS{};
-        WGRectD filterRectPX{}; // device bbox (float)
-        BLMatrix2D ctm{};
-        BLMatrix2D invCtm{};
+
+        // Pixel allocation region in device/surface pixels
+        // This is the actual pixel area that we have allocated 
+        // for the filter to render into.
+        WGRectI filterRectPX{}; // device bbox (float)
+
+        // Local filter-surface user extents only
+        // Origin should be normalized to 0,0
+        WGRectD filterExtentUS{};
+
+        WGMatrix3x3 ctm{};
+        WGMatrix3x3 invCtm{};
         double sx{ 1.0 }; // user->px scale estimate
         double sy{ 1.0 };
 
@@ -415,7 +431,7 @@ namespace waavs {
             const double dx = fSpace.filterRectPX.x + double(x) + 0.5;
             const double dy = fSpace.filterRectPX.y + double(y) + 0.5;
 
-            const BLMatrix2D& m = fSpace.invCtm;
+            const WGMatrix3x3& m = fSpace.invCtm;
             ux = float(dx * m.m00 + dy * m.m10 + m.m20);
             uy = float(dx * m.m01 + dy * m.m11 + m.m21);
         }
@@ -543,7 +559,7 @@ namespace waavs {
             // which we will need for mapping the filter region 
             // to pixel space, and for providing space conversion 
             // to primitives that need it.
-            const BLMatrix2D ctm = ctx->getTransform();
+            const WGMatrix3x3 ctm = wgMatrix_from_BLMatrix2D(ctx->getTransform());
 
             // Map the full authored filter region to device space.
             const WGRectD nominalFilterRectPX = mapRectAABB(ctm, filterRectUS);
@@ -576,7 +592,8 @@ namespace waavs {
 
             fSpace = {};
             fSpace.filterRectUS = filterRectUS;
-            fSpace.filterRectPX = WGRectD{ (double)tileX, (double)tileY, (double)tileW, (double)tileH };
+            fSpace.filterExtentUS = WGRectD{ 0.0, 0.0, filterRectUS.w, filterRectUS.h };
+            fSpace.filterRectPX = WGRectI{ tileX, tileY, tileW, tileH };
             fSpace.ctm = ctm;
             fSpace.invCtm = ctm;
             (void)fSpace.invCtm.invert();
@@ -609,7 +626,7 @@ namespace waavs {
                 return false;
 
             {
-                BLMatrix2D off = ctm;
+                WGMatrix3x3 off = ctm;
                 off.postTranslate(-double(tileX), -double(tileY));
 
                 SVGB2DDriver tmp{};
@@ -623,7 +640,7 @@ namespace waavs {
                 //tmp.clear();
 
                 // Establish correct device mapping
-                tmp.transform(off);
+                tmp.transform(blMatrix_from_WGMatrix3x3(off));
 
                 // Root object frame must match main rendering path
                 tmp.setObjectFrame(objectBBoxUS);
@@ -1471,14 +1488,14 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             if (!out)
                 return false;
 
-            {
-                SVGB2DDriver bctx{};
-                bctx.attach(*out, 1);
-                bctx.renew();
-                bctx.blendMode(BL_COMP_OP_SRC_COPY);
-                bctx.image(*in, 0, 0);
-                bctx.detach();
-            }
+            //{
+            //    SVGB2DDriver bctx{};
+            //    bctx.attach(*out, 1);
+            //    bctx.renew();
+            //    bctx.blendMode(BL_COMP_OP_SRC_COPY);
+            //    bctx.image(*in, 0, 0);
+            //    bctx.detach();
+            //}
 
             WGRectI area = resolveSubregionPx(subr, *in);
             if (area.w <= 0 || area.h <= 0) {
@@ -1559,6 +1576,132 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
         // onDiffuseLighting
         // Type: lighting
         // -------------------------------------------
+
+        bool onDiffuseLighting(const FilterIO& io, const WGRectD* subr,
+            uint32_t lightingRGBA, float surfaceScale, float diffuseConstant,
+            float kernelUnitLengthX, float kernelUnitLengthY,
+            uint32_t lightType, const LightPayload& light) noexcept override
+        {
+            InternedKey inKey = resolveUnaryInputKey(io);
+            InternedKey outKey = resolveOutKeyStrict(io);
+
+            Surface* in = getImage(inKey);
+            if (!in)
+                return false;
+
+            if (!outKey)
+                outKey = kFilter_Last();
+
+            auto out = createLikeSurfaceHandle(*in);
+            if (!out)
+                return false;
+
+            out->clearAll();
+
+            WGRectI area = resolveSubregionPx(subr, *in);
+            if (area.w <= 0 || area.h <= 0)
+            {
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+
+                setLastKey(outKey);
+                return true;
+            }
+
+            const float lcR = float((lightingRGBA >> 16) & 0xFF) * (1.0f / 255.0f);
+            const float lcG = float((lightingRGBA >> 8) & 0xFF) * (1.0f / 255.0f);
+            const float lcB = float((lightingRGBA >> 0) & 0xFF) * (1.0f / 255.0f);
+
+            PixelToFilterUserMap map;
+            map.surfaceW = int(in->width());
+            map.surfaceH = int(in->height());
+            map.filterExtentUS = fSpace.filterExtentUS;
+            map.uxPerPixel = (map.surfaceW > 0)
+                ? float(map.filterExtentUS.w / double(map.surfaceW))
+                : 1.0f;
+            map.uyPerPixel = (map.surfaceH > 0)
+                ? float(map.filterExtentUS.h / double(map.surfaceH))
+                : 1.0f;
+
+            float defaultDux = 1.0f;
+            float defaultDuy = 1.0f;
+            computeSpecularLocalPixelStep(map, area.x, area.y, defaultDux, defaultDuy);
+
+            const float dux = (kernelUnitLengthX > 0.0f) ? kernelUnitLengthX : defaultDux;
+            const float duy = (kernelUnitLengthY > 0.0f) ? kernelUnitLengthY : defaultDuy;
+
+            LightPayload localLight = light;
+
+            if (lightType == FILTER_LIGHT_POINT || lightType == FILTER_LIGHT_SPOT)
+            {
+                localLight.L[0] -= float(fSpace.filterRectUS.x);
+                localLight.L[1] -= float(fSpace.filterRectUS.y);
+            }
+
+            if (lightType == FILTER_LIGHT_SPOT)
+            {
+                localLight.L[3] -= float(fSpace.filterRectUS.x);
+                localLight.L[4] -= float(fSpace.filterRectUS.y);
+            }
+
+            for (int y = area.y; y < area.y + area.h; ++y)
+            {
+                uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
+
+                for (int x = area.x; x < area.x + area.w; ++x)
+                {
+                    const float h00 = pixelHeightFromAlpha(*in, x - 1, y - 1);
+                    const float h10 = pixelHeightFromAlpha(*in, x, y - 1);
+                    const float h20 = pixelHeightFromAlpha(*in, x + 1, y - 1);
+
+                    const float h01 = pixelHeightFromAlpha(*in, x - 1, y);
+                    const float h11 = pixelHeightFromAlpha(*in, x, y);
+                    const float h21 = pixelHeightFromAlpha(*in, x + 1, y);
+
+                    const float h02 = pixelHeightFromAlpha(*in, x - 1, y + 1);
+                    const float h12 = pixelHeightFromAlpha(*in, x, y + 1);
+                    const float h22 = pixelHeightFromAlpha(*in, x + 1, y + 1);
+
+                    float nx, ny, nz;
+                    computeDiffuseNormalFromHeights(
+                        h00, h10, h20,
+                        h01, h11, h21,
+                        h02, h12, h22,
+                        surfaceScale,
+                        dux, duy,
+                        nx, ny, nz);
+
+                    float ux, uy;
+                    pixelCenterToFilterUserStandalone(map, x, y, ux, uy);
+
+                    const float h = surfaceScale * h11;
+
+                    float lx, ly, lz;
+                    computeDiffuseLightVector(lightType, localLight, ux, uy, h, lx, ly, lz);
+
+                    float lightFactor = 1.0f;
+                    if (lightType == FILTER_LIGHT_SPOT)
+                        lightFactor = computeDiffuseSpotFactor(localLight, ux, uy, h);
+
+                    const float lit = computeDiffuseTerm(
+                        nx, ny, nz,
+                        lx, ly, lz,
+                        diffuseConstant,
+                        lightFactor);
+
+                    drow[x] = packDiffuseLightingPixel(lcR, lcG, lcB, lit);
+                }
+            }
+
+            if (!putImage(outKey, std::move(out)))
+                return false;
+
+            setLastKey(outKey);
+            return true;
+        }
+
+
+        /*
         bool onDiffuseLighting(const FilterIO& io, const WGRectD* subr,
             uint32_t lightingRGBA, float surfaceScale, float diffuseConstant,
             float kernelUnitLengthX, float kernelUnitLengthY,
@@ -1597,7 +1740,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             const float lcG = float((lightingRGBA >> 8) & 0xFF) / 255.0f;
             const float lcB = float((lightingRGBA >> 0) & 0xFF) / 255.0f;
 
-            const float kPi = 3.14159265358979323846f;
+            const float kPi = waavs::pif;
 
             auto safeNormalize3 = [](float& x, float& y, float& z) noexcept -> bool
                 {
@@ -1737,6 +1880,8 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             setLastKey(outKey);
             return true;
         }
+        */
+
 
         // ------------------------------------------
         // onDisplacementMap
@@ -2033,7 +2178,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                 break;
             }
 
-            const BLMatrix2D& m = fSpace.ctm;
+            const WGMatrix3x3 & m = fSpace.ctm;
             const double dxPx = dxUS * m.m00 + dyUS * m.m10;
             const double dyPx = dxUS * m.m01 + dyUS * m.m11;
 
@@ -2501,408 +2646,251 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             return true;
         }
 
-        /*
-        bool onMorphology(const FilterIO& io, const WGRectD* subr,
-            FilterMorphologyOp op, float rx, float ry) noexcept override
-        {
-            InternedKey inKey = resolveUnaryInputKey(io);
-            InternedKey outKey = resolveOutKeyStrict(io);
-
-            Surface* in = getImage(inKey);
-            if (!in)
-                return false;
-
-            if (!outKey)
-                outKey = kFilter_Last();
-
-            auto out = createLikeSurfaceHandle(*in);
-            if (!out)
-                return false;
-
-            double rxUS = (double)rx;
-            double ryUS = (double)ry;
-
-            switch (fRunState.primitiveUnits)
-            {
-            default:
-            case SpaceUnitsKind::SVG_SPACE_USER:
-                break;
-            case SpaceUnitsKind::SVG_SPACE_OBJECT:
-                rxUS *= fRunState.objectBBoxUS.w;
-                ryUS *= fRunState.objectBBoxUS.h;
-                break;
-            case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
-                break;
-            }
-
-            int rpx = (int)std::floor(rxUS * fSpace.sx + 0.5);
-            int rpy = (int)std::floor(ryUS * fSpace.sy + 0.5);
-
-            if (rpx < 0) rpx = 0;
-            if (rpy < 0) rpy = 0;
-
-            WGRectI area = resolveSubregionPx(subr, *in);
-            if (area.w <= 0 || area.h <= 0)
-            {
-                out->clearAll();
-
-                if (!putImage(outKey, std::move(out)))
-                    return false;
-
-                setLastKey(outKey);
-
-                return true;
-            }
-
-            const int W = (int)in->width();
-            const int H = (int)in->height();
-
-            auto tmp = createLikeSurfaceHandle(*in);
-            if (!tmp)
-                return false;
-
-            out->clearAll();
-            tmp->clearAll();
-
-            // We only need horizontal-pass values for x in the output area,
-            // but we need rows expanded by the vertical radius because the
-            // vertical pass samples neighboring rows from tmp.
-            const int tmpY0 = (area.y - rpy < 0) ? 0 : (area.y - rpy);
-            const int tmpY1 = (area.y + area.h - 1 + rpy >= H) ? (H - 1) : (area.y + area.h - 1 + rpy);
-
-            const int x0 = area.x;
-            const int x1 = area.x + area.w - 1;
-            const int y0 = area.y;
-            const int y1 = area.y + area.h - 1;
-
-            // --------------------------------------------------------
-            // Horizontal pass: in -> tmp
-            // Compute only the columns we will ultimately output,
-            // but for rows expanded by rpy.
-            // --------------------------------------------------------
-            for (int y = tmpY0; y <= tmpY1; ++y)
-            {
-                uint32_t* drow = (uint32_t*)tmp->rowPointer((size_t)y);
-                const uint32_t* srow = (const uint32_t*)in->rowPointer((size_t)y);
-
-                for (int x = x0; x <= x1; ++x)
-                {
-                    uint8_t bestA = (op == FILTER_MORPHOLOGY_ERODE) ? 255 : 0;
-                    uint8_t bestR = bestA;
-                    uint8_t bestG = bestA;
-                    uint8_t bestB = bestA;
-
-                    for (int kx = -rpx; kx <= rpx; ++kx)
-                    {
-                        int sx = x + kx;
-                        if (sx < 0) sx = 0;
-                        if (sx >= W) sx = W - 1;
-
-                        const uint32_t px = srow[sx];
-                        const uint8_t a = (uint8_t)((px >> 24) & 0xFF);
-                        const uint8_t r = (uint8_t)((px >> 16) & 0xFF);
-                        const uint8_t g = (uint8_t)((px >> 8) & 0xFF);
-                        const uint8_t b = (uint8_t)((px >> 0) & 0xFF);
-
-                        if (op == FILTER_MORPHOLOGY_ERODE)
-                        {
-                            if (a < bestA) bestA = a;
-                            if (r < bestR) bestR = r;
-                            if (g < bestG) bestG = g;
-                            if (b < bestB) bestB = b;
-                        }
-                        else
-                        {
-                            if (a > bestA) bestA = a;
-                            if (r > bestR) bestR = r;
-                            if (g > bestG) bestG = g;
-                            if (b > bestB) bestB = b;
-                        }
-                    }
-
-                    drow[x] = pack_argb32(bestA, bestR, bestG, bestB);
-                }
-            }
-
-            // --------------------------------------------------------
-            // Vertical pass: tmp -> out
-            // Only compute the actual output area.
-            // --------------------------------------------------------
-            for (int y = y0; y <= y1; ++y)
-            {
-                uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
-
-                for (int x = x0; x <= x1; ++x)
-                {
-                    uint8_t bestA = (op == FILTER_MORPHOLOGY_ERODE) ? 255 : 0;
-                    uint8_t bestR = bestA;
-                    uint8_t bestG = bestA;
-                    uint8_t bestB = bestA;
-
-                    for (int ky = -rpy; ky <= rpy; ++ky)
-                    {
-                        int sy = y + ky;
-                        if (sy < 0) sy = 0;
-                        if (sy >= H) sy = H - 1;
-
-                        const uint32_t* srow = (const uint32_t*)tmp->rowPointer((size_t)sy);
-                        const uint32_t px = srow[x];
-
-                        const uint8_t a = (uint8_t)((px >> 24) & 0xFF);
-                        const uint8_t r = (uint8_t)((px >> 16) & 0xFF);
-                        const uint8_t g = (uint8_t)((px >> 8) & 0xFF);
-                        const uint8_t b = (uint8_t)((px >> 0) & 0xFF);
-
-                        if (op == FILTER_MORPHOLOGY_ERODE)
-                        {
-                            if (a < bestA) bestA = a;
-                            if (r < bestR) bestR = r;
-                            if (g < bestG) bestG = g;
-                            if (b < bestB) bestB = b;
-                        }
-                        else
-                        {
-                            if (a > bestA) bestA = a;
-                            if (r > bestR) bestR = r;
-                            if (g > bestG) bestG = g;
-                            if (b > bestB) bestB = b;
-                        }
-                    }
-
-                    drow[x] = pack_argb32(bestA, bestR, bestG, bestB);
-                }
-            }
-
-            if (!putImage(outKey, std::move(out)))
-                return false;
-
-            setLastKey(outKey);
-
-            return true;
-        }
-        */
-
-        /*
-        bool onMorphology(const FilterIO& io, const WGRectD* subr,
-            FilterMorphologyOp op, float rx, float ry) noexcept override
-        {
-            InternedKey inKey = resolveUnaryInputKey(io);
-            InternedKey outKey = resolveOutKeyStrict(io);
-
-            Surface* in = getImage(inKey);
-            if (!in)
-                return false;
-
-            if (!outKey)
-                outKey = kFilter_Last();
-
-            auto out = createLikeSurfaceHandle(*in);
-            if (!out)
-                return false;
-
-            // Don't really need to do a copy first
-            // since we'll replace every pixel that's needed
-            //{
-            //    out->blit(*in, 0, 0);
-            //}
-
-            double rxUS = (double)rx;
-            double ryUS = (double)ry;
-
-            switch (fRunState.primitiveUnits)
-            {
-            default:
-            case SpaceUnitsKind::SVG_SPACE_USER:
-                break;
-            case SpaceUnitsKind::SVG_SPACE_OBJECT:
-                rxUS *= fRunState.objectBBoxUS.w;
-                ryUS *= fRunState.objectBBoxUS.h;
-                break;
-            case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
-                break;
-            }
-
-            int rpx = (int)std::floor(rxUS * fSpace.sx + 0.5);
-            int rpy = (int)std::floor(ryUS * fSpace.sy + 0.5);
-
-            if (rpx < 0) rpx = 0;
-            if (rpy < 0) rpy = 0;
-
-            WGRectI area = resolveSubregionPx(subr, *in);
-            if (area.w <= 0 || area.h <= 0) 
-            {
-                if (!putImage(outKey, std::move(out)))
-                    return false;
-
-                setLastKey(outKey);
-                
-                return true;
-            }
-
-            const int W = (int)in->width();
-            const int H = (int)in->height();
-
-            for (int y = area.y; y < area.y + area.h; ++y)
-            {
-                uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
-
-                for (int x = area.x; x < area.x + area.w; ++x)
-                {
-                    uint8_t bestA = (op == FILTER_MORPHOLOGY_ERODE) ? 255 : 0;
-                    uint8_t bestR = bestA;
-                    uint8_t bestG = bestA;
-                    uint8_t bestB = bestA;
-
-                    for (int ky = -rpy; ky <= rpy; ++ky)
-                    {
-                        int sy = y + ky;
-                        if (sy < 0) sy = 0;
-                        if (sy >= H) sy = H - 1;
-
-                        const uint32_t* srow = (const uint32_t*)in->rowPointer((size_t)sy);
-
-                        for (int kx = -rpx; kx <= rpx; ++kx)
-                        {
-                            int sx = x + kx;
-                            if (sx < 0) sx = 0;
-                            if (sx >= W) sx = W - 1;
-
-                            const uint32_t px = srow[sx];
-                            const uint8_t a = (uint8_t)((px >> 24) & 0xFF);
-                            const uint8_t r = (uint8_t)((px >> 16) & 0xFF);
-                            const uint8_t g = (uint8_t)((px >> 8) & 0xFF);
-                            const uint8_t b = (uint8_t)((px >> 0) & 0xFF);
-
-                            if (op == FILTER_MORPHOLOGY_ERODE)
-                            {
-                                if (a < bestA) bestA = a;
-                                if (r < bestR) bestR = r;
-                                if (g < bestG) bestG = g;
-                                if (b < bestB) bestB = b;
-                            }
-                            else
-                            {
-                                if (a > bestA) bestA = a;
-                                if (r > bestR) bestR = r;
-                                if (g > bestG) bestG = g;
-                                if (b > bestB) bestB = b;
-                            }
-                        }
-                    }
-
-                    drow[x] = pack_argb32(bestA, bestR, bestG, bestB);
-                }
-            }
-
-            if (!putImage(outKey, std::move(out)))
-                return false;
-
-            setLastKey(outKey);
-
-            return true;
-        }
-        */
 
         // -----------------------------------------
         // onOffset
         // unary
         // -----------------------------------------
+        ///*
+bool onOffset(const FilterIO& io, const WGRectD* subr, float dx, float dy) noexcept override
+{
+    InternedKey inKey = resolveUnaryInputKey(io);
+    InternedKey outKey = resolveOutKeyStrict(io);
 
-        bool onOffset(const FilterIO& io, const WGRectD* subr, float dx, float dy) noexcept override
-        {
-            InternedKey inKey = resolveUnaryInputKey(io);
-            InternedKey outKey = resolveOutKeyStrict(io);
+    Surface* in = getImage(inKey);
+    if (!in)
+        return false;
 
-            Surface* in = getImage(inKey);
-            if (!in)
-                return false;
+    if (!outKey)
+        outKey = kFilter_Last();
 
-            if (!outKey)
-                outKey = kFilter_Last();
+    auto out = createLikeSurfaceHandle(*in);
+    if (!out)
+        return false;
 
-            auto out = createLikeSurfaceHandle(*in);
-            if (!out)
-                return false;
+    out->clearAll();
 
-            // Start from a copy of the input so pixels outside the primitive subregion
-            // remain unchanged.
-            {
-                SVGB2DDriver bctx{};
-                bctx.attach(*out, 1);
-                bctx.renew();
-                bctx.blendMode(BL_COMP_OP_SRC_COPY);
-                bctx.image(*in, 0, 0);
-                bctx.detach();
-            }
+    WGRectI area = resolveSubregionPx(subr, *in);
+    if (area.w <= 0 || area.h <= 0)
+    {
+        if (!putImage(outKey, std::move(out)))
+            return false;
+        setLastKey(outKey);
+        return true;
+    }
 
-            WGRectI area = resolveSubregionPx(subr, *in);
-            if (area.w <= 0 || area.h <= 0)
-            {
-                if (!putImage(outKey, std::move(out)))
-                    return false;
-                setLastKey(outKey);
-                return true;
-            }
+    // Convert dx/dy from primitive units to user space.
+    double dxUS = (double)dx;
+    double dyUS = (double)dy;
 
-            // Convert dx/dy from primitive units to user space.
-            double dxUS = (double)dx;
-            double dyUS = (double)dy;
+    switch (fRunState.primitiveUnits)
+    {
+    default:
+    case SpaceUnitsKind::SVG_SPACE_USER:
+        break;
 
-            switch (fRunState.primitiveUnits)
-            {
-            default:
-            case SpaceUnitsKind::SVG_SPACE_USER:
-                break;
+    case SpaceUnitsKind::SVG_SPACE_OBJECT:
+        dxUS *= (double)fRunState.objectBBoxUS.w;
+        dyUS *= (double)fRunState.objectBBoxUS.h;
+        break;
 
-            case SpaceUnitsKind::SVG_SPACE_OBJECT:
-                dxUS *= (double)fRunState.objectBBoxUS.w;
-                dyUS *= (double)fRunState.objectBBoxUS.h;
-                break;
+    case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
+        break;
+    }
 
-            case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
-                break;
-            }
+    // Map the offset vector through the linear part of the CTM.
+    const WGMatrix3x3 & m = fSpace.ctm;
+    const int offX = (int)std::lround(dxUS * m.m00 + dyUS * m.m10);
+    const int offY = (int)std::lround(dxUS * m.m01 + dyUS * m.m11);
 
-            // Map the offset vector through the linear part of the CTM.
-            const BLMatrix2D& m = fSpace.ctm;
-            const double dxPx = dxUS * m.m00 + dyUS * m.m10;
-            const double dyPx = dxUS * m.m01 + dyUS * m.m11;
+    const int W = (int)in->width();
+    const int H = (int)in->height();
 
-            const int W = (int)in->width();
-            const int H = (int)in->height();
+    const int dstX0 = area.x;
+    const int dstX1 = area.x + area.w;
 
-            for (int y = area.y; y < area.y + area.h; ++y)
-            {
-                uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
+    // figure out a clip rectangle so we can use 
+    // get a subarea of the source image
+    // to copy from.
+    WGRectI srcArea = area;
+    srcArea.x += offX;
+    srcArea.y += offY;
+    //WGRectI dstArea = { 0,0,area.w, area.h };
+    WGRectI srcClip = intersection(srcArea, WGRectI(0, 0, W, H));
 
-                for (int x = area.x; x < area.x + area.w; ++x)
-                {
-                    const int sx = (int)std::lround((double)x - dxPx);
-                    const int sy = (int)std::lround((double)y - dyPx);
+    for (int y = area.y; y < area.y + area.h; ++y)
+    {
+        const int sy = y - offY;
+        if ((unsigned)sy >= (unsigned)H)
+            continue;
 
-                    if ((unsigned)sx < (unsigned)W && (unsigned)sy < (unsigned)H)
-                    {
-                        const uint32_t* srow = (const uint32_t*)in->rowPointer((size_t)sy);
-                        drow[x] = srow[sx];
-                    }
-                    else
-                    {
-                        drow[x] = 0u;
-                    }
-                }
-            }
+        // Destination span [dstX0, dstX1) maps to source span [dstX0-offX, dstX1-offX).
+        // Clip that mapping so source stays within [0, W).
+        const int copyDstX0 = std::max(dstX0, offX);
+        const int copyDstX1 = std::min(dstX1, W + offX);
 
-            if (!putImage(outKey, std::move(out)))
-                return false;
+        if (copyDstX1 <= copyDstX0)
+            continue;
 
-            setLastKey(outKey);
-            return true;
-        }
+        const int sx0 = copyDstX0 - offX;
+        const size_t count = (size_t)(copyDstX1 - copyDstX0);
+
+        uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
+        const uint32_t* srow = (const uint32_t*)in->rowPointer((size_t)sy);
+
+        std::memcpy(drow + copyDstX0, srow + sx0, count * sizeof(uint32_t));
+    }
+
+    if (!putImage(outKey, std::move(out)))
+        return false;
+
+    setLastKey(outKey);
+    return true;
+}
+        //*/
+
+
 
         // -----------------------------------------
         // onSpecularLighting
         // ------------------------------------------
 
+bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
+    uint32_t lightingRGBA, float surfaceScale,
+    float specularConstant, float specularExponent,
+    float kernelUnitLengthX, float kernelUnitLengthY,
+    uint32_t lightType, const LightPayload& light) noexcept override
+{
+    InternedKey inKey = resolveUnaryInputKey(io);
+    InternedKey outKey = resolveOutKeyStrict(io);
+
+    Surface* in = getImage(inKey);
+    if (!in)
+        return false;
+
+    if (!outKey)
+        outKey = kFilter_Last();
+
+    auto out = createLikeSurfaceHandle(*in);
+    if (!out)
+        return false;
+
+    out->clearAll();
+
+    WGRectI area = resolveSubregionPx(subr, *in);
+    if (area.w <= 0 || area.h <= 0)
+    {
+        if (!putImage(outKey, std::move(out)))
+            return false;
+
+        setLastKey(outKey);
+        return true;
+    }
+
+    const float lcR = float((lightingRGBA >> 16) & 0xFF) * (1.0f / 255.0f);
+    const float lcG = float((lightingRGBA >> 8) & 0xFF) * (1.0f / 255.0f);
+    const float lcB = float((lightingRGBA >> 0) & 0xFF) * (1.0f / 255.0f);
+
+    specularExponent = clamp(specularExponent, 1.0f, 128.0f);
+
+    PixelToFilterUserMap map;
+    map.surfaceW = int(in->width());
+    map.surfaceH = int(in->height());
+    map.filterExtentUS = fSpace.filterExtentUS;
+    map.uxPerPixel = (map.surfaceW > 0)
+        ? float(map.filterExtentUS.w / double(map.surfaceW))
+        : 1.0f;
+    map.uyPerPixel = (map.surfaceH > 0)
+        ? float(map.filterExtentUS.h / double(map.surfaceH))
+        : 1.0f;
+
+    float defaultDux = 1.0f;
+    float defaultDuy = 1.0f;
+    computeSpecularLocalPixelStep(map, area.x, area.y, defaultDux, defaultDuy);
+
+    const float dux = (kernelUnitLengthX > 0.0f) ? kernelUnitLengthX : defaultDux;
+    const float duy = (kernelUnitLengthY > 0.0f) ? kernelUnitLengthY : defaultDuy;
+
+    // Convert light into the same local filter-space used by pixelCenterToFilterUserStandalone().
+    LightPayload localLight = light;
+
+    if (lightType == FILTER_LIGHT_POINT || lightType == FILTER_LIGHT_SPOT)
+    {
+        localLight.L[0] -= float(fSpace.filterRectUS.x);
+        localLight.L[1] -= float(fSpace.filterRectUS.y);
+
+        // z stays as-is
+        // localLight.L[2] unchanged
+    }
+
+    if (lightType == FILTER_LIGHT_SPOT)
+    {
+        localLight.L[3] -= float(fSpace.filterRectUS.x);
+        localLight.L[4] -= float(fSpace.filterRectUS.y);
+
+        // pointsAtZ stays as-is
+        // localLight.L[5] unchanged
+    }
+
+    for (int y = area.y; y < area.y + area.h; ++y)
+    {
+        uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
+
+        for (int x = area.x; x < area.x + area.w; ++x)
+        {
+            const float h00 = pixelHeightFromAlpha(*in, x - 1, y - 1);
+            const float h10 = pixelHeightFromAlpha(*in, x, y - 1);
+            const float h20 = pixelHeightFromAlpha(*in, x + 1, y - 1);
+
+            const float h01 = pixelHeightFromAlpha(*in, x - 1, y);
+            const float h11 = pixelHeightFromAlpha(*in, x, y);
+            const float h21 = pixelHeightFromAlpha(*in, x + 1, y);
+
+            const float h02 = pixelHeightFromAlpha(*in, x - 1, y + 1);
+            const float h12 = pixelHeightFromAlpha(*in, x, y + 1);
+            const float h22 = pixelHeightFromAlpha(*in, x + 1, y + 1);
+
+            float nx, ny, nz;
+            computeSpecularNormalFromHeights(
+                h00, h10, h20,
+                h01, h11, h21,
+                h02, h12, h22,
+                surfaceScale,
+                dux, duy,
+                nx, ny, nz);
+
+            float ux, uy;
+            pixelCenterToFilterUserStandalone(map, x, y, ux, uy);
+
+            const float h = surfaceScale * h11;
+
+            float lx, ly, lz;
+            computeSpecularLightVector(lightType, localLight, ux, uy, h, lx, ly, lz);
+
+            float lightFactor = 1.0f;
+            if (lightType == FILTER_LIGHT_SPOT)
+                lightFactor = computeSpecularSpotFactor(localLight, ux, uy, h);
+
+            const float lit = computeSpecularTerm(
+                nx, ny, nz,
+                lx, ly, lz,
+                specularConstant,
+                specularExponent,
+                lightFactor);
+
+            drow[x] = packSpecularLightingPixel(lcR, lcG, lcB, lit);
+        }
+    }
+
+    if (!putImage(outKey, std::move(out)))
+        return false;
+
+    setLastKey(outKey);
+    return true;
+}
+
+
+/*
         bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
             uint32_t lightingRGBA, float surfaceScale,
             float specularConstant, float specularExponent,
@@ -3165,13 +3153,17 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             setLastKey(outKey);
             return true;
         }
-
+*/
 
 
 
         // -----------------------------------------
         // onTile
         // Type: unary
+        // 
+        // This essentially acts as a 'pattern' routine.
+        // If the subr is smaller than the source graphic
+        // then it will repeat
         // -----------------------------------------
 
         bool onTile(const FilterIO& io, const WGRectD* subr) noexcept override
@@ -3207,13 +3199,12 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             for (int y = 0; y < H; ++y)
             {
                 uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
+                const int sy = srcArea.y + ((y - srcArea.y) % srcArea.h + srcArea.h) % srcArea.h;
+                const uint32_t* srow = (const uint32_t*)in->rowPointer((size_t)sy);
 
                 for (int x = 0; x < W; ++x)
                 {
                     const int sx = srcArea.x + ((x - srcArea.x) % srcArea.w + srcArea.w) % srcArea.w;
-                    const int sy = srcArea.y + ((y - srcArea.y) % srcArea.h + srcArea.h) % srcArea.h;
-
-                    const uint32_t* srow = (const uint32_t*)in->rowPointer((size_t)sy);
                     drow[x] = srow[sx];
                 }
             }

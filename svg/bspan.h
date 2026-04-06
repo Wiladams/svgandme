@@ -12,6 +12,7 @@
 
 #include "bithacks.h"
 #include "charset.h"
+#include "scanning.h"
 
 // Forward declaration of some useful functions
 namespace waavs
@@ -281,7 +282,8 @@ namespace waavs
 
         void skipWhitespace() noexcept 
         {
-            *this = chunk_skip_wsp(*this);
+            const uint8_t* start = find_first_not_of4(fStart, fEnd, ' ', '\t', '\r', '\n');
+            fStart = start;
         }
 
         // Move the start of the span forward while the predicate
@@ -491,10 +493,6 @@ namespace waavs {
 
 // Functions that are implemented here
 
-
-
-
-
 namespace waavs
 {
     INLINE size_t copy_to_cstr(char* str, size_t len, const ByteSpan& a) noexcept
@@ -545,12 +543,10 @@ namespace waavs
         return ByteSpan::fromPointers( start, end );
     }
 
-#include <arm_neon.h>
-#include <cstdint>
-#include <cstddef>
 
 
 
+/*
     static inline const uint8_t* skip_space(const uint8_t* p, const uint8_t* end) noexcept
     {
 #if defined(__ARM_NEON) || defined(__ARM_NEON__)
@@ -607,9 +603,16 @@ namespace waavs
         return p;
     }
 
+    INLINE ByteSpan chunk_skip_xml_wsp_4(const ByteSpan& a) noexcept
+    {
+        const uint8_t* p = find_first_not_of4(a.fStart, a.fEnd, ' ', '\t', '\r', '\n');
+        return ByteSpan::fromPointers(p, a.fEnd);
+    }
+    */
+
     INLINE ByteSpan chunk_skip_wsp(const ByteSpan& a) noexcept
     {
-        const uint8_t* start = skip_space(a.fStart, a.fEnd);
+        const uint8_t* start = find_first_not_of4(a.fStart, a.fEnd, ' ', '\t', '\r', '\n');
         return ByteSpan::fromPointers(start, a.fEnd);
     }
 

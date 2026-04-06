@@ -73,7 +73,18 @@ namespace waavs {
     constexpr auto dbl_max = std::numeric_limits<double>::max();
     constexpr auto dbl_min = std::numeric_limits<double>::min();
     constexpr auto dbl_eps = std::numeric_limits<double>::epsilon();
+    constexpr double dbl_eps_scaled = 1e-12;
 
+    INLINE bool dbl_eq(double a, double b) noexcept {
+        const double diff = std::fabs(a - b);
+        const double scale = std::max({ 1.0, std::fabs(a), std::fabs(b) });
+        return diff <= dbl_eps_scaled * scale;
+    }
+
+    INLINE bool almost_zero(double x) noexcept {
+        const double scale = std::max(1.0, std::fabs(x));
+        return std::fabs(x) <= dbl_eps * 64.0 * scale;
+    }
 } 
 
 

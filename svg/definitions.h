@@ -76,6 +76,9 @@
 #define WAAVS_ASSERT(x) assert(x)
 #endif
 
+#ifndef WG_NODISCARD
+#define WG_NODISCARD [[nodiscard]]
+#endif
 
 
 // Useful assertions for type construction

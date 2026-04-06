@@ -1140,7 +1140,7 @@ namespace waavs {
         return false;
     }
 
-    struct LightPayload { float L[8]{}; };
+    //struct LightPayload { float L[8]{}; };
 
     static INLINE bool feDiffuseLighting(const PixelKernelCtx&,
         const Surface_ARGB32*,

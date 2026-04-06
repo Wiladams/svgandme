@@ -4,11 +4,35 @@
 
 #include "blend2d.h"
 
+#include "wggeometry.h"
 #include "surface.h"
 
 #include "pathprogramexec.h"
 
 
+namespace waavs
+{
+    // BLMatrix2D -> WGMatrix3x3
+    static INLINE WGMatrix3x3 wgMatrix_from_BLMatrix2D(const BLMatrix2D& m) noexcept
+    {
+        return {
+            m.m00, m.m01, 0.0,
+            m.m10, m.m11, 0.0,
+            m.m20, m.m21, 1.0
+        };
+    }
+
+    // WGMatrix3x3 -> BLMatrix2D
+    static INLINE BLMatrix2D blMatrix_from_WGMatrix3x3(const WGMatrix3x3& m) noexcept
+    {
+        // WGASSERT(m.isAffine2D(), "Matrix is not affine, cannot convert to BLMatrix2D");
+        return {
+            m.m00, m.m01,
+            m.m10, m.m11,
+            m.m20, m.m21
+        };
+    }
+}
 
 namespace waavs
 {
