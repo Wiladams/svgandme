@@ -117,15 +117,18 @@ namespace waavs
 
 
         // Coordinate system transformation
-        void onTransform(const BLMatrix2D& value) override
+        void onTransform(const WGMatrix3x3& value) override
         {
-            fDrawingContext->setTransform(value);
+            BLMatrix2D m = blMatrix_from_WGMatrix3x3(value);
+            fDrawingContext->setTransform(m);
             setTransform(fDrawingContext->userTransform());
         }
 
-        void onApplyTransform(const BLMatrix2D& value) override
+        void onApplyTransform(const WGMatrix3x3& value) override
         {
-            fDrawingContext->applyTransform(value);
+            BLMatrix2D m = blMatrix_from_WGMatrix3x3(value);
+
+            fDrawingContext->applyTransform(m);
             setTransform(fDrawingContext->userTransform());
         }
 

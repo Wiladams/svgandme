@@ -296,15 +296,15 @@ namespace waavs
         // transform() - will set the transformation absolutely
         // applyTransform() - will add whatever transform is supplied to 
         //   the existing transform
-        virtual void onTransform(const BLMatrix2D& value) {}
-        void transform(const BLMatrix2D& value)
+        virtual void onTransform(const WGMatrix3x3& value) {}
+        void transform(const WGMatrix3x3& value)
         {
             //setTransform(value);
             onTransform(value);
         }
 
-        virtual void onApplyTransform(const BLMatrix2D& value) {}
-        void applyTransform(const BLMatrix2D& value)
+        virtual void onApplyTransform(const WGMatrix3x3& value) {}
+        void applyTransform(const WGMatrix3x3& value)
         {
             onApplyTransform(value);
         }

@@ -32,18 +32,18 @@ namespace waavs {
         return L.fValue;
     }
 
-    static INLINE BLMatrix2D makeBBoxToUserTransform(const WGRectD& b) noexcept
+    static INLINE WGMatrix3x3 makeBBoxToUserTransform(const WGRectD& b) noexcept
     {
-        BLMatrix2D m = BLMatrix2D::makeIdentity();
+        WGMatrix3x3 m = WGMatrix3x3::makeIdentity();
         m.translate(b.x, b.y);
         m.scale(b.w, b.h);
 
         return m;
     }
 
-    static INLINE BLMatrix2D composeGradientTransformBBox(const WGRectD& b, bool hasGT, const BLMatrix2D& GT) noexcept
+    static INLINE WGMatrix3x3 composeGradientTransformBBox(const WGRectD& b, bool hasGT, const WGMatrix3x3& GT) noexcept
     {
-        BLMatrix2D m = makeBBoxToUserTransform(b);
+        WGMatrix3x3 m = makeBBoxToUserTransform(b);
         if (hasGT)
             m.transform(GT);   // m = m * GT  (Blend2D’s transform() post-multiplies)
         return m;
@@ -157,7 +157,7 @@ namespace waavs {
     {
         static constexpr uint32_t kMaxGradientHrefDepth = 32;
 
-        BLMatrix2D fGradientTransform{};
+        WGMatrix3x3 fGradientTransform{};
         bool fHasGradientTransform = false;
 
         BLGradient fGradient{};
@@ -419,7 +419,7 @@ namespace waavs {
 
             // Start setting up the gradient
             BLLinearGradientValues values{ 0,0,1,0 };
-            BLMatrix2D xform = BLMatrix2D::makeIdentity();
+            WGMatrix3x3 xform = WGMatrix3x3::makeIdentity();
 
             // Parse attributes if present
             // defaults per SVG:
@@ -469,7 +469,7 @@ namespace waavs {
             }
 
             grad.setValues(values);
-            grad.setTransform(xform);
+            grad.setTransform(blMatrix_from_WGMatrix3x3(xform));
             grad.resetStops();
             grad.assignStops(fGradient.stopsView());
 
@@ -515,7 +515,7 @@ namespace waavs {
 
             // Start setting up the gradient
             BLLinearGradientValues values{ 0,0,1,0 };
-            BLMatrix2D xform = BLMatrix2D::makeIdentity();
+            WGMatrix3x3 xform = WGMatrix3x3::makeIdentity();
 
             // Parse attributes if present
             // defaults per SVG:
@@ -566,7 +566,7 @@ namespace waavs {
             }
 
             fGradient.setValues(values);
-            fGradient.setTransform(xform);
+            fGradient.setTransform(blMatrix_from_WGMatrix3x3(xform));
             fGradientVar = fGradient;
         }
 
@@ -772,7 +772,7 @@ namespace waavs {
             fGradient.setValues(values);
             
             if (fHasGradientTransform) {
-                fGradient.setTransform(fGradientTransform);
+                fGradient.setTransform(blMatrix_from_WGMatrix3x3(fGradientTransform));
             }
             
             fGradientVar = fGradient;
@@ -885,7 +885,7 @@ namespace waavs {
 
             fGradient.setValues(values);
             if (fHasGradientTransform) {
-                fGradient.setTransform(fGradientTransform);
+                fGradient.setTransform(blMatrix_from_WGMatrix3x3(fGradientTransform));
             }
             
             fGradientVar = fGradient;

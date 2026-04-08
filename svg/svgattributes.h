@@ -1219,7 +1219,7 @@ namespace waavs {
                 {auto node = std::make_shared<SVGTransform>(); node->loadFromAttributes(attrs);  return node; });
         }
 
-        BLMatrix2D fMatrix{ BLMatrix2D::makeIdentity() };
+        WGMatrix3x3 fMatrix = WGMatrix3x3::makeIdentity() ;
 
         SVGTransform() : SVGVisualProperty(nullptr)
         {
@@ -1245,8 +1245,8 @@ namespace waavs {
 
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            if ((fMatrix.type() != BLTransformType::BL_TRANSFORM_TYPE_INVALID) &&
-                (fMatrix.type() != BLTransformType::BL_TRANSFORM_TYPE_IDENTITY))
+            //if ((fMatrix.type() != BLTransformType::BL_TRANSFORM_TYPE_INVALID) &&
+            //    (fMatrix.type() != BLTransformType::BL_TRANSFORM_TYPE_IDENTITY))
                 ctx->applyTransform(fMatrix);
         }
     };

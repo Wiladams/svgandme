@@ -104,7 +104,7 @@ static void drawDocument()
     // First apply the transform as tracked by the navigator
     if (gPerformTransform)
     {
-        const BLMatrix2D & m = gNavigator.sceneToSurfaceTransform();
+        const WGMatrix3x3 & m = gNavigator.sceneToSurfaceTransform();
         getDrawingContext()->transform(m);
     }
 

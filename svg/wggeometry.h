@@ -422,16 +422,18 @@ namespace waavs {
         }
 
         WG_NODISCARD
-            static INLINE WGMatrix3x3 makeRotation(double angle) noexcept {
-            const double s = std::sin(angle);
-            const double c = std::cos(angle);
-            return makeSinCos(s, c);
+            static INLINE WGMatrix3x3 makeRotation(double angle) noexcept
+        {
+            WGMatrix3x3 m;
+            m.resetToRotation(angle);
+            return m;
         }
 
         WG_NODISCARD
-            static INLINE WGMatrix3x3 makeRotation(double angle, double x, double y) noexcept {
-            WGMatrix3x3 m = makeIdentity();
-            m.rotate(angle, x, y);
+            static INLINE WGMatrix3x3 makeRotation(double angle, double x, double y) noexcept
+        {
+            WGMatrix3x3 m;
+            m.resetToRotation(angle, x, y);
             return m;
         }
 
@@ -621,14 +623,18 @@ namespace waavs {
             transform(makeSkewing(x, y));
         }
 
-        INLINE void rotate(double angle) noexcept {
-            const double s = std::sin(angle);
-            const double c = std::cos(angle);
-            transform(makeSinCos(s, c));
+        INLINE void rotate(double angle) noexcept
+        {
+            WGMatrix3x3 r;
+            r.resetToRotation(angle);
+            transform(r);
         }
 
-        INLINE void rotate(double angle, double x, double y) noexcept {
-            transform(makeRotation(angle, x, y));
+        INLINE void rotate(double angle, double x, double y) noexcept
+        {
+            WGMatrix3x3 r;
+            r.resetToRotation(angle, x, y);
+            transform(r);
         }
 
         INLINE void postTranslate(double x, double y) noexcept {
@@ -650,14 +656,18 @@ namespace waavs {
             postTransform(makeSkewing(x, y));
         }
 
-        INLINE void postRotate(double angle) noexcept {
-            const double s = std::sin(angle);
-            const double c = std::cos(angle);
-            postTransform(makeSinCos(s, c));
+        INLINE void postRotate(double angle) noexcept
+        {
+            WGMatrix3x3 r;
+            r.resetToRotation(angle);
+            postTransform(r);
         }
 
-        INLINE void postRotate(double angle, double x, double y) noexcept {
-            postTransform(makeRotation(angle, x, y));
+        INLINE void postRotate(double angle, double x, double y) noexcept
+        {
+            WGMatrix3x3 r;
+            r.resetToRotation(angle, x, y);
+            postTransform(r);
         }
 
         // ------------------------------------------------------------------------

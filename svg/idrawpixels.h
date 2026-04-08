@@ -75,7 +75,8 @@ namespace waavs
         subarea.width = area.w;
         subarea.height = area.h;
         subarea.stride = src.stride;
-        subarea.contiguous = false; // Subareas are not contiguous by definition.
+        subarea.contiguous = false; // Subareas might not contiguous if they don't.
+                                    //. cover the whole area
 
         return WG_SUCCESS;
     }

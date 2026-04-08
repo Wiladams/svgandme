@@ -44,7 +44,7 @@ namespace waavs {
             fNavigator.setBounds(bounds);
             //fNavigator.setBounds(WGRectD(0, 0, aframe.w, aframe.h));
 
-            const BLMatrix2D & tform = fNavigator.sceneToSurfaceTransform();
+            const WGMatrix3x3 tform = fNavigator.sceneToSurfaceTransform();
             setSceneToSurfaceTransform(tform);
         }
         

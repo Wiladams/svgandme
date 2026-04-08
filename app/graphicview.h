@@ -25,8 +25,8 @@ namespace waavs {
     struct GraphicView
     {
     private:
-        BLMatrix2D fSceneToSurfaceTransform{};
-        BLMatrix2D fSurfaceToSceneTransform{};
+        WGMatrix3x3 fSceneToSurfaceTransform{};
+        WGMatrix3x3 fSurfaceToSceneTransform{};
 
         PortalView fPortalView{};
 
@@ -46,8 +46,8 @@ namespace waavs {
         }
 
         // Transformation used to map from scene to our backing buffer surface
-        const BLMatrix2D& sceneToSurfaceTransform() const { return fSceneToSurfaceTransform; }
-        void setSceneToSurfaceTransform(const BLMatrix2D& tform) { fSceneToSurfaceTransform = tform; }
+        const WGMatrix3x3& sceneToSurfaceTransform() const { return fSceneToSurfaceTransform; }
+        void setSceneToSurfaceTransform(const WGMatrix3x3& tform) { fSceneToSurfaceTransform = tform; }
 
 
         const WGRectD frame() const 

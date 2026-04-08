@@ -9,7 +9,7 @@
 #include "svgb2ddriver.h"
 
 #include "filter_util.h"
-#include "filterprogramexec.h"   // FilterProgramExecutor + IAmFroot<T>
+#include "filterprogramexec.h"   
 #include "filter_noise.h"
 #include "svggraphicselement.h"
 #include "viewport.h"
@@ -131,9 +131,9 @@ namespace waavs
             return par;
         }
 
-        static INLINE BLMatrix2D makeUserToSurfaceMatrix(const FilterRunState& runState) noexcept
+        static INLINE WGMatrix3x3 makeUserToSurfaceMatrix(const FilterRunState& runState) noexcept
         {
-            BLMatrix2D m = BLMatrix2D::makeIdentity();
+            WGMatrix3x3 m = WGMatrix3x3::makeIdentity();
             m.translate(-runState.filterRectUS.x, -runState.filterRectUS.y);
             return m;
         }
@@ -194,12 +194,12 @@ namespace waavs
             out->clearAll();
 
             //PreserveAspectRatio par = makePAR(align, meetOrSlice);
+            WGMatrix3x3 fit = WGMatrix3x3::makeIdentity();
 
-            BLMatrix2D fit = BLMatrix2D::makeIdentity();
             //if (!computeViewBoxToViewport(dstRect, srcViewBox, par, fit))
             //    return {};
 
-            BLMatrix2D userToSurface = makeUserToSurfaceMatrix(runState);
+            WGMatrix3x3 userToSurface = makeUserToSurfaceMatrix(runState);
 
             SVGB2DDriver ctx{};
             ctx.attach(*out, 1);
@@ -314,6 +314,17 @@ namespace waavs {
             return it->second.get();
         }
 
+        Surface* getInputImage(InternedKey inKey) noexcept
+        {
+            Surface* in = getImage(inKey);
+            if (!in)
+            {
+                inKey = lastKey();
+                in = getImage(lastKey());
+            }
+            return in;
+        }
+
         bool putImage(InternedKey key, SurfaceHandle&& img) noexcept override
         {
             fImages[key] = std::move(img);
@@ -362,6 +373,7 @@ namespace waavs {
         // --------------------------------------------------------
         // Helpers
         // --------------------------------------------------------
+
         WGRectI resolveSubregionPx(
             const WGRectD* subr,
             const Surface& like,
@@ -425,16 +437,6 @@ namespace waavs {
         }
 
 
-
-        INLINE void pixelCenterToFilterUser(int x, int y, float& ux, float& uy) const noexcept
-        {
-            const double dx = fSpace.filterRectPX.x + double(x) + 0.5;
-            const double dy = fSpace.filterRectPX.y + double(y) + 0.5;
-
-            const WGMatrix3x3& m = fSpace.invCtm;
-            ux = float(dx * m.m00 + dy * m.m10 + m.m20);
-            uy = float(dx * m.m01 + dy * m.m11 + m.m21);
-        }
 
         // --------------------------------------
         // SourceAlpha implementation
@@ -640,7 +642,7 @@ namespace waavs {
                 //tmp.clear();
 
                 // Establish correct device mapping
-                tmp.transform(blMatrix_from_WGMatrix3x3(off));
+                tmp.transform(off);
 
                 // Root object frame must match main rendering path
                 tmp.setObjectFrame(objectBBoxUS);
@@ -701,7 +703,7 @@ namespace waavs {
             ctx->push();
             
             // Reset transform so tile is drawn in device space
-            ctx->transform(BLMatrix2D::makeIdentity());
+            ctx->transform(WGMatrix3x3::makeIdentity());
 
             ctx->image(*outImg, double(tileX), double(tileY));
             ctx->flush();
@@ -734,8 +736,8 @@ namespace waavs {
             InternedKey outKey = resolveOutKeyStrict(io);
 
 
-            Surface* in1 = getImage(in1Key);
-            Surface* in2 = getImage(in2Key);
+            Surface* in1 = getInputImage(in1Key);
+            Surface* in2 = getInputImage(in2Key);
             if (!in1 || !in2)
                 return false;
 
@@ -971,7 +973,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
     InternedKey inKey = resolveUnaryInputKey(io);
     InternedKey outKey = resolveOutKeyStrict(io);
 
-    Surface* in = getImage(inKey);
+    Surface* in = getInputImage(inKey);
     if (!in)
         return false;
 
@@ -1199,7 +1201,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
-            Surface* in = getImage(inKey);
+            Surface* in = getInputImage(inKey);
             if (!in)
                 return false;
 
@@ -1210,7 +1212,11 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             if (!out)
                 return false;
 
-            // copy input first, then rewrite only the primitive area.
+            // In the case of component transfer, the entirety
+            // of the input should be transferred to the output
+            // and only pixels within the subarea should be modified
+            // this is different than other primitives, where 
+            // clearAll() is the preferred behavior.
             out->blit(*in, 0, 0);
 
 
@@ -1293,18 +1299,28 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             FilterCompositeOp op,
             float k1, float k2, float k3, float k4) noexcept override
         {
-
+            // There are two fallback modes for inputs
+            // 1) no input is specified: in this case, 
+            // the input defaults to the current last output 
+            // (or SourceGraphic if last is not set).
+            // 2) The input is specified, but not found 
+            // in the registry: in this case, the input will default
+            // to the last output, or SourceGraphic
             InternedKey in1Key = resolveBinaryInput1Key(io);
-            InternedKey in2Key = resolveBinaryInput2Key(io);
-            InternedKey outKey = resolveOutKeyStrict(io);
+            Surface* in1 = getInputImage(in1Key);
 
-            Surface* in1 = getImage(in1Key);
-            Surface* in2 = getImage(in2Key);
+
+            InternedKey in2Key = resolveBinaryInput2Key(io);
+            Surface* in2 = getInputImage(in2Key);
+
+            InternedKey outKey = resolveOutKeyStrict(io);
+            if (!outKey)
+                outKey = kFilter_Last();
+
             if (!in1 || !in2)
                 return false;
 
-            if (!outKey)
-                outKey = kFilter_Last();
+
 
             auto out = createLikeSurfaceHandle(*in1);
             if (!out)
@@ -1472,7 +1488,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
-            Surface* in = getImage(inKey);
+            Surface* in = getInputImage(inKey);
             if (!in)
                 return false;
 
@@ -1487,15 +1503,6 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             auto out = createLikeSurfaceHandle(*in);
             if (!out)
                 return false;
-
-            //{
-            //    SVGB2DDriver bctx{};
-            //    bctx.attach(*out, 1);
-            //    bctx.renew();
-            //    bctx.blendMode(BL_COMP_OP_SRC_COPY);
-            //    bctx.image(*in, 0, 0);
-            //    bctx.detach();
-            //}
 
             WGRectI area = resolveSubregionPx(subr, *in);
             if (area.w <= 0 || area.h <= 0) {
@@ -1585,7 +1592,10 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
-            Surface* in = getImage(inKey);
+            // DEBUG - check input and output
+            printf("feDiffuseLighting inKey=%s outKey=%s\n", inKey, outKey);
+
+            Surface* in = getInputImage(inKey);
             if (!in)
                 return false;
 
@@ -1615,8 +1625,12 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             PixelToFilterUserMap map;
             map.surfaceW = int(in->width());
             map.surfaceH = int(in->height());
-            map.filterExtentUS = fSpace.filterExtentUS;
+            
+            //map.filterExtentUS = fSpace.filterExtentUS;
+            map.filterExtentUS = fSpace.filterRectUS;
+
             map.uxPerPixel = (map.surfaceW > 0)
+
                 ? float(map.filterExtentUS.w / double(map.surfaceW))
                 : 1.0f;
             map.uyPerPixel = (map.surfaceH > 0)
@@ -1644,53 +1658,48 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                 localLight.L[4] -= float(fSpace.filterRectUS.y);
             }
 
-            for (int y = area.y; y < area.y + area.h; ++y)
+            const int W = int(in->width());
+            const int H = int(in->height());
+
+            const int yBeg = area.y;
+            const int yEnd = area.y + area.h;
+            const int xBeg = area.x;
+            const int xCount = area.w;
+
+            for (int y = yBeg; y < yEnd; ++y)
             {
+                const int y0 = clampIndex(y - 1, 0, H - 1);
+                const int y1 = clampIndex(y, 0, H - 1);
+                const int y2 = clampIndex(y + 1, 0, H - 1);
+
+                const uint32_t* row0 = (const uint32_t*)in->rowPointer((size_t)y0);
+                const uint32_t* row1 = (const uint32_t*)in->rowPointer((size_t)y1);
+                const uint32_t* row2 = (const uint32_t*)in->rowPointer((size_t)y2);
                 uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
 
-                for (int x = area.x; x < area.x + area.w; ++x)
-                {
-                    const float h00 = pixelHeightFromAlpha(*in, x - 1, y - 1);
-                    const float h10 = pixelHeightFromAlpha(*in, x, y - 1);
-                    const float h20 = pixelHeightFromAlpha(*in, x + 1, y - 1);
+                DiffuseLightingRowParams p{};
+                p.surfaceScale = surfaceScale;
+                p.diffuseConstant = diffuseConstant;
+                p.lcR = lcR;
+                p.lcG = lcG;
+                p.lcB = lcB;
+                p.dux = dux;
+                p.duy = duy;
+                p.uxPerPixel = map.uxPerPixel;
+                p.uyPerPixel = map.uyPerPixel;
+                p.rowUy = (float(y) + 0.5f) * map.uyPerPixel;
+                p.lightType = lightType;
+                p.localLight = localLight;
 
-                    const float h01 = pixelHeightFromAlpha(*in, x - 1, y);
-                    const float h11 = pixelHeightFromAlpha(*in, x, y);
-                    const float h21 = pixelHeightFromAlpha(*in, x + 1, y);
-
-                    const float h02 = pixelHeightFromAlpha(*in, x - 1, y + 1);
-                    const float h12 = pixelHeightFromAlpha(*in, x, y + 1);
-                    const float h22 = pixelHeightFromAlpha(*in, x + 1, y + 1);
-
-                    float nx, ny, nz;
-                    computeDiffuseNormalFromHeights(
-                        h00, h10, h20,
-                        h01, h11, h21,
-                        h02, h12, h22,
-                        surfaceScale,
-                        dux, duy,
-                        nx, ny, nz);
-
-                    float ux, uy;
-                    pixelCenterToFilterUserStandalone(map, x, y, ux, uy);
-
-                    const float h = surfaceScale * h11;
-
-                    float lx, ly, lz;
-                    computeDiffuseLightVector(lightType, localLight, ux, uy, h, lx, ly, lz);
-
-                    float lightFactor = 1.0f;
-                    if (lightType == FILTER_LIGHT_SPOT)
-                        lightFactor = computeDiffuseSpotFactor(localLight, ux, uy, h);
-
-                    const float lit = computeDiffuseTerm(
-                        nx, ny, nz,
-                        lx, ly, lz,
-                        diffuseConstant,
-                        lightFactor);
-
-                    drow[x] = packDiffuseLightingPixel(lcR, lcG, lcB, lit);
-                }
+                diffuseLighting_row(
+                    drow,
+                    row0,
+                    row1,
+                    row2,
+                    xBeg,
+                    xCount,
+                    W,
+                    p);
             }
 
             if (!putImage(outKey, std::move(out)))
@@ -1699,194 +1708,109 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             setLastKey(outKey);
             return true;
         }
-
-
-        /*
-        bool onDiffuseLighting(const FilterIO& io, const WGRectD* subr,
-            uint32_t lightingRGBA, float surfaceScale, float diffuseConstant,
-            float kernelUnitLengthX, float kernelUnitLengthY,
-            uint32_t lightType, const LightPayload& light) noexcept override
-        {
-            (void)kernelUnitLengthX;
-            (void)kernelUnitLengthY;
-
-            InternedKey inKey = resolveUnaryInputKey(io);
-            InternedKey outKey = resolveOutKeyStrict(io);
-
-            Surface* in = getImage(inKey);
-            if (!in)
-                return false;
-
-            if (!outKey)
-                outKey = kFilter_Last();
-
-            auto out = createLikeSurfaceHandle(*in);
-            if (!out)
-                return false;
-
-            out->clearAll();
-
-            WGRectI area = resolveSubregionPx(subr, *in);
-            if (area.w <= 0 || area.h <= 0)
-            {
-                if (!putImage(outKey, std::move(out)))
-                    return false;
-
-                setLastKey(outKey);
-                return true;
-            }
-
-            const float lcR = float((lightingRGBA >> 16) & 0xFF) / 255.0f;
-            const float lcG = float((lightingRGBA >> 8) & 0xFF) / 255.0f;
-            const float lcB = float((lightingRGBA >> 0) & 0xFF) / 255.0f;
-
-            const float kPi = waavs::pif;
-
-            auto safeNormalize3 = [](float& x, float& y, float& z) noexcept -> bool
-                {
-                    const float len2 = x * x + y * y + z * z;
-                    if (len2 <= 1e-20f)
-                    {
-                        x = 0.0f;
-                        y = 0.0f;
-                        z = 1.0f;
-                        return false;
-                    }
-
-                    const float invLen = 1.0f / std::sqrt(len2);
-                    x *= invLen;
-                    y *= invLen;
-                    z *= invLen;
-                    return true;
-                };
-
-            auto clamp01f = [](float v) noexcept -> float
-                {
-                    if (v < 0.0f)
-                        return 0.0f;
-                    if (v > 1.0f)
-                        return 1.0f;
-                    return v;
-                };
-
-            for (int y = area.y; y < area.y + area.h; ++y)
-            {
-                uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
-
-                for (int x = area.x; x < area.x + area.w; ++x)
-                {
-                    float nx, ny, nz;
-                    const float dux = (in->width() > 0) ? float(fSpace.filterRectUS.w / double(in->width())) : 1.0f;
-                    const float duy = (in->height() > 0) ? float(fSpace.filterRectUS.h / double(in->height())) : 1.0f;
-
-                    computeHeightNormal(*in, x, y, surfaceScale, dux, duy, nx, ny, nz);
-                    safeNormalize3(nx, ny, nz);
-
-                    float ux, uy;
-                    pixelCenterToFilterUser(x, y, ux, uy);
-
-                    const float h = surfaceScale * pixelHeightFromAlpha(*in, x, y);
-
-                    // L is always surface point -> light for the diffuse term.
-                    float lx = 0.0f;
-                    float ly = 0.0f;
-                    float lz = 1.0f;
-
-                    if (lightType == FILTER_LIGHT_DISTANT)
-                    {
-                        const float az = light.L[0] * (kPi / 180.0f);
-                        const float el = light.L[1] * (kPi / 180.0f);
-
-                        lx = std::cos(el) * std::cos(az);
-                        ly = std::cos(el) * std::sin(az);
-                        lz = std::sin(el);
-                        safeNormalize3(lx, ly, lz);
-                    }
-                    else if (lightType == FILTER_LIGHT_POINT || lightType == FILTER_LIGHT_SPOT)
-                    {
-                        lx = light.L[0] - ux;
-                        ly = light.L[1] - uy;
-                        lz = light.L[2] - h;
-                        safeNormalize3(lx, ly, lz);
-                    }
-
-                    float ndotl = nx * lx + ny * ly + nz * lz;
-                    if (ndotl < 0.0f)
-                        ndotl = 0.0f;
-
-                    float lightFactor = 1.0f;
-
-                    if (lightType == FILTER_LIGHT_SPOT)
-                    {
-                        // Spotlight axis is light position -> pointsAt.
-                        float ax = light.L[3] - light.L[0];
-                        float ay = light.L[4] - light.L[1];
-                        float az = light.L[5] - light.L[2];
-
-                        // Spotlight ray is light position -> current surface point.
-                        float sx = ux - light.L[0];
-                        float sy = uy - light.L[1];
-                        float sz = h - light.L[2];
-
-                        const bool axisOk = safeNormalize3(ax, ay, az);
-                        const bool rayOk = safeNormalize3(sx, sy, sz);
-
-                        if (axisOk && rayOk)
-                        {
-                            float cosAng = ax * sx + ay * sy + az * sz;
-                            cosAng = clamp01f(cosAng);
-
-                            float spotExp = light.L[6];
-                            if (!(spotExp > 0.0f))
-                                spotExp = 1.0f;
-
-                            lightFactor = std::pow(cosAng, spotExp);
-
-                            const float limitDeg = light.L[7];
-                            if (limitDeg > 0.0f)
-                            {
-                                const float limitCos = std::cos(limitDeg * (kPi / 180.0f));
-                                if (cosAng < limitCos)
-                                    lightFactor = 0.0f;
-                            }
-                        }
-                        else
-                        {
-                            // Degenerate spotlight: do not black out the whole effect.
-                            // Fall back to point-light behavior.
-                            lightFactor = 1.0f;
-                        }
-                    }
-
-                    const float lit = clamp01f(diffuseConstant * ndotl * lightFactor);
-
-                    // Premultiplied output.
-                    const float a = 1.0f; // lit;
-                    const float pr = lcR * lit;
-                    const float pg = lcG * lit;
-                    const float pb = lcB * lit;
-
-                    drow[x] = pack_argb32(
-                        clamp_u8((int)std::lround(a * 255.0f)),
-                        clamp_u8((int)std::lround(pr * 255.0f)),
-                        clamp_u8((int)std::lround(pg * 255.0f)),
-                        clamp_u8((int)std::lround(pb * 255.0f)));
-                }
-            }
-
-            if (!putImage(outKey, std::move(out)))
-                return false;
-
-            setLastKey(outKey);
-            return true;
-        }
-        */
 
 
         // ------------------------------------------
         // onDisplacementMap
         // Type: binary
         // -------------------------------------------
+
+        // unpack a pre-multiplied ARGB32 pixel to straight Color4f. 
+        // The RGB channels are divided by alpha, and clamped to [0,1]. 
+        // If alpha is zero, RGB are set to zero.
+        /*
+        static INLINE Color4f argb32_premul_unpack_to_straight(uint32_t px) noexcept
+        {
+            const float k = 1.0f / 255.0f;
+
+            const float a = float((px >> 24) & 0xFFu) * k;
+            const float rp = float((px >> 16) & 0xFFu) * k;
+            const float gp = float((px >> 8) & 0xFFu) * k;
+            const float bp = float((px >> 0) & 0xFFu) * k;
+
+            Color4f out{};
+            out.a = a;
+
+            if (a > 0.0f)
+            {
+                out.r = clamp01(rp / a);
+                out.g = clamp01(gp / a);
+                out.b = clamp01(bp / a);
+            }
+            else
+            {
+                out.r = 0.0f;
+                out.g = 0.0f;
+                out.b = 0.0f;
+            }
+
+            return out;
+        }
+        */
+        static INLINE void argb32_premul_unpack_channels_to_straight(
+            uint32_t px,
+            FilterChannelSelector xChannel,
+            FilterChannelSelector yChannel,
+            float& mxv,
+            float& myv) noexcept
+        {
+            const float k = 1.0f / 255.0f;
+
+            const float a = float((px >> 24) & 0xFFu) * k;
+
+            auto decodeOne = [&](FilterChannelSelector ch) noexcept -> float
+                {
+                    switch (ch)
+                    {
+                    default:
+                    case FILTER_CHANNEL_A:
+                        return a;
+
+                    case FILTER_CHANNEL_R:
+                        if (a <= 0.0f)
+                            return 0.0f;
+                        return clamp01((float((px >> 16) & 0xFFu) * k) / a);
+
+                    case FILTER_CHANNEL_G:
+                        if (a <= 0.0f)
+                            return 0.0f;
+                        return clamp01((float((px >> 8) & 0xFFu) * k) / a);
+
+                    case FILTER_CHANNEL_B:
+                        if (a <= 0.0f)
+                            return 0.0f;
+                        return clamp01((float((px >> 0) & 0xFFu) * k) / a);
+                    }
+                };
+
+            if (xChannel == yChannel)
+            {
+                mxv = myv = decodeOne(xChannel);
+                return;
+            }
+
+            mxv = decodeOne(xChannel);
+            myv = decodeOne(yChannel);
+        }
+
+        /*
+        static INLINE float selectMapChannel(const Color4f& c, FilterChannelSelector ch) noexcept
+        {
+            switch (ch)
+            {
+            default:
+            case FILTER_CHANNEL_A: return c.a;
+            case FILTER_CHANNEL_R: return c.r;
+            case FILTER_CHANNEL_G: return c.g;
+            case FILTER_CHANNEL_B: return c.b;
+            }
+        }
+        */
+
+        static INLINE int iroundf_fast(float v) noexcept
+        {
+            return int(v + (v >= 0.0f ? 0.5f : -0.5f));
+        }
 
         bool onDisplacementMap(const FilterIO& io, const WGRectD* subr,
             float scale, FilterChannelSelector xChannel, FilterChannelSelector yChannel) noexcept override
@@ -1895,8 +1819,8 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             InternedKey in2Key = resolveBinaryInput2Key(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
-            Surface* in1 = getImage(in1Key);
-            Surface* in2 = getImage(in2Key);
+            Surface* in1 = getInputImage(in1Key);
+            Surface* in2 = getInputImage(in2Key);
             if (!in1 || !in2)
                 return false;
 
@@ -1907,10 +1831,9 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             if (!out)
                 return false;
 
-            // Preserve current executor behavior outside the primitive write area.
-            {
-                out->blit(*in1, 0, 0);
-            }
+            // start with transparent black
+            out->clearAll();
+
 
             double scaleUS = (double)scale;
             switch (fRunState.primitiveUnits)
@@ -1927,8 +1850,9 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                 break;
             }
 
-            const double scaleX = scaleUS * fSpace.sx;
-            const double scaleY = scaleUS * fSpace.sy;
+            const float scaleX = float(scaleUS * fSpace.sx);
+            const float scaleY = float(scaleUS * fSpace.sy);
+
 
             WGRectI area = resolveSubregionPx(subr, *in1);
             if (area.w <= 0 || area.h <= 0)
@@ -1957,74 +1881,51 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                 return true;
             }
 
-            auto unpackMapChannelStraight = [](uint32_t px, FilterChannelSelector ch) noexcept -> float
-                {
-                    const float a = float((px >> 24) & 0xFF) * (1.0f / 255.0f);
-                    const float r_p = float((px >> 16) & 0xFF) * (1.0f / 255.0f);
-                    const float g_p = float((px >> 8) & 0xFF) * (1.0f / 255.0f);
-                    const float b_p = float((px >> 0) & 0xFF) * (1.0f / 255.0f);
 
-                    switch (ch)
-                    {
-                    default:
-                    case FILTER_CHANNEL_A:
-                        return a;
+            const Surface_ARGB32 surfIn1Info = in1->info();
+            const Surface_ARGB32 surfIn2Info = in2->info();
+            const Surface_ARGB32 surfOutInfo = out->info();
 
-                    case FILTER_CHANNEL_R:
-                        if (a > 0.0f)
-                            return clamp01(r_p / a);
-                        return 0.0f;
+            const float biasX = -0.5f * scaleX;
+            const float biasY = -0.5f * scaleY;
 
-                    case FILTER_CHANNEL_G:
-                        if (a > 0.0f)
-                            return clamp01(g_p / a);
-                        return 0.0f;
+            // Compute the intersection of the primitive 
+            // area and the surface bounds, to avoid unnecessary 
+            // looping over out-of-bounds pixels.
+            const int x0 = max(area.x, 0);
+            const int y0 = max(area.y, 0);
+            const int x1 = min(area.x + area.w, W);
+            const int y1 = min(area.y + area.h, H);
 
-                    case FILTER_CHANNEL_B:
-                        if (a > 0.0f)
-                            return clamp01(b_p / a);
-                        return 0.0f;
-                    }
-                };
 
-            for (int y = area.y; y < area.y + area.h; ++y)
+            for (int y = y0; y < y1; ++y)
             {
-                if ((unsigned)y >= (unsigned)H)
-                    continue;
 
-                uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
-                const uint32_t* mapRow = (const uint32_t*)in2->rowPointer((size_t)y);
+                uint32_t* drow = Surface_ARGB32_row_pointer(&surfOutInfo,y);
+                const uint32_t* mapRow = Surface_ARGB32_row_pointer_const(&surfIn2Info, y);
 
-                for (int x = area.x; x < area.x + area.w; ++x)
+                for (int x = x0; x < x1; ++x)
                 {
-                    if ((unsigned)x >= (unsigned)W)
-                    {
-                        drow[x] = 0u;
-                        continue;
-                    }
-
                     const uint32_t mp = mapRow[x];
 
                     // feDisplacementMap channel selectors conceptually operate on the
                     // channel values, not on premultiplied storage bytes. Recover
                     // straight RGB from PRGB storage before using them as map values.
-                    const double mxv = double(unpackMapChannelStraight(mp, xChannel));
-                    const double myv = double(unpackMapChannelStraight(mp, yChannel));
+                    float mxv, myv;
+                    argb32_premul_unpack_channels_to_straight(mp, xChannel, yChannel, mxv, myv);
 
-                    const double mx = (mxv - 0.5) * scaleX;
-                    const double my = (myv - 0.5) * scaleY;
+                    const float fx = float(x) + biasX + mxv * scaleX;
+                    const float fy = float(y) + biasY + myv * scaleY;
 
-                    const int sx = (int)std::lround(double(x) + mx);
-                    const int sy = (int)std::lround(double(y) + my);
+                    const int sx = iroundf_fast(fx);
+                    const int sy = iroundf_fast(fy);
+
 
                     if ((unsigned)sx < (unsigned)W1 && (unsigned)sy < (unsigned)H1)
                     {
-                        const uint32_t* srow = (const uint32_t*)in1->rowPointer((size_t)sy);
+                        const uint32_t* srow = Surface_ARGB32_row_pointer_const(&surfIn1Info, sy);
+
                         drow[x] = srow[sx];
-                    }
-                    else
-                    {
-                        drow[x] = 0u;
                     }
                 }
             }
@@ -2040,6 +1941,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
         // onDropShadow
         // Type: drop shadow
         // -------------------------------------------
+
         bool onDropShadow(const FilterIO& io, const WGRectD* subr,
             float dx, float dy, float sx, float sy,
             uint32_t rgbaPremul) noexcept override
@@ -2047,7 +1949,227 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
-            Surface* in = getImage(inKey);
+            Surface* in = getInputImage(inKey);
+            if (!in)
+                return false;
+
+            if (!outKey)
+                outKey = kFilter_Last();
+
+            auto out = createLikeSurfaceHandle(*in);
+            if (!out)
+                return false;
+
+            auto shadow0 = createLikeSurfaceHandle(*in);
+            if (!shadow0)
+                return false;
+
+            auto shadow1 = createLikeSurfaceHandle(*in);
+            if (!shadow1)
+                return false;
+
+            out->clearAll();
+            shadow0->clearAll();
+            shadow1->clearAll();
+
+            const int W = (int)in->width();
+            const int H = (int)in->height();
+
+            auto intersectRect = [](const WGRectI& a, const WGRectI& b) noexcept -> WGRectI
+                {
+                    const int x0 = (a.x > b.x) ? a.x : b.x;
+                    const int y0 = (a.y > b.y) ? a.y : b.y;
+                    const int x1 = ((a.x + a.w) < (b.x + b.w)) ? (a.x + a.w) : (b.x + b.w);
+                    const int y1 = ((a.y + a.h) < (b.y + b.h)) ? (a.y + a.h) : (b.y + b.h);
+
+                    WGRectI r{};
+                    r.x = x0;
+                    r.y = y0;
+                    r.w = x1 - x0;
+                    r.h = y1 - y0;
+                    if (r.w < 0) r.w = 0;
+                    if (r.h < 0) r.h = 0;
+                    return r;
+                };
+
+            auto expandRect = [](const WGRectI& r, int ex, int ey) noexcept -> WGRectI
+                {
+                    WGRectI out{};
+                    out.x = r.x - ex;
+                    out.y = r.y - ey;
+                    out.w = r.w + ex * 2;
+                    out.h = r.h + ey * 2;
+                    return out;
+                };
+
+            const WGRectI surfaceRect{ 0, 0, W, H };
+
+            WGRectI area = resolveSubregionPx(subr, *in);
+            area = intersectRect(area, surfaceRect);
+
+            if (area.w <= 0 || area.h <= 0)
+            {
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+                setLastKey(outKey);
+                return true;
+            }
+
+            // Build the colored shadow source from the input alpha.
+            {
+                const uint8_t floodA = (uint8_t)((rgbaPremul >> 24) & 0xFFu);
+                const uint8_t floodR = (uint8_t)((rgbaPremul >> 16) & 0xFFu);
+                const uint8_t floodG = (uint8_t)((rgbaPremul >> 8) & 0xFFu);
+                const uint8_t floodB = (uint8_t)((rgbaPremul >> 0) & 0xFFu);
+
+                for (int y = area.y; y < area.y + area.h; ++y)
+                {
+                    const uint32_t* srow = (const uint32_t*)in->rowPointer((size_t)y);
+                    uint32_t* drow = (uint32_t*)shadow0->rowPointer((size_t)y);
+
+                    for (int x = area.x; x < area.x + area.w; ++x)
+                    {
+                        const uint8_t sa = (uint8_t)((srow[x] >> 24) & 0xFFu);
+
+                        const uint8_t a = (uint8_t)((uint32_t(sa) * uint32_t(floodA) + 127u) / 255u);
+                        const uint8_t r = (uint8_t)((uint32_t(sa) * uint32_t(floodR) + 127u) / 255u);
+                        const uint8_t g = (uint8_t)((uint32_t(sa) * uint32_t(floodG) + 127u) / 255u);
+                        const uint8_t b = (uint8_t)((uint32_t(sa) * uint32_t(floodB) + 127u) / 255u);
+
+                        drow[x] = pack_argb32(a, r, g, b);
+                    }
+                }
+            }
+
+            // Resolve stdDeviation into user units.
+            double stdXUS = sx;
+            double stdYUS = sy;
+
+            switch (fRunState.primitiveUnits)
+            {
+            default:
+            case SpaceUnitsKind::SVG_SPACE_USER:
+                break;
+            case SpaceUnitsKind::SVG_SPACE_OBJECT:
+                stdXUS *= fRunState.objectBBoxUS.w;
+                stdYUS *= fRunState.objectBBoxUS.h;
+                break;
+            case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
+                break;
+            }
+
+            // Convert stdDeviation to pixel space.
+            const double stdXPx = stdXUS * fSpace.sx;
+            const double stdYPx = stdYUS * fSpace.sy;
+
+            Surface* finalShadow = shadow0.get();
+
+            if (stdXPx > 0.0 || stdYPx > 0.0)
+            {
+                int boxX[3] = { 1, 1, 1 };
+                int boxY[3] = { 1, 1, 1 };
+
+                waavs::boxesForGauss((stdXPx > 0.0) ? stdXPx : 0.0, 3, boxX);
+                waavs::boxesForGauss((stdYPx > 0.0) ? stdYPx : 0.0, 3, boxY);
+
+                int spreadX = 0;
+                int spreadY = 0;
+
+                for (int i = 0; i < 3; ++i)
+                {
+                    spreadX += (boxX[i] - 1) / 2;
+                    spreadY += (boxY[i] - 1) / 2;
+                }
+
+                WGRectI blurArea = expandRect(area, spreadX, spreadY);
+                blurArea = intersectRect(blurArea, surfaceRect);
+
+                const waavs::Surface* curSrc = shadow0.get();
+                waavs::Surface* curDst = shadow1.get();
+
+                for (int pass = 0; pass < 3; ++pass)
+                {
+                    const int rx = (boxX[pass] - 1) / 2;
+                    const int ry = (boxY[pass] - 1) / 2;
+
+                    if (rx > 0)
+                    {
+                        curDst->clearAll();
+                        waavs::boxBlurH_PRGB32(*curDst, *curSrc, rx, blurArea);
+                        curSrc = curDst;
+                        curDst = (curDst == shadow0.get()) ? shadow1.get() : shadow0.get();
+                    }
+
+                    if (ry > 0)
+                    {
+                        curDst->clearAll();
+                        waavs::boxBlurV_PRGB32(*curDst, *curSrc, ry, blurArea);
+                        curSrc = curDst;
+                        curDst = (curDst == shadow0.get()) ? shadow1.get() : shadow0.get();
+                    }
+                }
+
+                finalShadow = const_cast<waavs::Surface*>(curSrc);
+            }
+
+            // Resolve offset into user units.
+            double dxUS = dx;
+            double dyUS = dy;
+
+            switch (fRunState.primitiveUnits)
+            {
+            default:
+            case SpaceUnitsKind::SVG_SPACE_USER:
+                break;
+            case SpaceUnitsKind::SVG_SPACE_OBJECT:
+                dxUS *= fRunState.objectBBoxUS.w;
+                dyUS *= fRunState.objectBBoxUS.h;
+                break;
+            case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
+                break;
+            }
+
+            // Map the offset through the CTM linear part.
+            const WGMatrix3x3& m = fSpace.ctm;
+            const double dxPx = dxUS * m.m00 + dyUS * m.m10;
+            const double dyPx = dxUS * m.m01 + dyUS * m.m11;
+
+            // Draw the blurred shadow at its pixel offset, then draw the source over it.
+            {
+                SVGB2DDriver bctx{};
+                bctx.attach(*out, 1);
+                bctx.renew();
+
+                out->clearAll();
+
+                const double offX = std::floor(dxPx + 0.5);
+                const double offY = std::floor(dyPx + 0.5);
+
+                bctx.blendMode(BL_COMP_OP_SRC_COPY);
+                bctx.image(*finalShadow, offX, offY);
+
+                bctx.blendMode(BL_COMP_OP_SRC_OVER);
+                bctx.image(*in, 0, 0);
+
+                bctx.detach();
+            }
+
+            if (!putImage(outKey, std::move(out)))
+                return false;
+
+            setLastKey(outKey);
+            return true;
+        }
+
+        /*
+        bool onDropShadow(const FilterIO& io, const WGRectD* subr,
+            float dx, float dy, float sx, float sy,
+            uint32_t rgbaPremul) noexcept override
+        {
+            InternedKey inKey = resolveUnaryInputKey(io);
+            InternedKey outKey = resolveOutKeyStrict(io);
+
+            Surface* in = getInputImage(inKey);
             if (!in)
                 return false;
 
@@ -2190,10 +2312,11 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                 out->clearAll();
 
                 bctx.blendMode(BL_COMP_OP_SRC_COPY);
-                bctx.transform(BLMatrix2D::makeTranslation(dxPx, dyPx));
+                WGMatrix3x3 tmx = WGMatrix3x3::makeTranslation(dxPx, dyPx);
+                bctx.transform(tmx);
                 bctx.image(*shadow, 0, 0);
 
-                bctx.transform(BLMatrix2D::makeIdentity());
+                bctx.transform(WGMatrix3x3::makeIdentity());
                 bctx.blendMode(BL_COMP_OP_SRC_OVER);
                 bctx.image(*in, 0, 0);
 
@@ -2206,6 +2329,8 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             setLastKey(outKey);
             return true;
         }
+        */
+
 
         // ------------------------------------------
         // onFlood
@@ -2218,13 +2343,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
 
             // feFlood is a generator, so pick a surface that 
             // represents the current tile size.
-            Surface* like = getImage(kFilter_SourceGraphic());
-
-            if (!like) {
-                InternedKey lk = lastKey();
-                if (lk)
-                    like = getImage(lk);
-            }
+            Surface* like = getInputImage(lastKey());
 
             if (!like)
                 return false;
@@ -2266,6 +2385,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
 
             if (area.w > 0 && area.h > 0)
                 out->fillRect(area, rgbaPremul);
+
             if (!putImage(outKey, std::move(out)))
                 return false;
 
@@ -2278,16 +2398,17 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
         // onGaussianBlur()
         // unary
         // -----------------------------------------
+
         bool onGaussianBlur(const FilterIO& io, const WGRectD* subr,
             float sx, float sy) noexcept override
         {
             InternedKey inKey = resolveUnaryInputKey(io);
-            InternedKey outKey = resolveOutKeyStrict(io);
-
-            Surface* in = getImage(inKey);
+            Surface* in = getInputImage(inKey);
             if (!in)
                 return false;
 
+
+            InternedKey outKey = resolveOutKeyStrict(io);
             if (!outKey)
                 outKey = kFilter_Last();
 
@@ -2537,7 +2658,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
-            Surface* in = getImage(inKey);
+            Surface* in = getInputImage(inKey);
             if (!in)
                 return false;
 
@@ -2657,7 +2778,7 @@ bool onOffset(const FilterIO& io, const WGRectD* subr, float dx, float dy) noexc
     InternedKey inKey = resolveUnaryInputKey(io);
     InternedKey outKey = resolveOutKeyStrict(io);
 
-    Surface* in = getImage(inKey);
+    Surface* in = getInputImage(inKey);
     if (!in)
         return false;
 
@@ -2764,7 +2885,7 @@ bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
     InternedKey inKey = resolveUnaryInputKey(io);
     InternedKey outKey = resolveOutKeyStrict(io);
 
-    Surface* in = getImage(inKey);
+    Surface* in = getInputImage(inKey);
     if (!in)
         return false;
 
@@ -2796,7 +2917,9 @@ bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
     PixelToFilterUserMap map;
     map.surfaceW = int(in->width());
     map.surfaceH = int(in->height());
+    
     map.filterExtentUS = fSpace.filterExtentUS;
+    //map.filterExtentUS = fSpace.filterRectUS;
     map.uxPerPixel = (map.surfaceW > 0)
         ? float(map.filterExtentUS.w / double(map.surfaceW))
         : 1.0f;
@@ -2890,270 +3013,7 @@ bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
 }
 
 
-/*
-        bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
-            uint32_t lightingRGBA, float surfaceScale,
-            float specularConstant, float specularExponent,
-            float kernelUnitLengthX, float kernelUnitLengthY,
-            uint32_t lightType, const LightPayload& light) noexcept override
-        {
-            InternedKey inKey = resolveUnaryInputKey(io);
-            InternedKey outKey = resolveOutKeyStrict(io);
 
-            Surface* in = getImage(inKey);
-            if (!in)
-                return false;
-
-            if (!outKey)
-                outKey = kFilter_Last();
-
-            auto out = createLikeSurfaceHandle(*in);
-            if (!out)
-                return false;
-
-            out->clearAll();
-
-            WGRectI area = resolveSubregionPx(subr, *in);
-            if (area.w <= 0 || area.h <= 0)
-            {
-                if (!putImage(outKey, std::move(out)))
-                    return false;
-
-                setLastKey(outKey);
-                return true;
-            }
-
-            const float lcR = float((lightingRGBA >> 16) & 0xFF) * (1.0f / 255.0f);
-            const float lcG = float((lightingRGBA >> 8) & 0xFF) * (1.0f / 255.0f);
-            const float lcB = float((lightingRGBA >> 0) & 0xFF) * (1.0f / 255.0f);
-
-            const float kPi = 3.14159265358979323846f;
-
-            specularExponent = clamp(specularExponent, 1.0f, 128.0f);
-
-            auto safeNormalize3 = [](float& x, float& y, float& z) noexcept -> bool
-                {
-                    const float len2 = x * x + y * y + z * z;
-                    if (len2 <= 1e-20f)
-                    {
-                        x = 0.0f;
-                        y = 0.0f;
-                        z = 1.0f;
-                        return false;
-                    }
-
-                    const float invLen = 1.0f / std::sqrt(len2);
-                    x *= invLen;
-                    y *= invLen;
-                    z *= invLen;
-                    return true;
-                };
-
-            auto computeLocalPixelStep = [this](int px, int py, float& duxOut, float& duyOut) noexcept
-                {
-                    float ux0, uy0;
-                    float ux1, uy1;
-                    float ux2, uy2;
-
-                    pixelCenterToFilterUser(px, py, ux0, uy0);
-                    pixelCenterToFilterUser(px + 1, py, ux1, uy1);
-                    pixelCenterToFilterUser(px, py + 1, ux2, uy2);
-
-                    const float ddx0 = ux1 - ux0;
-                    const float ddy0 = uy1 - uy0;
-                    const float ddx1 = ux2 - ux0;
-                    const float ddy1 = uy2 - uy0;
-
-                    duxOut = std::sqrt(ddx0 * ddx0 + ddy0 * ddy0);
-                    duyOut = std::sqrt(ddx1 * ddx1 + ddy1 * ddy1);
-
-                    if (!(duxOut > 0.0f))
-                        duxOut = 1.0f;
-                    if (!(duyOut > 0.0f))
-                        duyOut = 1.0f;
-                };
-
-            for (int y = area.y; y < area.y + area.h; ++y)
-            {
-                uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
-
-                for (int x = area.x; x < area.x + area.w; ++x)
-                {
-                    float dux = 1.0f;
-                    float duy = 1.0f;
-                    computeLocalPixelStep(x, y, dux, duy);
-
-                    if (kernelUnitLengthX > 0.0f)
-                        dux = kernelUnitLengthX;
-                    if (kernelUnitLengthY > 0.0f)
-                        duy = kernelUnitLengthY;
-
-                    const float h00 = pixelHeightFromAlpha(*in, x - 1, y - 1);
-                    const float h10 = pixelHeightFromAlpha(*in, x, y - 1);
-                    const float h20 = pixelHeightFromAlpha(*in, x + 1, y - 1);
-
-                    const float h01 = pixelHeightFromAlpha(*in, x - 1, y);
-                    const float h11 = pixelHeightFromAlpha(*in, x, y);
-                    const float h21 = pixelHeightFromAlpha(*in, x + 1, y);
-
-                    const float h02 = pixelHeightFromAlpha(*in, x - 1, y + 1);
-                    const float h12 = pixelHeightFromAlpha(*in, x, y + 1);
-                    const float h22 = pixelHeightFromAlpha(*in, x + 1, y + 1);
-
-                    float dHx = 0.0f;
-                    float dHy = 0.0f;
-
-                    if (dux > 0.0f)
-                    {
-                        dHx =
-                            ((h20 + 2.0f * h21 + h22) -
-                                (h00 + 2.0f * h01 + h02)) / (8.0f * dux);
-                    }
-
-                    if (duy > 0.0f)
-                    {
-                        dHy =
-                            ((h02 + 2.0f * h12 + h22) -
-                                (h00 + 2.0f * h10 + h20)) / (8.0f * duy);
-                    }
-
-                    float nx = -surfaceScale * dHx;
-                    float ny = -surfaceScale * dHy;
-                    float nz = 1.0f;
-                    safeNormalize3(nx, ny, nz);
-
-                    float ux, uy;
-                    pixelCenterToFilterUser(x, y, ux, uy);
-
-                    const float h = surfaceScale * h11;
-
-                    float lx = 0.0f;
-                    float ly = 0.0f;
-                    float lz = 1.0f;
-
-                    if (lightType == FILTER_LIGHT_DISTANT)
-                    {
-                        const float az = light.L[0] * (kPi / 180.0f);
-                        const float el = light.L[1] * (kPi / 180.0f);
-
-                        lx = std::cos(el) * std::cos(az);
-                        ly = std::cos(el) * std::sin(az);
-                        lz = std::sin(el);
-                        safeNormalize3(lx, ly, lz);
-                    }
-                    else if (lightType == FILTER_LIGHT_POINT || lightType == FILTER_LIGHT_SPOT)
-                    {
-                        lx = light.L[0] - ux;
-                        ly = light.L[1] - uy;
-                        lz = light.L[2] - h;
-                        safeNormalize3(lx, ly, lz);
-                    }
-                    else
-                    {
-                        lx = 0.0f;
-                        ly = 0.0f;
-                        lz = 1.0f;
-                    }
-
-                    float lightFactor = 1.0f;
-
-                    if (lightType == FILTER_LIGHT_SPOT)
-                    {
-                        float ax = light.L[3] - light.L[0];
-                        float ay = light.L[4] - light.L[1];
-                        float az = light.L[5] - light.L[2];
-
-                        float sx = ux - light.L[0];
-                        float sy = uy - light.L[1];
-                        float sz = h - light.L[2];
-
-                        const bool axisOk = safeNormalize3(ax, ay, az);
-                        const bool rayOk = safeNormalize3(sx, sy, sz);
-
-                        if (axisOk && rayOk)
-                        {
-                            float cosAng = ax * sx + ay * sy + az * sz;
-                            cosAng = clamp01f(cosAng);
-
-                            float spotExp = light.L[6];
-                            if (!(spotExp > 0.0f))
-                                spotExp = 1.0f;
-
-                            lightFactor = std::pow(cosAng, spotExp);
-
-                            const float limitDeg = light.L[7];
-                            if (limitDeg > 0.0f)
-                            {
-                                const float limitCos = std::cos(limitDeg * (kPi / 180.0f));
-                                if (cosAng < limitCos)
-                                    lightFactor = 0.0f;
-                            }
-                        }
-                        else
-                        {
-                            lightFactor = 1.0f;
-                        }
-                    }
-
-                    const float ex = 0.0f;
-                    const float ey = 0.0f;
-                    const float ez = 1.0f;
-
-                    float hx = lx + ex;
-                    float hy = ly + ey;
-                    float hz = lz + ez;
-                    const bool halfOk = safeNormalize3(hx, hy, hz);
-
-                    float ndoth = 0.0f;
-                    if (halfOk)
-                    {
-                        ndoth = nx * hx + ny * hy + nz * hz;
-                        if (ndoth < 0.0f)
-                            ndoth = 0.0f;
-                    }
-
-                    float lit = 0.0f;
-                    if (ndoth > 0.0f)
-                        lit = specularConstant * std::pow(ndoth, specularExponent) * lightFactor;
-
-                    lit = clamp01f(lit);
-
-                    float sr = lcR * lit;
-                    float sg = lcG * lit;
-                    float sb = lcB * lit;
-
-                    sr = clamp01f(sr);
-                    sg = clamp01f(sg);
-                    sb = clamp01f(sb);
-
-                    float a = sr;
-                    if (sg > a) a = sg;
-                    if (sb > a) a = sb;
-
-                    a = clamp01f(a);
-
-                    float pr = 0.0f;
-                    float pg = 0.0f;
-                    float pb = 0.0f;
-
-                    if (a > 0.0f)
-                    {
-                        pr = sr;
-                        pg = sg;
-                        pb = sb;
-                    }
-
-                    drow[x] = pack_argb32(a, pr, pg, pb);
-                }
-            }
-
-            if (!putImage(outKey, std::move(out)))
-                return false;
-
-            setLastKey(outKey);
-            return true;
-        }
-*/
 
 
 
@@ -3171,7 +3031,7 @@ bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
             InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
-            Surface* in = getImage(inKey);
+            Surface* in = getInputImage(inKey);
             if (!in)
                 return false;
 
@@ -3222,35 +3082,224 @@ bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
         // -----------------------------------------
 
 
-        /*
-        static INLINE uint32_t pack_premul_argb32(float r, float g, float b, float a) noexcept
+        bool onTurbulence(
+            const FilterIO& io,
+            const WGRectD* subr,
+            FilterTurbulenceType typeKey,
+            float baseFreqX,
+            float baseFreqY,
+            uint32_t numOctaves,
+            float seed,
+            bool stitchTiles) noexcept override
         {
-            r = clamp01(r);
-            g = clamp01(g);
-            b = clamp01(b);
-            a = clamp01(a);
+            InternedKey outKey = resolveOutKeyStrict(io);
+            if (!outKey)
+                outKey = kFilter_Last();
 
-            //if (r < 0.0f) r = 0.0f; else if (r > 1.0f) r = 1.0f;
-            //if (g < 0.0f) g = 0.0f; else if (g > 1.0f) g = 1.0f;
-            //if (b < 0.0f) b = 0.0f; else if (b > 1.0f) b = 1.0f;
-            //if (a < 0.0f) a = 0.0f; else if (a > 1.0f) a = 1.0f;
+            // feTurbulence is a generator. Use the filter tile size.
+            Surface* like = getImage(lastKey());
 
-            // Premultiply for PRGB32-style storage.
-            r *= a;
-            g *= a;
-            b *= a;
 
-            const uint32_t A = (uint32_t)float_to_u8(a);
-            const uint32_t R = (uint32_t)float_to_u8(r);
-            const uint32_t G = (uint32_t)float_to_u8(g);
-            const uint32_t B = (uint32_t)float_to_u8(b);
+            if (!like)
+                return false;
 
-            return (A << 24) | (R << 16) | (G << 8) | B;
+            auto out = createLikeSurfaceHandle(*like);
+            if (!out)
+                return false;
+
+            out->clearAll();
+
+            WGRectI area = resolveSubregionPx(subr, *out);
+            if (area.w <= 0 || area.h <= 0)
+            {
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+
+                setLastKey(outKey);
+                return true;
+            }
+
+            PixelToFilterUserMap map;
+            map.surfaceW = int(out->width());
+            map.surfaceH = int(out->height());
+            map.filterExtentUS = fSpace.filterExtentUS;
+            map.uxPerPixel = (map.surfaceW > 0)
+                ? float(map.filterExtentUS.w / double(map.surfaceW))
+                : 1.0f;
+            map.uyPerPixel = (map.surfaceH > 0)
+                ? float(map.filterExtentUS.h / double(map.surfaceH))
+                : 1.0f;
+
+            TurbulenceNoiseParams params{};
+            params.baseFreqX = baseFreqX;
+            params.baseFreqY = baseFreqY;
+            params.seed = seed;
+            params.octaves = numOctaves;
+
+            TurbulenceState turb{};
+            buildTurbulenceState(turb, (int32_t)seed);
+
+            auto userToPrimitive = [&](float ux, float uy, float& px, float& py) noexcept
+                {
+                    switch (fRunState.primitiveUnits)
+                    {
+                    default:
+                    case SpaceUnitsKind::SVG_SPACE_USER:
+                        px = ux;
+                        py = uy;
+                        break;
+
+                    case SpaceUnitsKind::SVG_SPACE_OBJECT:
+                    {
+                        // Convert local filter-space user coordinates back into
+                        // absolute user-space before objectBoundingBox normalization.
+                        const double absUx = double(ux) + fSpace.filterRectUS.x;
+                        const double absUy = double(uy) + fSpace.filterRectUS.y;
+
+                        const double bx = fRunState.objectBBoxUS.x;
+                        const double by = fRunState.objectBBoxUS.y;
+                        const double bw = fRunState.objectBBoxUS.w;
+                        const double bh = fRunState.objectBBoxUS.h;
+
+                        if (bw > 0.0 && bh > 0.0)
+                        {
+                            px = float((absUx - bx) / bw);
+                            py = float((absUy - by) / bh);
+                        }
+                        else
+                        {
+                            px = 0.0f;
+                            py = 0.0f;
+                        }
+                        break;
+                    }
+
+                    case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
+                        px = ux;
+                        py = uy;
+                        break;
+                    }
+                };
+
+            auto primitiveSubregionRect = [&]() noexcept -> WGRectD
+                {
+                    if (subr)
+                    {
+                        if (fRunState.primitiveUnits == SpaceUnitsKind::SVG_SPACE_OBJECT)
+                            return *subr;
+
+                        // For USER units, convert authored user-space subregion to local filter-space.
+                        return WGRectD(
+                            subr->x - fSpace.filterRectUS.x,
+                            subr->y - fSpace.filterRectUS.y,
+                            subr->w,
+                            subr->h);
+                    }
+
+                    if (fRunState.primitiveUnits == SpaceUnitsKind::SVG_SPACE_OBJECT)
+                    {
+                        const double bx = fRunState.objectBBoxUS.x;
+                        const double by = fRunState.objectBBoxUS.y;
+                        const double bw = fRunState.objectBBoxUS.w;
+                        const double bh = fRunState.objectBBoxUS.h;
+
+                        if (bw > 0.0 && bh > 0.0)
+                        {
+                            return WGRectD(
+                                (fRunState.filterRectUS.x - bx) / bw,
+                                (fRunState.filterRectUS.y - by) / bh,
+                                fRunState.filterRectUS.w / bw,
+                                fRunState.filterRectUS.h / bh);
+                        }
+
+                        return WGRectD{};
+                    }
+
+                    // USER units: stitch against local filter-space extent, not absolute filterRectUS.
+                    return fSpace.filterExtentUS;
+                };
+
+            TurbulenceStitchInfo stitchInfo{};
+            const TurbulenceStitchInfo* stitchPtr = nullptr;
+
+            if (stitchTiles)
+            {
+                WGRectD tileRect = primitiveSubregionRect();
+
+                if (tileRect.w > 0.0 && tileRect.h > 0.0)
+                {
+                    adjust_base_frequencies_for_stitch(
+                        (float)tileRect.w,
+                        (float)tileRect.h,
+                        params.baseFreqX,
+                        params.baseFreqY);
+
+                    stitchInfo = prepare_stitch_info(
+                        (float)tileRect.x,
+                        (float)tileRect.y,
+                        (float)tileRect.w,
+                        (float)tileRect.h,
+                        params.baseFreqX,
+                        params.baseFreqY);
+
+                    stitchPtr = &stitchInfo;
+                }
+            }
+
+            const bool fractalNoise = (typeKey == FILTER_TURBULENCE_FRACTAL_NOISE);
+
+            for (int y = area.y; y < area.y + area.h; ++y)
+            {
+                uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
+
+                for (int x = area.x; x < area.x + area.w; ++x)
+                {
+                    float ux, uy;
+                    pixelCenterToFilterUserStandalone(map, x, y, ux, uy);
+
+                    float tx, ty;
+                    userToPrimitive(ux, uy, tx, ty);
+
+                    float r, g, b, a;
+
+                    if (fractalNoise)
+                    {
+                        r = sampleFractalChannel(tx, ty, params, turb, 0, stitchTiles, stitchPtr);
+                        g = sampleFractalChannel(tx, ty, params, turb, 1, stitchTiles, stitchPtr);
+                        b = sampleFractalChannel(tx, ty, params, turb, 2, stitchTiles, stitchPtr);
+                        a = sampleFractalChannel(tx, ty, params, turb, 3, stitchTiles, stitchPtr);
+                    }
+                    else
+                    {
+                        r = sampleTurbulenceChannel(tx, ty, params, turb, 0, stitchTiles, stitchPtr);
+                        g = sampleTurbulenceChannel(tx, ty, params, turb, 1, stitchTiles, stitchPtr);
+                        b = sampleTurbulenceChannel(tx, ty, params, turb, 2, stitchTiles, stitchPtr);
+                        a = sampleTurbulenceChannel(tx, ty, params, turb, 3, stitchTiles, stitchPtr);
+                    }
+
+                    r = clamp01(r);
+                    g = clamp01(g);
+                    b = clamp01(b);
+                    a = clamp01(a);
+
+                    // Store in premultiplied surface format.
+                    r *= a;
+                    g *= a;
+                    b *= a;
+
+                    drow[x] = pack_argb32(a, r, g, b);
+                }
+            }
+
+            if (!putImage(outKey, std::move(out)))
+                return false;
+
+            setLastKey(outKey);
+            return true;
         }
-        */
 
 
-
+        /*
         bool onTurbulence(
             const FilterIO& io,
             const WGRectD* subr,
@@ -3452,6 +3501,6 @@ bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
             setLastKey(outKey);
             return true;
         }
-        
+        */
     };
 }

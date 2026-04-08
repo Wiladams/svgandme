@@ -171,3 +171,21 @@ namespace waavs
         return true;
     }
 }
+
+namespace waavs
+{
+#if defined(__ARM_NEON) || defined(__aarch64__)
+    static INLINE float32x4_t neon_clamp01_f32(float32x4_t v) noexcept
+    {
+        return vminq_f32(vmaxq_f32(v, vdupq_n_f32(0.0f)), vdupq_n_f32(1.0f));
+    }
+
+    static INLINE float32x4_t neon_recip_nr_f32(float32x4_t x) noexcept
+    {
+        float32x4_t y = vrecpeq_f32(x);
+        y = vmulq_f32(y, vrecpsq_f32(x, y));
+        y = vmulq_f32(y, vrecpsq_f32(x, y));
+        return y;
+    }
+#endif
+}

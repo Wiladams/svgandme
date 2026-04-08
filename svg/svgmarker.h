@@ -28,7 +28,7 @@ namespace waavs
 
         // Final mapping to apply before drawing marker children:
         // maps marker content user space -> marker instance space (at origin)
-        BLMatrix2D contentToInstance{ BLMatrix2D::makeIdentity() };
+        WGMatrix3x3 contentToInstance = WGMatrix3x3::makeIdentity();
 
         bool resolved{ false };
     };
@@ -264,7 +264,7 @@ namespace waavs {
                     else if (yA == SVGAlignment::SVG_ALIGNMENT_END) ay = (viewport.h - fitH);
                 }
 
-                BLMatrix2D m = BLMatrix2D::makeIdentity();
+                WGMatrix3x3 m = WGMatrix3x3::makeIdentity();
                 m.translate(viewport.x, viewport.y);
                 m.translate(ax, ay);
                 m.scale(sx, sy);

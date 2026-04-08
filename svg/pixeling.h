@@ -350,7 +350,7 @@ static  INLINE uint32_t* Surface_ARGB32_row_pointer(const Surface_ARGB32* s, int
     return (uint32_t*)(s->data + ((size_t)y * (size_t)s->stride));
 }
 
-static  const uint32_t* Surface_ARGB32_row_pointer_const(const Surface_ARGB32* s, int y) {
+static  INLINE const uint32_t* Surface_ARGB32_row_pointer_const(const Surface_ARGB32* s, int y) {
     return (const uint32_t*)(s->data + (size_t)y * (size_t)s->stride);
 }
 

@@ -91,8 +91,8 @@ namespace waavs {
 		}
 
 		// Retrieving the transformations
-		const BLMatrix2D & sceneToSurfaceTransform() const { return fPortal.viewBoxToViewportTransform(); }
-		const BLMatrix2D & surfaceToSceneTransform() const { return fPortal.viewportToViewBoxTransform(); }
+		const WGMatrix3x3& sceneToSurfaceTransform() const { return fPortal.viewBoxToViewportTransform(); }
+		const WGMatrix3x3& surfaceToSceneTransform() const { return fPortal.viewportToViewBoxTransform(); }
 
 
 		void lookAt(double cx, double cy)

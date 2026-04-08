@@ -206,7 +206,7 @@ namespace waavs {
 
 		// The transformation from viewBox to viewport,
 		// Calculated based on the viewport, viewbox, and preserveAspectRatio settings
-		BLMatrix2D viewBoxToViewportXform{};
+		WGMatrix3x3 viewBoxToViewportXform{};
 
 		// Whether the viewBoxToViewportXform has been resolved based on the current settings
 		bool fResolved{ false };
@@ -268,7 +268,7 @@ namespace waavs
 		const WGRectD& viewport,
 		const WGRectD& viewBox,
 		const PreserveAspectRatio& par,
-		BLMatrix2D& out)
+		WGMatrix3x3& out)
 	{
 		if (viewport.w <= 0 || viewport.h <= 0) return false;
 		if (viewBox.w <= 0 || viewBox.h <= 0) return false;
@@ -301,7 +301,7 @@ namespace waavs
 			else if (yA == SVGAlignment::SVG_ALIGNMENT_END) ay = (viewport.h - fitH);
 		}
 
-		out = BLMatrix2D::makeIdentity();
+		out = WGMatrix3x3::makeIdentity();
 		out.translate(viewport.x, viewport.y);
 		out.translate(ax, ay);
 		out.scale(sx, sy);
@@ -385,7 +385,7 @@ namespace waavs
             out.fViewBox = { 0.0, 0.0, out.fViewport.w, out.fViewport.h };
 
             // no viewBox means, no aspect fit transform, so viewBoxToViewportXform is identity
-            out.viewBoxToViewportXform = BLMatrix2D::makeIdentity();
+            out.viewBoxToViewportXform = WGMatrix3x3::makeIdentity();
 		}
 
 		out.fResolved = true;

@@ -1081,6 +1081,7 @@ namespace waavs
                 }
 
                 if (!ok) {
+                    printf("FilterProgramExecutor: op %u failed\n", (unsigned)id);
                     onEndProgram(progRef);
                     resetCursor();
                     return false;

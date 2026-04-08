@@ -1315,7 +1315,7 @@ namespace waavs
         return s;
     }
 
-    static ByteSpan parseMatrix(ByteSpan& inMatrix, BLMatrix2D& m)
+    static ByteSpan parseMatrix(ByteSpan& inMatrix, WGMatrix3x3& m)
     {
         ByteSpan s = inMatrix;
         m.reset();  // start with identity
@@ -1329,13 +1329,13 @@ namespace waavs
         if (na != 6)
             return s;
 
-        m.reset(t[0], t[1], t[2], t[3], t[4], t[5]);
+        m.resetAffine(t[0], t[1], t[2], t[3], t[4], t[5]);
 
         return s;
     }
 
 
-    static ByteSpan parseTranslate(const ByteSpan& inChunk, BLMatrix2D& xform)
+    static ByteSpan parseTranslate(const ByteSpan& inChunk, WGMatrix3x3& xform)
     {
         double args[2];
         int na = 0;
@@ -1349,7 +1349,7 @@ namespace waavs
         return s;
     }
 
-    static ByteSpan parseScale(const ByteSpan& inChunk, BLMatrix2D& xform)
+    static ByteSpan parseScale(const ByteSpan& inChunk, WGMatrix3x3& xform)
     {
         double args[2]{ 0 };
         int na = 0;
@@ -1366,7 +1366,7 @@ namespace waavs
     }
 
 
-    static ByteSpan parseSkewX(const ByteSpan& inChunk, BLMatrix2D& xform)
+    static ByteSpan parseSkewX(const ByteSpan& inChunk, WGMatrix3x3& xform)
     {
         double args[1];
         int na = 0;
@@ -1378,7 +1378,7 @@ namespace waavs
         return s;
     }
 
-    static ByteSpan parseSkewY(const ByteSpan& inChunk, BLMatrix2D& xform)
+    static ByteSpan parseSkewY(const ByteSpan& inChunk, WGMatrix3x3& xform)
     {
         double args[1]{ 0 };
         int na = 0;
@@ -1391,7 +1391,7 @@ namespace waavs
     }
 
 
-    static ByteSpan parseRotate(const ByteSpan& inChunk, BLMatrix2D& xform) noexcept
+    static ByteSpan parseRotate(const ByteSpan& inChunk, WGMatrix3x3& xform) noexcept
     {
         double args[3]{ 0 };
         int na = 0;
@@ -1419,14 +1419,14 @@ namespace waavs
     // into a single BLMatrix2D structure
     // This will repeatedly apply the portions that are parsed
     //
-    static bool parseTransform(const ByteSpan& inChunk, BLMatrix2D& xform)
+    static bool parseTransform(const ByteSpan& inChunk, WGMatrix3x3& xform)
     {        
         ByteSpan s = inChunk;
         s = chunk_skip_wsp(s);
         if (!s)
             return false;
         
-        xform = BLMatrix2D::makeIdentity();
+        xform = WGMatrix3x3::makeIdentity();
         
         bool isSet = false;
 
@@ -1434,7 +1434,7 @@ namespace waavs
         {
             s = chunk_skip_wsp(s);
 
-            BLMatrix2D tm{};
+            WGMatrix3x3 tm{};
             tm.reset();
 
             if (chunk_starts_with_cstr(s, "matrix"))

@@ -292,7 +292,7 @@ namespace waavs
             const WGRectD viewport{ fX, fY, fWidth, fHeight };
             const WGRectD viewBox{ 0, 0, iw, ih };
 
-            BLMatrix2D xform{};
+            WGMatrix3x3 xform{};
             if (!computeViewBoxToViewport(viewport, viewBox, fPAR, xform))
                 return;
 

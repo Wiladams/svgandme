@@ -145,12 +145,10 @@ namespace waavs
     struct ViewportTransformer
     {
     protected:
-        BLMatrix2D fTransform = BLMatrix2D::makeIdentity();
-        BLMatrix2D fInverseTransform = BLMatrix2D::makeIdentity();
+        WGMatrix3x3 fTransform = WGMatrix3x3::makeIdentity();
+        WGMatrix3x3 fInverseTransform = WGMatrix3x3::makeIdentity();
 
         PortalView fPortalView{};
-
-
 
     public:
         ViewportTransformer() = default;
@@ -218,7 +216,7 @@ namespace waavs
         // This is the transform that is applied to a drawing context when we're
         // drawing the scene onto the surface.
 
-        const BLMatrix2D& viewBoxToViewportTransform() const {
+        const WGMatrix3x3& viewBoxToViewportTransform() const {
             return fTransform;
         }
 
@@ -228,7 +226,7 @@ namespace waavs
         // want to know where in the scene it is.  This is typically used when 
         // you do a mouse click on the surface, and you want to know where in the
         // scene that click hits.
-        const BLMatrix2D& viewportToViewBoxTransform() const {
+        const WGMatrix3x3& viewportToViewBoxTransform() const {
             return fInverseTransform;
         }
 
@@ -275,15 +273,15 @@ namespace waavs
         // Convert a point from the scene to the surface
         WGPointD mapViewBoxToViewport(double x, double y) const
         {
-            BLPoint pt = fTransform.mapPoint(x, y);
-            return { pt.x, pt.y };
+            WGPointD pt = fTransform.mapPoint(x, y);
+            return pt;
         }
 
         // Convert a point from the surface to the scene
         WGPointD mapViewportToViewBox(double x, double y) const
         {
-            BLPoint pt = fInverseTransform.mapPoint(x, y);
-            return { pt.x, pt.y };
+            WGPointD pt = fInverseTransform.mapPoint(x, y);
+            return pt;
         }
 
     protected:
@@ -316,7 +314,7 @@ namespace waavs
 
         void updateTransformMatrix()
         {
-            fTransform = BLMatrix2D::makeIdentity();
+            fTransform = WGMatrix3x3::makeIdentity();
 
             WGPointD ascale(1, 1);
             WGPointD atrans(0, 0);

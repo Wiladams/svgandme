@@ -64,7 +64,7 @@ namespace waavs
 
         // Optional transforms
         bool fHasPatternTransform{ false };
-        BLMatrix2D fPatternTransform { BLMatrix2D::makeIdentity() };
+        WGMatrix3x3 fPatternTransform { WGMatrix3x3::makeIdentity() };
 
         // viewBox/par
         bool fHasViewBox{ false };
@@ -352,7 +352,7 @@ namespace waavs
             // We now have the desired tile size, so we need
             // to create the transform that gets us from the drawing's 
             // space, to the BLImage space
-            BLMatrix2D T = BLMatrix2D::makeIdentity();
+            WGMatrix3x3 T = WGMatrix3x3::makeIdentity();
             T.postScale((double)fTilePxW / w, (double)fTilePxH / h);
             if (fHasPatternTransform) T.postTransform(fPatternTransform);
 
@@ -368,7 +368,7 @@ namespace waavs
                 return;
 
             fTileImage = blImageFromSurface(fTileSurface);
-            fPattern.create(fTileImage, fExtendMode, T);
+            fPattern.create(fTileImage, fExtendMode, blMatrix_from_WGMatrix3x3(T));
 
             //BLMatrix2D tform = fPattern.transform();
             //printf("TFORM: %d\n", tform.type());
@@ -403,12 +403,12 @@ namespace waavs
             const double sx = double(fTilePxW) / fTileRect.w;
             const double sy = double(fTilePxH) / fTileRect.h;
 
-            BLMatrix2D C = BLMatrix2D::makeIdentity();
+            WGMatrix3x3 C = WGMatrix3x3::makeIdentity();
             C.postScale(sx, sy);
 
             if (fHasViewBox)
             {
-                BLMatrix2D vb2tile = BLMatrix2D::makeIdentity();
+                WGMatrix3x3 vb2tile = WGMatrix3x3::makeIdentity();
                 // viewport is tile-local [0..w, 0..h]
                 computeViewBoxToViewport({ 0,0,fTileRect.w, fTileRect.h }, fViewBox, fPar, vb2tile);
                 C.postTransform(vb2tile);
