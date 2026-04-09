@@ -83,11 +83,11 @@ namespace waavs
         const int g = (sg + (int)di.half) / (int)di.div;
         const int b = (sb + (int)di.half) / (int)di.div;
 
-        return pack_argb32(
-            waavs::clamp_u8(a),
-            waavs::clamp_u8(r),
-            waavs::clamp_u8(g),
-            waavs::clamp_u8(b));
+        return argb32_pack_u8(
+            waavs::clamp0_255_i64(a),
+            waavs::clamp0_255_i64(r),
+            waavs::clamp0_255_i64(g),
+            waavs::clamp0_255_i64(b));
     }
 
     /*
@@ -236,7 +236,7 @@ static INLINE void store4_packAvgDivInfo_neon(
             for (int i = -radius; i <= radius; ++i)
             {
                 uint8_t a, r, g, b;
-                argb32_unpack(pxRead32_Clamped(src, x + i, y), a, r, g, b);
+                argb32_unpack_u8(pxRead32_Clamped(src, x + i, y), a, r, g, b);
                 sa += a;
                 sr += r;
                 sg += g;
@@ -265,7 +265,7 @@ static INLINE void store4_packAvgDivInfo_neon(
         for (int i = -radius; i <= radius; ++i)
         {
             uint8_t a, r, g, b;
-            argb32_unpack(srow[x0 + i], a, r, g, b);
+            argb32_unpack_u8(srow[x0 + i], a, r, g, b);
             sa += a;
             sr += r;
             sg += g;
@@ -279,8 +279,8 @@ static INLINE void store4_packAvgDivInfo_neon(
             uint8_t aL, rL, gL, bL;
             uint8_t aR, rR, gR, bR;
 
-            argb32_unpack(srow[x - radius - 1], aL, rL, gL, bL);
-            argb32_unpack(srow[x + radius], aR, rR, gR, bR);
+            argb32_unpack_u8(srow[x - radius - 1], aL, rL, gL, bL);
+            argb32_unpack_u8(srow[x + radius], aR, rR, gR, bR);
 
             sa += (int)aR - (int)aL;
             sr += (int)rR - (int)rL;
@@ -303,8 +303,8 @@ static INLINE void store4_packAvgDivInfo_neon(
         uint8_t aL, rL, gL, bL;
         uint8_t aR, rR, gR, bR;
 
-        argb32_unpack(srow[x - radius - 1], aL, rL, gL, bL);
-        argb32_unpack(srow[x + radius], aR, rR, gR, bR);
+        argb32_unpack_u8(srow[x - radius - 1], aL, rL, gL, bL);
+        argb32_unpack_u8(srow[x + radius], aR, rR, gR, bR);
 
         sa += (int)aR - (int)aL;
         sr += (int)rR - (int)rL;
@@ -339,7 +339,7 @@ static INLINE void store4_packAvgDivInfo_neon(
         for (int i = -radius; i <= radius; ++i)
         {
             uint8_t a, r, g, b;
-            argb32_unpack(srow[x0 + i], a, r, g, b);
+            argb32_unpack_u8(srow[x0 + i], a, r, g, b);
             sa += a;
             sr += r;
             sg += g;
@@ -370,8 +370,8 @@ static INLINE void store4_packAvgDivInfo_neon(
             uint8_t aL, rL, gL, bL;
             uint8_t aR, rR, gR, bR;
 
-            argb32_unpack(srow[x - radius - 1], aL, rL, gL, bL);
-            argb32_unpack(srow[x + radius], aR, rR, gR, bR);
+            argb32_unpack_u8(srow[x - radius - 1], aL, rL, gL, bL);
+            argb32_unpack_u8(srow[x + radius], aR, rR, gR, bR);
 
             sa += (int)aR - (int)aL;
             sr += (int)rR - (int)rL;
@@ -523,7 +523,7 @@ static INLINE void store4_packAvgDivInfo_neon(
                     const uint32_t* srow = (const uint32_t*)src.rowPointer((size_t)yy);
 
                     uint8_t a, r, g, b;
-                    argb32_unpack(srow[x], a, r, g, b);
+                    argb32_unpack_u8(srow[x], a, r, g, b);
 
                     sa += a;
                     sr += r;
@@ -550,7 +550,7 @@ static INLINE void store4_packAvgDivInfo_neon(
             for (int i = 0; i < div; ++i)
             {
                 uint8_t a, r, g, b;
-                argb32_unpack(rows[i][x], a, r, g, b);
+                argb32_unpack_u8(rows[i][x], a, r, g, b);
 
                 sa += a;
                 sr += r;
@@ -592,7 +592,7 @@ static INLINE void store4_packAvgDivInfo_neon(
                     const uint32_t* srow = (const uint32_t*)src.rowPointer((size_t)(y + k));
 
                     uint8_t a, r, g, b;
-                    argb32_unpack(srow[x], a, r, g, b);
+                    argb32_unpack_u8(srow[x], a, r, g, b);
 
                     sa += a;
                     sr += r;
@@ -616,7 +616,7 @@ static INLINE void store4_packAvgDivInfo_neon(
             for (int i = 0; i < div; ++i)
             {
                 uint8_t a, r, g, b;
-                argb32_unpack(rows[i][x], a, r, g, b);
+                argb32_unpack_u8(rows[i][x], a, r, g, b);
 
                 sa += a;
                 sr += r;

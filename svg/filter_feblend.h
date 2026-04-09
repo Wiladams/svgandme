@@ -46,12 +46,17 @@ namespace waavs
         const float pg = c.g * c.a;
         const float pb = c.b * c.a;
 
-        const uint8_t A = clamp_u8f(c.a * 255.0f);
-        const uint8_t R = clamp_u8f(pr * 255.0f);
-        const uint8_t G = clamp_u8f(pg * 255.0f);
-        const uint8_t B = clamp_u8f(pb * 255.0f);
+        //const uint8_t A = clamp_u8f(c.a * 255.0f);
+        //const uint8_t R = clamp_u8f(pr * 255.0f);
+        //const uint8_t G = clamp_u8f(pg * 255.0f);
+        //const uint8_t B = clamp_u8f(pb * 255.0f);
+        
+        const uint8_t A = quantize0_255(c.a);
+        const uint8_t R = quantize0_255(pr);
+        const uint8_t G = quantize0_255(pg);
+        const uint8_t B = quantize0_255(pb);
 
-        return (uint32_t(A) << 24) | (uint32_t(R) << 16) | (uint32_t(G) << 8) | uint32_t(B);
+        return argb32_pack_u8(A, R, G, B);
     }
 
     static INLINE float blend_channel_normal(float cb, float cs) noexcept

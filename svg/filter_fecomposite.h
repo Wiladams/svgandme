@@ -176,7 +176,7 @@ static INLINE uint8_t arith_k1_only_u8(uint8_t a, uint8_t b, int32_t k1fx, int s
     int64_t v = (int64_t(k1fx) * int64_t(a) * int64_t(b) +
         (int64_t(1) << (shift - 1))) >> shift;
 
-    return clamp_u8(v);
+    return clamp0_255_i64(v);
 }
 
 static INLINE void arithmetic_k1_only_prgb32_row_scalar(
@@ -194,15 +194,15 @@ static INLINE void arithmetic_k1_only_prgb32_row_scalar(
         uint8_t a1, r1, g1, b1;
         uint8_t a2, r2, g2, b2;
 
-        argb32_unpack(p1, a1, r1, g1, b1);
-        argb32_unpack(p2, a2, r2, g2, b2);
+        argb32_unpack_u8(p1, a1, r1, g1, b1);
+        argb32_unpack_u8(p2, a2, r2, g2, b2);
 
         const uint8_t a = arith_k1_only_u8(a1, a2, fx.k1, fx.shift);
         const uint8_t r = arith_k1_only_u8(r1, r2, fx.k1, fx.shift);
         const uint8_t g = arith_k1_only_u8(g1, g2, fx.k1, fx.shift);
         const uint8_t b = arith_k1_only_u8(b1, b2, fx.k1, fx.shift);
 
-        dst[i] = pack_argb32(a, r, g, b);
+        dst[i] = argb32_pack_u8(a, r, g, b);
     }
 }
 
@@ -320,7 +320,7 @@ static INLINE bool arith_k2_only_can_use_neon(const ArithmeticCoeffFx& fx) noexc
 static INLINE uint8_t arith_k2_only_u8(uint8_t a, int32_t k2fx, int shift) noexcept
 {
     int64_t v = (k2fx * int32_t(a) + (1 << (shift - 1))) >> shift;
-    return clamp_u8(v);
+    return clamp0_255_i64(v);
 }
 
 static INLINE void arithmetic_k2_only_prgb32_row_scalar(
@@ -334,14 +334,14 @@ static INLINE void arithmetic_k2_only_prgb32_row_scalar(
         const uint32_t p1 = s1[i];
 
         uint8_t a1, r1, g1, b1;
-        argb32_unpack(p1, a1, r1, g1, b1);
+        argb32_unpack_u8(p1, a1, r1, g1, b1);
 
         const uint8_t a = arith_k2_only_u8(a1, fx.k2, fx.shift);
         const uint8_t r = arith_k2_only_u8(r1, fx.k2, fx.shift);
         const uint8_t g = arith_k2_only_u8(g1, fx.k2, fx.shift);
         const uint8_t b = arith_k2_only_u8(b1, fx.k2, fx.shift);
 
-        dst[i] = pack_argb32(a, r, g, b);
+        dst[i] = argb32_pack_u8(a, r, g, b);
     }
 }
 
@@ -441,7 +441,7 @@ static INLINE bool arith_k3_only_can_use_neon(const ArithmeticCoeffFx& fx) noexc
 static INLINE uint8_t arith_k3_only_u8(uint8_t b, int32_t k3fx, int shift) noexcept
 {
     int64_t v = (k3fx * int32_t(b) + (1 << (shift - 1))) >> shift;
-    return clamp_u8(v);
+    return clamp0_255_i64(v);
 }
 
 static INLINE void arithmetic_k3_only_prgb32_row_scalar(uint32_t* dst, const uint32_t* s2, size_t n,
@@ -452,14 +452,14 @@ static INLINE void arithmetic_k3_only_prgb32_row_scalar(uint32_t* dst, const uin
         const uint32_t p2 = s2[i];
 
         uint8_t a2, r2, g2, b2;
-        argb32_unpack(p2, a2, r2, g2, b2);
+        argb32_unpack_u8(p2, a2, r2, g2, b2);
 
         const uint8_t a = arith_k3_only_u8(a2, fx.k3, fx.shift);
         const uint8_t r = arith_k3_only_u8(r2, fx.k3, fx.shift);
         const uint8_t g = arith_k3_only_u8(g2, fx.k3, fx.shift);
         const uint8_t b = arith_k3_only_u8(b2, fx.k3, fx.shift);
 
-        dst[i] = pack_argb32(a, r, g, b);
+        dst[i] = argb32_pack_u8(a, r, g, b);
     }
 }
 
@@ -551,7 +551,7 @@ static INLINE void arithmetic_k3_only_prgb32_row(
 static INLINE uint8_t arith_k4_only_u8(int32_t k4fx, int shift) noexcept
 {
     int64_t v = (int64_t(k4fx) + (int64_t(1) << (shift - 1))) >> shift;
-    return clamp_u8(v);
+    return clamp0_255_i64(v);
 }
 
 // ------------------------------------------
@@ -579,7 +579,7 @@ static INLINE uint8_t arith_k2_k3_u8(
             k3fx * int32_t(b) +
             (1 << (shift - 1))) >> shift;
 
-    return clamp_u8(v);
+    return clamp0_255_i64(v);
 }
 
 static INLINE void arithmetic_k2_k3_prgb32_row_scalar(
@@ -597,15 +597,15 @@ static INLINE void arithmetic_k2_k3_prgb32_row_scalar(
         uint8_t a1, r1, g1, b1;
         uint8_t a2, r2, g2, b2;
 
-        argb32_unpack(p1, a1, r1, g1, b1);
-        argb32_unpack(p2, a2, r2, g2, b2);
+        argb32_unpack_u8(p1, a1, r1, g1, b1);
+        argb32_unpack_u8(p2, a2, r2, g2, b2);
 
         const uint8_t a = arith_k2_k3_u8(a1, a2, fx.k2, fx.k3, fx.shift);
         const uint8_t r = arith_k2_k3_u8(r1, r2, fx.k2, fx.k3, fx.shift);
         const uint8_t g = arith_k2_k3_u8(g1, g2, fx.k2, fx.k3, fx.shift);
         const uint8_t b = arith_k2_k3_u8(b1, b2, fx.k2, fx.k3, fx.shift);
 
-        dst[i] = pack_argb32(a, r, g, b);
+        dst[i] = argb32_pack_u8(a, r, g, b);
     }
 }
 
@@ -735,7 +735,7 @@ static INLINE uint8_t arith_k1_k2_k3_u8(
 
     v >>= fx.shift;
 
-    return clamp_u8(v);
+    return clamp0_255_i64(v);
 }
 
 static INLINE void arithmetic_k1_k2_k3_prgb32_row(
@@ -753,15 +753,15 @@ static INLINE void arithmetic_k1_k2_k3_prgb32_row(
         uint8_t a1, r1, g1, b1;
         uint8_t a2, r2, g2, b2;
 
-        argb32_unpack(p1, a1, r1, g1, b1);
-        argb32_unpack(p2, a2, r2, g2, b2);
+        argb32_unpack_u8(p1, a1, r1, g1, b1);
+        argb32_unpack_u8(p2, a2, r2, g2, b2);
 
         const uint8_t a = arith_k1_k2_k3_u8(a1, a2, fx);
         const uint8_t r = arith_k1_k2_k3_u8(r1, r2, fx);
         const uint8_t g = arith_k1_k2_k3_u8(g1, g2, fx);
         const uint8_t b = arith_k1_k2_k3_u8(b1, b2, fx);
 
-        dst[i] = pack_argb32(a, r, g, b);
+        dst[i] = argb32_pack_u8(a, r, g, b);
     }
 }
 
@@ -779,7 +779,7 @@ static INLINE uint8_t arith_general_u8(
 
     v >>= fx.shift;
 
-    return clamp_u8(v);
+    return clamp0_255_i64(v);
 }
 
 static INLINE void arithmetic_general_prgb32_row(
@@ -797,15 +797,15 @@ static INLINE void arithmetic_general_prgb32_row(
         uint8_t a1, r1, g1, b1;
         uint8_t a2, r2, g2, b2;
 
-        argb32_unpack(p1, a1, r1, g1, b1);
-        argb32_unpack(p2, a2, r2, g2, b2);
+        argb32_unpack_u8(p1, a1, r1, g1, b1);
+        argb32_unpack_u8(p2, a2, r2, g2, b2);
 
         const uint8_t a = arith_general_u8(a1, a2, fx);
         const uint8_t r = arith_general_u8(r1, r2, fx);
         const uint8_t g = arith_general_u8(g1, g2, fx);
         const uint8_t b = arith_general_u8(b1, b2, fx);
 
-        dst[i] = pack_argb32(a, r, g, b);
+        dst[i] = argb32_pack_u8(a, r, g, b);
     }
 }
 

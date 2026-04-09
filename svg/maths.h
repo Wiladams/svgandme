@@ -125,12 +125,7 @@ namespace waavs
     INLINE size_t min(const size_t a, const size_t b) noexcept { return (a < b) ? a : b; }
     INLINE size_t max(const size_t a, const size_t b) noexcept { return (a > b) ? a : b; }
 
-    INLINE uint8_t clamp_u8(int64_t v) noexcept
-    {
-        if (v < 0)   return 0;
-        if (v > 255) return 255;
-        return (uint8_t)v;
-    }
+
 }
 
 //=================================
@@ -142,8 +137,8 @@ namespace waavs
     INLINE float max(const float a, const float b) noexcept { return (a > b) ? a : b; }
     INLINE float min(const float a, const float b) noexcept { return (a < b) ? a : b; }
     INLINE float clamp(const float a, const float min_, const float max_) noexcept { return min(max(a, min_), max_); }
-    INLINE float clamp01f(const float v) noexcept { return clamp(v, 0.0f, 1.0f); }
-    INLINE uint8_t clamp_u8f(const float v) noexcept { return (uint8_t)std::lround(clamp(v, 0.0f, 255.0f)); }
+    
+
 
     INLINE float abs(float a) noexcept { return a < 0 ? -a : a; }
     INLINE float acos(float a) noexcept { return std::acos(a); }
@@ -216,7 +211,6 @@ namespace waavs
     INLINE double max(const double a, const double b) noexcept { return a > b ? a : b; }
     INLINE double abs(const double a) noexcept { return a < 0 ? -a : a; }
     INLINE double clamp(const double a, const double minValue, const double maxValue) noexcept { return min(max(a, minValue), maxValue); }
-    INLINE double clamp01(double v) noexcept { return clamp(v, 0.0, 1.0); }
 
     INLINE double atan(double a) noexcept { return std::atan(a); }
     INLINE double atan2(double y, double x) noexcept { return std::atan2(y, x); }
@@ -2547,10 +2541,65 @@ namespace waavs
 
 namespace waavs
 {
-    static INLINE uint8_t float_to_u8(float v) noexcept
+    constexpr float kInv255f = 1.0f / 255.0f;
+    constexpr double kInv255 = 1.0 / 255.0;
+
+    static INLINE float clamp01f(const float v) noexcept { return clamp(v, 0.0f, 1.0f); }
+    static INLINE double clamp01(double v) noexcept { return clamp(v, 0.0, 1.0); }
+
+
+    static INLINE uint8_t clamp_u8(const int64_t v) noexcept = delete;
+    static INLINE uint8_t clamp0_255_i32(const int32_t v) noexcept
     {
-        if (v <= 0.0f) return 0;
-        if (v >= 1.0f) return 255;
+        if (v < 0)   return 0;
+        if (v > 255) return 255;
+        return (uint8_t)v;
+    }
+    
+    static INLINE uint8_t clamp0_255_i64(const int64_t v) noexcept
+    {
+        if (v < 0)   return 0;
+        if (v > 255) return 255;
+        return (uint8_t)v;
+    }
+
+    // take value in range [0,1] and convert to uint8_t in range [0,255]
+    static INLINE uint8_t quantize0_255(float v) noexcept
+    {
+        v = clamp01f(v);
         return (uint8_t)(v * 255.0f + 0.5f);
     }
+    
+    static INLINE uint8_t quantize0_255(double v) noexcept
+    {
+        v = clamp01(v);
+        return (uint8_t)(v * 255.0 + 0.5);
+    }
+
+    // Turn a value into a normalized [0..1] float
+    INLINE float dequantize0_255(uint8_t v) noexcept
+    {
+        return float(v) * kInv255f;
+    }
+
+    INLINE float dequantize0_255(uint32_t v) noexcept
+    {
+        return dequantize0_255(uint8_t(v & 0xFFu));
+    }
+
+    // a fast multiply of two 8-bit values, 
+    // returning an 8-bit result, with rounding
+    static INLINE uint32_t mul255(uint32_t x, uint32_t y) noexcept = delete;
+    static INLINE uint32_t mul0_255(uint32_t x, uint32_t y) noexcept
+    {
+        uint32_t t = x * y + 128;
+        return (t + (t >> 8)) >> 8;
+    }
+
+    static INLINE uint32_t wg_div255_u32(uint32_t x) noexcept = delete;
+    static INLINE uint32_t div0_255_rounded_u32(uint32_t x) noexcept
+    {
+        return (x + 128u + ((x + 128u) >> 8)) >> 8;
+    }
+
 }

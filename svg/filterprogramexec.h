@@ -347,27 +347,27 @@ namespace waavs
             case FILTER_COMPOSITE_OVER:
             {
                 const uint32_t isa = 255 - sa;
-                oa = sa + mul255(da, isa);
-                orr = sr + mul255(dr, isa);
-                og = sg + mul255(dg, isa);
-                ob = sb + mul255(db, isa);
+                oa = sa + mul0_255(da, isa);
+                orr = sr + mul0_255(dr, isa);
+                og = sg + mul0_255(dg, isa);
+                ob = sb + mul0_255(db, isa);
                 break;
             }
 
             case FILTER_COMPOSITE_IN:
-                oa = mul255(sa, da);
-                orr = mul255(sr, da);
-                og = mul255(sg, da);
-                ob = mul255(sb, da);
+                oa = mul0_255(sa, da);
+                orr = mul0_255(sr, da);
+                og = mul0_255(sg, da);
+                ob = mul0_255(sb, da);
                 break;
 
             case FILTER_COMPOSITE_OUT:
             {
                 const uint32_t ida = 255 - da;
-                oa = mul255(sa, ida);
-                orr = mul255(sr, ida);
-                og = mul255(sg, ida);
-                ob = mul255(sb, ida);
+                oa = mul0_255(sa, ida);
+                orr = mul0_255(sr, ida);
+                og = mul0_255(sg, ida);
+                ob = mul0_255(sb, ida);
                 break;
             }
 
@@ -375,9 +375,9 @@ namespace waavs
             {
                 const uint32_t isa = 255 - sa;
                 oa = da;
-                orr = mul255(sr, da) + mul255(dr, isa);
-                og = mul255(sg, da) + mul255(dg, isa);
-                ob = mul255(sb, da) + mul255(db, isa);
+                orr = mul0_255(sr, da) + mul0_255(dr, isa);
+                og = mul0_255(sg, da) + mul0_255(dg, isa);
+                ob = mul0_255(sb, da) + mul0_255(db, isa);
                 break;
             }
 
@@ -385,10 +385,10 @@ namespace waavs
             {
                 const uint32_t ida = 255 - da;
                 const uint32_t isa = 255 - sa;
-                oa = mul255(sa, ida) + mul255(da, isa);
-                orr = mul255(sr, ida) + mul255(dr, isa);
-                og = mul255(sg, ida) + mul255(dg, isa);
-                ob = mul255(sb, ida) + mul255(db, isa);
+                oa = mul0_255(sa, ida) + mul0_255(da, isa);
+                orr = mul0_255(sr, ida) + mul0_255(dr, isa);
+                og = mul0_255(sg, ida) + mul0_255(dg, isa);
+                ob = mul0_255(sb, ida) + mul0_255(db, isa);
                 break;
             }
 

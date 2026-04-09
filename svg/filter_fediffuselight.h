@@ -130,7 +130,26 @@ namespace waavs
         float lcR, float lcG, float lcB,
         float lit) noexcept
     {
-        // Match your existing behavior: fully opaque lit result.
+        // For diffuse lighting, we want a fully opaque
+        // pixel where the RGB channels represent the lit color, 
+        // so we can composite
+        const float a = 1.0f;
+        const float pr = clamp01f(lcR * lit);
+        const float pg = clamp01f(lcG * lit);
+        const float pb = clamp01f(lcB * lit);
+
+        return argb32_pack_u8(
+            quantize0_255(a),
+            quantize0_255(pr),
+            quantize0_255(pg),
+            quantize0_255(pb));
+    }
+
+    /*
+    static INLINE uint32_t packDiffuseLightingPixel(
+        float lcR, float lcG, float lcB,
+        float lit) noexcept
+    {
         const float a = 1.0f;
         const float pr = clamp01f(lcR * lit);
         const float pg = clamp01f(lcG * lit);
@@ -138,6 +157,7 @@ namespace waavs
 
         return pack_argb32(a, pr, pg, pb);
     }
+    */
 
     // --------------------------------------------
 
@@ -166,151 +186,24 @@ namespace waavs
     };
 
 
-    /*
-    static INLINE void computeDiffuseNormalFromHeights(
-        float h00, float h10, float h20,
-        float h01, float h11, float h21,
-        float h02, float h12, float h22,
-        float surfaceScale,
-        float dux, float duy,
-        float& nx, float& ny, float& nz) noexcept
-    {
-        float dHx = 0.0f;
-        float dHy = 0.0f;
 
-        if (dux > 0.0f)
-        {
-            dHx =
-                ((h20 + 2.0f * h21 + h22) -
-                    (h00 + 2.0f * h01 + h02)) / (8.0f * dux);
-        }
 
-        if (duy > 0.0f)
-        {
-            dHy =
-                ((h02 + 2.0f * h12 + h22) -
-                    (h00 + 2.0f * h10 + h20)) / (8.0f * duy);
-        }
 
-        nx = -surfaceScale * dHx;
-        ny = -surfaceScale * dHy;
-        nz = 1.0f;
-        normalize3(nx, ny, nz);
-    }
-    */
-    /*
-            static INLINE void computeDiffuseLightVector(
-                uint32_t lightType,
-                const LightPayload& light,
-                float ux, float uy, float h,
-                float& lx, float& ly, float& lz) noexcept
-            {
-                const float kPi = waavs::pif;
 
-                if (lightType == FILTER_LIGHT_DISTANT)
-                {
-                    const float az = light.L[0] * (kPi / 180.0f);
-                    const float el = light.L[1] * (kPi / 180.0f);
 
-                    lx = std::cos(el) * std::cos(az);
-                    ly = std::cos(el) * std::sin(az);
-                    lz = std::sin(el);
-                    normalize3(lx, ly, lz);
-                    return;
-                }
-
-                if (lightType == FILTER_LIGHT_POINT || lightType == FILTER_LIGHT_SPOT)
-                {
-                    lx = light.L[0] - ux;
-                    ly = light.L[1] - uy;
-                    lz = light.L[2] - h;
-                    normalize3(lx, ly, lz);
-                    return;
-                }
-
-                lx = 0.0f;
-                ly = 0.0f;
-                lz = 1.0f;
-            }
-            */
-            /*
-            static INLINE float computeDiffuseSpotFactor(
-                const LightPayload& light,
-                float ux, float uy, float h) noexcept
-            {
-                const float kPi = waavs::pif;
-
-                float ax = light.L[3] - light.L[0];
-                float ay = light.L[4] - light.L[1];
-                float az = light.L[5] - light.L[2];
-
-                float sx = ux - light.L[0];
-                float sy = uy - light.L[1];
-                float sz = h - light.L[2];
-
-                const bool axisOk = normalize3(ax, ay, az);
-                const bool rayOk = normalize3(sx, sy, sz);
-
-                if (!axisOk || !rayOk)
-                    return 0.0f;
-
-                float cosAng = ax * sx + ay * sy + az * sz;
-
-                const float limitDeg = light.L[7];
-                if (limitDeg > 0.0f)
-                {
-                    const float limitCos = std::cos(limitDeg * (kPi / 180.0f));
-                    if (cosAng < limitCos)
-                        return 0.0f;
-                }
-
-                cosAng = clamp01f(cosAng);
-
-                float spotExp = light.L[6];
-                if (!(spotExp > 0.0f))
-                    spotExp = 1.0f;
-
-                return std::pow(cosAng, spotExp);
-            }
-            */
-            /*
-        static INLINE float computeDiffuseTerm(
-            float nx, float ny, float nz,
-            float lx, float ly, float lz,
-            float diffuseConstant,
-            float lightFactor) noexcept
-        {
-            float ndotl = nx * lx + ny * ly + nz * lz;
-            if (ndotl <= 0.0f)
-                return 0.0f;
-
-            return clamp01f(diffuseConstant * ndotl * lightFactor);
-        }
-
-        static INLINE uint32_t packDiffuseLightingPixel(
-            float lcR, float lcG, float lcB,
-            float lit) noexcept
-        {
-            const float a = 1.0f;
-            const float pr = clamp01f(lcR * lit);
-            const float pg = clamp01f(lcG * lit);
-            const float pb = clamp01f(lcB * lit);
-
-            return pack_argb32(a, pr, pg, pb);
-        }
-                */
-
+    // returns a height value in [0..1] based 
+    // on the alpha component of a packed ARGB32 pixel
     static INLINE float alphaHeightFromPRGB32(uint32_t px) noexcept
     {
-        return float((px >> 24) & 0xFFu) * (1.0f / 255.0f);
+        return dequantize0_255((px >> 24) & 0xFFu);
     }
 
-    static INLINE int clampIndex(int v, int lo, int hi) noexcept
-    {
-        if (v < lo) return lo;
-        if (v > hi) return hi;
-        return v;
-    }
+    static INLINE int clampIndex(int v, int lo, int hi) noexcept = delete;
+    //{
+    //    if (v < lo) return lo;
+    //    if (v > hi) return hi;
+    //    return v;
+    //}
 
     static INLINE void diffuseLighting_row_scalar(
         uint32_t* dst,
@@ -326,9 +219,9 @@ namespace waavs
         {
             const int x = x0 + i;
 
-            const int xm1 = clampIndex(x - 1, 0, surfaceW - 1);
-            const int xp0 = clampIndex(x, 0, surfaceW - 1);
-            const int xp1 = clampIndex(x + 1, 0, surfaceW - 1);
+            const int xm1 = clamp(x - 1, 0, surfaceW - 1);
+            const int xp0 = clamp(x, 0, surfaceW - 1);
+            const int xp1 = clamp(x + 1, 0, surfaceW - 1);
 
             const float h00 = alphaHeightFromPRGB32(row0[xm1]);
             const float h10 = alphaHeightFromPRGB32(row0[xp0]);
@@ -398,12 +291,10 @@ namespace waavs
         const uint32_t* row,
         int x0, int x1, int x2, int x3) noexcept
     {
-        const float s = 1.0f / 255.0f;
-
-        const float h0 = float((row[x0] >> 24) & 0xFFu) * s;
-        const float h1 = float((row[x1] >> 24) & 0xFFu) * s;
-        const float h2 = float((row[x2] >> 24) & 0xFFu) * s;
-        const float h3 = float((row[x3] >> 24) & 0xFFu) * s;
+        const float h0 = dequantize0_255((row[x0] >> 24) & 0xFFu);
+        const float h1 = dequantize0_255((row[x1] >> 24) & 0xFFu);
+        const float h2 = dequantize0_255((row[x2] >> 24) & 0xFFu);
+        const float h3 = dequantize0_255((row[x3] >> 24) & 0xFFu);
 
         float32x4_t v = vdupq_n_f32(0.0f);
         v = vsetq_lane_f32(h0, v, 0);
@@ -480,20 +371,20 @@ namespace waavs
             const int xC = x0 + i + 2;
             const int xD = x0 + i + 3;
 
-            const int xm1A = clampIndex(xA - 1, 0, surfaceW - 1);
-            const int xm1B = clampIndex(xB - 1, 0, surfaceW - 1);
-            const int xm1C = clampIndex(xC - 1, 0, surfaceW - 1);
-            const int xm1D = clampIndex(xD - 1, 0, surfaceW - 1);
+            const int xm1A = clamp(xA - 1, 0, surfaceW - 1);
+            const int xm1B = clamp(xB - 1, 0, surfaceW - 1);
+            const int xm1C = clamp(xC - 1, 0, surfaceW - 1);
+            const int xm1D = clamp(xD - 1, 0, surfaceW - 1);
 
-            const int xp0A = clampIndex(xA, 0, surfaceW - 1);
-            const int xp0B = clampIndex(xB, 0, surfaceW - 1);
-            const int xp0C = clampIndex(xC, 0, surfaceW - 1);
-            const int xp0D = clampIndex(xD, 0, surfaceW - 1);
+            const int xp0A = clamp(xA, 0, surfaceW - 1);
+            const int xp0B = clamp(xB, 0, surfaceW - 1);
+            const int xp0C = clamp(xC, 0, surfaceW - 1);
+            const int xp0D = clamp(xD, 0, surfaceW - 1);
 
-            const int xp1A = clampIndex(xA + 1, 0, surfaceW - 1);
-            const int xp1B = clampIndex(xB + 1, 0, surfaceW - 1);
-            const int xp1C = clampIndex(xC + 1, 0, surfaceW - 1);
-            const int xp1D = clampIndex(xD + 1, 0, surfaceW - 1);
+            const int xp1A = clamp(xA + 1, 0, surfaceW - 1);
+            const int xp1B = clamp(xB + 1, 0, surfaceW - 1);
+            const int xp1C = clamp(xC + 1, 0, surfaceW - 1);
+            const int xp1D = clamp(xD + 1, 0, surfaceW - 1);
 
             const float32x4_t h00 = neon_alpha_height4(row0, xm1A, xm1B, xm1C, xm1D);
             const float32x4_t h10 = neon_alpha_height4(row0, xp0A, xp0B, xp0C, xp0D);

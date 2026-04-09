@@ -1439,7 +1439,7 @@ namespace waavs
                     if (opacity > 1.0) opacity = 1.0;
                 }
 
-                const uint32_t a = (uint32_t)clamp_u8((int)std::lround(opacity * 255.0));
+                const uint32_t a = (uint32_t)clamp0_255_i64((int)std::lround(opacity * 255.0));
                 fFloodRGBA32Premul = (a << 24);
             }
         }

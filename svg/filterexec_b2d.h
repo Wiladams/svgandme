@@ -794,178 +794,12 @@ namespace waavs {
 
 
 
-        // ------------------------------------------
-        // onColorMatrix
-        // unary
-        // integer / fixed-point
-        // -------------------------------------------
-
-
-        /*
-        // Scalar, reference implementation
-        bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
-            FilterColorMatrixType type, float param, F32Span matrix) noexcept override
-        {
-            InternedKey inKey = resolveUnaryInputKey(io);
-            InternedKey outKey = resolveOutKeyStrict(io);
-
-            Surface* in = getImage(inKey);
-            if (!in)
-                return false;
-
-            if (!outKey)
-                outKey = kFilter_Last();
-
-            auto out = createLikeSurfaceHandle(*in);
-            if (!out)
-                return false;
-
-            // Start from a copy so unchanged pixels outside the primitive write area
-            // remain as they were in the current implementation model.
-            {
-                SVGB2DDriver bctx{};
-                bctx.attach(*out, 1);
-                bctx.renew();
-                bctx.blendMode(BL_COMP_OP_SRC_COPY);
-                bctx.image(*in, 0, 0);
-                bctx.detach();
-            }
-
-            WGRectI area = resolveSubregionPx(subr, *in);
-            if (area.w <= 0 || area.h <= 0)
-            {
-                if (!putImage(outKey, std::move(out)))
-                    return false;
-
-                setLastKey(outKey);
-                return true;
-            }
-
-            float M[20]{};
-
-            if (type == FILTER_COLOR_MATRIX_MATRIX)
-            {
-                if (!matrix.p || matrix.n != 20)
-                    return false;
-
-                for (int i = 0; i < 20; ++i)
-                    M[i] = matrix.p[i];
-            }
-            else if (type == FILTER_COLOR_MATRIX_SATURATE)
-            {
-                const float s = param;
-
-                M[0] = 0.213f + 0.787f * s;  M[1] = 0.715f - 0.715f * s;  M[2] = 0.072f - 0.072f * s;  M[3] = 0.0f; M[4] = 0.0f;
-                M[5] = 0.213f - 0.213f * s;  M[6] = 0.715f + 0.285f * s;  M[7] = 0.072f - 0.072f * s;  M[8] = 0.0f; M[9] = 0.0f;
-                M[10] = 0.213f - 0.213f * s;  M[11] = 0.715f - 0.715f * s;  M[12] = 0.072f + 0.928f * s;  M[13] = 0.0f; M[14] = 0.0f;
-                M[15] = 0.0f;                 M[16] = 0.0f;                 M[17] = 0.0f;                 M[18] = 1.0f; M[19] = 0.0f;
-            }
-            else if (type == FILTER_COLOR_MATRIX_HUE_ROTATE)
-            {
-                const float a = param * 3.14159265358979323846f / 180.0f;
-                const float c = std::cos(a);
-                const float s = std::sin(a);
-
-                M[0] = 0.213f + 0.787f * c - 0.213f * s;
-                M[1] = 0.715f - 0.715f * c - 0.715f * s;
-                M[2] = 0.072f - 0.072f * c + 0.928f * s;
-                M[3] = 0.0f;
-                M[4] = 0.0f;
-
-                M[5] = 0.213f - 0.213f * c + 0.143f * s;
-                M[6] = 0.715f + 0.285f * c + 0.140f * s;
-                M[7] = 0.072f - 0.072f * c - 0.283f * s;
-                M[8] = 0.0f;
-                M[9] = 0.0f;
-
-                M[10] = 0.213f - 0.213f * c - 0.787f * s;
-                M[11] = 0.715f - 0.715f * c + 0.715f * s;
-                M[12] = 0.072f + 0.928f * c + 0.072f * s;
-                M[13] = 0.0f;
-                M[14] = 0.0f;
-
-                M[15] = 0.0f;
-                M[16] = 0.0f;
-                M[17] = 0.0f;
-                M[18] = 1.0f;
-                M[19] = 0.0f;
-            }
-            else
-            {
-                // luminanceToAlpha
-                M[0] = 0.0f;   M[1] = 0.0f;   M[2] = 0.0f;   M[3] = 0.0f;   M[4] = 0.0f;
-                M[5] = 0.0f;   M[6] = 0.0f;   M[7] = 0.0f;   M[8] = 0.0f;   M[9] = 0.0f;
-                M[10] = 0.0f;   M[11] = 0.0f;   M[12] = 0.0f;   M[13] = 0.0f;   M[14] = 0.0f;
-                M[15] = 0.2125f; M[16] = 0.7154f; M[17] = 0.0721f; M[18] = 0.0f; M[19] = 0.0f;
-            }
-
-            for (int y = area.y; y < area.y + area.h; ++y)
-            {
-                const uint32_t* srow = (const uint32_t*)in->rowPointer((size_t)y);
-                uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
-
-                for (int x = area.x; x < area.x + area.w; ++x)
-                {
-                    const uint32_t px = srow[x];
-
-                    // Stored pixels are premultiplied.
-                    const float a_p = float((px >> 24) & 0xFF) * (1.0f / 255.0f);
-                    float r_p = float((px >> 16) & 0xFF) * (1.0f / 255.0f);
-                    float g_p = float((px >> 8) & 0xFF) * (1.0f / 255.0f);
-                    float b_p = float((px >> 0) & 0xFF) * (1.0f / 255.0f);
-
-                    // feColorMatrix operates on non-premultiplied color values.
-                    float r = 0.0f;
-                    float g = 0.0f;
-                    float b = 0.0f;
-                    const float a = a_p;
-
-                    if (a_p > 0.0f)
-                    {
-                        const float invA = 1.0f / a_p;
-                        r = clamp01(r_p * invA);
-                        g = clamp01(g_p * invA);
-                        b = clamp01(b_p * invA);
-                    }
-
-                    // Apply the 5x4 color matrix to straight RGBA.
-                    float rr = M[0] * r + M[1] * g + M[2] * b + M[3] * a + M[4];
-                    float gg = M[5] * r + M[6] * g + M[7] * b + M[8] * a + M[9];
-                    float bb = M[10] * r + M[11] * g + M[12] * b + M[13] * a + M[14];
-                    float aa = M[15] * r + M[16] * g + M[17] * b + M[18] * a + M[19];
-
-                    rr = clamp01(rr);
-                    gg = clamp01(gg);
-                    bb = clamp01(bb);
-                    aa = clamp01(aa);
-
-                    // Re-premultiply for storage.
-                    rr *= aa;
-                    gg *= aa;
-                    bb *= aa;
-
-                    drow[x] = pack_argb32(aa, rr, gg, bb);
-                }
-            }
-
-            if (!putImage(outKey, std::move(out)))
-                return false;
-
-            setLastKey(outKey);
-            return true;
-        }
-        */
-
-
-
-
         //==================================================
         // ------------------------------------------
         // onColorMatrix
         // unary
         // integer / half way to NEON
         // -------------------------------------------
-
 
 bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
     FilterColorMatrixType type, float param, F32Span matrix) noexcept override
@@ -987,6 +821,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
     // Preserve current executor behavior:
     // start from a copy so pixels outside primitive write area remain unchanged.
     out->blit(*in, 0, 0);
+    //out->clearAll();
 
     WGRectI area = resolveSubregionPx(subr, *in);
     if (area.w <= 0 || area.h <= 0)
@@ -1078,6 +913,10 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
 
         if (isIdentity)
         {
+            //Surface srcSub{};
+            //if (in->getSubSurface(area, srcSub))
+            //    out->blit(srcSub, area.x, area.y);
+
             if (!putImage(outKey, std::move(out)))
                 return false;
 
@@ -1245,10 +1084,12 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                     const uint32_t px = srow[x];
 
                     // Stored pixels are premultiplied.
-                    const float a_p = float((px >> 24) & 0xFF) * (1.0f / 255.0f);
-                    const float r_p = float((px >> 16) & 0xFF) * (1.0f / 255.0f);
-                    const float g_p = float((px >> 8) & 0xFF) * (1.0f / 255.0f);
-                    const float b_p = float((px >> 0) & 0xFF) * (1.0f / 255.0f);
+
+                    const float a_p = dequantize0_255((px >> 24) & 0xFF);
+                    const float r_p = dequantize0_255((px >> 16) & 0xFF);
+                    const float g_p = dequantize0_255((px >> 8) & 0xFF);
+                    const float b_p = dequantize0_255((px >> 0) & 0xFF);
+
 
                     // feComponentTransfer operates on non-premultiplied values.
                     float a = a_p;
@@ -1280,7 +1121,12 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                     gg *= aa;
                     bb *= aa;
 
-                    drow[x] = pack_argb32(aa, rr, gg, bb);
+                    //drow[x] = pack_argb32(aa, rr, gg, bb);
+                    drow[x] = argb32_pack_u8(
+                        quantize0_255(aa),
+                        quantize0_255(rr),
+                        quantize0_255(gg),
+                        quantize0_255(bb));
                 }
             }
 
@@ -1396,7 +1242,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                     case ARITH_K4_ONLY:
                     {
                         const uint8_t c = arith_k4_only_u8(fx.k4, fx.shift);
-                        const uint32_t px = pack_argb32(c, c, c, c);
+                        const uint32_t px = argb32_pack_u8(c, c, c, c);
                         arithmetic_fill_prgb32_row(d + x0, size_t(x1 - x0), px);
                         break;
                     }
@@ -1470,6 +1316,185 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
         // ------------------------------------------
         // onConvolveMatrix
         // -------------------------------------------
+
+        bool onConvolveMatrix(const FilterIO& io, const WGRectD* subr,
+            uint32_t orderX, uint32_t orderY,
+            F32Span kernel,
+            float divisor,
+            float bias,
+            uint32_t targetX,
+            uint32_t targetY,
+            FilterEdgeMode edgeMode,
+            float kernelUnitLengthX,
+            float kernelUnitLengthY,
+            bool preserveAlpha) noexcept override
+        {
+            (void)kernelUnitLengthX;
+            (void)kernelUnitLengthY;
+
+            InternedKey inKey = resolveUnaryInputKey(io);
+            InternedKey outKey = resolveOutKeyStrict(io);
+
+            Surface* in = getInputImage(inKey);
+            if (!in)
+                return false;
+
+            if (!outKey)
+                outKey = kFilter_Last();
+
+            if (!orderX || !orderY)
+                return false;
+            if (!kernel.p || kernel.n != orderX * orderY)
+                return false;
+            if (targetX >= orderX || targetY >= orderY)
+                return false;
+
+            auto out = createLikeSurfaceHandle(*in);
+            if (!out)
+                return false;
+
+            // Primitive result exists only inside its write area.
+            out->clearAll();
+
+            WGRectI area = resolveSubregionPx(subr, *in);
+            if (area.w <= 0 || area.h <= 0)
+            {
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+                setLastKey(outKey);
+                return true;
+            }
+
+            // Spec default: if divisor is 0, use sum(kernel), except use 1 if sum is 0.
+            if (divisor == 0.0f)
+            {
+                float sum = 0.0f;
+                for (uint32_t i = 0; i < kernel.n; ++i)
+                    sum += kernel.p[i];
+
+                divisor = (sum != 0.0f) ? sum : 1.0f;
+            }
+
+            auto clamp_to_premul_invariant = [](float& a, float& r, float& g, float& b) noexcept
+                {
+                    a = clamp01f(a);
+                    r = clamp01f(r);
+                    g = clamp01f(g);
+                    b = clamp01f(b);
+
+                    if (r > a) r = a;
+                    if (g > a) g = a;
+                    if (b > a) b = a;
+                };
+
+            for (int y = area.y; y < area.y + area.h; ++y)
+            {
+                uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
+
+                for (int x = area.x; x < area.x + area.w; ++x)
+                {
+                    float accR = 0.0f;
+                    float accG = 0.0f;
+                    float accB = 0.0f;
+                    float accA = 0.0f;
+
+                    uint32_t kidx = 0;
+                    for (uint32_t ky = 0; ky < orderY; ++ky)
+                    {
+                        const int sy = y + int(ky) - int(targetY);
+
+                        for (uint32_t kx = 0; kx < orderX; ++kx, ++kidx)
+                        {
+                            const int sx = x + int(kx) - int(targetX);
+                            const uint32_t px = samplePixelEdge(*in, sx, sy, edgeMode);
+                            const float w = kernel.p[kidx];
+
+                            const float a = dequantize0_255((px >> 24) & 0xFFu);
+                            const float rp = dequantize0_255((px >> 16) & 0xFFu);
+                            const float gp = dequantize0_255((px >> 8) & 0xFFu);
+                            const float bp = dequantize0_255((px >> 0) & 0xFFu);
+
+                            if (preserveAlpha)
+                            {
+                                // Spec: temporarily unpremultiply color channels, convolve only color.
+                                float r = 0.0f;
+                                float g = 0.0f;
+                                float b = 0.0f;
+
+                                if (a > 0.0f)
+                                {
+                                    const float invA = 1.0f / a;
+                                    r = clamp01f(rp * invA);
+                                    g = clamp01f(gp * invA);
+                                    b = clamp01f(bp * invA);
+                                }
+
+                                accR += r * w;
+                                accG += g * w;
+                                accB += b * w;
+                            }
+                            else
+                            {
+                                // Convolve stored premultiplied channels directly, including alpha.
+                                accR += rp * w;
+                                accG += gp * w;
+                                accB += bp * w;
+                                accA += a * w;
+                            }
+                        }
+                    }
+
+                    float aa;
+                    float rr;
+                    float gg;
+                    float bb;
+
+                    if (preserveAlpha)
+                    {
+                        const uint32_t src = ((const uint32_t*)in->rowPointer((size_t)y))[x];
+                        aa = dequantize0_255((src >> 24) & 0xFFu);
+
+                        rr = accR / divisor + bias;
+                        gg = accG / divisor + bias;
+                        bb = accB / divisor + bias;
+
+                        rr = clamp01f(rr);
+                        gg = clamp01f(gg);
+                        bb = clamp01f(bb);
+                        aa = clamp01f(aa);
+
+                        // Re-premultiply once for storage.
+                        rr *= aa;
+                        gg *= aa;
+                        bb *= aa;
+                    }
+                    else
+                    {
+                        // These are already premultiplied results in storage space.
+                        rr = accR / divisor + bias;
+                        gg = accG / divisor + bias;
+                        bb = accB / divisor + bias;
+                        aa = accA / divisor + bias;
+
+                        clamp_to_premul_invariant(aa, rr, gg, bb);
+                    }
+
+                    drow[x] = argb32_pack_u8(
+                        quantize0_255(aa),
+                        quantize0_255(rr),
+                        quantize0_255(gg),
+                        quantize0_255(bb));
+                }
+            }
+
+            if (!putImage(outKey, std::move(out)))
+                return false;
+
+            setLastKey(outKey);
+            return true;
+        }
+
+/*
         bool onConvolveMatrix(const FilterIO& io, const WGRectD* subr,
             uint32_t orderX, uint32_t orderY,
             F32Span kernel,
@@ -1578,6 +1603,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             setLastKey(outKey);
             return true;
         }
+        */
 
         // ------------------------------------------
         // onDiffuseLighting
@@ -1618,9 +1644,13 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                 return true;
             }
 
-            const float lcR = float((lightingRGBA >> 16) & 0xFF) * (1.0f / 255.0f);
-            const float lcG = float((lightingRGBA >> 8) & 0xFF) * (1.0f / 255.0f);
-            const float lcB = float((lightingRGBA >> 0) & 0xFF) * (1.0f / 255.0f);
+            //const float lcR = float((lightingRGBA >> 16) & 0xFF) * (1.0f / 255.0f);
+            //const float lcG = float((lightingRGBA >> 8) & 0xFF) * (1.0f / 255.0f);
+            //const float lcB = float((lightingRGBA >> 0) & 0xFF) * (1.0f / 255.0f);
+
+            const float lcR = dequantize0_255((lightingRGBA >> 16) & 0xFF);
+            const float lcG = dequantize0_255((lightingRGBA >> 8) & 0xFF);
+            const float lcB = dequantize0_255((lightingRGBA >> 0) & 0xFF);
 
             PixelToFilterUserMap map;
             map.surfaceW = int(in->width());
@@ -1668,9 +1698,9 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
 
             for (int y = yBeg; y < yEnd; ++y)
             {
-                const int y0 = clampIndex(y - 1, 0, H - 1);
-                const int y1 = clampIndex(y, 0, H - 1);
-                const int y2 = clampIndex(y + 1, 0, H - 1);
+                const int y0 = clamp(y - 1, 0, H - 1);
+                const int y1 = clamp(y, 0, H - 1);
+                const int y2 = clamp(y + 1, 0, H - 1);
 
                 const uint32_t* row0 = (const uint32_t*)in->rowPointer((size_t)y0);
                 const uint32_t* row1 = (const uint32_t*)in->rowPointer((size_t)y1);
@@ -1718,35 +1748,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
         // unpack a pre-multiplied ARGB32 pixel to straight Color4f. 
         // The RGB channels are divided by alpha, and clamped to [0,1]. 
         // If alpha is zero, RGB are set to zero.
-        /*
-        static INLINE Color4f argb32_premul_unpack_to_straight(uint32_t px) noexcept
-        {
-            const float k = 1.0f / 255.0f;
 
-            const float a = float((px >> 24) & 0xFFu) * k;
-            const float rp = float((px >> 16) & 0xFFu) * k;
-            const float gp = float((px >> 8) & 0xFFu) * k;
-            const float bp = float((px >> 0) & 0xFFu) * k;
-
-            Color4f out{};
-            out.a = a;
-
-            if (a > 0.0f)
-            {
-                out.r = clamp01(rp / a);
-                out.g = clamp01(gp / a);
-                out.b = clamp01(bp / a);
-            }
-            else
-            {
-                out.r = 0.0f;
-                out.g = 0.0f;
-                out.b = 0.0f;
-            }
-
-            return out;
-        }
-        */
         static INLINE void argb32_premul_unpack_channels_to_straight(
             uint32_t px,
             FilterChannelSelector xChannel,
@@ -1754,9 +1756,9 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             float& mxv,
             float& myv) noexcept
         {
-            const float k = 1.0f / 255.0f;
+            //const float k = 1.0f / 255.0f;
 
-            const float a = float((px >> 24) & 0xFFu) * k;
+            const float a = dequantize0_255((px >> 24) & 0xFFu);
 
             auto decodeOne = [&](FilterChannelSelector ch) noexcept -> float
                 {
@@ -1769,17 +1771,17 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                     case FILTER_CHANNEL_R:
                         if (a <= 0.0f)
                             return 0.0f;
-                        return clamp01((float((px >> 16) & 0xFFu) * k) / a);
+                        return clamp01f((dequantize0_255((px >> 16) & 0xFFu)) / a);
 
                     case FILTER_CHANNEL_G:
                         if (a <= 0.0f)
                             return 0.0f;
-                        return clamp01((float((px >> 8) & 0xFFu) * k) / a);
+                        return clamp01((dequantize0_255((px >> 8) & 0xFFu)) / a);
 
                     case FILTER_CHANNEL_B:
                         if (a <= 0.0f)
                             return 0.0f;
-                        return clamp01((float((px >> 0) & 0xFFu) * k) / a);
+                        return clamp01((dequantize0_255((px >> 0) & 0xFFu)) / a);
                     }
                 };
 
@@ -2031,12 +2033,12 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                     {
                         const uint8_t sa = (uint8_t)((srow[x] >> 24) & 0xFFu);
 
-                        const uint8_t a = (uint8_t)((uint32_t(sa) * uint32_t(floodA) + 127u) / 255u);
-                        const uint8_t r = (uint8_t)((uint32_t(sa) * uint32_t(floodR) + 127u) / 255u);
-                        const uint8_t g = (uint8_t)((uint32_t(sa) * uint32_t(floodG) + 127u) / 255u);
-                        const uint8_t b = (uint8_t)((uint32_t(sa) * uint32_t(floodB) + 127u) / 255u);
+                        const uint8_t a = (uint8_t)(mul0_255(uint32_t(sa), uint32_t(floodA)));
+                        const uint8_t r = (uint8_t)(mul0_255(uint32_t(sa), uint32_t(floodR)));
+                        const uint8_t g = (uint8_t)(mul0_255(uint32_t(sa), uint32_t(floodG)));
+                        const uint8_t b = (uint8_t)(mul0_255(uint32_t(sa), uint32_t(floodB)));
 
-                        drow[x] = pack_argb32(a, r, g, b);
+                        drow[x] = argb32_pack_u8(a, r, g, b);
                     }
                 }
             }
@@ -2908,9 +2910,9 @@ bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
         return true;
     }
 
-    const float lcR = float((lightingRGBA >> 16) & 0xFF) * (1.0f / 255.0f);
-    const float lcG = float((lightingRGBA >> 8) & 0xFF) * (1.0f / 255.0f);
-    const float lcB = float((lightingRGBA >> 0) & 0xFF) * (1.0f / 255.0f);
+    const float lcR = dequantize0_255((lightingRGBA >> 16));
+    const float lcG = dequantize0_255((lightingRGBA >> 8));
+    const float lcB = dequantize0_255((lightingRGBA >> 0));
 
     specularExponent = clamp(specularExponent, 1.0f, 128.0f);
 
@@ -3277,17 +3279,22 @@ bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
                         a = sampleTurbulenceChannel(tx, ty, params, turb, 3, stitchTiles, stitchPtr);
                     }
 
-                    r = clamp01(r);
-                    g = clamp01(g);
-                    b = clamp01(b);
-                    a = clamp01(a);
+                    r = clamp01f(r);
+                    g = clamp01f(g);
+                    b = clamp01f(b);
+                    a = clamp01f(a);
 
                     // Store in premultiplied surface format.
                     r *= a;
                     g *= a;
                     b *= a;
 
-                    drow[x] = pack_argb32(a, r, g, b);
+                    drow[x] = argb32_pack_u8(
+                        quantize0_255(a),
+                        quantize0_255(r),
+                        quantize0_255(g),
+                        quantize0_255(b));
+                    //drow[x] = pack_argb32(a, r, g, b);
                 }
             }
 
@@ -3298,209 +3305,5 @@ bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
             return true;
         }
 
-
-        /*
-        bool onTurbulence(
-            const FilterIO& io,
-            const WGRectD* subr,
-            FilterTurbulenceType typeKey,
-            float baseFreqX,
-            float baseFreqY,
-            uint32_t numOctaves,
-            float seed,
-            bool stitchTiles) noexcept override
-        {
-            InternedKey outKey = resolveOutKeyStrict(io);
-            if (!outKey)
-                outKey = kFilter_Last();
-
-            // feTurbulence is a generator. Use the filter tile size.
-            Surface* like = getImage(kFilter_SourceGraphic());
-            if (!like)
-            {
-                InternedKey lk = lastKey();
-                if (lk)
-                    like = getImage(lk);
-            }
-
-            if (!like)
-                return false;
-
-            auto out = createLikeSurfaceHandle(*like);
-            if (!out)
-                return false;
-
-            out->clearAll();
-
-            WGRectI area = resolveSubregionPx(subr, *out);
-            if (area.w <= 0 || area.h <= 0)
-            {
-                if (!putImage(outKey, std::move(out)))
-                    return false;
-
-                setLastKey(outKey);
-                return true;
-            }
-
-            TurbulenceNoiseParams params{};
-            params.baseFreqX = baseFreqX;
-            params.baseFreqY = baseFreqY;
-            params.seed = seed;
-            params.octaves = numOctaves;
-
-            TurbulenceState turb{};
-            buildTurbulenceState(turb, (int32_t)seed);
-
-            auto userToPrimitive = [&](float ux, float uy, float& px, float& py) noexcept
-                {
-                    switch (fRunState.primitiveUnits)
-                    {
-                    default:
-                    case SpaceUnitsKind::SVG_SPACE_USER:
-                        px = ux;
-                        py = uy;
-                        break;
-
-                    case SpaceUnitsKind::SVG_SPACE_OBJECT:
-                    {
-                        const double bx = fRunState.objectBBoxUS.x;
-                        const double by = fRunState.objectBBoxUS.y;
-                        const double bw = fRunState.objectBBoxUS.w;
-                        const double bh = fRunState.objectBBoxUS.h;
-
-                        if (bw > 0.0 && bh > 0.0)
-                        {
-                            px = float((double(ux) - bx) / bw);
-                            py = float((double(uy) - by) / bh);
-                        }
-                        else
-                        {
-                            px = 0.0f;
-                            py = 0.0f;
-                        }
-                        break;
-                    }
-
-                    case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
-                        // No dedicated conversion implemented elsewhere either.
-                        // Fall back to user space for now.
-                        px = ux;
-                        py = uy;
-                        break;
-                    }
-                };
-
-            auto primitiveSubregionRect = [&]() noexcept -> WGRectD
-                {
-                    if (subr)
-                    {
-                        if (fRunState.primitiveUnits == SpaceUnitsKind::SVG_SPACE_OBJECT)
-                            return *subr;
-
-                        return *subr;
-                    }
-
-                    if (fRunState.primitiveUnits == SpaceUnitsKind::SVG_SPACE_OBJECT)
-                    {
-                        const double bx = fRunState.objectBBoxUS.x;
-                        const double by = fRunState.objectBBoxUS.y;
-                        const double bw = fRunState.objectBBoxUS.w;
-                        const double bh = fRunState.objectBBoxUS.h;
-
-                        if (bw > 0.0 && bh > 0.0)
-                        {
-                            return WGRectD(
-                                (fRunState.filterRectUS.x - bx) / bw,
-                                (fRunState.filterRectUS.y - by) / bh,
-                                fRunState.filterRectUS.w / bw,
-                                fRunState.filterRectUS.h / bh);
-                        }
-
-                        return WGRectD{};
-                    }
-
-                    return fRunState.filterRectUS;
-                };
-
-            TurbulenceStitchInfo stitchInfo{};
-            const TurbulenceStitchInfo* stitchPtr = nullptr;
-
-            if (stitchTiles)
-            {
-                WGRectD tileRect = primitiveSubregionRect();
-
-                if (tileRect.w > 0.0 && tileRect.h > 0.0)
-                {
-                    adjust_base_frequencies_for_stitch(
-                        (float)tileRect.w,
-                        (float)tileRect.h,
-                        params.baseFreqX,
-                        params.baseFreqY);
-
-                    stitchInfo = prepare_stitch_info(
-                        (float)tileRect.x,
-                        (float)tileRect.y,
-                        (float)tileRect.w,
-                        (float)tileRect.h,
-                        params.baseFreqX,
-                        params.baseFreqY);
-
-                    stitchPtr = &stitchInfo;
-                }
-            }
-
-            const bool fractalNoise = (typeKey == FILTER_TURBULENCE_FRACTAL_NOISE);
-
-            for (int y = area.y; y < area.y + area.h; ++y)
-            {
-                uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
-
-                for (int x = area.x; x < area.x + area.w; ++x)
-                {
-                    float ux, uy;
-                    pixelCenterToFilterUser(x, y, ux, uy);
-
-                    float tx, ty;
-                    userToPrimitive(ux, uy, tx, ty);
-
-                    float r, g, b, a;
-
-                    if (fractalNoise)
-                    {
-                        r = sampleFractalChannel(tx, ty, params, turb, 0, stitchTiles, stitchPtr);
-                        g = sampleFractalChannel(tx, ty, params, turb, 1, stitchTiles, stitchPtr);
-                        b = sampleFractalChannel(tx, ty, params, turb, 2, stitchTiles, stitchPtr);
-                        a = sampleFractalChannel(tx, ty, params, turb, 3, stitchTiles, stitchPtr);
-                    }
-                    else
-                    {
-                        r = sampleTurbulenceChannel(tx, ty, params, turb, 0, stitchTiles, stitchPtr);
-                        g = sampleTurbulenceChannel(tx, ty, params, turb, 1, stitchTiles, stitchPtr);
-                        b = sampleTurbulenceChannel(tx, ty, params, turb, 2, stitchTiles, stitchPtr);
-                        a = sampleTurbulenceChannel(tx, ty, params, turb, 3, stitchTiles, stitchPtr);
-                    }
-
-                    r = clamp01(r);
-                    g = clamp01(g);
-                    b = clamp01(b);
-                    a = clamp01(a);
-
-                    // Store in the executor's normal premultiplied surface format.
-                    // This keeps downstream consumers like feDisplacementMap consistent.
-                    r *= a;
-                    g *= a;
-                    b *= a;
-
-                    drow[x] = pack_argb32(a, r, g, b);
-                }
-            }
-
-            if (!putImage(outKey, std::move(out)))
-                return false;
-
-            setLastKey(outKey);
-            return true;
-        }
-        */
     };
 }

@@ -154,6 +154,30 @@ namespace waavs
         return clamp01f(lit);
     }
 
+
+    // Pack the specular lighting result into an ARGB32 pixel, 
+    // where the RGB components are the lit color and the alpha 
+    // is the maximum of the RGB components (for later compositing).
+    static INLINE uint32_t packSpecularLightingPixel(
+        float lcR, float lcG, float lcB,
+        float lit) noexcept
+    {
+        const float pr = clamp01f(lcR * lit);
+        const float pg = clamp01f(lcG * lit);
+        const float pb = clamp01f(lcB * lit);
+
+        float a = pr;
+        if (pg > a) a = pg;
+        if (pb > a) a = pb;
+
+        return argb32_pack_u8(
+            quantize0_255(a),
+            quantize0_255(pr),
+            quantize0_255(pg),
+            quantize0_255(pb));
+    }
+
+    /*
     static INLINE uint32_t packSpecularLightingPixel(
         float lcR, float lcG, float lcB,
         float lit) noexcept
@@ -181,4 +205,5 @@ namespace waavs
 
         return pack_argb32(a, pr, pg, pb);
     }
+    */
 }

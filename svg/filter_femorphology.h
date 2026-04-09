@@ -101,7 +101,7 @@ namespace waavs
         const uint8_t bg = (uint8_t)((b >> 8) & 0xFF);
         const uint8_t bb = (uint8_t)((b >> 0) & 0xFF);
 
-        return pack_argb32(
+        return argb32_pack_u8(
             (aa < ba) ? aa : ba,
             (ar < br) ? ar : br,
             (ag < bg) ? ag : bg,
@@ -120,7 +120,7 @@ namespace waavs
         const uint8_t bg = (uint8_t)((b >> 8) & 0xFF);
         const uint8_t bb = (uint8_t)((b >> 0) & 0xFF);
 
-        return pack_argb32(
+        return argb32_pack_u8(
             (aa > ba) ? aa : ba,
             (ar > br) ? ar : br,
             (ag > bg) ? ag : bg,
@@ -187,7 +187,7 @@ namespace waavs
             morph_expire_front(scratch.idxB.get(), headB, tailB, winStart);
 
             const int x = x0 + winStart;
-            dst[x] = pack_argb32(
+            dst[x] = argb32_pack_u8(
                 scratch.valA[headA],
                 scratch.valR[headR],
                 scratch.valG[headG],
@@ -255,7 +255,7 @@ namespace waavs
             morph_expire_front(scratch.idxB.get(), headB, tailB, winStart);
 
             const int x = x0 + winStart;
-            dst[x] = pack_argb32(
+            dst[x] = argb32_pack_u8(
                 scratch.valA[headA],
                 scratch.valR[headR],
                 scratch.valG[headG],
@@ -337,7 +337,7 @@ namespace waavs
 
                 const int y = y0 + winStart;
                 uint32_t* drow = (uint32_t*)dstSurf.rowPointer((size_t)y);
-                drow[x] = pack_argb32(
+                drow[x] = argb32_pack_u8(
                     scratch.valA[headA],
                     scratch.valR[headR],
                     scratch.valG[headG],
@@ -419,7 +419,7 @@ namespace waavs
 
                 const int y = y0 + winStart;
                 uint32_t* drow = (uint32_t*)dstSurf.rowPointer((size_t)y);
-                drow[x] = pack_argb32(
+                drow[x] = argb32_pack_u8(
                     scratch.valA[headA],
                     scratch.valR[headR],
                     scratch.valG[headG],

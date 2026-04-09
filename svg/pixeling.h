@@ -44,17 +44,9 @@ typedef uint32_t Pixel_SRGBA8_ARGB32; // [A:R:G:B] straight sRGB
 typedef uint32_t Pixel_SRGBA8_RGBA32; // [R:G:B:A] straight sRGB 
 
 namespace waavs {
-    // a fast multiply of two 8-bit values, returning an 8-bit result, with rounding
-    static INLINE uint32_t mul255(uint32_t x, uint32_t y) noexcept
-    {
-        uint32_t t = x * y + 128;
-        return (t + (t >> 8)) >> 8;
-    }
 
-    static INLINE uint32_t wg_div255_u32(uint32_t x) noexcept
-    {
-        return (x + 128u + ((x + 128u) >> 8)) >> 8;
-    }
+
+
 
 
 #if defined(_M_ARM64) || defined(__aarch64__)
@@ -132,6 +124,30 @@ static INLINE __m128i mm_splat_inv_alpha_u16(__m128i argb16) noexcept
 
 namespace waavs {
 
+    static INLINE uint32_t pack_argb32(uint8_t a, uint8_t r, uint8_t g, uint8_t b) noexcept = delete;
+    
+    // raw byte packing without any clamping or conversion; 
+    // useful for where we just want to pack known 8-bit values 
+    // into a pixel
+    static INLINE uint32_t argb32_pack_u8(uint32_t a, uint32_t r, uint32_t g, uint32_t b) noexcept
+    {
+        return (uint32_t(a) << 24) | (uint32_t(r) << 16) | (uint32_t(g) << 8) | uint32_t(b);
+    }
+
+    static INLINE void argb32_unpack(uint32_t px, uint8_t& a, uint8_t& r, uint8_t& g, uint8_t& b) noexcept = delete;
+
+    // Raw byte unpacking without any conversion; 
+    // useful for where we just want to get the 8-bit 
+    // components out of a pixel
+    static INLINE void argb32_unpack_u8(uint32_t px, uint8_t& a, uint8_t& r, uint8_t& g, uint8_t& b) noexcept
+    {
+        a = (uint8_t)((px >> 24) & 0xFF);
+        r = (uint8_t)((px >> 16) & 0xFF);
+        g = (uint8_t)((px >> 8) & 0xFF);
+        b = (uint8_t)(px & 0xFF);
+    }
+
+
     // pack_argb32()
     // 
     // Convert the given float values into 8-bit components and
@@ -140,7 +156,8 @@ namespace waavs {
     // NOTE:  This routine does NOT do any pre-multiplication.  It 
     // assumes any pre-multiplication has already occured before calling
     // into here
-    static INLINE uint32_t pack_argb32(float a, float r, float g, float b) noexcept
+    static INLINE uint32_t pack_argb32(float a, float r, float g, float b) noexcept = delete;
+/*
     {
         // clamp to range [0,1] before converting to 8-bit integers.
         r = clamp01(r);
@@ -148,18 +165,15 @@ namespace waavs {
         b = clamp01(b);
         a = clamp01(a);
 
-        const uint32_t A = (uint32_t)float_to_u8(a);
-        const uint32_t R = (uint32_t)float_to_u8(r);
-        const uint32_t G = (uint32_t)float_to_u8(g);
-        const uint32_t B = (uint32_t)float_to_u8(b);
+        const uint32_t A = (uint32_t)quantize0_255(a);
+        const uint32_t R = (uint32_t)quantize0_255(r);
+        const uint32_t G = (uint32_t)quantize0_255(g);
+        const uint32_t B = (uint32_t)quantize0_255(b);
 
         return (A << 24) | (R << 16) | (G << 8) | B;
     }
+    */
 
-    static INLINE uint32_t pack_argb32(uint8_t a, uint8_t r, uint8_t g, uint8_t b) noexcept
-    {
-        return (uint32_t(a) << 24) | (uint32_t(r) << 16) | (uint32_t(g) << 8) | uint32_t(b);
-    }
 
     static INLINE uint32_t pack_argb32(uint32_t a, uint32_t r, uint32_t g, uint32_t b) noexcept
     {
@@ -169,13 +183,7 @@ namespace waavs {
 
 
 
-    static INLINE void argb32_unpack(uint32_t px, uint8_t& a, uint8_t& r, uint8_t& g, uint8_t& b) noexcept
-    {
-        a = (uint8_t)((px >> 24) & 0xFF);
-        r = (uint8_t)((px >> 16) & 0xFF);
-        g = (uint8_t)((px >> 8) & 0xFF);
-        b = (uint8_t)(px & 0xFF);
-    }
+
 
     static INLINE void argb32_unpack(uint32_t px, int& a, int& r, int& g, int& b) noexcept
     {

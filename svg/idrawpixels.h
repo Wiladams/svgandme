@@ -139,14 +139,14 @@ namespace waavs
     static INLINE uint32_t wg_scale_premul_argb32_u8(uint32_t c, uint32_t m) noexcept
     {
         uint8_t a, r, g, b;
-        argb32_unpack(c, a, r, g, b);
+        argb32_unpack_u8(c, a, r, g, b);
 
-        const uint8_t sa = (uint8_t)wg_div255_u32((uint32_t)a * m);
-        const uint8_t sr = (uint8_t)wg_div255_u32((uint32_t)r * m);
-        const uint8_t sg = (uint8_t)wg_div255_u32((uint32_t)g * m);
-        const uint8_t sb = (uint8_t)wg_div255_u32((uint32_t)b * m);
+        const uint8_t sa = (uint8_t)div0_255_rounded_u32((uint32_t)a * m);
+        const uint8_t sr = (uint8_t)div0_255_rounded_u32((uint32_t)r * m);
+        const uint8_t sg = (uint8_t)div0_255_rounded_u32((uint32_t)g * m);
+        const uint8_t sb = (uint8_t)div0_255_rounded_u32((uint32_t)b * m);
 
-        return pack_argb32(sa, sr, sg, sb);
+        return argb32_pack_u8(sa, sr, sg, sb);
     }
 
     static INLINE uint32_t wg_src_over_premul_argb32(uint32_t src, uint32_t dst) noexcept
@@ -154,17 +154,17 @@ namespace waavs
         uint8_t sa, sr, sg, sb;
         uint8_t da, dr, dg, db;
 
-        argb32_unpack(src, sa, sr, sg, sb);
-        argb32_unpack(dst, da, dr, dg, db);
+        argb32_unpack_u8(src, sa, sr, sg, sb);
+        argb32_unpack_u8(dst, da, dr, dg, db);
 
         const uint32_t invA = 255u - (uint32_t)sa;
 
-        const uint8_t oa = (uint8_t)((uint32_t)sa + wg_div255_u32((uint32_t)da * invA));
-        const uint8_t or_ = (uint8_t)((uint32_t)sr + wg_div255_u32((uint32_t)dr * invA));
-        const uint8_t og = (uint8_t)((uint32_t)sg + wg_div255_u32((uint32_t)dg * invA));
-        const uint8_t ob = (uint8_t)((uint32_t)sb + wg_div255_u32((uint32_t)db * invA));
+        const uint8_t oa = (uint8_t)((uint32_t)sa + div0_255_rounded_u32((uint32_t)da * invA));
+        const uint8_t or_ = (uint8_t)((uint32_t)sr + div0_255_rounded_u32((uint32_t)dr * invA));
+        const uint8_t og = (uint8_t)((uint32_t)sg + div0_255_rounded_u32((uint32_t)dg * invA));
+        const uint8_t ob = (uint8_t)((uint32_t)sb + div0_255_rounded_u32((uint32_t)db * invA));
 
-        return pack_argb32(oa, or_, og, ob);
+        return argb32_pack_u8(oa, or_, og, ob);
     }
 
     static INLINE void wg_blend_span_mask8_raw(
@@ -179,7 +179,7 @@ namespace waavs
             return;
 
         uint8_t srcA, srcR, srcG, srcB;
-        argb32_unpack(srcColor, srcA, srcR, srcG, srcB);
+        argb32_unpack_u8(srcColor, srcA, srcR, srcG, srcB);
 
         if (srcA == 0)
             return;

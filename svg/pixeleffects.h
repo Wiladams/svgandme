@@ -157,10 +157,10 @@ namespace waavs {
         const uint32_t isa = 255 - sa;
 
         // construct new pre-multiplied pixel values by multiplying the source color values
-        const uint32_t oa = sa + mul255(da, isa);
-        const uint32_t orr = sr + mul255(dr, isa);
-        const uint32_t og = sg + mul255(dg, isa);
-        const uint32_t ob = sb + mul255(db, isa);
+        const uint32_t oa = sa + mul0_255(da, isa);
+        const uint32_t orr = sr + mul0_255(dr, isa);
+        const uint32_t og = sg + mul0_255(dg, isa);
+        const uint32_t ob = sb + mul0_255(db, isa);
 
         return pack_argb32(oa, orr, og, ob);
     }
@@ -177,10 +177,10 @@ namespace waavs {
         uint32_t sa, sr, sg, sb;
         argb32_unpack(p1, sa, sr, sg, sb);
 
-        const uint32_t oa = mul255(sa, da);
-        const uint32_t orr = mul255(sr, da);
-        const uint32_t og = mul255(sg, da);
-        const uint32_t ob = mul255(sb, da);
+        const uint32_t oa = mul0_255(sa, da);
+        const uint32_t orr = mul0_255(sr, da);
+        const uint32_t og = mul0_255(sg, da);
+        const uint32_t ob = mul0_255(sb, da);
 
         return pack_argb32(oa, orr, og, ob);
     }
@@ -198,10 +198,10 @@ namespace waavs {
 
         const uint32_t ida = 255 - da;
 
-        const uint32_t oa = mul255(sa, ida);
-        const uint32_t orr = mul255(sr, ida);
-        const uint32_t og = mul255(sg, ida);
-        const uint32_t ob = mul255(sb, ida);
+        const uint32_t oa = mul0_255(sa, ida);
+        const uint32_t orr = mul0_255(sr, ida);
+        const uint32_t og = mul0_255(sg, ida);
+        const uint32_t ob = mul0_255(sb, ida);
 
         return pack_argb32(oa, orr, og, ob);
     }
@@ -223,18 +223,18 @@ namespace waavs {
         if (sa == 255)
         {
             const uint32_t oa = da;
-            const uint32_t orr = mul255(sr, da);
-            const uint32_t og = mul255(sg, da);
-            const uint32_t ob = mul255(sb, da);
+            const uint32_t orr = mul0_255(sr, da);
+            const uint32_t og = mul0_255(sg, da);
+            const uint32_t ob = mul0_255(sb, da);
             return pack_argb32(oa, orr, og, ob);
         }
 
         const uint32_t isa = 255 - sa;
 
         const uint32_t oa = da;
-        const uint32_t orr = mul255(sr, da) + mul255(dr, isa);
-        const uint32_t og = mul255(sg, da) + mul255(dg, isa);
-        const uint32_t ob = mul255(sb, da) + mul255(db, isa);
+        const uint32_t orr = mul0_255(sr, da) + mul0_255(dr, isa);
+        const uint32_t og = mul0_255(sg, da) + mul0_255(dg, isa);
+        const uint32_t ob = mul0_255(sb, da) + mul0_255(db, isa);
 
         return pack_argb32(oa, orr, og, ob);
     }
@@ -261,10 +261,10 @@ namespace waavs {
         const uint32_t isa = 255 - sa;
         const uint32_t ida = 255 - da;
 
-        const uint32_t oa = mul255(sa, ida) + mul255(da, isa);
-        const uint32_t orr = mul255(sr, ida) + mul255(dr, isa);
-        const uint32_t og = mul255(sg, ida) + mul255(dg, isa);
-        const uint32_t ob = mul255(sb, ida) + mul255(db, isa);
+        const uint32_t oa = mul0_255(sa, ida) + mul0_255(da, isa);
+        const uint32_t orr = mul0_255(sr, ida) + mul0_255(dr, isa);
+        const uint32_t og = mul0_255(sg, ida) + mul0_255(dg, isa);
+        const uint32_t ob = mul0_255(sb, ida) + mul0_255(db, isa);
 
         return pack_argb32(oa, orr, og, ob);
     }

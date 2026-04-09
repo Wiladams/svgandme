@@ -34,7 +34,7 @@ namespace waavs
             row[3] * int32_t(a) +
             row[4];
 
-        return clamp_u8((acc + 128) >> 8);
+        return clamp0_255_i32((acc + 128) >> 8);
     }
 
     static INLINE uint32_t mul255_round_u8(uint32_t x, uint32_t a) noexcept
