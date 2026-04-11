@@ -165,7 +165,6 @@ namespace waavs {
         return pack_argb32(oa, orr, og, ob);
     }
 
-
     static INLINE uint32_t composite_in_prgb32_pixel(uint32_t p1, uint32_t p2) noexcept
     {
         const uint32_t da = argb32_unpack_alpha(p2);

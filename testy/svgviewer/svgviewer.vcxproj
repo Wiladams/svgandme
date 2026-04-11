@@ -256,7 +256,7 @@
     <ClInclude Include="..\..\svg\bithacks.h" />
     <ClInclude Include="..\..\svg\blend2d_connect.h" />
     <ClInclude Include="..\..\svg\coloring.h" />
-    <ClInclude Include="..\..\svg\filterprogram.h" />
+    <ClInclude Include="..\..\svg\filter_program.h" />
     <ClInclude Include="..\..\svg\filterprogrambuilder.h" />
     <ClInclude Include="..\..\svg\filterprogramexec.h" />
     <ClInclude Include="..\..\svg\filter_codec.h" />
@@ -265,7 +265,7 @@
     <ClInclude Include="..\..\svg\filter_fecomposite.h" />
     <ClInclude Include="..\..\svg\filter_fegaussian.h" />
     <ClInclude Include="..\..\svg\filter_femorphology.h" />
-    <ClInclude Include="..\..\svg\filter_util.h" />
+    <ClInclude Include="..\..\svg\filter_types.h" />
     <ClInclude Include="..\..\svg\frames_blend2d_source.h" />
     <ClInclude Include="..\..\svg\bspan.h" />
     <ClInclude Include="..\..\svg\charset.h" />

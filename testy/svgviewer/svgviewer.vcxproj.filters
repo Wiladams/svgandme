@@ -263,7 +263,7 @@
     <ClInclude Include="..\..\svg\pixelaccessor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\filterprogram.h">
+    <ClInclude Include="..\..\svg\filter_program.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\filterprogramexec.h">
@@ -356,7 +356,7 @@
     <ClInclude Include="..\..\svg\filter_fespecularlight.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\filter_util.h">
+    <ClInclude Include="..\..\svg\filter_types.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\filter_fediffuselight.h">

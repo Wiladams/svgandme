@@ -63,6 +63,9 @@ namespace waavs {
 	constexpr auto RadToDeg = 57.29577951308232;         // 180 / PI
     constexpr auto Sqrt2 = 1.41421356237309504880;
 
+    constexpr int32_t int32_max = std::numeric_limits<int32_t>::max();
+    constexpr int32_t int32_min = std::numeric_limits<int32_t>::min();
+
     constexpr auto int_max = std::numeric_limits<int>::max();
     constexpr auto int_min = std::numeric_limits<int>::min();
     
@@ -472,24 +475,48 @@ namespace waavs
         return ax * bx + ay * by + az * bz;
     }
 
-    static INLINE void vec3_normalize(float& x, float& y, float& z) noexcept
+    static INLINE bool normalize3(float& x, float& y, float& z) noexcept = delete;
+/*
     {
         const float len2 = x * x + y * y + z * z;
-
-        if (len2 > 0.0f)
+        if (almost_zero(len2))
         {
-            const float invLen = 1.0f / std::sqrt(len2);
-            x *= invLen;
-            y *= invLen;
-            z *= invLen;
+            x = 0.0f;
+            y = 0.0f;
+            z = 1.0f;
+            return false;
         }
-        else
+
+        const float invLen = 1.0f / std::sqrt(len2);
+        x *= invLen;
+        y *= invLen;
+        z *= invLen;
+
+        return true;
+    }
+*/
+
+    static INLINE bool vec3_normalize(float& x, float& y, float& z) noexcept
+    {
+        const float len2 = x * x + y * y + z * z;
+        
+        if (almost_zero(len2))
         {
             // Degenerate vector -> default to unit Z
             x = 0.0f;
             y = 0.0f;
             z = 1.0f;
+
+            return false;
         }
+
+            const float invLen = 1.0f / std::sqrt(len2);
+            x *= invLen;
+            y *= invLen;
+            z *= invLen;
+
+
+        return true;
     }
 }
 
@@ -2587,6 +2614,17 @@ namespace waavs
         return dequantize0_255(uint8_t(v & 0xFFu));
     }
 
+    // saturated round of double to int32_t
+    static INLINE int32_t saturate_round_i32(double v) noexcept
+    {
+        if (v >= double(int32_max))
+            return int32_max;
+        if (v <= double(int32_min))
+            return int32_min;
+
+        return (int32_t)std::llround(v);
+    }
+
     // a fast multiply of two 8-bit values, 
     // returning an 8-bit result, with rounding
     static INLINE uint32_t mul255(uint32_t x, uint32_t y) noexcept = delete;
@@ -2596,7 +2634,6 @@ namespace waavs
         return (t + (t >> 8)) >> 8;
     }
 
-    static INLINE uint32_t wg_div255_u32(uint32_t x) noexcept = delete;
     static INLINE uint32_t div0_255_rounded_u32(uint32_t x) noexcept
     {
         return (x + 128u + ((x + 128u) >> 8)) >> 8;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "filter_util.h"
+#include "filter_types.h"
 #include "filterprogramexec.h"   // FilterProgramExecutor + IAmFroot<T>
 
 

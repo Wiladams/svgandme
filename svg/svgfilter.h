@@ -423,7 +423,7 @@ namespace waavs
             if (fIn) 
                 return fIn;
 
-            return last ? last : kFilter_SourceGraphic();
+            return last ? last : filter::Filter_SourceGraphic();
         }
 
 
@@ -432,7 +432,7 @@ namespace waavs
             if (fIn2) 
                 return fIn2;
 
-            return kFilter_SourceGraphic();
+            return filter::Filter_SourceGraphic();
         }
 
         // -------------------------------------------
@@ -2456,7 +2456,7 @@ namespace waavs {
             fProgram.primitiveUnits = fPrimitiveUnits;
 
             const SVGFilterElement* src = resolvePrimitiveSource();
-            InternedKey last = kFilter_SourceGraphic();
+            InternedKey last = filter::Filter_SourceGraphic();
 
             if (src)
             {

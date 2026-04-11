@@ -114,6 +114,11 @@
 #endif
 
 #if defined(_M_ARM64) || defined(__aarch64__) || defined(__ARM_NEON) || defined(__ARM_NEON__)
+#define WAAVS_HAS_NEON 1
 #include <arm_neon.h>
+#else
+#define WAAVS_HAS_NEON 0
 #endif
+
+
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "filter_util.h"
+#include "filter_types.h"
 
 namespace waavs
 {
@@ -37,7 +37,7 @@ namespace waavs
         nx = -surfaceScale * dHx;
         ny = -surfaceScale * dHy;
         nz = 1.0f;
-        normalize3(nx, ny, nz);
+        vec3_normalize(nx, ny, nz);
     }
 
     static INLINE void computeDiffuseLightVector(
@@ -56,7 +56,7 @@ namespace waavs
             lx = std::cos(el) * std::cos(az);
             ly = std::cos(el) * std::sin(az);
             lz = std::sin(el);
-            normalize3(lx, ly, lz);
+            vec3_normalize(lx, ly, lz);
             return;
         }
 
@@ -65,7 +65,7 @@ namespace waavs
             lx = light.L[0] - ux;
             ly = light.L[1] - uy;
             lz = light.L[2] - h;
-            normalize3(lx, ly, lz);
+            vec3_normalize(lx, ly, lz);
             return;
         }
 
@@ -88,8 +88,8 @@ namespace waavs
         float sy = uy - light.L[1];
         float sz = h - light.L[2];
 
-        const bool axisOk = normalize3(ax, ay, az);
-        const bool rayOk = normalize3(sx, sy, sz);
+        const bool axisOk = vec3_normalize(ax, ay, az);
+        const bool rayOk = vec3_normalize(sx, sy, sz);
 
         if (!axisOk || !rayOk)
             return 0.0f;

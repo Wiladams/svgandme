@@ -4,21 +4,45 @@
 
 #include <vector>
 
-#include "nametable.h"
+#include "filter_types.h"
 
-namespace waavs
-{
-    // --------------------------------------------------------
-    // Common filter keys
-    // --------------------------------------------------------
-    static INLINE InternedKey kFilter_SourceGraphic() noexcept { static InternedKey k = PSNameTable::INTERN("SourceGraphic"); return k; }
-    static INLINE InternedKey kFilter_SourceAlpha() noexcept { static InternedKey k = PSNameTable::INTERN("SourceAlpha"); return k; }
-    static INLINE InternedKey kFilter_Last() noexcept { static InternedKey k = PSNameTable::INTERN("__last__"); return k; }
-}
 
 
 namespace waavs
 {
+    typedef uint16_t FilterOpType;
+    typedef uint64_t FilterMemWord;
+
+    // These bits help describe various policies 
+    // and behaviors of the filter program, such 
+    // as how to handle missing inputs, how to 
+    // initialize output tiles, etc.
+    enum FilterPolicyBits : uint32_t
+    {
+        FPP_NONE = 0,
+
+        // arity / source model
+        FPP_GENERATOR = 1u << 0,
+        FPP_MULTI_INPUT = 1u << 1,
+
+        // output initialization
+        FPP_INIT_CLEAR = 1u << 2,
+        FPP_INIT_COPY_PRIMARY = 1u << 3,
+        FPP_INIT_NOINIT = 1u << 4,
+
+        // input handling
+        FPP_IN1_IMPLICIT_LAST = 1u << 5,
+        FPP_IN2_IMPLICIT_SOURCE = 1u << 6,
+        FPP_MISSING_INPUT_FAIL = 1u << 7,
+        FPP_MISSING_INPUT_FALLBACK = 1u << 8,
+        FPP_MISSING_INPUT_IGNORE = 1u << 9,
+
+        // write behavior
+        FPP_PRESERVE_UNTOUCHED = 1u << 10,
+        FPP_FULL_TILE_WRITE = 1u << 11,
+        FPP_BINARY_INTERSECTION = 1u << 12
+    };
+
 
     // An operation code is a combination of an opcode id
     // any operation modifiers, which are attached as flags 
@@ -41,7 +65,7 @@ namespace waavs
 
     // FilterOpId, these are the actual opcodes for the filter program
     // without any modifiers
-    enum FilterOpId : uint8_t {
+    enum FilterOpId : FilterOpType {
         FOP_END = 0,                // indicates end of program; not an actual filter primitive
 
         // Inputs / sources
@@ -79,34 +103,34 @@ namespace waavs
 
     // Helpers to pack and unpack opcodes and flags into the ops vector of the filter program.
     // Pack an opcode id and optional flags into a single byte for the ops vector.
-    static INLINE uint8_t packOp(FilterOpId id, uint8_t flags = 0) noexcept
+    static INLINE FilterOpType packOp(FilterOpId id, uint8_t flags = 0) noexcept
     {
-        return (uint8_t)((id & FOP_ID_MASK) | (flags & FOP_FLAG_MASK));
+        return (FilterOpType)((id & FOP_ID_MASK) | (flags & FOP_FLAG_MASK));
     }
 
     // Unpack just the opcode id from a packed op byte.
-    static INLINE FilterOpId opId(uint8_t op) noexcept
+    static INLINE FilterOpId opId(FilterOpType op) noexcept
     {
         return (FilterOpId)(op & FOP_ID_MASK);
     }
 
     // Unpack just the flags from a packed op byte.
-    static INLINE uint8_t opFlags(uint8_t op) noexcept
+    static INLINE FilterOpType opFlags(FilterOpType op) noexcept
     {
-        return (uint8_t)(op & FOP_FLAG_MASK);
+        return (FilterOpType)(op & FOP_FLAG_MASK);
     }
 
-    static INLINE bool opHasOut(uint8_t op) noexcept
+    static INLINE bool opHasOut(FilterOpType op) noexcept
     {
         return (op & FOPF_HAS_OUT) != 0;
     }
 
-    static INLINE bool opHasIn2(uint8_t op) noexcept
+    static INLINE bool opHasIn2(FilterOpType op) noexcept
     {
         return (op & FOPF_HAS_IN2) != 0;
     }
 
-    static INLINE bool opHasSubregion(uint8_t op) noexcept
+    static INLINE bool opHasSubregion(FilterOpType op) noexcept
     {
         return (op & FOPF_HAS_SUBR) != 0;
     }
@@ -118,8 +142,8 @@ namespace waavs
     // store numbers, pointers, or packed pairs of smaller values.
     struct FilterProgramStream
     {
-        std::vector<uint8_t>  ops;   // packed opcode+flags
-        std::vector<uint64_t> mem;   // 64-bit words (numbers, pointers, packed pairs)
+        std::vector<FilterOpType>  ops;   // packed opcode+flags
+        std::vector<FilterMemWord> mem;   // 64-bit words (numbers, pointers, packed pairs)
 
         // Filter-level coordinate system controls:
         SpaceUnitsKind filterUnits{ SpaceUnitsKind::SVG_SPACE_OBJECT }; // default objectBoundingBox
@@ -149,7 +173,7 @@ namespace waavs
         // If we've encountered program end (FOP_END), we'll still
         // return true, and expect the caller to handle that condition.
         // 
-        bool next(uint8_t& op) noexcept
+        bool next(FilterOpType& op) noexcept
         {
             if (!prog || opi >= prog->ops.size()) 
                 return false;

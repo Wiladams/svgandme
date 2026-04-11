@@ -2,15 +2,14 @@
 
 #include <memory>
 
-#include "definitions.h"
 
-#include "nametable.h"
 
-#include "filterprogram.h"
+#include "filter_types.h"
+#include "filter_program.h"
 #include "filterprogrambuilder.h"
 #include "pixeleffects.h"
 
-#include "filter_util.h"
+
 
 //
 // FilterProgramExecutor: a base class for executing filter programs.
@@ -140,7 +139,7 @@ namespace waavs
             
             INLINE InternedKey implicitInputFallback() const noexcept
             {
-                return lastKey() ? lastKey() : kFilter_SourceGraphic();
+                return lastKey() ? lastKey() : filter::Filter_SourceGraphic();
             }
 
             INLINE InternedKey resolveExplicitOrImplicitInputKey(InternedKey k) const noexcept
@@ -182,9 +181,9 @@ namespace waavs
 
             INLINE InternedKey resolveOutKeyStrict(const FilterIO& io) const noexcept
             {
-                if (!io.hasOut) return kFilter_Last();
-                if (!io.out)    return kFilter_Last();
-                if (io.out == kFilter_Last()) return kFilter_Last();
+                if (!io.hasOut) return filter::Filter_Last();
+                if (!io.out)    return filter::Filter_Last();
+                if (io.out == filter::Filter_Last()) return filter::Filter_Last();
                 return io.out;
             }
 
@@ -1044,7 +1043,7 @@ namespace waavs
                 return false;
             }
 
-            uint8_t opByte{};
+            FilterOpType opByte{};
             while (cur().next(opByte))
             {
                 const FilterOpId id = opId(opByte);

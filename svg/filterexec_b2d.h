@@ -8,7 +8,7 @@
 #include "nametable.h"
 #include "svgb2ddriver.h"
 
-#include "filter_util.h"
+#include "filter_types.h"
 #include "filterprogramexec.h"   
 #include "filter_noise.h"
 #include "svggraphicselement.h"
@@ -664,17 +664,17 @@ namespace waavs {
 
             // Prime the pump by placing the image we just drew into 
             // the registry as the SourceGraphic.
-            if (!putImage(kFilter_SourceGraphic(), std::move(srcGraphic)))
+            if (!putImage(filter::Filter_SourceGraphic(), std::move(srcGraphic)))
                 return false;
 
             // make the alpha channel available as SourceAlpha, for primitives that need it.
             // BUGBUG - maybe this can be delayed and the filter primitives that need
             // it can request it on demand.
-            auto srcAlpha = makeSourceAlpha(*getImage(kFilter_SourceGraphic()));
+            auto srcAlpha = makeSourceAlpha(*getImage(filter::Filter_SourceGraphic()));
             if (!srcAlpha)
                 return false;
 
-            if (!putImage(kFilter_SourceAlpha(), std::move(srcAlpha)))
+            if (!putImage(filter::Filter_SourceAlpha(), std::move(srcAlpha)))
                 return false;
 
             // --------------------------------------------------
@@ -687,11 +687,11 @@ namespace waavs {
             // Resolve final output surface
             InternedKey outKey = lastKey();
             if (!outKey)
-                outKey = kFilter_Last();
+                outKey = filter::Filter_Last();
 
             Surface* outImg = getImage(outKey);
             if (!outImg)
-                outImg = getImage(kFilter_SourceGraphic());
+                outImg = getImage(filter::Filter_SourceGraphic());
             if (!outImg)
                 return false;
 
@@ -720,8 +720,8 @@ namespace waavs {
         bool onBeginProgram(const FilterProgramStream&) noexcept override
         {
             // If caller didn't set last, default to SourceGraphic if present.
-            if (!lastKey() && hasImage(kFilter_SourceGraphic()))
-                setLastKey(kFilter_SourceGraphic());
+            if (!lastKey() && hasImage(filter::Filter_SourceGraphic()))
+                setLastKey(filter::Filter_SourceGraphic());
             return true;
         }
 
@@ -742,7 +742,7 @@ namespace waavs {
                 return false;
 
             if (!outKey)
-                outKey = kFilter_Last();
+                outKey = filter::Filter_Last();
 
             auto out = createLikeSurfaceHandle(*in1);
             if (!out)
@@ -812,14 +812,15 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
         return false;
 
     if (!outKey)
-        outKey = kFilter_Last();
+        outKey = filter::Filter_Last();
 
     auto out = createLikeSurfaceHandle(*in);
     if (!out)
         return false;
 
-    // Preserve current executor behavior:
-    // start from a copy so pixels outside primitive write area remain unchanged.
+    // doing full blit is a bit of a waste
+    // what we really want is a transparent black for the
+    // full thing, then only fillin what our area marks up
     out->blit(*in, 0, 0);
     //out->clearAll();
 
@@ -1045,7 +1046,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                 return false;
 
             if (!outKey)
-                outKey = kFilter_Last();
+                outKey = filter::Filter_Last();
 
             auto out = createLikeSurfaceHandle(*in);
             if (!out)
@@ -1152,25 +1153,26 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             // 2) The input is specified, but not found 
             // in the registry: in this case, the input will default
             // to the last output, or SourceGraphic
+
+            // binary Operator Prolog
+            // -------------------------------------
             InternedKey in1Key = resolveBinaryInput1Key(io);
             Surface* in1 = getInputImage(in1Key);
-
 
             InternedKey in2Key = resolveBinaryInput2Key(io);
             Surface* in2 = getInputImage(in2Key);
 
             InternedKey outKey = resolveOutKeyStrict(io);
             if (!outKey)
-                outKey = kFilter_Last();
+                outKey = filter::Filter_Last();
 
             if (!in1 || !in2)
                 return false;
 
-
-
             auto out = createLikeSurfaceHandle(*in1);
             if (!out)
                 return false;
+
 
             out->clearAll();
 
@@ -1198,6 +1200,9 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                 setLastKey(outKey);
                 return true;
             }
+
+            //-------------------------------------
+            // Main body
 
             if (op == FILTER_COMPOSITE_ARITHMETIC)
             {
@@ -1340,7 +1345,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                 return false;
 
             if (!outKey)
-                outKey = kFilter_Last();
+                outKey = filter::Filter_Last();
 
             if (!orderX || !orderY)
                 return false;
@@ -1626,7 +1631,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                 return false;
 
             if (!outKey)
-                outKey = kFilter_Last();
+                outKey = filter::Filter_Last();
 
             auto out = createLikeSurfaceHandle(*in);
             if (!out)
@@ -1827,7 +1832,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                 return false;
 
             if (!outKey)
-                outKey = kFilter_Last();
+                outKey = filter::Filter_Last();
 
             auto out = createLikeSurfaceHandle(*in1);
             if (!out)
@@ -1956,7 +1961,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                 return false;
 
             if (!outKey)
-                outKey = kFilter_Last();
+                outKey = filter::Filter_Last();
 
             auto out = createLikeSurfaceHandle(*in);
             if (!out)
@@ -2351,7 +2356,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                 return false;
 
             if (!outKey)
-                outKey = kFilter_Last();
+                outKey = filter::Filter_Last();
 
             auto out = createLikeSurfaceHandle(*like);
             if (!out)
@@ -2409,10 +2414,9 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             if (!in)
                 return false;
 
-
             InternedKey outKey = resolveOutKeyStrict(io);
             if (!outKey)
-                outKey = kFilter_Last();
+                outKey = filter::Filter_Last();
 
             auto out = createLikeSurfaceHandle(*in);
             if (!out)
@@ -2424,13 +2428,12 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                 case SpaceUnitsKind::SVG_SPACE_USER:
                     return v;
                 case SpaceUnitsKind::SVG_SPACE_OBJECT:
-                    return v * (double)range;
+                    return v * range;
                 case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
                     return v;
                 }
                 };
 
-    
 
             if (sx < 0.0f) sx = 0.0f;
             if (sy < 0.0f) sy = 0.0f;
@@ -2438,10 +2441,11 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             const double sxUS = primLenToUser((double)sx, (double)fRunState.objectBBoxUS.w);
             const double syUS = primLenToUser((double)sy, (double)fRunState.objectBBoxUS.h);
 
-            const double sxPx = sxUS * fSpace.sx;
-            const double syPx = syUS * fSpace.sy;
+            // Blur radius is a magnitude. Reflection / negative scale must not make sigma negative.
+            const double sxPx = sxUS * std::abs((double)fSpace.sx);
+            const double syPx = syUS * std::abs((double)fSpace.sy);
 
-            // Primitive result should be written only inside the authored subregion.
+            // Primitive result is written only inside the authored subregion.
             WGRectI writeArea = resolveSubregionPx(subr, *in);
 
             out->clearAll();
@@ -2454,8 +2458,11 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                 return true;
             }
 
-            // Degenerate blur: copy only the write area.
-            if (!(sxPx > 0.0) && !(syPx > 0.0))
+            // Fully degenerate blur: copy only the write area.
+            const bool doX = sxPx > 0.0;
+            const bool doY = syPx > 0.0;
+
+            if (!doX && !doY)
             {
                 for (int y = writeArea.y; y < writeArea.y + writeArea.h; ++y)
                 {
@@ -2471,22 +2478,45 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                 return true;
             }
 
-            // Use the larger sigma for the box approximation we already use.
-            const double sigma = (sxPx > syPx) ? sxPx : syPx;
-            if (!(sigma > 0.0))
+            // Build separate box approximations for X and Y.
+            int boxX[3] = { 1, 1, 1 };
+            int boxY[3] = { 1, 1, 1 };
+
+            if (doX)
+                waavs::boxesForGauss(sxPx, 3, boxX);
+            if (doY)
+                waavs::boxesForGauss(syPx, 3, boxY);
+
+            int rx[3] = { 0, 0, 0 };
+            int ry[3] = { 0, 0, 0 };
+
+            if (doX)
             {
-                if (!putImage(outKey, std::move(out)))
-                    return false;
-                setLastKey(outKey);
-                return true;
+                rx[0] = (boxX[0] - 1) / 2;
+                rx[1] = (boxX[1] - 1) / 2;
+                rx[2] = (boxX[2] - 1) / 2;
             }
 
-            // Blur needs an expanded sampling area.
-            // 3*sigma is a practical kernel reach for Gaussian support.
-            const double padUserX = 3.0 * sxUS;
-            const double padUserY = 3.0 * syUS;
+            if (doY)
+            {
+                ry[0] = (boxY[0] - 1) / 2;
+                ry[1] = (boxY[1] - 1) / 2;
+                ry[2] = (boxY[2] - 1) / 2;
+            }
 
-            WGRectI sampleArea = resolveSubregionPx(subr, *in, padUserX, padUserY);
+            // Compute exact pixel halo implied by the three box passes.
+            const int padPxX = rx[0] + rx[1] + rx[2];
+            const int padPxY = ry[0] + ry[1] + ry[2];
+
+            WGRectI sampleArea = writeArea;
+            sampleArea.x -= padPxX;
+            sampleArea.y -= padPxY;
+            sampleArea.w += padPxX * 2;
+            sampleArea.h += padPxY * 2;
+
+            WGRectI surfaceBounds{ 0, 0, (int)in->width(), (int)in->height() };
+            sampleArea = intersection(sampleArea, surfaceBounds);
+
             if (sampleArea.w <= 0 || sampleArea.h <= 0)
             {
                 if (!putImage(outKey, std::move(out)))
@@ -2494,9 +2524,6 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                 setLastKey(outKey);
                 return true;
             }
-
-            int box[3];
-            waavs::boxesForGauss(sigma, 3, box);
 
             waavs::Surface tmp0;
             waavs::Surface tmp1;
@@ -2514,15 +2541,41 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
 
             for (int pass = 0; pass < 3; ++pass)
             {
-                const int r = (box[pass] - 1) / 2;
+                if (doX && rx[pass] > 0)
+                {
+                    waavs::boxBlurH_PRGB32(*curDst, *curSrc, rx[pass], sampleArea);
+                    curSrc = curDst;
+                    curDst = (curDst == &tmp0) ? &tmp1 : &tmp0;
+                }
 
-                waavs::boxBlurH_PRGB32(*curDst, *curSrc, r, sampleArea);
-                curSrc = curDst;
-                curDst = (curDst == &tmp0) ? &tmp1 : &tmp0;
+                if (doY && ry[pass] > 0)
+                {
+                    waavs::boxBlurV_PRGB32(*curDst, *curSrc, ry[pass], sampleArea);
+                    curSrc = curDst;
+                    curDst = (curDst == &tmp0) ? &tmp1 : &tmp0;
+                }
+            }
 
-                waavs::boxBlurV_PRGB32(*curDst, *curSrc, r, sampleArea);
-                curSrc = curDst;
-                curDst = (curDst == &tmp0) ? &tmp1 : &tmp0;
+            // If one axis had sigma > 0 but boxes collapsed to zero radii,
+            // fall back to copying the write area from the input.
+            const bool didAnyPass =
+                (doX && (rx[0] > 0 || rx[1] > 0 || rx[2] > 0)) ||
+                (doY && (ry[0] > 0 || ry[1] > 0 || ry[2] > 0));
+
+            if (!didAnyPass)
+            {
+                for (int y = writeArea.y; y < writeArea.y + writeArea.h; ++y)
+                {
+                    const uint32_t* srow = (const uint32_t*)in->rowPointer((size_t)y);
+                    uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
+                    std::memcpy(drow + writeArea.x, srow + writeArea.x, (size_t)writeArea.w * 4u);
+                }
+
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+
+                setLastKey(outKey);
+                return true;
             }
 
             // Copy only the primitive result area to the output.
@@ -2543,6 +2596,9 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             return true;
         }
 
+
+
+
         // -----------------------------------------
         // onImage()
         // Type: generator
@@ -2555,7 +2611,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
 
             InternedKey outKey = resolveOutKeyStrict(io);
             if (!outKey)
-                outKey = kFilter_Last();
+                outKey = filter::Filter_Last();
 
             auto out = fResolver->resolveFeImage(imageKey, fRunState, subr, align, mos);
             if (!out)
@@ -2597,7 +2653,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
 
             InternedKey outKey = resolveOutKeyStrict(io);
             if (!outKey)
-                outKey = kFilter_Last();
+                outKey = filter::Filter_Last();
 
             auto out = createLikeSurfaceHandle(*base);
             if (!out)
@@ -2665,7 +2721,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                 return false;
 
             if (!outKey)
-                outKey = kFilter_Last();
+                outKey = filter::Filter_Last();
 
             auto out = createLikeSurfaceHandle(*in);
             if (!out)
@@ -2785,7 +2841,7 @@ bool onOffset(const FilterIO& io, const WGRectD* subr, float dx, float dy) noexc
         return false;
 
     if (!outKey)
-        outKey = kFilter_Last();
+        outKey = filter::Filter_Last();
 
     auto out = createLikeSurfaceHandle(*in);
     if (!out)
@@ -2892,7 +2948,7 @@ bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
         return false;
 
     if (!outKey)
-        outKey = kFilter_Last();
+        outKey = filter::Filter_Last();
 
     auto out = createLikeSurfaceHandle(*in);
     if (!out)
@@ -3038,7 +3094,7 @@ bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
                 return false;
 
             if (!outKey)
-                outKey = kFilter_Last();
+                outKey = filter::Filter_Last();
 
             auto out = createLikeSurfaceHandle(*in);
             if (!out)
@@ -3096,7 +3152,7 @@ bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
         {
             InternedKey outKey = resolveOutKeyStrict(io);
             if (!outKey)
-                outKey = kFilter_Last();
+                outKey = filter::Filter_Last();
 
             // feTurbulence is a generator. Use the filter tile size.
             Surface* like = getImage(lastKey());
