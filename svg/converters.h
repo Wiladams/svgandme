@@ -18,7 +18,7 @@
 // Forward declarations
 static INLINE bool read_required_digits(waavs::ByteSpan& s, uint64_t& v, size_t requiredDigits) noexcept;
 
-static INLINE uint8_t  hexToDec(const uint8_t vIn) ;
+static INLINE uint8_t  hex_to_dec(const uint8_t vIn) ;
 static INLINE int toBoolInt(const waavs::ByteSpan& inChunk);
 
 static inline bool readNextNumber(waavs::ByteSpan& s, double& outNumber) noexcept;
@@ -35,11 +35,13 @@ static INLINE std::string toString(const waavs::ByteSpan& inChunk) noexcept
     return std::string(inChunk.fStart, inChunk.fEnd);
 }
 
+// hex_to_dec
+// 
 // given an input character representing a hex digit
 // return the decimal value of that hex digit
 // BUGBUG - This assumes valid input.  
 // No error checking is done. The input is presumed to be valid
-static INLINE uint8_t  hexToDec(const uint8_t vIn)
+static INLINE uint8_t  hex_to_dec(const uint8_t vIn)
 {
     if (vIn >= '0' && vIn <= '9')
         return vIn - '0';
@@ -90,7 +92,7 @@ namespace waavs {
             // We shift by 4 bits, because we're processing a nibble at a time
             // and a nibble is 4 bits
 			outValue <<= 4;
-			outValue |= hexToDec(*c);
+			outValue |= hex_to_dec(*c);
 
             c++;
 		}

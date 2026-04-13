@@ -1,3 +1,4 @@
+// svgcolors.h
 #pragma once
 
 #include <map>
@@ -6,7 +7,7 @@
 
 #include "blend2d.h"
 #include "bspan.h"
-
+#include "coloring.h"
 
 namespace waavs
 {
@@ -21,9 +22,14 @@ namespace waavs
     
     // getSVGColorByName
     //
-    // Returns a color, based on a name (case insensitive).  If the name is not found in the
-	// database, it returns a default color (gray).
-    static BLRgba32 getSVGColorByName(const ByteSpan &colorName) noexcept
+    // Returns a color, based on a name (case insensitive).  If the 
+    // name is not found in the database, it returns a default color (gray).
+    // Note: The table stores a BLRgba32, which is a 32-bit ARGB pixel in sRGB space.  
+    // The returned value is a ColorSRGB struct, which has float components 
+    // in the range [0..1].  
+    // The conversion is done by the caller, so that the caller can decide how 
+    // to handle the conversion (e.g. whether to premultiply or not).
+    static ColorSRGB get_color_by_name_as_srgb(const ByteSpan &colorName) noexcept
     {
 
         static std::unordered_map<ByteSpan, BLRgba32, ByteSpanInsensitiveHash, ByteSpanCaseInsensitive> svgcolors =
@@ -202,16 +208,22 @@ namespace waavs
             { "windowtext", BLRgba32(0xff000000) },
         };
 
-        
+        BLRgba32 c = BLRgba32(128, 128, 128, 255);
+        uint8_t r, g, b, a = 128;
+        a = 255;
+
         auto it = svgcolors.find(colorName);
-		if (it != svgcolors.end())
-		{
-			return it->second;
-		}
-        //printf("UNKNOWN COLOR: ");
-		//printChunk(colorName);
+        if (it != svgcolors.end())
+        {
+            r = it->second.r();
+            g = it->second.g();
+            b = it->second.b();
+            a = it->second.a();
+        }
         
-        return BLRgba32(128, 128, 128);
+        // convert to ColorSRGB
+        return colorSRGB_from_straight_components0_255(r, g, b, a);
+
     }
 }
 
@@ -244,15 +256,16 @@ namespace waavs {
     // #RGB
     // 
     // Anything else is an error
-    static bool parseHexToRgba32(const ByteSpan& inSpan, BLRgba32& outValue) noexcept
+    static int parseHexToColor(const ByteSpan& inSpan, ColorSRGB& outValue) noexcept
     {
-        outValue.value = 0;
+        outValue = {};
+
 
         if (inSpan.size() == 0)
-            return false;
+            return WGErrorCode::WG_ERROR_Invalid_Argument;
 
         if (inSpan[0] != '#')
-            return false;
+            return WG_ERROR_Invalid_Argument;
 
         uint8_t r{};
         uint8_t g{};
@@ -261,58 +274,54 @@ namespace waavs {
 
         if (inSpan.size() == 4) {
             // #RGB
-            r = hexToDec(inSpan[1]);
-            g = hexToDec(inSpan[2]);
-            b = hexToDec(inSpan[3]);
-
-            outValue = BLRgba32(r * 17, g * 17, b * 17);			// same effect as (r<<4|r), (g<<4|g), ..
-
-            return true;
+            r = hex_to_dec(inSpan[1]); r |= r << 4;
+            g = hex_to_dec(inSpan[2]); g |= g << 4;
+            b = hex_to_dec(inSpan[3]); b |= b << 4;
         }
         else if (inSpan.size() == 5) {
             // #RGBA
-            r = hexToDec(inSpan[1]);
-            g = hexToDec(inSpan[2]);
-            b = hexToDec(inSpan[3]);
-            a = hexToDec(inSpan[4]);
-
-            outValue = BLRgba32(r * 17, g * 17, b * 17, a * 17);			// same effect as (r<<4|r), (g<<4|g), ..
-
-            return true;
+            r = hex_to_dec(inSpan[1]); r |= r << 4;
+            g = hex_to_dec(inSpan[2]); g |= g << 4;
+            b = hex_to_dec(inSpan[3]); b |= b << 4;
+            a = hex_to_dec(inSpan[4]); a |= a << 4;
         }
         else if (inSpan.size() == 7) {
             // #RRGGBB
-            r = (hexToDec(inSpan[1]) << 4) | hexToDec(inSpan[2]);
-            g = (hexToDec(inSpan[3]) << 4) | hexToDec(inSpan[4]);
-            b = (hexToDec(inSpan[5]) << 4) | hexToDec(inSpan[6]);
+            r = (hex_to_dec(inSpan[1]) << 4) | hex_to_dec(inSpan[2]);
+            g = (hex_to_dec(inSpan[3]) << 4) | hex_to_dec(inSpan[4]);
+            b = (hex_to_dec(inSpan[5]) << 4) | hex_to_dec(inSpan[6]);
 
-            outValue = BLRgba32(r, g, b);
-            return true;
+
         }
         else if (inSpan.size() == 9) {
             // #RRGGBBAA
-            r = (hexToDec(inSpan[1]) << 4) | hexToDec(inSpan[2]);
-            g = (hexToDec(inSpan[3]) << 4) | hexToDec(inSpan[4]);
-            b = (hexToDec(inSpan[5]) << 4) | hexToDec(inSpan[6]);
-            a = (hexToDec(inSpan[7]) << 4) | hexToDec(inSpan[8]);
-            outValue = BLRgba32(r, g, b, a);
+            r = (hex_to_dec(inSpan[1]) << 4) | hex_to_dec(inSpan[2]);
+            g = (hex_to_dec(inSpan[3]) << 4) | hex_to_dec(inSpan[4]);
+            b = (hex_to_dec(inSpan[5]) << 4) | hex_to_dec(inSpan[6]);
+            a = (hex_to_dec(inSpan[7]) << 4) | hex_to_dec(inSpan[8]);
 
-            return true;
+
+
+        }
+        else {
+            return WG_ERROR_Invalid_Argument;
         }
 
-        return false;
+        outValue = colorSRGB_from_straight_components0_255(r, g, b, a);
+
+        return WG_SUCCESS;
     }
 
     // Turn a 3 or 6 digit hex string into a BLRgba32 value
     // if there's an error in the conversion, a transparent color is returned
     // BUGBUG - maybe a more obvious color should be returned
-    static BLRgba32 parseColorHex(const ByteSpan& chunk) noexcept
+    static WGResult parse_colorsrgb_from_hex(const ByteSpan& chunk, ColorSRGB & srgb) noexcept
     {
-        BLRgba32 res{};
-        if (parseHexToRgba32(chunk, res))
+        WGResult res = parseHexToColor(chunk, srgb);
+        if (res != WG_SUCCESS)
             return res;
 
-        return BLRgba32(0);
+        return WG_SUCCESS;
     }
 
 
@@ -453,59 +462,6 @@ namespace waavs {
         return res;
     }
 
-    /*
-
-
-    static BLRgba32 parseColorHsl(const ByteSpan& inChunk) noexcept
-    {
-        BLRgba32 defaultColor(0, 0, 0);
-        ByteSpan str = inChunk;
-        auto leading = chunk_token(str, "(");
-
-        // h, s, l attributes can be numeric, or percent
-        // get the numbers by separating at the ')'
-        auto nums = chunk_token(str, ")");
-        SVGDimension hd{};
-        SVGDimension sd{};
-        SVGDimension ld{};
-        SVGDimension od{255,SVG_LENGTHTYPE_NUMBER};
-
-        double h = 0, s = 0, l = 0;
-        double o = 1.0;
-
-        auto num = chunk_token(nums, ",");
-        if (!hd.loadFromChunk(num))
-            return defaultColor;
-
-        num = chunk_token(nums, ",");
-        if (!sd.loadFromChunk(num))
-            return defaultColor;
-
-        num = chunk_token(nums, ",");
-        if (!ld.loadFromChunk(num))
-            return defaultColor;
-
-        // check for opacity
-        num = chunk_token(nums, ",");
-        if (od.loadFromChunk(num))
-        {
-            o = od.calculatePixels(1.0);
-        }
-
-
-        // get normalized values to start with
-        h = hd.calculatePixels(360) / 360.0;
-        s = sd.calculatePixels(100) / 100.0;
-        l = ld.calculatePixels(100) / 100.0;
-        //o = od.calculatePixels(255);
-
-        auto res = hsl_to_rgb(h, s, l);
-        res.setA(uint32_t(o * 255));
-
-        return res;
-    }
-    */
-
 
     // Parse rgb color. The pointer 'str' must point at "rgb(" (4+ characters).
     // Default:
@@ -543,8 +499,15 @@ namespace waavs {
         return true;
     }
 
-    static bool parseColorRGB(const ByteSpan& inChunk, BLRgba32& aColor)
+    static bool parse_colorsrgb_from_func(const ByteSpan& inChunk, ColorSRGB& cSRGB)
     {
+        // set a default color in case of parse failure.  
+        // This is for backwards compatibility with older 
+        // versions of the code.  
+        // Some image viewers return black instead, 
+        // but we'll return turquoise.
+        colorsrgb_reset(cSRGB, 255, 255, 0, 255);
+
         // skip past the leading "rgb("
         ByteSpan s = inChunk;
         auto leading = chunk_token_char(s, '(');
@@ -564,27 +527,26 @@ namespace waavs {
 
         int i = 0;
         uint8_t rgba[4]{};
+        rgba[3] = 255;  // default alpha value is 255 (fully opaque)
 
         // Get the first token, which is red
         // if it's not there, then return gray
         auto num = chunk_token_char(nums, ',');
         if (num.size() < 1)
         {
-            //aColor.reset(128, 128, 128, 0);
-            aColor.reset(255, 255, 0, 255);     // Use turquoise to indicate error
-            return false;
+            return WGErrorCode::WG_ERROR_Invalid_Argument;
         }
 
         while (num && i < 4)
         {
             if (i < 3) {
                 if (!readCSSRGBChannel(num, rgba[i]))
-                    return false;
+                    return WG_ERROR_Invalid_Argument;
             }
             else {
                 double a = 1.0;
                 if (!readCSSAlphaValue(num, a))
-                    return false;
+                    return WG_ERROR_Invalid_Argument;
                 rgba[i] = (uint8_t)std::lround(a * 255.0);
             }
 
@@ -592,10 +554,7 @@ namespace waavs {
             num = chunk_token_char(nums, ',');
         }
 
-        if (i == 4)
-            aColor.reset(rgba[0], rgba[1], rgba[2], rgba[3]);
-        else
-            aColor.reset(rgba[0], rgba[1], rgba[2]);
+        cSRGB = colorSRGB_from_straight_components0_255(rgba[0], rgba[1], rgba[2], rgba[3]);
 
         return true;
     }

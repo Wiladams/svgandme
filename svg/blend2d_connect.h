@@ -6,9 +6,39 @@
 
 #include "wggeometry.h"
 #include "surface.h"
+#include "coloring.h"
 
 #include "pathprogramexec.h"
 
+namespace waavs
+{
+
+
+    static INLINE ColorSRGB colorSRGB_from_straight_BLRgba32(const BLRgba32& c) noexcept
+    {
+        return ColorSRGB{
+            dequantize0_255(c.r()),
+            dequantize0_255(c.g()),
+            dequantize0_255(c.b()),
+            dequantize0_255(c.a())
+        };
+    }
+
+    static INLINE BLRgba32 BLRgba32_premultiplied_from_ColorSRGB(const ColorSRGB& c) noexcept
+    {
+        const float a = clamp01f(c.a);
+        const float r = clamp01f(c.r) * a;
+        const float g = clamp01f(c.g) * a;
+        const float b = clamp01f(c.b) * a;
+
+        return BLRgba32(
+            quantize0_255(r),
+            quantize0_255(g),
+            quantize0_255(b),
+            quantize0_255(a));
+    }
+
+}
 
 namespace waavs
 {

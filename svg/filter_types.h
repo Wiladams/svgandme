@@ -12,7 +12,7 @@
 #include "definitions.h"
 
 #include "wggeometry.h"
-#include "pixeling.h"
+#include "coloring.h"
 #include "nametable.h"
 
 

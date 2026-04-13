@@ -1,3 +1,5 @@
+// filter_fespecularlight.h
+
 #pragma once
 
 
@@ -60,7 +62,7 @@ namespace waavs
         float ux, float uy, float h,
         float& lx, float& ly, float& lz) noexcept
     {
-        const float kPi = waavs::pif;
+        const float kPi = waavs::kPif;
 
         if (lightType == FILTER_LIGHT_DISTANT)
         {
@@ -93,7 +95,7 @@ namespace waavs
     static INLINE float computeSpecularSpotFactor(const LightPayload& light,
         float ux, float uy, float h) noexcept
     {
-        const float kPi = waavs::pif;
+        const float kPi = waavs::kPif;
 
         float ax = light.L[3] - light.L[0];
         float ay = light.L[4] - light.L[1];
@@ -177,33 +179,5 @@ namespace waavs
             quantize0_255(pb));
     }
 
-    /*
-    static INLINE uint32_t packSpecularLightingPixel(
-        float lcR, float lcG, float lcB,
-        float lit) noexcept
-    {
-        float sr = clamp01f(lcR * lit);
-        float sg = clamp01f(lcG * lit);
-        float sb = clamp01f(lcB * lit);
 
-        float a = sr;
-        if (sg > a) a = sg;
-        if (sb > a) a = sb;
-
-        a = clamp01f(a);
-
-        float pr = 0.0f;
-        float pg = 0.0f;
-        float pb = 0.0f;
-
-        if (a > 0.0f)
-        {
-            pr = sr;
-            pg = sg;
-            pb = sb;
-        }
-
-        return pack_argb32(a, pr, pg, pb);
-    }
-    */
 }

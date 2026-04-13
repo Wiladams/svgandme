@@ -332,7 +332,7 @@ namespace waavs {
         const uint32_t* row = (const uint32_t*)s.rowPointer((size_t)y);
         const uint32_t px = row[x];
 
-        return float((px >> 24) & 0xFF) / 255.0f;
+        return argb32_unpack_alpha_norm(px);
     }
 
     // computeHeightNormal()

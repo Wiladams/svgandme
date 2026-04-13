@@ -249,6 +249,7 @@
     <ClInclude Include="..\..\app\waavsdisplaycapture.h" />
     <ClInclude Include="..\..\app\waavsframe.h" />
     <ClInclude Include="..\..\svg\effects.h" />
+    <ClInclude Include="..\..\svg\filter_fecomponenttransfer.h" />
     <ClInclude Include="..\..\svg\filter_fediffuselight.h" />
     <ClInclude Include="..\..\svg\filter_fespecularlight.h" />
     <ClInclude Include="..\..\svg\filterexec_b2d.h" />
@@ -273,10 +274,11 @@
     <ClInclude Include="..\..\svg\definitions.h" />
     <ClInclude Include="..\..\svg\fonthandler.h" />
     <ClInclude Include="..\..\svg\framesource.h" />
-    <ClInclude Include="..\..\svg\idrawpixels.h" />
     <ClInclude Include="..\..\svg\imanagesvgstate.h" />
     <ClInclude Include="..\..\svg\irendersvg.h" />
     <ClInclude Include="..\..\svg\maths.h" />
+    <ClInclude Include="..\..\svg\maths_base.h" />
+    <ClInclude Include="..\..\svg\maths_matrix.h" />
     <ClInclude Include="..\..\svg\membuff.h" />
     <ClInclude Include="..\..\svg\nametable.h" />
     <ClInclude Include="..\..\svg\filter_noise.h" />
@@ -289,8 +291,8 @@
     <ClInclude Include="..\..\svg\pathsegment.h" />
     <ClInclude Include="..\..\svg\pathsegment_normalizer.h" />
     <ClInclude Include="..\..\svg\pixelaccessor.h" />
-    <ClInclude Include="..\..\svg\pixeleffects.h" />
     <ClInclude Include="..\..\svg\pixeling.h" />
+    <ClInclude Include="..\..\svg\pixeling_porterduff.h" />
     <ClInclude Include="..\..\svg\pubsub.h" />
     <ClInclude Include="..\..\svg\scanning.h" />
     <ClInclude Include="..\..\svg\smildatatypes.h" />

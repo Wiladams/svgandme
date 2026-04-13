@@ -53,7 +53,7 @@ namespace waavs
         for (size_t i = 0; i < n; ++i)
         {
             uint32_t ap, rp, gp, bp;
-            argb32_unpack(src[i], ap, rp, gp, bp);
+            argb32_unpack_u32(src[i], ap, rp, gp, bp);
 
             const uint32_t r = unpremul_byte_q8(rp, ap, invA);
             const uint32_t g = unpremul_byte_q8(gp, ap, invA);
@@ -69,7 +69,7 @@ namespace waavs
             const uint32_t ggp = mul255_round_u8(gg, aa);
             const uint32_t bbp = mul255_round_u8(bb, aa);
 
-            dst[i] = pack_argb32(aa, rrp, ggp, bbp);
+            dst[i] = argb32_pack_u32(aa, rrp, ggp, bbp);
         }
     }
 
@@ -119,7 +119,7 @@ namespace waavs
             for (int lane = 0; lane < 4; ++lane)
             {
                 uint32_t ap, rp, gp, bp;
-                argb32_unpack(src[i + (size_t)lane], ap, rp, gp, bp);
+                argb32_unpack_u32(src[i + (size_t)lane], ap, rp, gp, bp);
 
                 r4[lane] = (int32_t)unpremul_byte_q8(rp, ap, invA);
                 g4[lane] = (int32_t)unpremul_byte_q8(gp, ap, invA);
@@ -158,7 +158,7 @@ namespace waavs
                 const uint32_t ggp = mul255_round_u8(gg, aa);
                 const uint32_t bbp = mul255_round_u8(bb, aa);
 
-                dst[i + (size_t)lane] = pack_argb32(aa, rrp, ggp, bbp);
+                dst[i + (size_t)lane] = argb32_pack_u32(aa, rrp, ggp, bbp);
             }
         }
 

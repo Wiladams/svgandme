@@ -16,7 +16,8 @@ namespace waavs {
 
 		void drawBackground(IRenderSVG* ctx) override
 		{
-			auto bgcolor = getSVGColorByName("beige");
+			auto srgb = get_color_by_name_as_srgb("beige");
+            BLRgba32 bgcolor = BLRgba32_premultiplied_from_ColorSRGB(srgb);
 			BLPath apath;
 			apath.addRect(0, 0, frame().w, frame().h);
 			ctx->fill(bgcolor);

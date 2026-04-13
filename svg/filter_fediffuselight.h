@@ -1,3 +1,5 @@
+// filter_fediffuselight.h
+
 #pragma once
 
 #include "filter_types.h"
@@ -46,7 +48,7 @@ namespace waavs
         float ux, float uy, float h,
         float& lx, float& ly, float& lz) noexcept
     {
-        const float kPi = waavs::pif;
+        const float kPi = waavs::kPif;
 
         if (lightType == FILTER_LIGHT_DISTANT)
         {
@@ -78,7 +80,7 @@ namespace waavs
         const LightPayload& light,
         float ux, float uy, float h) noexcept
     {
-        const float kPi = waavs::pif;
+        const float kPi = waavs::kPif;
 
         float ax = light.L[3] - light.L[0];
         float ay = light.L[4] - light.L[1];

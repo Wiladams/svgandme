@@ -93,9 +93,9 @@ namespace waavs
         {
             // Keep the rotation between 0 - 2pi
             fRotRad += rads;
-            fRotRad = std::fmod(fRotRad, 2.0 * waavs::pi);
+            fRotRad = std::fmod(fRotRad, 2.0 * waavs::kPi);
             if (fRotRad < 0.0)
-                fRotRad += 2.0 * waavs::pi;
+                fRotRad += 2.0 * waavs::kPi;
 
             fRotCenter = center;
         }
@@ -546,9 +546,9 @@ namespace waavs
 
             // Keep the rotation between 0 - 2pi
             fPortalView.fRotRad += rad;
-            fPortalView.fRotRad = std::fmod(fPortalView.fRotRad, 2.0 * waavs::pi);
+            fPortalView.fRotRad = std::fmod(fPortalView.fRotRad, 2.0 * waavs::kPi);
             if (fPortalView.fRotRad < 0.0)
-                fPortalView.fRotRad += 2.0 * waavs::pi;
+                fPortalView.fRotRad += 2.0 * waavs::kPi;
 
             fPortalView.fRotCenter = { cx, cy };
             updateTransformMatrix();

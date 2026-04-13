@@ -280,7 +280,7 @@ namespace waavs
             return (subSpan(size() - b.size(), b.size()) == b);
         }
 
-        void skipWhitespace() noexcept 
+        void skipSpaces() noexcept 
         {
             const uint8_t* start = find_first_not_of4(fStart, fEnd, ' ', '\t', '\r', '\n');
             fStart = start;

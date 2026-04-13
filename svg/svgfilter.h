@@ -234,7 +234,7 @@ namespace waavs
         return false;
     }
 
-    static INLINE bool parseLightColorAttr(IAmGroot* groot, const ByteSpan& s, uint32_t& rgba32) noexcept
+    static  bool parseLightColorAttr(IAmGroot* groot, const ByteSpan& s, uint32_t& rgba32) noexcept
     {
         if (!s)
             return false;
@@ -243,7 +243,9 @@ namespace waavs
         paint.loadFromChunk(s);
 
         BLVar c = paint.getVariant(nullptr, groot);
-        return blVarToRgba32(&c, &rgba32) == BL_SUCCESS;
+        BLResult res = blVarToRgba32(&c, &rgba32);
+
+        return (res == BL_SUCCESS);
     }
 
 

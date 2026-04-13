@@ -103,6 +103,17 @@
 #define ASSERT_STRUCT_SIZE(Type, ExpectedSize) \
     static_assert(sizeof(Type) == (ExpectedSize), #Type " must be " #ExpectedSize " bytes in size")
 
+typedef uint32_t WGResult;
+
+enum WGErrorCode : uint32_t
+{
+    WG_SUCCESS = 0,
+    WG_ERROR_Invalid_Argument = 100,
+    WG_ERROR_Out_Of_Memory,
+    WG_ERROR_NotImplemented,
+    WG_ERROR_UnknownError
+};
+
 
 // SIMD Support Detection (example for x86/x64 with SSE2)
 #if defined(__SSE2__)

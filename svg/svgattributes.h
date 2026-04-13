@@ -767,22 +767,30 @@ namespace waavs {
                 return true;
             }
 
-            BLRgba32 c(128, 128, 128);
+            BLRgba32 c(128, 128, 128, 255);
+            ColorSRGB cSRGB = colorSRGB_from_straight_BLRgba32(c);
+
             len = str.size();
             if ((len >= 1) && (*str == '#'))
             {
-                c = parseColorHex(str);
-                fPaintVar = c;
-                set(true);
+                if (parse_colorsrgb_from_hex(str, cSRGB) == WG_SUCCESS)
+                {
+                    c = BLRgba32_premultiplied_from_ColorSRGB(cSRGB);
+                    fPaintVar = c;
+                    set(true);
+                }
             }
             else if (str.startsWith(rgbStr) ||
                 str.startsWith(rgbaStr) ||
                 str.startsWith(rgbaStrCaps) ||
                 str.startsWith(rgbStrCaps))
             {
-                parseColorRGB(str, c);
-                fPaintVar = c;
-                set(true);
+                if (parse_colorsrgb_from_func(str, cSRGB))
+                {
+                    c = BLRgba32_premultiplied_from_ColorSRGB(cSRGB);
+                    fPaintVar = c;
+                    set(true);
+                }
             }
             else if (str.startsWith(hslStr) ||
                 str.startsWith(hslaStr))
@@ -808,7 +816,8 @@ namespace waavs {
                     set(false);
                 }
                 else {
-                    c = getSVGColorByName(str);
+                    c = BLRgba32_premultiplied_from_ColorSRGB(
+                        get_color_by_name_as_srgb(str));
                     fPaintVar = c;
 
                     set(true);
@@ -1423,7 +1432,7 @@ namespace waavs {
                 // then we want to flip the angle 180 degrees, which we can do 
                 // by adding 'pi' to it, as that's half a circle.
                 if (fOrientation == MarkerOrientation::MARKER_ORIENT_AUTOSTARTREVERSE)
-                    angle = angle + waavs::pi;
+                    angle = angle + waavs::kPi;
             }
             break;
 

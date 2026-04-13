@@ -1,12 +1,14 @@
+// filter_feblend.h - implementation of feBlend filter primitive
+
 #pragma once
 
 #include "filter_types.h"
 #include "filterprogramexec.h"   // FilterProgramExecutor + IAmFroot<T>
-
+#include "pixeling_porterduff.h"
 
 namespace waavs
 {
-
+    /*
     static INLINE Color4f unpack_prgb32_to_float(uint32_t px) noexcept
     {
         Color4f c{};
@@ -46,10 +48,6 @@ namespace waavs
         const float pg = c.g * c.a;
         const float pb = c.b * c.a;
 
-        //const uint8_t A = clamp_u8f(c.a * 255.0f);
-        //const uint8_t R = clamp_u8f(pr * 255.0f);
-        //const uint8_t G = clamp_u8f(pg * 255.0f);
-        //const uint8_t B = clamp_u8f(pb * 255.0f);
         
         const uint8_t A = quantize0_255(c.a);
         const uint8_t R = quantize0_255(pr);
@@ -58,6 +56,7 @@ namespace waavs
 
         return argb32_pack_u8(A, R, G, B);
     }
+    */
 
     static INLINE float blend_channel_normal(float cb, float cs) noexcept
     {
@@ -155,7 +154,63 @@ namespace waavs
         }
     }
 
+    // ------------------------------------------------
+    // Blend two ColorLinear colors according to the 
+    // given blend mode, and return a straight ColorLinear result.
     //----------------------------------------------------
+    static INLINE ColorLinear feBlendColorLinear(
+        FilterBlendMode mode,
+        const ColorLinear& backdrop,
+        const ColorLinear& source) noexcept
+    {
+        const float ab = clamp01f(backdrop.a);
+        const float as = clamp01f(source.a);
+
+        const float outA = as + ab * (1.0f - as);
+
+        if (!(outA > 0.0f))
+            return ColorLinear{ 0.0f, 0.0f, 0.0f, 0.0f };
+
+        // Inputs are expected to already be straight linear colors.
+        const float cb_r = clamp01f(backdrop.r);
+        const float cb_g = clamp01f(backdrop.g);
+        const float cb_b = clamp01f(backdrop.b);
+
+        const float cs_r = clamp01f(source.r);
+        const float cs_g = clamp01f(source.g);
+        const float cs_b = clamp01f(source.b);
+
+        // Blend function result in straight linear color space.
+        const float br = blend_channel(mode, cb_r, cs_r);
+        const float bg = blend_channel(mode, cb_g, cs_g);
+        const float bb = blend_channel(mode, cb_b, cs_b);
+
+        // W3C separable blend compositing form.
+        const float outR_p =
+            (1.0f - as) * ab * cb_r +
+            (1.0f - ab) * as * cs_r +
+            ab * as * br;
+
+        const float outG_p =
+            (1.0f - as) * ab * cb_g +
+            (1.0f - ab) * as * cs_g +
+            ab * as * bg;
+
+        const float outB_p =
+            (1.0f - as) * ab * cb_b +
+            (1.0f - ab) * as * cs_b +
+            ab * as * bb;
+
+        ColorLinear out{};
+        out.a = outA;
+        out.r = clamp01f(outR_p / outA);
+        out.g = clamp01f(outG_p / outA);
+        out.b = clamp01f(outB_p / outA);
+
+        return out;
+    }
+    
+    /*
     // Blend two non-premultiplied colors with source-over alpha composition.
     // backdrop = in1, source = in2
     static INLINE Color4f feBlendPixel(FilterBlendMode mode, const Color4f& backdropPRGB, const Color4f& sourcePRGB) noexcept
@@ -202,13 +257,14 @@ namespace waavs
         out.b = clamp01f(outB_p / outA);
         return out;
     }
+    */
 
     //----------------------------------------------------
 
-    static INLINE uint32_t feBlendPRGB32_normal_pixel(uint32_t backdrop, uint32_t source) noexcept
-    {
-        return composite_over_prgb32_pixel(backdrop, source);
-    }
+    //static INLINE uint32_t feBlendPRGB32_normal_pixel(uint32_t backdrop, uint32_t source) noexcept
+    //{
+    //    return composite_over_prgb32_pixel(backdrop, source);
+    //}
 
     static INLINE void feBlendPRGB32_normal_row(
         uint32_t* dst,
@@ -220,6 +276,20 @@ namespace waavs
             dst[i] = composite_over_prgb32_pixel(in1[i], in2[i]);
     }
 
+    static INLINE uint32_t feBlendPRGB32_pixel(FilterBlendMode mode, Pixel_ARGB32 backdrop, Pixel_ARGB32 source) noexcept
+    {
+        const ColorPRGBA bp = coloring_ARGB32_to_prgba(backdrop);
+        const ColorPRGBA sp = coloring_ARGB32_to_prgba(source);
+
+        const ColorLinear b = coloring_linear_unpremultiply(bp);
+        const ColorLinear s = coloring_linear_unpremultiply(sp);
+
+        const ColorLinear o = feBlendColorLinear(mode, b, s);
+
+        return coloring_prgba_to_ARGB32(coloring_linear_premultiply(o));
+    }
+
+    /*
     static INLINE uint32_t feBlendPRGB32_pixel(FilterBlendMode mode, uint32_t backdrop, uint32_t source) noexcept
     {
         const Color4f b = unpack_prgb32_to_float(backdrop);
@@ -227,26 +297,15 @@ namespace waavs
         const Color4f o = feBlendPixel(mode, b, s);
         return pack_float_to_prgb32(o);
     }
-
-    /*
-    static INLINE void feBlendRowPRGB32(
-        uint32_t* dst,
-        const uint32_t* in1,
-        const uint32_t* in2,
-        int count,
-        FilterBlendMode mode) noexcept
-    {
-        for (int i = 0; i < count; ++i)
-            dst[i] = feBlendPRGB32_pixel(mode, in1[i], in2[i]);
-    }
     */
 }
 
-#if defined(__ARM_NEON) || defined(__aarch64__)
-
-
+#if WAAVS_HAS_NEON
     namespace waavs
     {
+        // represents 4 pixels in separate 
+        // float32x4_t vectors for each channel, 
+        // all unpremultiplied.
         struct BlendVec4
         {
             float32x4_t a;
@@ -384,6 +443,37 @@ namespace waavs
         }
 
         static INLINE void neon_store_prgb32_4(
+            Pixel_ARGB32* dst,
+            float32x4_t outA,
+            float32x4_t outR,
+            float32x4_t outG,
+            float32x4_t outB) noexcept
+        {
+            float a[4];
+            float r[4];
+            float g[4];
+            float b[4];
+
+            vst1q_f32(a, neon_clamp01_f32(outA));
+            vst1q_f32(r, neon_clamp01_f32(outR));
+            vst1q_f32(g, neon_clamp01_f32(outG));
+            vst1q_f32(b, neon_clamp01_f32(outB));
+
+            for (int i = 0; i < 4; ++i)
+            {
+                const ColorLinear c{
+                    r[i],
+                    g[i],
+                    b[i],
+                    a[i]
+                };
+
+                dst[i] = coloring_prgba_to_ARGB32(coloring_linear_premultiply(c));
+            }
+        }
+
+        /*
+        static INLINE void neon_store_prgb32_4(
             uint32_t* dst,
             float32x4_t outA,
             float32x4_t outR,
@@ -410,6 +500,7 @@ namespace waavs
                 dst[i] = pack_float_to_prgb32(c);
             }
         }
+        */
 
         static INLINE void feBlendRowPRGB32_separable_neon(
             uint32_t* dst,
@@ -549,7 +640,7 @@ namespace waavs
     }
 #endif
 
-    namespace waavs {
+namespace waavs {
     ///*
     static INLINE void feBlendRowPRGB32(
         uint32_t* dst,
@@ -559,7 +650,7 @@ namespace waavs
         FilterBlendMode mode) noexcept
     {
 
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#if WAAVS_HAS_NEON
         switch (mode)
         {
         case FILTER_BLEND_NORMAL:
@@ -608,3 +699,76 @@ namespace waavs
     }
             //*/
 }
+
+/*
+    // ============================================================
+    // feBlend
+    // ============================================================
+    enum BlendMode : uint8_t {
+        BLEND_NORMAL,
+        BLEND_MULTIPLY,
+        BLEND_SCREEN,
+        BLEND_OVERLAY,
+        BLEND_DARKEN,
+        BLEND_LIGHTEN
+    };
+
+    static INLINE float blendFunc(float cb, float cs, BlendMode m) noexcept {
+        switch (m) {
+        case BLEND_MULTIPLY: return cb * cs;
+        case BLEND_SCREEN:   return cb + cs - cb * cs;
+        case BLEND_DARKEN:   return (cb < cs) ? cb : cs;
+        case BLEND_LIGHTEN:  return (cb > cs) ? cb : cs;
+        case BLEND_OVERLAY:  return (cb <= 0.5f) ? (2.0f * cb * cs) : (1.0f - 2.0f * (1.0f - cb) * (1.0f - cs));
+        case BLEND_NORMAL:
+        default:             return cs;
+        }
+    }
+
+    static INLINE bool feBlend(const PixelKernelCtx& k,
+        const Surface_ARGB32* in1 ,
+            const Surface_ARGB32* in2 ,
+        Surface_ARGB32* out,
+        BlendMode mode) noexcept
+        {
+            (void)k;
+            const int W = out->width;
+            const int H = out->height;
+
+            for (int y = 0; y < H; ++y) {
+                const uint32_t* bRow = Surface_ARGB32_row_pointer_const(in1, y);
+                const uint32_t* sRow = Surface_ARGB32_row_pointer_const(in2, y);
+                uint32_t* oRow = Surface_ARGB32_row_pointer(out, y);
+
+                for (int x = 0; x < W; ++x) {
+                    const ColorPRGBA bp = pixeling_ARGB32_unpack_prgba(bRow[x]);
+                    const ColorPRGBA sp = pixeling_ARGB32_unpack_prgba(sRow[x]);
+
+                    const ColorLinear b = coloring_linear_unpremultiply(bp);
+                    const ColorLinear s = coloring_linear_unpremultiply(sp);
+
+                    const float Ab = WAAVS_CLAMP01(b.a);
+                    const float As = WAAVS_CLAMP01(s.a);
+
+                    const float Br = blendFunc(b.r, s.r, mode);
+                    const float Bg = blendFunc(b.g, s.g, mode);
+                    const float Bb = blendFunc(b.b, s.b, mode);
+
+                    const float Ar = As + Ab - As * Ab;
+                    const float t0 = (1.0f - As);
+                    const float t1 = (1.0f - Ab);
+                    const float t2 = As * Ab;
+
+                    ColorLinear o{};
+                    o.a = clamp01f(Ar);
+                    o.r = clamp01f(t0 * b.r + t1 * s.r + t2 * Br);
+                    o.g = clamp01f(t0 * b.g + t1 * s.g + t2 * Bg);
+                    o.b = WAAVS_CLAMP01(t0 * b.b + t1 * s.b + t2 * Bb);
+
+                    oRow[x] = pixeling_prgba_pack_ARGB32(coloring_linear_premultiply(o));
+                }
+            }
+
+            return true;
+    }
+*/

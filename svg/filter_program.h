@@ -137,7 +137,7 @@ namespace waavs
 
     // Representation of a filter program 
     // This is essentially the machine "architecture"
-    // Op codes are uint8_t, and have a couple of flag bits available for use by the op.
+    // Op codes are uint16_t, and have a couple of flag bits available for use by the op.
     // The mem vector is for the operands, which are 64-bit words that can be used to 
     // store numbers, pointers, or packed pairs of smaller values.
     struct FilterProgramStream

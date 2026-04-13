@@ -2,13 +2,9 @@
 
 #include <memory>
 
-
-
 #include "filter_types.h"
 #include "filter_program.h"
 #include "filterprogrambuilder.h"
-#include "pixeleffects.h"
-
 
 
 //
@@ -325,81 +321,7 @@ namespace waavs
 
 
 
-        // reference scalar implementation in case the sub-class does
-        // not offer any specialization
-        static INLINE uint32_t composite_prgb32_scalar(uint32_t p1, uint32_t p2, FilterCompositeOp op) noexcept
-        {
-            const uint32_t sa = (p1 >> 24) & 0xFF;
-            const uint32_t sr = (p1 >> 16) & 0xFF;
-            const uint32_t sg = (p1 >> 8) & 0xFF;
-            const uint32_t sb = (p1 >> 0) & 0xFF;
 
-            const uint32_t da = (p2 >> 24) & 0xFF;
-            const uint32_t dr = (p2 >> 16) & 0xFF;
-            const uint32_t dg = (p2 >> 8) & 0xFF;
-            const uint32_t db = (p2 >> 0) & 0xFF;
-
-            uint32_t oa, orr, og, ob;
-
-            switch (op)
-            {
-            case FILTER_COMPOSITE_OVER:
-            {
-                const uint32_t isa = 255 - sa;
-                oa = sa + mul0_255(da, isa);
-                orr = sr + mul0_255(dr, isa);
-                og = sg + mul0_255(dg, isa);
-                ob = sb + mul0_255(db, isa);
-                break;
-            }
-
-            case FILTER_COMPOSITE_IN:
-                oa = mul0_255(sa, da);
-                orr = mul0_255(sr, da);
-                og = mul0_255(sg, da);
-                ob = mul0_255(sb, da);
-                break;
-
-            case FILTER_COMPOSITE_OUT:
-            {
-                const uint32_t ida = 255 - da;
-                oa = mul0_255(sa, ida);
-                orr = mul0_255(sr, ida);
-                og = mul0_255(sg, ida);
-                ob = mul0_255(sb, ida);
-                break;
-            }
-
-            case FILTER_COMPOSITE_ATOP:
-            {
-                const uint32_t isa = 255 - sa;
-                oa = da;
-                orr = mul0_255(sr, da) + mul0_255(dr, isa);
-                og = mul0_255(sg, da) + mul0_255(dg, isa);
-                ob = mul0_255(sb, da) + mul0_255(db, isa);
-                break;
-            }
-
-            case FILTER_COMPOSITE_XOR:
-            {
-                const uint32_t ida = 255 - da;
-                const uint32_t isa = 255 - sa;
-                oa = mul0_255(sa, ida) + mul0_255(da, isa);
-                orr = mul0_255(sr, ida) + mul0_255(dr, isa);
-                og = mul0_255(sg, ida) + mul0_255(dg, isa);
-                ob = mul0_255(sb, ida) + mul0_255(db, isa);
-                break;
-            }
-
-            default:
-                return 0;
-            }
-            return pack_argb32(
-                oa,
-                orr,
-                og,
-                ob);
-        }
 
 
         virtual bool onComposite(const FilterIO&, const WGRectD*,
