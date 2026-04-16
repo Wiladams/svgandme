@@ -95,6 +95,49 @@ namespace waavs
         };
     }
 
+	static INLINE ColorSRGB colorsrgb_from_premultiplied_Pixel_ARGB32(const Pixel_ARGB32& px) noexcept
+	{
+		// need to dequantize the components from 0..255 to 0..1
+		// and unpremultiply the color components by the alpha
+		float a = dequantize0_255((px >> 24) & 0xFFu);
+		if (a <= kInv255f) { // treat sub-1 LSB alpha as transparent
+			return ColorSRGB{ 0.0f, 0.0f, 0.0f, 0.0f };
+		}
+		else {
+			float r = dequantize0_255((px >> 16) & 0xFFu) / a;
+			float g = dequantize0_255((px >> 8) & 0xFFu) / a;
+			float b = dequantize0_255((px >> 0) & 0xFFu) / a;
+			return ColorSRGB{ r, g, b, a };
+		}
+	}
+
+    static INLINE Pixel_ARGB32 Pixel_ARGB32_from_ColorSRGB(const ColorSRGB& c) noexcept
+    {
+        const float a = clamp01f(c.a);
+        const float r = clamp01f(c.r);
+        const float g = clamp01f(c.g);
+        const float b = clamp01f(c.b);
+
+        return argb32_pack_u8(
+            quantize0_255(a),
+            quantize0_255(r),
+            quantize0_255(g),
+            quantize0_255(b));
+    }
+
+    static INLINE Pixel_ARGB32 Pixel_ARGB32_premultiplied_from_ColorSRGB(const ColorSRGB& c) noexcept
+    {
+        const float a = clamp01f(c.a);
+        const float r = clamp01f(c.r) * a;
+        const float g = clamp01f(c.g) * a;
+        const float b = clamp01f(c.b) * a;
+
+		return argb32_pack_u8(
+			quantize0_255(a),
+			quantize0_255(r),
+			quantize0_255(g),
+			quantize0_255(b));
+    }
 
     // sRGB <-> linear transfer functions (float in [0,1]) 
     // convert a single component

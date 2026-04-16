@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="560" viewBox="0 0 1400 560">
+  <title>SVG gradient stop alpha combination test</title>
+
+  <style>
+    text {
+      font-family: sans-serif;
+      font-size: 18px;
+      fill: #222;
+    }
+    .label {
+      font-size: 20px;
+      font-weight: bold;
+    }
+    .small {
+      font-size: 14px;
+      fill: #444;
+    }
+    .swatch {
+      stroke: #444;
+      stroke-width: 1;
+    }
+  </style>
+
+  <defs>
+    <pattern id="checker" x="0" y="0" width="16" height="16" patternUnits="userSpaceOnUse">
+      <rect width="16" height="16" fill="#ffffff"/>
+      <rect width="8" height="8" fill="#d9d9d9"/>
+      <rect x="8" y="8" width="8" height="8" fill="#d9d9d9"/>
+    </pattern>
+
+    <!-- A: stop-opacity only -->
+    <linearGradient id="grad_a" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="red" stop-opacity="0.0"/>
+      <stop offset="100%" stop-color="red" stop-opacity="1.0"/>
+    </linearGradient>
+
+    <!-- B: embedded alpha only -->
+    <linearGradient id="grad_b" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="rgb(255 0 0 / 0.0)"/>
+      <stop offset="100%" stop-color="rgb(255 0 0 / 1.0)"/>
+    </linearGradient>
+
+    <!-- C: embedded alpha 0.5 * stop-opacity 0.5 = 0.25 at right -->
+    <linearGradient id="grad_c" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="rgb(255 0 0 / 0.0)" stop-opacity="1.0"/>
+      <stop offset="100%" stop-color="rgb(255 0 0 / 0.5)" stop-opacity="0.5"/>
+    </linearGradient>
+
+    <!-- D: direct 0.25 at right; should match C -->
+    <linearGradient id="grad_d" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="rgb(255 0 0 / 0.0)" stop-opacity="1.0"/>
+      <stop offset="100%" stop-color="rgb(255 0 0 / 0.25)" stop-opacity="1.0"/>
+    </linearGradient>
+
+    <!-- E: color alpha 1.0 * stop-opacity 0.25 = 0.25; should match C and D -->
+    <linearGradient id="grad_e" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="red" stop-opacity="0.0"/>
+      <stop offset="100%" stop-color="red" stop-opacity="0.25"/>
+    </linearGradient>
+
+    <!-- F: transparent keyword to show transparent black behavior -->
+    <linearGradient id="grad_f" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="transparent"/>
+      <stop offset="100%" stop-color="red"/>
+    </linearGradient>
+
+    <!-- G: explicit transparent black equivalent; should match F -->
+    <linearGradient id="grad_g" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="black" stop-opacity="0"/>
+      <stop offset="100%" stop-color="red"   stop-opacity="1"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="1400" height="560" fill="white"/>
+
+  <text x="40" y="34" class="label">Gradient stop alpha combination test</text>
+  <text x="40" y="58" class="small">Rows A and B should match. Rows C, D, and E should match. Rows F and G should match.</text>
+  <text x="40" y="80" class="small">If they do not, the parser or stop alpha combination logic is wrong.</text>
+
+  <!-- Row A -->
+  <text x="40" y="140" class="label">A: stop-color="red", stop-opacity: 0 -&gt; 1</text>
+  <g transform="translate(520,108)">
+    <rect x="0" y="0" width="760" height="42" fill="url(#checker)" stroke="#aaa"/>
+    <rect class="swatch" x="0" y="0" width="760" height="42" fill="url(#grad_a)"/>
+  </g>
+
+  <!-- Row B -->
+  <text x="40" y="205" class="label">B: stop-color="rgb(255 0 0 / 0) -&gt; rgb(255 0 0 / 1)"</text>
+  <g transform="translate(520,173)">
+    <rect x="0" y="0" width="760" height="42" fill="url(#checker)" stroke="#aaa"/>
+    <rect class="swatch" x="0" y="0" width="760" height="42" fill="url(#grad_b)"/>
+  </g>
+
+  <!-- Row C -->
+  <text x="40" y="270" class="label">C: right stop = color alpha 0.5, stop-opacity 0.5</text>
+  <g transform="translate(520,238)">
+    <rect x="0" y="0" width="760" height="42" fill="url(#checker)" stroke="#aaa"/>
+    <rect class="swatch" x="0" y="0" width="760" height="42" fill="url(#grad_c)"/>
+  </g>
+
+  <!-- Row D -->
+  <text x="40" y="335" class="label">D: right stop = color alpha 0.25, stop-opacity 1.0</text>
+  <g transform="translate(520,303)">
+    <rect x="0" y="0" width="760" height="42" fill="url(#checker)" stroke="#aaa"/>
+    <rect class="swatch" x="0" y="0" width="760" height="42" fill="url(#grad_d)"/>
+  </g>
+
+  <!-- Row E -->
+  <text x="40" y="400" class="label">E: right stop = color alpha 1.0, stop-opacity 0.25</text>
+  <g transform="translate(520,368)">
+    <rect x="0" y="0" width="760" height="42" fill="url(#checker)" stroke="#aaa"/>
+    <rect class="swatch" x="0" y="0" width="760" height="42" fill="url(#grad_e)"/>
+  </g>
+
+  <!-- Row F -->
+  <text x="40" y="465" class="label">F: left stop-color="transparent"</text>
+  <g transform="translate(520,433)">
+    <rect x="0" y="0" width="760" height="42" fill="url(#checker)" stroke="#aaa"/>
+    <rect class="swatch" x="0" y="0" width="760" height="42" fill="url(#grad_f)"/>
+  </g>
+
+  <!-- Row G -->
+  <text x="40" y="530" class="label">G: left stop-color="black", stop-opacity="0"</text>
+  <g transform="translate(520,498)">
+    <rect x="0" y="0" width="760" height="42" fill="url(#checker)" stroke="#aaa"/>
+    <rect class="swatch" x="0" y="0" width="760" height="42" fill="url(#grad_g)"/>
+  </g>
+</svg>

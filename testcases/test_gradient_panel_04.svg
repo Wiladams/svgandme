@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1300" height="420" viewBox="0 0 1300 420">
+  <title>SVG stop-color and stop-opacity test panel</title>
+
+  <style>
+    text {
+      font-family: sans-serif;
+      font-size: 18px;
+      fill: #222;
+    }
+    .label {
+      font-size: 20px;
+      font-weight: bold;
+    }
+    .small {
+      font-size: 14px;
+      fill: #444;
+    }
+    .swatch {
+      stroke: #444;
+      stroke-width: 1;
+    }
+  </style>
+
+  <defs>
+    <pattern id="checker" x="0" y="0" width="16" height="16" patternUnits="userSpaceOnUse">
+      <rect width="16" height="16" fill="#ffffff"/>
+      <rect width="8" height="8" fill="#d9d9d9"/>
+      <rect x="8" y="8" width="8" height="8" fill="#d9d9d9"/>
+    </pattern>
+
+    <linearGradient id="grad_named" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="red" stop-opacity="0"/>
+      <stop offset="100%" stop-color="red" stop-opacity="1"/>
+    </linearGradient>
+
+    <linearGradient id="grad_hex" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#ff0000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#ff0000" stop-opacity="1"/>
+    </linearGradient>
+
+    <linearGradient id="grad_hsl" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="hsl(0, 100%, 50%)" stop-opacity="0"/>
+      <stop offset="100%" stop-color="hsl(0, 100%, 50%)" stop-opacity="1"/>
+    </linearGradient>
+
+    <linearGradient id="grad_rgb" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="rgb(255, 0, 0)" stop-opacity="0"/>
+      <stop offset="100%" stop-color="rgb(255, 0, 0)" stop-opacity="1"/>
+    </linearGradient>
+
+    <linearGradient id="grad_shorthex" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#f00" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#f00" stop-opacity="1"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="1300" height="420" fill="white"/>
+
+  <text x="40" y="32" class="label">stop-color / stop-opacity gradient test</text>
+  <text x="40" y="56" class="small">Each row should look identical: transparent red on the left, opaque red on the right.</text>
+  <text x="40" y="76" class="small">Any visual difference suggests a parsing or stop application bug.</text>
+
+  <!-- Row 1 -->
+  <text x="40" y="130" class="label">stop-color="red"</text>
+  <g transform="translate(340,100)">
+    <rect x="0" y="0" width="820" height="44" fill="url(#checker)" stroke="#aaa"/>
+    <rect class="swatch" x="0" y="0" width="820" height="44" fill="url(#grad_named)"/>
+  </g>
+
+  <!-- Row 2 -->
+  <text x="40" y="195" class="label">stop-color="#ff0000"</text>
+  <g transform="translate(340,165)">
+    <rect x="0" y="0" width="820" height="44" fill="url(#checker)" stroke="#aaa"/>
+    <rect class="swatch" x="0" y="0" width="820" height="44" fill="url(#grad_hex)"/>
+  </g>
+
+  <!-- Row 3 -->
+  <text x="40" y="260" class="label">stop-color="hsl(0, 100%, 50%)"</text>
+  <g transform="translate(340,230)">
+    <rect x="0" y="0" width="820" height="44" fill="url(#checker)" stroke="#aaa"/>
+    <rect class="swatch" x="0" y="0" width="820" height="44" fill="url(#grad_hsl)"/>
+  </g>
+
+  <!-- Row 4 -->
+  <text x="40" y="325" class="label">stop-color="rgb(255, 0, 0)"</text>
+  <g transform="translate(340,295)">
+    <rect x="0" y="0" width="820" height="44" fill="url(#checker)" stroke="#aaa"/>
+    <rect class="swatch" x="0" y="0" width="820" height="44" fill="url(#grad_rgb)"/>
+  </g>
+
+  <!-- Row 5 -->
+  <text x="40" y="390" class="label">stop-color="#f00"</text>
+  <g transform="translate(340,360)">
+    <rect x="0" y="0" width="820" height="44" fill="url(#checker)" stroke="#aaa"/>
+    <rect class="swatch" x="0" y="0" width="820" height="44" fill="url(#grad_shorthex)"/>
+  </g>
+</svg>

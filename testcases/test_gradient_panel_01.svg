@@ -1,0 +1,192 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+  <title>SVG Gradient Stop Default Value Test Panel</title>
+  <desc>
+    Demonstrates default behavior of gradient stops:
+    - stop-color defaults to black
+    - stop-opacity defaults to 1
+    - a stop with only offset becomes opaque black
+  </desc>
+
+  <style>
+    text {
+      font-family: Arial, Helvetica, sans-serif;
+      fill: black;
+    }
+    .title {
+      font-size: 28px;
+      font-weight: bold;
+    }
+    .label {
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .small {
+      font-size: 14px;
+    }
+    .frame {
+      fill: none;
+      stroke: #444;
+      stroke-width: 1.5;
+    }
+    .swatch {
+      stroke: #222;
+      stroke-width: 1;
+    }
+  </style>
+
+  <defs>
+    <!-- checkerboard for transparency visibility -->
+    <pattern id="checker" patternUnits="userSpaceOnUse" width="20" height="20">
+      <rect x="0" y="0" width="20" height="20" fill="#d8d8d8"/>
+      <rect x="0" y="0" width="10" height="10" fill="#f3f3f3"/>
+      <rect x="10" y="10" width="10" height="10" fill="#f3f3f3"/>
+    </pattern>
+
+    <!-- 1. Both stops explicit -->
+    <linearGradient id="g_explicit" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="red"/>
+      <stop offset="100%" stop-color="blue"/>
+    </linearGradient>
+
+    <!-- 2. First stop only has offset: defaults to opaque black -->
+    <linearGradient id="g_first_default_black" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"/>
+      <stop offset="100%" stop-color="blue"/>
+    </linearGradient>
+
+    <!-- 3. Last stop only has offset: defaults to opaque black -->
+    <linearGradient id="g_last_default_black" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="red"/>
+      <stop offset="100%"/>
+    </linearGradient>
+
+    <!-- 4. Middle stop only has offset: black in the middle -->
+    <linearGradient id="g_middle_default_black" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="red"/>
+      <stop offset="50%"/>
+      <stop offset="100%" stop-color="blue"/>
+    </linearGradient>
+
+    <!-- 5. Stop-color explicit, stop-opacity omitted: opacity defaults to 1 -->
+    <linearGradient id="g_default_opacity" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="red"/>
+      <stop offset="100%" stop-color="blue"/>
+    </linearGradient>
+
+    <!-- 6. Stop-color explicit, stop-opacity=0 at one end -->
+    <linearGradient id="g_explicit_opacity" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="red"  stop-opacity="0"/>
+      <stop offset="100%" stop-color="blue" stop-opacity="1"/>
+    </linearGradient>
+
+    <!-- 7. Only offset at both ends: black to black -->
+    <linearGradient id="g_all_default" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"/>
+      <stop offset="100%"/>
+    </linearGradient>
+
+    <!-- 8. Mixed defaults: color omitted at two interior stops -->
+    <linearGradient id="g_mixed_defaults" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="limegreen"/>
+      <stop offset="30%"/>
+      <stop offset="70%"/>
+      <stop offset="100%" stop-color="orange"/>
+    </linearGradient>
+
+    <!-- 9. Vertical version to make interpolation visually obvious -->
+    <linearGradient id="g_vertical_default_mid" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"   stop-color="yellow"/>
+      <stop offset="50%"/>
+      <stop offset="100%" stop-color="purple"/>
+    </linearGradient>
+
+    <!-- 10. Transparent comparison on checkerboard -->
+    <linearGradient id="g_checker_default_vs_transparent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"/>
+      <stop offset="100%" stop-color="blue" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="900" fill="white"/>
+
+  <text x="40" y="45" class="title">Gradient Stop Defaults Test Panel</text>
+  <text x="40" y="75" class="small">Focus: missing stop-color = black, missing stop-opacity = 1, offset-only stop = opaque black</text>
+
+  <!-- Row 1 -->
+  <g transform="translate(40,110)">
+    <text x="0" y="0" class="label">1. Explicit red - blue</text>
+    <text x="0" y="24" class="small">&lt;stop offset="0%" stop-color="red"/&gt; ... &lt;stop offset="100%" stop-color="blue"/&gt;</text>
+    <rect class="swatch" x="0" y="40" width="520" height="90" fill="url(#g_explicit)"/>
+    <rect class="frame"  x="0" y="40" width="520" height="90"/>
+  </g>
+
+  <g transform="translate(620,110)">
+    <text x="0" y="0" class="label">2. First stop only has offset</text>
+    <text x="0" y="24" class="small">Expected: black - blue</text>
+    <rect class="swatch" x="0" y="40" width="520" height="90" fill="url(#g_first_default_black)"/>
+    <rect class="frame"  x="0" y="40" width="520" height="90"/>
+  </g>
+
+  <!-- Row 2 -->
+  <g transform="translate(40,270)">
+    <text x="0" y="0" class="label">3. Last stop only has offset</text>
+    <text x="0" y="24" class="small">Expected: red - black</text>
+    <rect class="swatch" x="0" y="40" width="520" height="90" fill="url(#g_last_default_black)"/>
+    <rect class="frame"  x="0" y="40" width="520" height="90"/>
+  </g>
+
+  <g transform="translate(620,270)">
+    <text x="0" y="0" class="label">4. Middle stop only has offset</text>
+    <text x="0" y="24" class="small">Expected: red - black - blue</text>
+    <rect class="swatch" x="0" y="40" width="520" height="90" fill="url(#g_middle_default_black)"/>
+    <rect class="frame"  x="0" y="40" width="520" height="90"/>
+  </g>
+
+  <!-- Row 3 -->
+  <g transform="translate(40,430)">
+    <text x="0" y="0" class="label">5. stop-opacity omitted</text>
+    <text x="0" y="24" class="small">Expected: fully opaque gradient, because stop-opacity defaults to 1</text>
+    <rect x="0" y="40" width="520" height="90" fill="url(#checker)"/>
+    <rect class="swatch" x="0" y="40" width="520" height="90" fill="url(#g_default_opacity)"/>
+    <rect class="frame"  x="0" y="40" width="520" height="90"/>
+  </g>
+
+  <g transform="translate(620,430)">
+    <text x="0" y="0" class="label">6. Explicit stop-opacity</text>
+    <text x="0" y="24" class="small">Expected: transparent red at left fading to opaque blue at right</text>
+    <rect x="0" y="40" width="520" height="90" fill="url(#checker)"/>
+    <rect class="swatch" x="0" y="40" width="520" height="90" fill="url(#g_explicit_opacity)"/>
+    <rect class="frame"  x="0" y="40" width="520" height="90"/>
+  </g>
+
+  <!-- Row 4 -->
+  <g transform="translate(40,590)">
+    <text x="0" y="0" class="label">7. Both stops only have offset</text>
+    <text x="0" y="24" class="small">Expected: solid black, since both stops default to opaque black</text>
+    <rect class="swatch" x="0" y="40" width="520" height="90" fill="url(#g_all_default)"/>
+    <rect class="frame"  x="0" y="40" width="520" height="90"/>
+  </g>
+
+  <g transform="translate(620,590)">
+    <text x="0" y="0" class="label">8. Mixed defaults with interior black stops</text>
+    <text x="0" y="24" class="small">Expected: green - black - black - orange</text>
+    <rect class="swatch" x="0" y="40" width="520" height="90" fill="url(#g_mixed_defaults)"/>
+    <rect class="frame"  x="0" y="40" width="520" height="90"/>
+  </g>
+
+  <!-- Bottom row -->
+  <g transform="translate(40,750)">
+    <text x="0" y="0" class="label">9. Vertical gradient with default black middle</text>
+    <text x="0" y="24" class="small">Expected: yellow - black - purple</text>
+    <rect class="swatch" x="0" y="40" width="240" height="110" fill="url(#g_vertical_default_mid)"/>
+    <rect class="frame"  x="0" y="40" width="240" height="110"/>
+  </g>
+
+  <g transform="translate(340,750)">
+    <text x="0" y="0" class="label">10. Default black vs explicit transparency</text>
+    <text x="0" y="24" class="small">Left side stays opaque black; right side fades to transparent blue</text>
+    <rect x="0" y="40" width="800" height="110" fill="url(#checker)"/>
+    <rect class="swatch" x="0" y="40" width="800" height="110" fill="url(#g_checker_default_vs_transparent)"/>
+    <rect class="frame"  x="0" y="40" width="800" height="110"/>
+  </g>
+</svg>

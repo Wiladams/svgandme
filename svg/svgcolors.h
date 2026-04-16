@@ -223,7 +223,6 @@ namespace waavs
         
         // convert to ColorSRGB
         return colorSRGB_from_straight_components0_255(r, g, b, a);
-
     }
 }
 
@@ -494,19 +493,23 @@ namespace waavs {
         if (!readSVGNumberOrPercent(s, a))
             return false;
 
-        double v = a.isPercent() ? (a.value() / 100.0) : a.value();
-        outA = std::clamp(v, 0.0, 1.0);
+        outA = clamp01(a.calculatedValue());
+
         return true;
     }
 
-    static bool parse_colorsrgb_from_func(const ByteSpan& inChunk, ColorSRGB& cSRGB)
+    // Numeric format can be:
+    // rgb(255, 0, 0)
+    // rgb(100%, 0%, 0%)
+    // rgb(255 0 0 / 0.5)
+    // 
+    static WGResult parse_colorsrgb_from_func(const ByteSpan& inChunk, ColorSRGB& cSRGB)
     {
         // set a default color in case of parse failure.  
-        // This is for backwards compatibility with older 
-        // versions of the code.  
-        // Some image viewers return black instead, 
-        // but we'll return turquoise.
-        colorsrgb_reset(cSRGB, 255, 255, 0, 255);
+        // we'll return transparent black
+        // we need to check the spec to see what this 
+        // should really be
+        colorsrgb_reset(cSRGB, 0, 0, 0, 0);
 
         // skip past the leading "rgb("
         ByteSpan s = inChunk;
@@ -520,42 +523,50 @@ namespace waavs {
         // get the numbers by separating at the ')'
         auto nums = chunk_token_char(s, ')');
 
-        // So, now nums contains the individual numeric values, separated by ','
+        // So, now nums contains the individual numeric values, 
+		// separated by ',' or spaces or '/' (for alpha).  
+
         // The individual numeric values are 'number | percent' (50, 50%)
         // 50 - an absolute value in the range [0..255]
-        // 50% - a percentage of 255
+        // 50% - a percentage of 255 (for the color components)
+		// for alpha, 50% is a percentage of 1.0 (not 255)
 
-        int i = 0;
         uint8_t rgba[4]{};
         rgba[3] = 255;  // default alpha value is 255 (fully opaque)
 
-        // Get the first token, which is red
-        // if it's not there, then return gray
-        auto num = chunk_token_char(nums, ',');
-        if (num.size() < 1)
+
+
+        // Get the rgb values
+        charset delims = chrWspChars + ',';
+        for (int i = 0; i < 3; i++)
         {
-            return WGErrorCode::WG_ERROR_Invalid_Argument;
+            // get a component, separated by space or ','
+            auto num = chunk_token(nums, delims);
+
+            if (!num)
+                return WG_ERROR_Invalid_Argument;
+
+            if (!readCSSRGBChannel(num, rgba[i]))
+                return WG_ERROR_Invalid_Argument;
         }
 
-        while (num && i < 4)
-        {
-            if (i < 3) {
-                if (!readCSSRGBChannel(num, rgba[i]))
-                    return WG_ERROR_Invalid_Argument;
-            }
-            else {
-                double a = 1.0;
-                if (!readCSSAlphaValue(num, a))
-                    return WG_ERROR_Invalid_Argument;
-                rgba[i] = (uint8_t)std::lround(a * 255.0);
-            }
+        // assuming we've read the three color components
+        // let's see if there's an alpha remaining.
+        // it can be delimited by the previous delimiters
+        // or the '/' character
+        delims += '/';
+        nums.skipWhile(delims);
 
-            i++;
-            num = chunk_token_char(nums, ',');
+        if (nums)
+        {
+            double a = 1.0;
+            if (!readCSSAlphaValue(nums, a))
+                return WG_ERROR_Invalid_Argument;
+            rgba[3] = quantize0_255(a);
         }
 
         cSRGB = colorSRGB_from_straight_components0_255(rgba[0], rgba[1], rgba[2], rgba[3]);
 
-        return true;
+        return WG_SUCCESS;
     }
 }

@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1300" height="380" viewBox="0 0 1300 380">
+  <title>Fill opacity test panel for red across color syntaxes</title>
+
+  <style>
+    text {
+      font-family: sans-serif;
+      font-size: 18px;
+      fill: #222;
+    }
+    .label {
+      font-size: 20px;
+      font-weight: bold;
+    }
+    .small {
+      font-size: 14px;
+      fill: #444;
+    }
+    .swatch {
+      stroke: #444;
+      stroke-width: 1;
+    }
+  </style>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="1300" height="380" fill="white"/>
+
+  <!-- Checkerboard -->
+  <defs>
+    <pattern id="checker" x="0" y="0" width="16" height="16" patternUnits="userSpaceOnUse">
+      <rect width="16" height="16" fill="#ffffff"/>
+      <rect width="8" height="8" fill="#d9d9d9"/>
+      <rect x="8" y="8" width="8" height="8" fill="#d9d9d9"/>
+    </pattern>
+  </defs>
+
+  <!-- Header -->
+  <text x="40" y="32" class="label">fill-opacity test (red, different syntaxes)</text>
+
+  <!-- Opacity labels -->
+  <g>
+    <text x="265" y="92" class="small">0.00</text>
+    <text x="365" y="92" class="small">0.10</text>
+    <text x="465" y="92" class="small">0.25</text>
+    <text x="565" y="92" class="small">0.40</text>
+    <text x="665" y="92" class="small">0.55</text>
+    <text x="765" y="92" class="small">0.70</text>
+    <text x="865" y="92" class="small">0.85</text>
+    <text x="965" y="92" class="small">1.00</text>
+  </g>
+
+  <!-- Row 1 -->
+  <text x="40" y="135" class="label">fill="red"</text>
+  <g transform="translate(260,105)">
+    <g fill="url(#checker)">
+      <rect x="0" y="0" width="80" height="50"/>
+      <rect x="100" y="0" width="80" height="50"/>
+      <rect x="200" y="0" width="80" height="50"/>
+      <rect x="300" y="0" width="80" height="50"/>
+      <rect x="400" y="0" width="80" height="50"/>
+      <rect x="500" y="0" width="80" height="50"/>
+      <rect x="600" y="0" width="80" height="50"/>
+      <rect x="700" y="0" width="80" height="50"/>
+    </g>
+
+    <rect class="swatch" x="0" y="0" width="80" height="50" fill="red" fill-opacity="0.00"/>
+    <rect class="swatch" x="100" y="0" width="80" height="50" fill="red" fill-opacity="0.10"/>
+    <rect class="swatch" x="200" y="0" width="80" height="50" fill="red" fill-opacity="0.25"/>
+    <rect class="swatch" x="300" y="0" width="80" height="50" fill="red" fill-opacity="0.40"/>
+    <rect class="swatch" x="400" y="0" width="80" height="50" fill="red" fill-opacity="0.55"/>
+    <rect class="swatch" x="500" y="0" width="80" height="50" fill="red" fill-opacity="0.70"/>
+    <rect class="swatch" x="600" y="0" width="80" height="50" fill="red" fill-opacity="0.85"/>
+    <rect class="swatch" x="700" y="0" width="80" height="50" fill="red" fill-opacity="1.00"/>
+  </g>
+
+  <!-- Row 2 -->
+  <text x="40" y="205" class="label">fill="#ff0000"</text>
+  <g transform="translate(260,175)">
+    <g fill="url(#checker)">
+      <rect x="0" y="0" width="80" height="50"/>
+      <rect x="100" y="0" width="80" height="50"/>
+      <rect x="200" y="0" width="80" height="50"/>
+      <rect x="300" y="0" width="80" height="50"/>
+      <rect x="400" y="0" width="80" height="50"/>
+      <rect x="500" y="0" width="80" height="50"/>
+      <rect x="600" y="0" width="80" height="50"/>
+      <rect x="700" y="0" width="80" height="50"/>
+    </g>
+
+    <rect class="swatch" x="0" y="0" width="80" height="50" fill="#ff0000" fill-opacity="0.00"/>
+    <rect class="swatch" x="100" y="0" width="80" height="50" fill="#ff0000" fill-opacity="0.10"/>
+    <rect class="swatch" x="200" y="0" width="80" height="50" fill="#ff0000" fill-opacity="0.25"/>
+    <rect class="swatch" x="300" y="0" width="80" height="50" fill="#ff0000" fill-opacity="0.40"/>
+    <rect class="swatch" x="400" y="0" width="80" height="50" fill="#ff0000" fill-opacity="0.55"/>
+    <rect class="swatch" x="500" y="0" width="80" height="50" fill="#ff0000" fill-opacity="0.70"/>
+    <rect class="swatch" x="600" y="0" width="80" height="50" fill="#ff0000" fill-opacity="0.85"/>
+    <rect class="swatch" x="700" y="0" width="80" height="50" fill="#ff0000" fill-opacity="1.00"/>
+  </g>
+
+  <!-- Row 3 -->
+  <text x="40" y="275" class="label">fill="hsl(0, 100%, 50%)"</text>
+  <g transform="translate(260,245)">
+    <g fill="url(#checker)">
+      <rect x="0" y="0" width="80" height="50"/>
+      <rect x="100" y="0" width="80" height="50"/>
+      <rect x="200" y="0" width="80" height="50"/>
+      <rect x="300" y="0" width="80" height="50"/>
+      <rect x="400" y="0" width="80" height="50"/>
+      <rect x="500" y="0" width="80" height="50"/>
+      <rect x="600" y="0" width="80" height="50"/>
+      <rect x="700" y="0" width="80" height="50"/>
+    </g>
+
+    <rect class="swatch" x="0" y="0" width="80" height="50" fill="hsl(0, 100%, 50%)" fill-opacity="0.00"/>
+    <rect class="swatch" x="100" y="0" width="80" height="50" fill="hsl(0, 100%, 50%)" fill-opacity="0.10"/>
+    <rect class="swatch" x="200" y="0" width="80" height="50" fill="hsl(0, 100%, 50%)" fill-opacity="0.25"/>
+    <rect class="swatch" x="300" y="0" width="80" height="50" fill="hsl(0, 100%, 50%)" fill-opacity="0.40"/>
+    <rect class="swatch" x="400" y="0" width="80" height="50" fill="hsl(0, 100%, 50%)" fill-opacity="0.55"/>
+    <rect class="swatch" x="500" y="0" width="80" height="50" fill="hsl(0, 100%, 50%)" fill-opacity="0.70"/>
+    <rect class="swatch" x="600" y="0" width="80" height="50" fill="hsl(0, 100%, 50%)" fill-opacity="0.85"/>
+    <rect class="swatch" x="700" y="0" width="80" height="50" fill="hsl(0, 100%, 50%)" fill-opacity="1.00"/>
+  </g>
+
+  <!-- Row 4 -->
+  <text x="40" y="345" class="label">fill="rgb(255, 0, 0)"</text>
+  <g transform="translate(260,315)">
+    <g fill="url(#checker)">
+      <rect x="0" y="0" width="80" height="50"/>
+      <rect x="100" y="0" width="80" height="50"/>
+      <rect x="200" y="0" width="80" height="50"/>
+      <rect x="300" y="0" width="80" height="50"/>
+      <rect x="400" y="0" width="80" height="50"/>
+      <rect x="500" y="0" width="80" height="50"/>
+      <rect x="600" y="0" width="80" height="50"/>
+      <rect x="700" y="0" width="80" height="50"/>
+    </g>
+
+    <rect class="swatch" x="0" y="0" width="80" height="50" fill="rgb(255, 0, 0)" fill-opacity="0.00"/>
+    <rect class="swatch" x="100" y="0" width="80" height="50" fill="rgb(255, 0, 0)" fill-opacity="0.10"/>
+    <rect class="swatch" x="200" y="0" width="80" height="50" fill="rgb(255, 0, 0)" fill-opacity="0.25"/>
+    <rect class="swatch" x="300" y="0" width="80" height="50" fill="rgb(255, 0, 0)" fill-opacity="0.40"/>
+    <rect class="swatch" x="400" y="0" width="80" height="50" fill="rgb(255, 0, 0)" fill-opacity="0.55"/>
+    <rect class="swatch" x="500" y="0" width="80" height="50" fill="rgb(255, 0, 0)" fill-opacity="0.70"/>
+    <rect class="swatch" x="600" y="0" width="80" height="50" fill="rgb(255, 0, 0)" fill-opacity="0.85"/>
+    <rect class="swatch" x="700" y="0" width="80" height="50" fill="rgb(255, 0, 0)" fill-opacity="1.00"/>
+  </g>
+</svg>

@@ -37,7 +37,43 @@ namespace waavs
             quantize0_255(b),
             quantize0_255(a));
     }
+    
+    static INLINE ColorSRGB ColorSRGB_from_premul_BLRgba32(const BLRgba32& c) noexcept
+    {
+        const uint32_t a8 = c.a();
+        const uint32_t r8 = c.r();
+        const uint32_t g8 = c.g();
+        const uint32_t b8 = c.b();
 
+        const float a = dequantize0_255(a8);
+
+        if (a8 == 0u)
+            return { 0.0f, 0.0f, 0.0f, 0.0f };
+
+        const float invA = 1.0f / a;
+
+        return {
+            clamp01f(dequantize0_255(r8) * invA),
+            clamp01f(dequantize0_255(g8) * invA),
+            clamp01f(dequantize0_255(b8) * invA),
+            a
+        };
+    }
+
+	// Helpers going into and out of BLRgba32, 
+    // which is a premultiplied sRGB format.  
+    // These should be used when dealing with pixel values 
+	// in a BLImage and SVG feFilter
+
+    INLINE ColorLinear ColorLinear_from_BLRgba32(const BLRgba32& px) noexcept
+    {
+        return coloring_srgb_to_linear(ColorSRGB_from_premul_BLRgba32(px));
+    }
+
+	INLINE BLRgba32 BLRgba32_from_ColorLinear(const ColorLinear& c) noexcept
+	{
+		return BLRgba32_premultiplied_from_ColorSRGB(coloring_linear_to_srgb(c));
+	}
 }
 
 namespace waavs

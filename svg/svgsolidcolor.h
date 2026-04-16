@@ -17,45 +17,35 @@ namespace waavs {
     {
         static void registerFactory() {
             registerSVGSingularNodeByName("solidColor", [](IAmGroot* groot, const XmlElement& elem) {
-                auto node = std::make_shared<SVGSolidColorElement>(groot);
+                auto node = std::make_shared<SVGSolidColorElement>();
                 node->loadFromXmlElement(elem, groot);
 
                 return node;
                 });
         }
 
-        SVGPaint fPaint{ nullptr };
+        SVGColor fColor;
 
-        SVGSolidColorElement(IAmGroot*)
+
+        SVGSolidColorElement()
             :SVGGraphicsElement()
+            ,fColor(svgattr::solid_color(), svgattr::solid_opacity())
         {
             setIsVisible(false);
         }
 
         const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
         {
-            return fPaint.getVariant(ctx, groot);
+            BLVar tmpVar;
+            tmpVar = BLRgba32_premultiplied_from_ColorSRGB(fColor.value());
+
+            return tmpVar;
         }
 
         void fixupSelfStyleAttributes(IAmGroot* groot) override
         {
-            // Get the color and opacity attributes, and set up the paint
-            ByteSpan solidColorAttr{}, solidOpacityAttr{};
-
-            getAttribute(svgattr::solid_color(), solidColorAttr);
-            getAttribute(svgattr::solid_opacity(), solidOpacityAttr);
-
-            fPaint.loadFromChunk(solidColorAttr);
-            if (!solidOpacityAttr.empty())
-            {
-                double opa{ 1.0 };
-                if (readNumber(solidOpacityAttr, opa))
-                {
-                    fPaint.setOpacity(opa);
-                }
-            }
+            fColor.loadFromAttributes(fAttributes);
         }
-
 
     };
 

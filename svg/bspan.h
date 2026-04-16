@@ -697,7 +697,7 @@ namespace waavs
 
     // chuk_token_char()
     // 
-    // Given a source chunk chunk, and a single character delimeter
+    // Given a source chunk, and a single character delimeter
     // split the source into two chunks, the token, and the rest
     // The 'token', represents the portion of the source before the delim
     // The 'rest', represents the portion of the source after the delim

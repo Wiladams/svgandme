@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1250" viewBox="0 0 1400 1250">
+  <title>Gradient Stop Default Conformance (Fixed Overlap)</title>
+
+  <style>
+    text { font-family: Arial, Helvetica, sans-serif; fill: black; }
+    .title { font-size: 30px; font-weight: bold; }
+    .subtitle { font-size: 16px; }
+    .label { font-size: 18px; font-weight: bold; }
+    .small { font-size: 14px; }
+    .box { stroke: #222; stroke-width: 1.5; }
+    .divider { stroke: #888; stroke-width: 1; }
+  </style>
+
+  <defs>
+    <pattern id="checker" patternUnits="userSpaceOnUse" width="20" height="20">
+      <rect width="20" height="20" fill="#d7d7d7"/>
+      <rect x="0" y="0" width="10" height="10" fill="#f4f4f4"/>
+      <rect x="10" y="10" width="10" height="10" fill="#f4f4f4"/>
+    </pattern>
+
+    <!-- gradients -->
+    <linearGradient id="t1"><stop offset="0%"/><stop offset="100%" stop-color="blue"/></linearGradient>
+    <linearGradient id="e1"><stop offset="0%" stop-color="black"/><stop offset="100%" stop-color="blue"/></linearGradient>
+
+    <linearGradient id="t2"><stop offset="0%" stop-color="red"/><stop offset="100%"/></linearGradient>
+    <linearGradient id="e2"><stop offset="0%" stop-color="red"/><stop offset="100%" stop-color="black"/></linearGradient>
+
+    <linearGradient id="t3"><stop offset="0%" stop-color="red"/><stop offset="50%"/><stop offset="100%" stop-color="blue"/></linearGradient>
+    <linearGradient id="e3"><stop offset="0%" stop-color="red"/><stop offset="50%" stop-color="black"/><stop offset="100%" stop-color="blue"/></linearGradient>
+
+    <linearGradient id="t4"><stop offset="0%"/><stop offset="100%"/></linearGradient>
+    <linearGradient id="e4"><stop offset="0%" stop-color="black"/><stop offset="100%" stop-color="black"/></linearGradient>
+
+    <linearGradient id="t5"><stop offset="0%" stop-color="red"/><stop offset="100%" stop-color="blue"/></linearGradient>
+    <linearGradient id="e5"><stop offset="0%" stop-color="red"/><stop offset="100%" stop-color="blue"/></linearGradient>
+
+    <linearGradient id="t6"><stop offset="0%"/><stop offset="100%" stop-color="blue" stop-opacity="0"/></linearGradient>
+    <linearGradient id="e6"><stop offset="0%" stop-color="black"/><stop offset="100%" stop-color="blue" stop-opacity="0"/></linearGradient>
+
+    <linearGradient id="t7">
+      <stop offset="0%" stop-color="limegreen"/>
+      <stop offset="30%"/>
+      <stop offset="70%"/>
+      <stop offset="100%" stop-color="orange"/>
+    </linearGradient>
+    <linearGradient id="e7">
+      <stop offset="0%" stop-color="limegreen"/>
+      <stop offset="30%" stop-color="black"/>
+      <stop offset="70%" stop-color="black"/>
+      <stop offset="100%" stop-color="orange"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1400" height="1250" fill="white"/>
+
+  <text x="40" y="50" class="title">Gradient Stop Default Conformance</text>
+  <text x="40" y="80" class="subtitle">Left = actual | Right = expected</text>
+
+  <text x="180" y="120" class="label">Actual</text>
+  <text x="820" y="120" class="label">Expected</text>
+  <line x1="700" y1="90" x2="700" y2="1200" class="divider"/>
+
+  <!-- Bars at y=60, rows spaced wider -->
+
+  <g transform="translate(40,140)">
+    <text class="label">1. First stop offset only</text>
+    <text y="28" class="small">Expected: black → blue</text>
+    <rect y="60" width="600" height="90" fill="url(#t1)" class="box"/>
+    <rect x="720" y="60" width="600" height="90" fill="url(#e1)" class="box"/>
+  </g>
+
+  <g transform="translate(40,320)">
+    <text class="label">2. Last stop offset only</text>
+    <text y="28" class="small">Expected: red → black</text>
+    <rect y="60" width="600" height="90" fill="url(#t2)" class="box"/>
+    <rect x="720" y="60" width="600" height="90" fill="url(#e2)" class="box"/>
+  </g>
+
+  <g transform="translate(40,500)">
+    <text class="label">3. Middle stop offset only</text>
+    <text y="28" class="small">Expected: red → black → blue</text>
+    <rect y="60" width="600" height="90" fill="url(#t3)" class="box"/>
+    <rect x="720" y="60" width="600" height="90" fill="url(#e3)" class="box"/>
+  </g>
+
+  <g transform="translate(40,680)">
+    <text class="label">4. Both stops offset only</text>
+    <text y="28" class="small">Expected: solid black</text>
+    <rect y="60" width="600" height="90" fill="url(#t4)" class="box"/>
+    <rect x="720" y="60" width="600" height="90" fill="url(#e4)" class="box"/>
+  </g>
+
+  <g transform="translate(40,860)">
+    <text class="label">5. stop-opacity omitted</text>
+    <text y="28" class="small">Expected: fully opaque</text>
+    <rect y="60" width="600" height="90" fill="url(#checker)"/>
+    <rect y="60" width="600" height="90" fill="url(#t5)" class="box"/>
+    <rect x="720" y="60" width="600" height="90" fill="url(#checker)"/>
+    <rect x="720" y="60" width="600" height="90" fill="url(#e5)" class="box"/>
+  </g>
+
+  <g transform="translate(40,1040)">
+    <text class="label">6. Default black → transparent blue</text>
+    <text y="28" class="small">Expected: opaque black → transparent blue</text>
+    <rect y="60" width="600" height="90" fill="url(#checker)"/>
+    <rect y="60" width="600" height="90" fill="url(#t6)" class="box"/>
+    <rect x="720" y="60" width="600" height="90" fill="url(#checker)"/>
+    <rect x="720" y="60" width="600" height="90" fill="url(#e6)" class="box"/>
+  </g>
+
+  <g transform="translate(40,1220)">
+    <text class="label">7. Interior default stops</text>
+    <text y="28" class="small">Expected: green → black → black → orange</text>
+    <rect y="60" width="600" height="90" fill="url(#t7)" class="box"/>
+    <rect x="720" y="60" width="600" height="90" fill="url(#e7)" class="box"/>
+  </g>
+
+</svg>

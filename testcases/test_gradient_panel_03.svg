@@ -1,0 +1,210 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="980" viewBox="0 0 1400 980">
+  <title>gradientUnits: userSpaceOnUse vs objectBoundingBox</title>
+  <desc>
+    Test panel demonstrating how SVG gradients differ when gradientUnits is
+    userSpaceOnUse versus objectBoundingBox.
+  </desc>
+
+  <style>
+    text { font-family: Arial, Helvetica, sans-serif; fill: black; }
+    .title { font-size: 30px; font-weight: bold; }
+    .subtitle { font-size: 16px; }
+    .label { font-size: 18px; font-weight: bold; }
+    .small { font-size: 14px; }
+    .shape { stroke: #222; stroke-width: 2; }
+    .guide { stroke: #666; stroke-width: 1; stroke-dasharray: 6 6; }
+    .bbox  { fill: none; stroke: #888; stroke-width: 1.5; stroke-dasharray: 4 4; }
+    .panelBorder { fill: none; stroke: #bbb; stroke-width: 1; }
+    .divider { stroke: #888; stroke-width: 1; }
+  </style>
+
+  <defs>
+    <!-- Same numeric coordinates, different unit systems -->
+    <linearGradient id="grad_user_h" gradientUnits="userSpaceOnUse"
+      x1="100" y1="0" x2="620" y2="0">
+      <stop offset="0%"   stop-color="red"/>
+      <stop offset="50%"  stop-color="lime"/>
+      <stop offset="100%" stop-color="blue"/>
+    </linearGradient>
+
+    <linearGradient id="grad_bbox_h" gradientUnits="objectBoundingBox"
+      x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="red"/>
+      <stop offset="50%"  stop-color="lime"/>
+      <stop offset="100%" stop-color="blue"/>
+    </linearGradient>
+
+    <linearGradient id="grad_user_diag" gradientUnits="userSpaceOnUse"
+      x1="780" y1="120" x2="1320" y2="380">
+      <stop offset="0%"   stop-color="#ff0066"/>
+      <stop offset="50%"  stop-color="#ffd400"/>
+      <stop offset="100%" stop-color="#0066ff"/>
+    </linearGradient>
+
+    <linearGradient id="grad_bbox_diag" gradientUnits="objectBoundingBox"
+      x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#ff0066"/>
+      <stop offset="50%"  stop-color="#ffd400"/>
+      <stop offset="100%" stop-color="#0066ff"/>
+    </linearGradient>
+
+    <radialGradient id="rad_user" gradientUnits="userSpaceOnUse"
+      cx="360" cy="760" r="140" fx="360" fy="760">
+      <stop offset="0%"   stop-color="white"/>
+      <stop offset="35%"  stop-color="#7fd3ff"/>
+      <stop offset="100%" stop-color="#003a8c"/>
+    </radialGradient>
+
+    <radialGradient id="rad_bbox" gradientUnits="objectBoundingBox"
+      cx="0.5" cy="0.5" r="0.5" fx="0.5" fy="0.5">
+      <stop offset="0%"   stop-color="white"/>
+      <stop offset="35%"  stop-color="#7fd3ff"/>
+      <stop offset="100%" stop-color="#003a8c"/>
+    </radialGradient>
+
+    <!-- Clip paths to keep user-space guide gradients visually tidy -->
+    <clipPath id="clip_left_top">
+      <rect x="60" y="140" width="620" height="260"/>
+    </clipPath>
+    <clipPath id="clip_right_top">
+      <rect x="720" y="140" width="620" height="260"/>
+    </clipPath>
+    <clipPath id="clip_left_mid">
+      <rect x="60" y="450" width="620" height="210"/>
+    </clipPath>
+    <clipPath id="clip_right_mid">
+      <rect x="720" y="450" width="620" height="210"/>
+    </clipPath>
+    <clipPath id="clip_left_bot">
+      <rect x="60" y="720" width="620" height="210"/>
+    </clipPath>
+    <clipPath id="clip_right_bot">
+      <rect x="720" y="720" width="620" height="210"/>
+    </clipPath>
+  </defs>
+
+  <rect width="1400" height="980" fill="white"/>
+
+  <text x="40" y="50" class="title">gradientUnits: userSpaceOnUse vs objectBoundingBox</text>
+  <text x="40" y="80" class="subtitle">
+    Left column = userSpaceOnUse. Right column = objectBoundingBox.
+  </text>
+
+  <text x="220" y="120" class="label">userSpaceOnUse</text>
+  <text x="870" y="120" class="label">objectBoundingBox</text>
+  <line x1="700" y1="95" x2="700" y2="940" class="divider"/>
+
+  <!-- ====================================================== -->
+  <!-- Row 1: Same gradient on different-sized rectangles -->
+  <!-- ====================================================== -->
+  <g>
+    <text x="60" y="140" class="label">1. Same horizontal gradient on different-sized shapes</text>
+    <text x="60" y="164" class="small">
+      userSpaceOnUse = one shared canvas-aligned gradient; objectBoundingBox = remapped per shape
+    </text>
+
+    <!-- left panel -->
+    <rect x="60" y="180" width="620" height="220" class="panelBorder"/>
+
+    <!-- global guides for left -->
+    <g clip-path="url(#clip_left_top)">
+      <line x1="100" y1="180" x2="100" y2="400" class="guide"/>
+      <line x1="360" y1="180" x2="360" y2="400" class="guide"/>
+      <line x1="620" y1="180" x2="620" y2="400" class="guide"/>
+      <text x="88" y="175" class="small">0%</text>
+      <text x="348" y="175" class="small">50%</text>
+      <text x="608" y="175" class="small">100%</text>
+    </g>
+
+    <rect x="110" y="210" width="140" height="150" fill="url(#grad_user_h)" class="shape"/>
+    <rect x="320" y="240" width="300" height="90"  fill="url(#grad_user_h)" class="shape"/>
+
+    <!-- bounding boxes -->
+    <rect x="110" y="210" width="140" height="150" class="bbox"/>
+    <rect x="320" y="240" width="300" height="90" class="bbox"/>
+
+    <!-- right panel -->
+    <rect x="720" y="180" width="620" height="220" class="panelBorder"/>
+
+    <rect x="770" y="210" width="140" height="150" fill="url(#grad_bbox_h)" class="shape"/>
+    <rect x="980" y="240" width="300" height="90"  fill="url(#grad_bbox_h)" class="shape"/>
+
+    <rect x="770" y="210" width="140" height="150" class="bbox"/>
+    <rect x="980" y="240" width="300" height="90" class="bbox"/>
+  </g>
+
+  <!-- ====================================================== -->
+  <!-- Row 2: Diagonal gradient and non-square boxes -->
+  <!-- ====================================================== -->
+  <g>
+    <text x="60" y="450" class="label">2. Diagonal gradient on tall vs wide rectangles</text>
+    <text x="60" y="474" class="small">
+      objectBoundingBox normalizes each box to 0..1; userSpaceOnUse keeps one shared diagonal in page space
+    </text>
+
+    <!-- left panel -->
+    <rect x="60" y="490" width="620" height="170" class="panelBorder"/>
+    <g clip-path="url(#clip_left_mid)">
+      <line x1="780" y1="120" x2="1320" y2="380" class="guide" transform="translate(-660,370)"/>
+    </g>
+
+    <rect x="120" y="520" width="110" height="110" fill="url(#grad_user_diag)" class="shape"/>
+    <rect x="300" y="510" width="120" height="130" fill="url(#grad_user_diag)" class="shape"/>
+    <rect x="480" y="545" width="150" height="60"  fill="url(#grad_user_diag)" class="shape"/>
+
+    <rect x="120" y="520" width="110" height="110" class="bbox"/>
+    <rect x="300" y="510" width="120" height="130" class="bbox"/>
+    <rect x="480" y="545" width="150" height="60"  class="bbox"/>
+
+    <!-- right panel -->
+    <rect x="720" y="490" width="620" height="170" class="panelBorder"/>
+
+    <rect x="780" y="520" width="110" height="110" fill="url(#grad_bbox_diag)" class="shape"/>
+    <rect x="960" y="510" width="120" height="130" fill="url(#grad_bbox_diag)" class="shape"/>
+    <rect x="1140" y="545" width="150" height="60" fill="url(#grad_bbox_diag)" class="shape"/>
+
+    <rect x="780" y="520" width="110" height="110" class="bbox"/>
+    <rect x="960" y="510" width="120" height="130" class="bbox"/>
+    <rect x="1140" y="545" width="150" height="60" class="bbox"/>
+  </g>
+
+  <!-- ====================================================== -->
+  <!-- Row 3: Radial gradient -->
+  <!-- ====================================================== -->
+  <g>
+    <text x="60" y="720" class="label">3. Radial gradient</text>
+    <text x="60" y="744" class="small">
+      userSpaceOnUse keeps one fixed center/radius in user coordinates; objectBoundingBox centers/scales per shape
+    </text>
+
+    <!-- left panel -->
+    <rect x="60" y="760" width="620" height="170" class="panelBorder"/>
+
+    <g clip-path="url(#clip_left_bot)">
+      <circle cx="360" cy="845" r="140" class="guide" fill="none"/>
+      <line x1="220" y1="845" x2="500" y2="845" class="guide"/>
+      <line x1="360" y1="705" x2="360" y2="985" class="guide"/>
+    </g>
+
+    <circle cx="200" cy="845" r="55" fill="url(#rad_user)" class="shape"/>
+    <rect   x="300" y="790" width="120" height="110" fill="url(#rad_user)" class="shape"/>
+    <ellipse cx="560" cy="845" rx="80" ry="45" fill="url(#rad_user)" class="shape"/>
+
+    <rect x="145" y="790" width="110" height="110" class="bbox"/>
+    <rect x="300" y="790" width="120" height="110" class="bbox"/>
+    <rect x="480" y="800" width="160" height="90" class="bbox"/>
+
+    <!-- right panel -->
+    <rect x="720" y="760" width="620" height="170" class="panelBorder"/>
+
+    <rect x="805" y="790" width="110" height="110" class="bbox"/>
+    <rect x="960" y="790" width="120" height="110" class="bbox"/>
+    <rect x="1140" y="800" width="160" height="90" class="bbox"/>
+
+
+    <circle cx="860" cy="845" r="55" fill="url(#rad_bbox)" class="shape"/>
+    <rect   x="960" y="790" width="120" height="110" fill="url(#rad_bbox)" class="shape"/>
+    <ellipse cx="1220" cy="845" rx="80" ry="45" fill="url(#rad_bbox)" class="shape"/>
+
+  </g>
+</svg>

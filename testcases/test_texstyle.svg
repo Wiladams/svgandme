@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+    xmlns:svg="http://www.w3.org/2000/svg"
+    xmlns="http://www.w3.org/2000/svg">
+	
+    <g style="fill:none; color:black; stroke:currentColor; stroke-width:1.00; stroke-linecap:butt; stroke-linejoin:miter">
+	    <path stroke='black'  d='M507.2,422.4 L507.2,413.4 M507.2,16.7 L507.2,25.7  h0.01'/>	
+	    <g transform="translate(507.2,444.9)" style="stroke:none; fill:black; font-family:Arial; font-size:12.00pt; text-anchor:middle">
+		    <text> 2000</text>
+	    </g>
+    </g>
+
+    <g style="fill:none; color:green; stroke:currentColor; stroke-width:1.00; stroke-linecap:butt; stroke-linejoin:miter">		
+		<g transform="translate(440.1,57.2)" style="stroke:none; fill:black; font-family:Arial; font-size:12.00pt; text-anchor:end">
+			<text>Latency</text>
+		</g>
+    </g>
+</svg>

@@ -18,6 +18,12 @@
 
 namespace waavs
 {
+    enum FilterColorInterpolation : uint32_t
+    {
+		FILTER_COLOR_INTERPOLATION_LINEAR_RGB = 0,
+		FILTER_COLOR_INTERPOLATION_SRGB
+    };
+
     // feBlend 'mode' attribute
     enum FilterBlendMode : uint32_t
     {

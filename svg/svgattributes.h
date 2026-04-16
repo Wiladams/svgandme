@@ -638,109 +638,88 @@ namespace waavs {
     // stroke-width
     // stroke-dasharray, stroke-dashoffset, 
     // stroke-linecap, stroke-linejoin, stroke-miterlimit,  
-
-    struct SVGPaintAttribute : public SVGVisualProperty
-    {
-        BLVar fPaintVar{BLVar::null()};
-
-        SVGPaintAttribute(IAmGroot* groot) :SVGVisualProperty(groot) {}
-
-        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
-        {
-            // If our raw value is 'currentColor', then we need to get the current color
-            // from the context
-            if (fPaintVar.isRgba32() || fPaintVar.isNull())
-            {
-                 // if it's a color, or it's 'none', then we can just return it
-                return fPaintVar;
-            }
-
-            if (rawValue() == "currentColor" || rawValue() == "inherit" && ctx != nullptr)
-            {
-                return ctx->getDefaultColor();
-            }
-
-            // otherwise, use the variant we have calculated
-            return fPaintVar;
-        }
+    
+    // SVGColor
+    // Representation of a color.  
+    // Not a Paint Server, just a pure sRGBA color.  
+    // The internal representation is ColorSRGB, which is what the SVG
+    // spec says the authored colors are.  We use 4 float values as a matter
+    // of convenience to convert to other representations.
+    // The values are in the range [0..1].  
+    // And the components are NOT premultiplied, so they are
+    // 'straight' 
+    // This can be converted to pixel values, or other color
+    // representations when needed
+    // When parsing a color, it might be an actual color returned
+    // or it might be symbolic.  If it is an actual color, then 
+    // isColor() returns true
+    // Otherwise, one of the other symbolic tests will tell what it was
+	enum ColorSemantics : uint32_t
+	{
+        COLOR_SEMANTIC_UNKNOWN  = 0x01,     // failed
+		COLOR_SEMANTIC_NONE     = 0x02,     // literal 'none'
+		COLOR_SEMANTIC_COLOR    = 0x04,     // regular color
+		COLOR_SEMANTIC_INHERIT  = 0x08,     // inherit
+		COLOR_SEMANTIC_CURRENT  = 0x10,     // currentColor
+		COLOR_SEMANTIC_CONTEXT  = 0x20,
+        COLOR_SEMANTIC_REFERENCE= 0x40,     // A URL()
     };
 
-    //=====================================================
-    // SVG Paint
-    // General base class for paint.  Other kinds of paints
-    // such as fill, stroke, stop-color, descend from this
-    //=====================================================
-    struct SVGPaint : public SVGPaintAttribute
+    struct SVGColor : public SVGVisualProperty
     {
-        ByteSpan fPaintReference{};
+        ColorSRGB fValue{};
+		ColorSemantics fSemantics{ COLOR_SEMANTIC_UNKNOWN };
+        InternedKey fColorField;
+        InternedKey fOpacityField;
 
+		SVGColor(InternedKey colorField, InternedKey opacityField)
+			: SVGVisualProperty(nullptr) 
+            ,fColorField(colorField)
+            ,fOpacityField(opacityField)
+		{
+			setName(colorField);
+		}
 
-        SVGPaint(IAmGroot* groot) : SVGPaintAttribute(groot) {}
-        SVGPaint(const SVGPaint& other) = delete;
-
-
-
-        //
-        // resolvePaint()
-        // We have a reference to something this is supposed to be our 
-        // paint.  Try to retrieve it, and get it's variant.
-        // BUGBUG - Ideally, thie is where we could do ObjectBBox binding
-        // 
-        virtual void resolvePaint(IRenderSVG *ctx, IAmGroot* groot)
-        {
-            if (!fPaintReference  || !groot)
-                return;
-
-
-            if (chunk_starts_with_cstr(fPaintReference, "url("))
-            {
-                auto node = groot->findNodeByUrl(fPaintReference);
-
-                if (nullptr == node)
-                    return;
-
-
-                // Tell the referant node to resolve itself
-                //node->bindToContext(ctx, groot);
-
-                BLVar aVar = node->getVariant(ctx, groot);
-                fPaintVar = aVar;
-
-                set(true);
-            }
+		ColorSRGB value() const { return fValue; }
+        
+        bool isSymbolicType(uint32_t aType) const noexcept 
+        { 
+            return (fSemantics & aType) > 0; 
         }
+		bool isNone() const { return fSemantics == COLOR_SEMANTIC_NONE; }
+		bool isInherit() const { return fSemantics == COLOR_SEMANTIC_INHERIT; }
+		bool isCurrent() const { return fSemantics == COLOR_SEMANTIC_CURRENT; }
+		bool isContext() const { return fSemantics == COLOR_SEMANTIC_CONTEXT; }
+		bool isColor() const { return fSemantics == COLOR_SEMANTIC_COLOR; }
+        bool isReference() const { return fSemantics == COLOR_SEMANTIC_REFERENCE; }
 
-        void setOpacity(double opacity)
-        {
-            uint32_t outValue;
-            if (BL_SUCCESS == blVarToRgba32(&fPaintVar, &outValue))
-            {
-                BLRgba32 newColor(outValue);
-                newColor.setA((uint32_t)(opacity * 255));
-                fPaintVar = newColor;
-            }
-            else {
-                printf("Unable to set opacity on paint, not a color value\n");
-            }
-        }
-
-        // load a color from a ByteSpan
-        // There are many different ways to represent a color in SVG
+        // load a color from a set of attributes
         // This function will try to figure out what the color is
         // Function forms:
         //   rgb(255, 0, 0)
         //   rgba(255, 0, 0, 0.5)
+        //   rgb(255 0 0 / 50%)
 
         //   hsl(120, 100%, 50%)
         //   hsla(120, 100%, 50%, 0.5)
-        
+
         // Literals:
-        //   #ff0000
-        //   #FFF
+        //   #ffRRGGBB  - full hex for RGBA
+        //   #ff0000    - full hex for RGB
+        //   #FFFF      - single hex duplicated for RGBA
+        //   #FFF       - single hex duplicated for RGB
         //   color name
-        //   url()
+
+        // Importantly, NOT URL()!!  That is for paint servers
+        // This is strictly for a literal color value ONLY
+        // This can be used by the Paint servers, as well as
+		// places such as 'svg:stop-color' which only take color values, 
+        // and not paint servers.
+		// feFilterPrimitiveAttributes, which can take color values, 
+        // but not paint servers, will also use this.
         //
-        bool loadSelfFromChunk(const ByteSpan& inChunk) override
+
+        bool loadFromAttributes(const XmlAttributeCollection& attrs) override
         {
             static const char* rgbStr = "rgb(";
             static const char* rgbaStr = "rgba(";
@@ -749,83 +728,227 @@ namespace waavs {
             static const char* hslStr = "hsl(";
             static const char* hslaStr = "hsla(";
 
-            ByteSpan str = inChunk;
+            ByteSpan colorSpan{};
+            ByteSpan opacitySpan{};
+
+            if (!attrs.getValue(fColorField, colorSpan))
+                return false;
+
+            setRawValue(colorSpan);
+
+			attrs.getValue(fOpacityField, opacitySpan);
 
 
-            size_t len = 0;
-
-            // First check to see if it's a lookup by 'url'
-            // if it is, then register our desire to do a lookup
-            // and finish for now.
-            if (chunk_starts_with_cstr(str, "url("))
+            if (chunk_starts_with_cstr(colorSpan, "url("))
             {
-                fPaintReference = str;
-
-                setNeedsBinding(true);
                 set(true);
-                
+                setNeedsBinding(true);
+                fSemantics = COLOR_SEMANTIC_REFERENCE;
+
                 return true;
             }
 
-            BLRgba32 c(128, 128, 128, 255);
-            ColorSRGB cSRGB = colorSRGB_from_straight_BLRgba32(c);
+            // temporary value
+            ColorSRGB cSRGB{};
 
-            len = str.size();
-            if ((len >= 1) && (*str == '#'))
+			// First, deal with the color value, if there is one
+			ByteSpan cSpan = colorSpan;
+            size_t len = 0;
+            len = cSpan.size();
+            if ((len >= 1) && (*cSpan == '#'))
             {
-                if (parse_colorsrgb_from_hex(str, cSRGB) == WG_SUCCESS)
+                if (parse_colorsrgb_from_hex(cSpan, cSRGB) == WG_SUCCESS)
                 {
-                    c = BLRgba32_premultiplied_from_ColorSRGB(cSRGB);
-                    fPaintVar = c;
+					fValue = cSRGB;
                     set(true);
+					fSemantics = COLOR_SEMANTIC_COLOR;
+                }
+                else {
+                    return false;
                 }
             }
-            else if (str.startsWith(rgbStr) ||
-                str.startsWith(rgbaStr) ||
-                str.startsWith(rgbaStrCaps) ||
-                str.startsWith(rgbStrCaps))
+            else if (cSpan.startsWith(rgbStr) ||
+                cSpan.startsWith(rgbaStr) ||
+                cSpan.startsWith(rgbaStrCaps) ||
+                cSpan.startsWith(rgbStrCaps))
             {
-                if (parse_colorsrgb_from_func(str, cSRGB))
+                if (parse_colorsrgb_from_func(cSpan, cSRGB) == WG_SUCCESS)
                 {
-                    c = BLRgba32_premultiplied_from_ColorSRGB(cSRGB);
-                    fPaintVar = c;
+                    fValue = cSRGB;
                     set(true);
+                    fSemantics = COLOR_SEMANTIC_COLOR;
+                }
+                else {
+                    return false;
                 }
             }
-            else if (str.startsWith(hslStr) ||
-                str.startsWith(hslaStr))
+            else if (cSpan.startsWith(hslStr) ||
+                cSpan.startsWith(hslaStr))
             {
-                c = parseColorHsl(str);
-                fPaintVar = c;
+                // BUGBUG - need to modernize Hsl to fill
+                // in ColorSRGB
+                //c = parseColorHsl(str);
 
                 set(true);
+				fSemantics = COLOR_SEMANTIC_COLOR;
             }
             else {
-                if (str == svgval::none()) {
-                    fPaintVar = BLVar::null();
+                if (cSpan == svgval::none()) {
                     set(true);
+					fSemantics = COLOR_SEMANTIC_NONE;
                 }
-                else if ((str == "context-stroke") || (str == "context-fill"))
+                else if ((cSpan == "context-stroke") || (cSpan == "context-fill"))
                 {
-                    set(false);
+                    set(true);
+					fSemantics = COLOR_SEMANTIC_CONTEXT;
                 }
-                else if ((str == "inherit") || (str == "currentColor"))
+                else if ((cSpan == "inherit") || (cSpan == "currentColor"))
                 {
                     // Take on whatever color value was previously set
                     // somewhere in the tree
-                    set(false);
+                    set(true);
+					if (cSpan == "inherit")
+						fSemantics = COLOR_SEMANTIC_INHERIT;
+					else
+						fSemantics = COLOR_SEMANTIC_CURRENT;
                 }
                 else {
-                    c = BLRgba32_premultiplied_from_ColorSRGB(
-                        get_color_by_name_as_srgb(str));
-                    fPaintVar = c;
-
+                    // BUGBUG - should change the call to take 
+					// cSRGB as parameter and return WGResult, 
+                    // so we can detect failure and return false from this function
+                    fValue = get_color_by_name_as_srgb(cSpan);
                     set(true);
+					fSemantics = COLOR_SEMANTIC_COLOR;
                 }
             }
 
+			// If there is an opacity field, the value should be
+            // between [0..1], or a percentage.
+            // Include the opacity with the color, but DO NOT premultiply 
+            // 
+			if (opacitySpan)
+			{
+				double opacity = 1.0;
+				SVGNumberOrPercent op{};
+				ByteSpan s = opacitySpan;
+				if (readSVGNumberOrPercent(s, op))
+				{
+                    opacity = waavs::clamp01f((float)op.calculatedValue());
+                    fValue.a = clamp01f(fValue.a * opacity);
+				}
+			}
+
             return true;
         }
+    };
+
+
+    //=====================================================
+    // SVG Paint
+    // 
+    // General base class for paint.  
+    // This is essentially the "paint server".  We parse
+    // what the 'color' is, and if it's a reference to something
+    // that reference's 'getVariant' is called at the right time
+    // otherwise, we return the appropriate color value.
+    // The primary usage here is 'fill' and 'stroke' attributes.
+    // 'stop-color' and filter primitives handle their own colors
+    // as they just use SVGColor instead, as there is no allowance
+    // for 'paint server' style
+    
+            // There are a couple of cases when using 'currentColor' as the
+            // color value.
+            // 1) It is being used on an element, where there is also a 'color' attribute
+            //   In this case, whatever is in the 'color' attribute needs to become our
+            //   BLVar value, and set on the context at drawing time.
+            // 2) It is being used on an element, where there is no 'color' attribute
+            //   In this case, it is inheritance.  The color value is determined by what is
+            //   currently on the 'currentColor()' property of the context, so we should use
+            //   that when it comes time to draw.
+
+    //=====================================================
+    struct SVGPaint : public SVGVisualProperty
+    {
+        ByteSpan fPaintReference{};
+        SVGColor fColor;
+        InternedKey fColorKey;
+        InternedKey fOpacityKey;
+
+
+        SVGPaint(InternedKey colorKey, InternedKey opacityKey)
+            : SVGVisualProperty(nullptr)
+            , fColor(colorKey, opacityKey)
+        {}
+
+        SVGPaint(const SVGPaint& other) = delete;
+
+        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        {
+            // if it's simply a color, then do a quick convert and return
+            if (fColor.isColor())
+            {
+				BLRgba32 bColor{};
+                bColor.value = Pixel_ARGB32_from_ColorSRGB(fColor.value());
+                BLVar tmpVar{};
+                tmpVar = bColor;
+
+                return tmpVar;
+            }
+			else if (fColor.isNone())
+			{
+				return BLVar::null();
+			}
+            else if (fColor.isCurrent())
+            {
+				// if it's 'currentColor', then we need to look up 
+                // the current color from the context.
+                // we still need to apply our specific opacity if
+                // it exists
+                return ctx->getDefaultColor();
+            }
+            else if (fColor.isInherit())
+            {
+                // if it's 'inherit' treat it the same
+                // as 'currentColor'
+                // we'll keep it separate for now until we
+                // confirm the semantic differences
+                return ctx->getDefaultColor();
+            }
+            else if (fColor.isReference())
+            {
+                // we must have groot to do a lookup
+				if (!groot)
+					return BLVar::null();
+
+                auto node = groot->findNodeByUrl(fColor.rawValue());
+
+                if (nullptr == node)
+                    return BLVar::null();
+
+                // assume calling getVariant on the referant node will
+                // cause itself to do binding
+                BLVar tmpVar = node->getVariant(ctx, groot);
+                return tmpVar;
+            }
+
+            // otherwise, use the variant we have calculated
+            return BLVar::null();
+        }
+
+        // paint usually comes in color/opacity pairs
+        // so use SVGColor to read it, if it's not a URL 
+        // reference
+        bool loadFromAttributes(const XmlAttributeCollection& attrs) override
+        {
+			if (!fColor.loadFromAttributes(attrs))
+                return false;
+
+            set(true);
+
+            return true;
+        }
+
+
 
         void update(IAmGroot* groot) override
         {
@@ -842,14 +965,6 @@ namespace waavs {
                 }
             }
         }
-
-        
-        void bindToContext(IRenderSVG* ctx, IAmGroot* groot) noexcept override
-        {
-            resolvePaint(ctx, groot);
-
-            setNeedsBinding(false);
-        }
         
         
     };
@@ -860,25 +975,16 @@ namespace waavs {
     {
         static void registerFactory() {
             registerSVGAttributeByName("color", [](const XmlAttributeCollection& attrs) {
-                auto node = std::make_shared<SVGColorPaint>(nullptr);
+                auto node = std::make_shared<SVGColorPaint>();
                 node->loadFromAttributes(attrs);
                 return node;
                 });
         }
 
 
-        SVGColorPaint(IAmGroot* root) : SVGPaint(root) { setName(svgattr::color()); }
+        SVGColorPaint() 
+            : SVGPaint(svgattr::color(), nullptr) { setName(svgattr::color()); }
 
-
-        bool loadFromAttributes(const XmlAttributeCollection& attrs) override
-        {
-            if (!SVGPaint::loadFromAttributes(attrs))
-            {
-                return false;
-            }
-
-            return true;
-        }
 
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
@@ -895,29 +1001,17 @@ namespace waavs {
     {
         static void registerFactory() {
             registerSVGAttribute(svgattr::fill(), [](const XmlAttributeCollection& attrs) {
-                auto node = std::make_shared<SVGFillPaint>(nullptr);
+                auto node = std::make_shared<SVGFillPaint>();
                 node->loadFromAttributes(attrs);
                 return node;
                 });
         }
 
-
-        SVGFillPaint(IAmGroot* root) : SVGPaint(root) { setName(svgattr::fill()); }
-
-        /*
-        void bindToContext(IRenderSVG *ctx, IAmGroot*) noexcept override
-        {
-            // set an opacity value if the context
-            // has it.
-            double opa = ctx->getFillOpacity();
-            if (opa < 1.0)
-            {
-                setOpacity(opa);
-            }
-
-            setNeedsBinding(false);
+        SVGFillPaint() 
+            : SVGPaint(svgattr::fill(), svgattr::fill_opacity()) 
+        { 
+            setName(svgattr::fill()); 
         }
-        */
 
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
@@ -972,15 +1066,19 @@ namespace waavs {
     {
         static void registerFactory() {
             registerSVGAttributeByName(svgattr::stroke(), [](const XmlAttributeCollection& attrs) {
-                auto node = std::make_shared<SVGStrokePaint>(nullptr); 
+                auto node = std::make_shared<SVGStrokePaint>(); 
                 node->loadFromAttributes(attrs);
                 return node; 
                 });
         }
-        
 
-        SVGStrokePaint(IAmGroot* root) : SVGPaint(root) { setName(svgattr::stroke()); }
+        SVGStrokePaint() 
+            : SVGPaint(svgattr::stroke(), svgattr::stroke_opacity()) 
+        { setName(svgattr::stroke()); }
 
+        // BUGBUG - getVariant is where we should be resolving
+        // things like 'currentColor' as well as references
+        /*
         bool loadFromAttributes(const XmlAttributeCollection& attrs) override
         {
             // get the value of the 'stroke' attribute.
@@ -1023,6 +1121,7 @@ namespace waavs {
             // It's not 'currentColor', so process an immediate color value
             return loadFromChunk(strokeAttr);
         }
+        */
 
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
@@ -1193,9 +1292,6 @@ namespace waavs {
         SVGStrokeLineJoin(IAmGroot* iMap) : SVGVisualProperty(iMap) { setName(svgattr::stroke_linejoin()); }
         SVGStrokeLineJoin(const SVGStrokeLineJoin& other) = delete;
         SVGStrokeLineJoin& operator=(const SVGStrokeLineJoin& rhs) = delete;
-
-
-
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {

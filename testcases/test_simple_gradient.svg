@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"  standalone="no"?>
+<svg 
+ width="600" height="480" 
+ viewBox="0 0 600 480"
+ xmlns="http://www.w3.org/2000/svg"
+ xmlns:xlink="http://www.w3.org/1999/xlink"
+>
+
+<defs>
+<linearGradient id="grad1" gradientUnits="objectBoundingBox" x1='50%' y1='0' x2='50%' y2='200'>
+    <stop offset="0%" stop-color="black"/>
+    <stop offset="50%" stop-color="red"/>
+    <stop offset="100%" stop-color="blue"/>
+</linearGradient>
+</defs>
+
+<rect fill="url('#grad1')" x="10" y="10" width = "200" height="200" stroke-width="4" stroke="blue"  />
+
+</svg>

@@ -1,0 +1,39 @@
+<svg width="500" height="500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- === Linear gradient chain (3 levels deep) === -->
+
+    <!-- Level 1: base -->
+    <linearGradient id="linA" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="red" />
+      <stop offset="100%" stop-color="blue" />
+    </linearGradient>
+
+    <!-- Level 2: inherits from linA, overrides direction -->
+    <linearGradient id="linB" href="#linA" x1="0" y1="0" x2="0" y2="1" />
+
+    <!-- Level 3: inherits from linB, overrides nothing, adds gradientTransform -->
+    <linearGradient id="linC" href="#linB" gradientTransform="rotate(45)" />
+
+    <!-- === Radial gradient chain (cross-type and deep) === -->
+
+    <!-- Level 1: linear base for stops only -->
+    <linearGradient id="baseStops" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="lime" />
+      <stop offset="100%" stop-color="purple" />
+    </linearGradient>
+
+    <!-- Level 2: radial inherits from linear (inherits only stops) -->
+    <radialGradient id="radA" href="#baseStops" cx="50%" cy="50%" r="40%" />
+
+    <!-- Level 3: radial inherits from radA, overrides cx, adds transform -->
+    <radialGradient id="radB" href="#radA" cx="60%" cy="40%" r="50%"
+                    gradientTransform="translate(50, 50) scale(1.2)" />
+
+  </defs>
+
+  <!-- Circle using deep linear gradient -->
+  <circle cx="150" cy="150" r="100" fill="url(#linC)" />
+
+  <!-- Circle using deep radial gradient -->
+  <circle cx="350" cy="350" r="100" fill="url(#radB)" />
+</svg>

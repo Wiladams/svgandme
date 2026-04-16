@@ -72,6 +72,8 @@ namespace waavs
     static INLINE bool parseNumberPair(ByteSpan s, SVGNumberPair& out) noexcept
     {
         s = chunk_trim(s, chrWspChars);
+        //s.skipSpaces();
+
         if (!s) { out.set(0.0f); return false; }
 
         double x = 0.0;
@@ -233,21 +235,6 @@ namespace waavs
 
         return false;
     }
-
-    static  bool parseLightColorAttr(IAmGroot* groot, const ByteSpan& s, uint32_t& rgba32) noexcept
-    {
-        if (!s)
-            return false;
-
-        SVGPaint paint(groot);
-        paint.loadFromChunk(s);
-
-        BLVar c = paint.getVariant(nullptr, groot);
-        BLResult res = blVarToRgba32(&c, &rgba32);
-
-        return (res == BL_SUCCESS);
-    }
-
 
 }
 
@@ -1129,7 +1116,7 @@ namespace waavs
         }
 
         // -------------------------------------------------
-        uint32_t fLightingColorRGBA32{ 0xFFFFFFFFu };
+        Pixel_ARGB32 fLightingColorRGBA32{ 0xFFFFFFFFu };
         float fSurfaceScale{ 1.0f };
         float fDiffuseConstant{ 1.0f };
         float fKernelUnitLengthX{ 0.0f };
@@ -1167,16 +1154,13 @@ namespace waavs
             if (getAttribute(filter::kernelUnitLength(), kulAttr))
                 parseFloatPairAttr(kulAttr, fKernelUnitLengthX, fKernelUnitLengthY);
 
-            ByteSpan lcAttr{};
-            if (getAttribute(filter::lighting_color(), lcAttr))
+            // get the lighting color
+            SVGColor lColor(filter::lighting_color(), nullptr);
+            if (lColor.loadFromAttributes(fAttributes) && lColor.isColor())
             {
-                if (!parseLightColorAttr(groot, lcAttr, fLightingColorRGBA32))
-                    fLightingColorRGBA32 = 0xFFFFFFFFu;
-            }
-            else
-            {
-                fLightingColorRGBA32 = 0xFFFFFFFFu;
-            }
+                fLightingColorRGBA32 = Pixel_ARGB32_premultiplied_from_ColorSRGB(lColor.value());
+            } else 
+				fLightingColorRGBA32 = 0xFFFFFFFFu;
 
             fLightType = FILTER_LIGHT_DISTANT;
             for (int i = 0; i < 8; ++i)
@@ -1408,6 +1392,13 @@ namespace waavs
             // Same approach as feFlood.
             fFloodRGBA32Premul = 0xFF000000u;
 
+            SVGColor sColor(filter::flood_color(), filter::flood_opacity());
+            if (sColor.loadFromAttributes(fAttributes))
+            {
+                BLRgba32 bColor = BLRgba32_premultiplied_from_ColorSRGB(sColor.value());
+                fFloodRGBA32Premul = bColor.value;
+            }
+/*
             ByteSpan colorAttr{};
             if (getAttribute(filter::flood_color(), colorAttr))
             {
@@ -1444,6 +1435,7 @@ namespace waavs
                 const uint32_t a = (uint32_t)clamp0_255_i64((int)std::lround(opacity * 255.0));
                 fFloodRGBA32Premul = (a << 24);
             }
+            */
         }
     };
 
@@ -1500,6 +1492,17 @@ namespace waavs
 
         void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
         {
+            // default flood color black
+            fFloodRGBA32Premul = 0xFF000000u;
+
+            SVGColor sColor(filter::flood_color(), filter::flood_opacity());
+            if (sColor.loadFromAttributes(fAttributes))
+            {
+                BLRgba32 bColor = BLRgba32_premultiplied_from_ColorSRGB(sColor.value());
+                fFloodRGBA32Premul = bColor.value;
+            }
+
+/*
             ByteSpan colorAttr{};
             if (getAttribute(filter::flood_color(), colorAttr)) 
             {
@@ -1511,7 +1514,7 @@ namespace waavs
                     opacity = clamp(opacity, 0.0, 1.0);
                 }
 
-                SVGPaint paint(groot);
+                SVGPaint paint();
                 paint.loadFromChunk(colorAttr);
                 paint.setOpacity((float)opacity);
 
@@ -1520,6 +1523,7 @@ namespace waavs
                     fFloodRGBA32Premul = 0xFF000000u; // default black with full opacity
                 }
             }
+*/
         }
     };
 
@@ -1986,16 +1990,12 @@ namespace waavs
             if (getAttribute(filter::kernelUnitLength(), kulAttr))
                 parseFloatPairAttr(kulAttr, fKernelUnitLengthX, fKernelUnitLengthY);
 
-            ByteSpan lcAttr{};
-            if (getAttribute(filter::lighting_color(), lcAttr))
+            SVGColor lColor(filter::lighting_color(), nullptr);
+            if (lColor.loadFromAttributes(fAttributes) && lColor.isColor())
             {
-                if (!parseLightColorAttr(groot, lcAttr, fLightingColorRGBA32))
-                    fLightingColorRGBA32 = 0xFFFFFFFFu;
-            }
-            else
-            {
-                fLightingColorRGBA32 = 0xFFFFFFFFu;
-            }
+                fLightingColorRGBA32 = Pixel_ARGB32_premultiplied_from_ColorSRGB(lColor.value());
+            } else 
+				fLightingColorRGBA32 = 0xFFFFFFFFu;
 
             fLightType = FILTER_LIGHT_DISTANT;
             for (int i = 0; i < 8; ++i)
@@ -2228,6 +2228,8 @@ namespace waavs {
 
         // primitiveUnits
         SpaceUnitsKind fPrimitiveUnits{  SpaceUnitsKind::SVG_SPACE_USER}; // default is 'userSpaceOnUse'
+
+        FilterColorInterpolation fColorInterpolation{ FilterColorInterpolation::FILTER_COLOR_INTERPOLATION_LINEAR_RGB };
 
         // href
         std::shared_ptr<SVGFilterElement> fContentSource{}; // if this filter references another filter via href, this points to the base filter

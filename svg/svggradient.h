@@ -59,7 +59,7 @@ namespace waavs {
     struct SVGStopNode : public SVGObject
     {
         double fOffset = 0;
-        BLRgba32 fColor{ 0xff000000 };
+        BLRgba32 fColor{ 0xff000000 };  // default black
 
         SVGStopNode() :SVGObject() {}
 
@@ -94,53 +94,18 @@ namespace waavs {
                     fOffset = op.calculatedValue();
                     if (fOffset < 0.0 || fOffset > 1.0)
                         WAAVS_ASSERT(false && "Gradient stop offset value out of range (should be between 0 and 1)");
-                    //fOffset = waavs::clamp(op.calculatedValue(), 0.0, 1.0);
-                }
+                } else
+                    WAAVS_ASSERT(false && "Gradient stop offset value not parsed properly");
 
             }
 
-
-            // Get the stop color, and incorporate the opacity
-            SVGPaint paint(groot);
-
-            // Get the stop color
-            if (attrs.getValue(svgattr::stop_color(), stopColorAttr))
+            SVGColor sColor(svgattr::stop_color(), svgattr::stop_opacity());
+            if (sColor.loadFromAttributes(attrs) && sColor.isColor())
             {
-                paint.loadFromChunk(stopColorAttr);
+                fColor.value = Pixel_ARGB32_from_ColorSRGB(sColor.value());
             }
             else
-            {
-                // Default color is black
-                paint.loadFromChunk("black");
-            }
-
-            // If a stop-opacity is specified, then apply that to the paint
-            // regardless of how it was constructed.
-            ByteSpan stopOpacityAttr{};
-            if (attrs.getValue(svgattr::stop_opacity(), stopOpacityAttr))
-            {
-                stopOpacityAttr = chunk_ltrim(stopOpacityAttr, chrWspChars);
-                if (!stopOpacityAttr.empty())
-                {
-                    double opacity = 1.0;
-                    SVGNumberOrPercent op{};
-                    ByteSpan s = stopOpacityAttr;
-                    if (readSVGNumberOrPercent(s, op))
-                    {
-                        opacity = waavs::clamp(op.calculatedValue(), 0.0, 1.0);
-                    }
-                    else {
-                        printf("Invalid stop-opacity value: '%.*s'\n", (int)stopOpacityAttr.size(), stopOpacityAttr.data());
-                    }
-
-                    paint.setOpacity(opacity);
-                }
-            }
-
-            BLVar aVar = paint.getVariant(nullptr, groot);
-            uint32_t colorValue = 0;
-            (void)blVarToRgba32(&aVar, &colorValue);
-            fColor.value = colorValue;
+                fColor.value = 0xFF000000u;
         }
         
         void bindToContext(IRenderSVG*, IAmGroot*) noexcept override
@@ -207,7 +172,7 @@ namespace waavs {
         // only called as part of a drawing chain.
         const BLVar getVariant(IRenderSVG *ctx, IAmGroot *groot) noexcept override
         {
-            if (needsBinding())
+            //if (needsBinding())
                 bindToContext(ctx, groot);
 
             return fGradientVar;

@@ -1613,6 +1613,10 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
         // ------------------------------------------
         // onDiffuseLighting
         // Type: lighting
+        // 
+		// LightingRGBA is coming in as a pre-multiplied color, 
+        // It should always be fully opaque, so we should be 
+        // able to ignore the alpha?
         // -------------------------------------------
 
         bool onDiffuseLighting(const FilterIO& io, const WGRectD* subr,
@@ -1624,7 +1628,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             InternedKey outKey = resolveOutKeyStrict(io);
 
             // DEBUG - check input and output
-            printf("feDiffuseLighting inKey=%s outKey=%s\n", inKey, outKey);
+            //printf("feDiffuseLighting inKey=%s outKey=%s\n", inKey, outKey);
 
             Surface* in = getInputImage(inKey);
             if (!in)
@@ -1649,13 +1653,14 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                 return true;
             }
 
-            //const float lcR = float((lightingRGBA >> 16) & 0xFF) * (1.0f / 255.0f);
-            //const float lcG = float((lightingRGBA >> 8) & 0xFF) * (1.0f / 255.0f);
-            //const float lcB = float((lightingRGBA >> 0) & 0xFF) * (1.0f / 255.0f);
+			// Turn the lightingRGBA into separate R,G,B components in [0,1] range.
+			// We can use ColorSRGB here since the lighting color is in sRGB space, 
+            // but since it's pre-multiplied, we can skip the gamma expansion and just do a linear dequantization.
+			ColorSRGB lightingColor = colorsrgb_from_premultiplied_Pixel_ARGB32(lightingRGBA);
 
-            const float lcR = dequantize0_255((lightingRGBA >> 16) & 0xFF);
-            const float lcG = dequantize0_255((lightingRGBA >> 8) & 0xFF);
-            const float lcB = dequantize0_255((lightingRGBA >> 0) & 0xFF);
+            const float lcR = lightingColor.r;  // dequantize0_255((lightingRGBA >> 16) & 0xFF);
+            const float lcG = lightingColor.g;  // dequantize0_255((lightingRGBA >> 8) & 0xFF);
+            const float lcB = lightingColor.b;  // dequantize0_255((lightingRGBA >> 0) & 0xFF);
 
             PixelToFilterUserMap map;
             map.surfaceW = int(in->width());
@@ -2966,9 +2971,11 @@ bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
         return true;
     }
 
-    const float lcR = dequantize0_255((lightingRGBA >> 16));
-    const float lcG = dequantize0_255((lightingRGBA >> 8));
-    const float lcB = dequantize0_255((lightingRGBA >> 0));
+    ColorSRGB lightingColor = colorsrgb_from_premultiplied_Pixel_ARGB32(lightingRGBA);
+    const float lcR = lightingColor.r;  // dequantize0_255((lightingRGBA >> 16) & 0xFF);
+    const float lcG = lightingColor.g;  // dequantize0_255((lightingRGBA >> 8) & 0xFF);
+    const float lcB = lightingColor.b;  // dequantize0_255((lightingRGBA >> 0) & 0xFF);
+
 
     specularExponent = clamp(specularExponent, 1.0f, 128.0f);
 
