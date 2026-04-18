@@ -5,7 +5,6 @@
 #include "recorder.h"
 
 
-
 waavs::Recorder* getRecorder() noexcept;
 
 #ifdef __cplusplus

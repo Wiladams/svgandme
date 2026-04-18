@@ -59,7 +59,7 @@ static IRenderSVG *getDrawingContext()
 //
 static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 {
-    auto mapped = waavs::MappedFile::create_shared(filename);
+    auto mapped = MappedFile::create_shared(filename);
     
     // if the mapped file does not exist, return
     if (mapped == nullptr)

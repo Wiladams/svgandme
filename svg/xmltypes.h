@@ -40,7 +40,8 @@ namespace waavs
     static bool readNextCSSKeyValue(ByteSpan& src, ByteSpan& key, ByteSpan& value, const unsigned char fieldDelimeter = ';', const unsigned char keyValueSeparator = ':') noexcept
     {
         // Trim leading whitespace to begin
-        src = chunk_ltrim(src, chrWspChars);
+        //src = chunk_ltrim(src, chrWspChars);
+        src.skipSpaces();
 
         // If the string is now blank, return immediately
         if (!src)
@@ -134,14 +135,14 @@ namespace waavs
     static bool getKeyValue(const ByteSpan& inChunk, const ByteSpan& key, ByteSpan& value) noexcept
     {
         ByteSpan src = inChunk;
-        ByteSpan name{};
-        bool insideQuotes = false;
+        //ByteSpan name{};
+        //bool insideQuotes = false;
         uint8_t quoteChar = 0;
 
         while (src)
         {
             // Skip leading whitespace
-            src = chunk_ltrim(src, chrWspChars);
+            src.skipSpaces();
 
             if (!src)
                 return false;
@@ -153,6 +154,9 @@ namespace waavs
                 src++; // Move past opening quote
 
                 // Use `chunk_find_char` to efficiently skip to closing quote
+                // BUGBUG - this won't handle escaped quotes inside the value, 
+                // but for XML attributes those characters should be 
+                // entity encoded, not escaped.
                 src = chunk_find_char(src, quoteChar);
                 if (!src)
                     return false;
@@ -169,7 +173,8 @@ namespace waavs
             if (keyCandidate == key)
             {
                 // Skip whitespace before value
-                src = chunk_ltrim(src, chrWspChars);
+                src.skipSpaces();
+                //src = chunk_ltrim(src, chrWspChars);
 
                 if (!src)
                     return false;
@@ -196,7 +201,9 @@ namespace waavs
             }
 
             // If there was no `=`, continue scanning
-            src = chunk_ltrim(src, chrWspChars);
+            //src = chunk_ltrim(src, chrWspChars);
+            src.skipSpaces();
+
             if (src && *src == '=')
                 src++; // Skip past '=' and continue parsing
         }
@@ -405,7 +412,7 @@ namespace waavs {
         {
             if (!key)
             {
-                printf("XmlAttributeCollection::getValue(), invalid key\n");
+                //printf("XmlAttributeCollection::getValue(), invalid key: %s\n", key);
                 value.reset();
                 return false;
             }

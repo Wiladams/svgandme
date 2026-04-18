@@ -1,7 +1,7 @@
 #pragma once
 
 #include "svgstructuretypes.h"
-#include "filterexec_b2d.h"
+#include "filter_program_exec_b2d.h"
 
 
 namespace waavs {

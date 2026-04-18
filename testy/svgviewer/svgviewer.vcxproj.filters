@@ -266,13 +266,13 @@
     <ClInclude Include="..\..\svg\filter_program.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\filterprogramexec.h">
+    <ClInclude Include="..\..\svg\filter_program_exec.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\filterprogrambuilder.h">
+    <ClInclude Include="..\..\svg\filter_program_builder.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\filterexec_b2d.h">
+    <ClInclude Include="..\..\svg\filter_program_exec_b2d.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\svggraphicselement.h">
@@ -366,6 +366,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\maths_matrix.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\maths_transcend.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

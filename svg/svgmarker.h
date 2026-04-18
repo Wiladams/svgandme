@@ -245,9 +245,9 @@ namespace waavs {
                 if (par.align() != AspectRatioAlignKind::SVG_ASPECT_RATIO_NONE) {
                     double s = sx0;
                     if (par.meetOrSlice() == AspectRatioMeetOrSliceKind::SVG_ASPECT_RATIO_SLICE)
-                        s = waavs::max(sx0, sy0);
+                        s = max(sx0, sy0);
                     else
-                        s = waavs::min(sx0, sy0);
+                        s = min(sx0, sy0);
 
                     sx = sy = s;
 

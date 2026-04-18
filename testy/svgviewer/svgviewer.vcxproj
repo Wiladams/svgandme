@@ -252,14 +252,14 @@
     <ClInclude Include="..\..\svg\filter_fecomponenttransfer.h" />
     <ClInclude Include="..\..\svg\filter_fediffuselight.h" />
     <ClInclude Include="..\..\svg\filter_fespecularlight.h" />
-    <ClInclude Include="..\..\svg\filterexec_b2d.h" />
+    <ClInclude Include="..\..\svg\filter_program_exec_b2d.h" />
     <ClInclude Include="..\..\svg\base64.h" />
     <ClInclude Include="..\..\svg\bithacks.h" />
     <ClInclude Include="..\..\svg\blend2d_connect.h" />
     <ClInclude Include="..\..\svg\coloring.h" />
     <ClInclude Include="..\..\svg\filter_program.h" />
-    <ClInclude Include="..\..\svg\filterprogrambuilder.h" />
-    <ClInclude Include="..\..\svg\filterprogramexec.h" />
+    <ClInclude Include="..\..\svg\filter_program_builder.h" />
+    <ClInclude Include="..\..\svg\filter_program_exec.h" />
     <ClInclude Include="..\..\svg\filter_codec.h" />
     <ClInclude Include="..\..\svg\filter_feblend.h" />
     <ClInclude Include="..\..\svg\filter_fecolormatrix.h" />
@@ -279,6 +279,7 @@
     <ClInclude Include="..\..\svg\maths.h" />
     <ClInclude Include="..\..\svg\maths_base.h" />
     <ClInclude Include="..\..\svg\maths_matrix.h" />
+    <ClInclude Include="..\..\svg\maths_transcend.h" />
     <ClInclude Include="..\..\svg\membuff.h" />
     <ClInclude Include="..\..\svg\nametable.h" />
     <ClInclude Include="..\..\svg\filter_noise.h" />

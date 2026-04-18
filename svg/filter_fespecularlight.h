@@ -62,7 +62,7 @@ namespace waavs
         float ux, float uy, float h,
         float& lx, float& ly, float& lz) noexcept
     {
-        const float kPi = waavs::kPif;
+        const float kPi = kPif;
 
         if (lightType == FILTER_LIGHT_DISTANT)
         {
@@ -95,7 +95,7 @@ namespace waavs
     static INLINE float computeSpecularSpotFactor(const LightPayload& light,
         float ux, float uy, float h) noexcept
     {
-        const float kPi = waavs::kPif;
+        const float kPi = kPif;
 
         float ax = light.L[3] - light.L[0];
         float ay = light.L[4] - light.L[1];

@@ -1,11 +1,12 @@
-#pragma once
+// filter_program.h
 
-#include "definitions.h"
+#pragma once
 
 #include <vector>
 
+#include "definitions.h"
 #include "filter_types.h"
-
+#include "svgenums.h"
 
 
 namespace waavs
@@ -148,7 +149,7 @@ namespace waavs
         // Filter-level coordinate system controls:
         SpaceUnitsKind filterUnits{ SpaceUnitsKind::SVG_SPACE_OBJECT }; // default objectBoundingBox
         SpaceUnitsKind primitiveUnits{ SpaceUnitsKind::SVG_SPACE_USER }; // default userSpaceOnUse
-
+        FilterColorInterpolation colorInterpolation{ FilterColorInterpolation::FILTER_COLOR_INTERPOLATION_LINEAR_RGB };
 
         void clear() { 
             ops.clear(); 
@@ -264,7 +265,3 @@ namespace waavs
     }
  
 }
-
-
-
-

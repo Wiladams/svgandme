@@ -4,7 +4,6 @@
 
 
 #include "svggraphicselement.h"
-//#include "viewport.h"
 
 namespace waavs
 {
@@ -17,7 +16,7 @@ namespace waavs
         static void registerSingularNode()
         {
             registerSVGSingularNodeByName("defs", [](IAmGroot* groot, const XmlElement& elem) {
-                auto node = std::make_shared<SVGDefsNode>(groot);
+                auto node = std::make_shared<SVGDefsNode>();
                 node->loadFromXmlElement(elem, groot);
 
                 return node;
@@ -29,7 +28,7 @@ namespace waavs
         {
             registerContainerNodeByName(svgtag::tag_defs(),
                 [](IAmGroot* groot, XmlPull& iter) {
-                    auto node = std::make_shared<SVGDefsNode>(groot);
+                    auto node = std::make_shared<SVGDefsNode>();
                     node->loadFromXmlPull(iter, groot);
 
                     return node;
@@ -40,7 +39,7 @@ namespace waavs
         }
 
         // Instance Constructor
-        SVGDefsNode(IAmGroot*)
+        SVGDefsNode()
             : SVGGraphicsElement()
         {
             setIsStructural(true);

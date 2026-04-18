@@ -4,7 +4,7 @@
 
 #include "filter_types.h"
 #include "filter_program.h"
-#include "filterprogrambuilder.h"
+#include "filter_program_builder.h"
 
 
 //
@@ -37,7 +37,7 @@ namespace waavs
 
 
     template<class EnumT>
-    static INLINE EnumT takeEnum(FilterProgramCursor& c) noexcept
+    static INLINE EnumT takeAnEnum(FilterProgramCursor& c) noexcept
     {
         static_assert(std::is_enum<EnumT>::value, "takeEnum requires enum type");
 
@@ -282,7 +282,7 @@ namespace waavs
         template<class EnumT>
         INLINE EnumT takeEnum() noexcept
         {
-            return waavs::takeEnum<EnumT>(cur());
+            return takeAnEnum<EnumT>(cur());
         }
 
         // -----------------------------------------

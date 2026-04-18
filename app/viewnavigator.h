@@ -188,7 +188,7 @@ namespace waavs {
             //BLPoint pivotVB = fPortal.mapViewportToViewBox(x, y);
 			BLPoint pivotVB = { x, y };
 
-            const double ang = waavs::radians(fBaseAngle * fSpeedFactor);
+            const double ang = radians(fBaseAngle * fSpeedFactor);
 
 			if (delta < 0)
 				rotateBy(ang, pivotVB.x, pivotVB.y);

@@ -1096,7 +1096,7 @@ void setWindowTitle(const char* title)
     if (nullptr == getAppWindow())
         return;
     
-	getAppWindow()->setTitle(title);
+    getAppWindow()->setTitle(title);
 }
 
 // Set an opacity value between 0.0 and 1.0

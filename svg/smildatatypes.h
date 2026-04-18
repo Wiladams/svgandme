@@ -5,7 +5,7 @@
 
 #include "converters.h"
 #include "xmlschema.h"
-
+#include "xmlscan.h"
 
 namespace waavs {
 

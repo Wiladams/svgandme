@@ -124,7 +124,7 @@ namespace waavs {
         charset& operator+=(const charset& aset) noexcept { this->add(aset); return *this; }
 
         // Convenience for removing characters and ranges from a set
-        charset& operator-=(const char achar) noexcept { bits[achar]=0; return *this; }
+        charset& operator-=(const char achar) noexcept { bits[(uint8_t)achar]=0; return *this; }
         charset& operator-=(const char* chars) noexcept 
         { 
             return this->remove(chars);
@@ -149,9 +149,9 @@ namespace waavs {
             for (size_t i = 0; i < 256; ++i)
             {
                 copy.bits[i] = copy.bits[i] ? 0 : 1;
-
-                return std::move(copy);
             }
+
+            return std::move(copy);
         }
 
         charset& invert() noexcept

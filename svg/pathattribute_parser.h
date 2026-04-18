@@ -16,7 +16,7 @@ namespace waavs
     // arcs are in endpoint form, etc.
     // ------------------------------------------------------------
 
-    static INLINE bool parsePathProgram(const waavs::ByteSpan& inSpan, PathProgram& outProg) noexcept
+    static INLINE bool parsePathProgram(const ByteSpan& inSpan, PathProgram& outProg) noexcept
     {
         PathProgramBuilder builder;
         PathSegmentNormalizer normalizer(builder);

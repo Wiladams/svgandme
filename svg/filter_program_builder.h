@@ -1,3 +1,4 @@
+// filter_program_builder.h
 
 #pragma once
 
@@ -13,6 +14,22 @@
 namespace waavs
 {
 
+    namespace waavs
+    {
+        static INLINE FilterColorInterpolation parseFilterColorInterpolation(InternedKey k) noexcept
+        {
+            // Filter effects default to linearRGB.
+            if (!k) return FILTER_COLOR_INTERPOLATION_LINEAR_RGB;
+
+            if (k == filter::kColorInterp_linearRGB()) return FILTER_COLOR_INTERPOLATION_LINEAR_RGB;
+            if (k == filter::kColorInterp_sRGB())      return FILTER_COLOR_INTERPOLATION_SRGB;
+
+            // If you later admit "auto" at parse time, collapse it here for now.
+            // if (k == filter::kColorInterp_auto()) return FILTER_COLOR_INTERPOLATION_LINEAR_RGB;
+
+            return FILTER_COLOR_INTERPOLATION_LINEAR_RGB;
+        }
+    }
 
     static INLINE FilterBlendMode parseFilterBlendMode(InternedKey k) noexcept
     {

@@ -90,30 +90,7 @@ namespace waavs
 
 
 
-    INLINE float acos(float a) noexcept { return std::acos(a); }
-    INLINE float asin(float a) noexcept { return std::asin(a); }
 
-    INLINE float atan(float a) noexcept { return std::atan(a); }
-    INLINE float atan2(float y, float x) noexcept { return std::atan2(y, x); }
-
-
-
-    INLINE float cos(float a) noexcept { return std::cos(a); }
-    INLINE float exp(float a) noexcept { return std::exp(a); }
-    INLINE float exp2(float a) noexcept { return std::exp2(a); }
-    INLINE float fmod(float a, float b) noexcept { return std::fmod(a, b); }
-    INLINE float log(float a) noexcept { return std::log(a); }
-    INLINE float log2(float a) noexcept { return std::log2(a); }
-
-
-    INLINE float pow(float a, float b) noexcept { return std::pow(a, b); }
-    INLINE double powd(double a, double b) noexcept { return std::pow(a, b); }
-
-
-    INLINE float sin(float a) noexcept { return std::sin(a); }
-    INLINE float sqr(float a) noexcept { return a * a; }
-    INLINE float sqrt(float a) noexcept { return std::sqrt(a); }
-    INLINE float tan(float a) noexcept { return std::tan(a); }
 
     INLINE bool isfinite(float a) { return std::isfinite(a); }
     INLINE constexpr float radiansf(float a) { return float(a * 0.017453292519943295); }

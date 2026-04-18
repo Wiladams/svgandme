@@ -1,9 +1,5 @@
 // converters.h
 
-#ifndef CONVERTERS_H_INCLUDED
-#define CONVERTERS_H_INCLUDED
-
-
 #pragma once
 
 //
@@ -17,99 +13,97 @@
 #include "bspan.h"
 #include "maths.h"
 
-// Forward declarations
-static INLINE bool read_required_digits(waavs::ByteSpan& s, uint64_t& v, size_t requiredDigits) noexcept;
-
-//static INLINE uint8_t  hex_to_dec(const uint8_t vIn) = delete;
-static INLINE int toBoolInt(const waavs::ByteSpan& inChunk);
-
-static inline bool readNextNumber(waavs::ByteSpan& s, double& outNumber) noexcept;
-static inline bool readNextFlag(waavs::ByteSpan& s, int& outNumber) noexcept;
-static int readFloatArguments(waavs::ByteSpan& s, const char* argTypes, float* outArgs) noexcept;
-static int readNumericArguments(waavs::ByteSpan& s, const char* argTypes, double* outArgs) noexcept;
-
-
-static INLINE std::string toString(const waavs::ByteSpan& inChunk) noexcept
+namespace waavs
 {
-    if (!inChunk)
-        return std::string();
 
-    return std::string(inChunk.fStart, inChunk.fEnd);
-}
+    // Forward declarations
+    static INLINE bool read_required_digits(ByteSpan& s, uint64_t& v, size_t requiredDigits) noexcept;
 
-// hex_nibble
-// 
-// given an input character representing a hex digit
-// put the decimal value of that hex digit in outValue
-static INLINE WGResult hex_nibble(const uint8_t vIn, uint8_t& outValue) noexcept
-{
-    if (vIn >= '0' && vIn <= '9')
+    //static INLINE uint8_t  hex_to_dec(const uint8_t vIn) = delete;
+    static INLINE int toBoolInt(const ByteSpan& inChunk);
+
+    static INLINE bool readNextNumber(ByteSpan& s, double& outNumber) noexcept;
+    static INLINE bool readNextFlag(ByteSpan& s, int& outNumber) noexcept;
+    static int readFloatArguments(ByteSpan& s, const char* argTypes, float* outArgs) noexcept;
+    static int readNumericArguments(ByteSpan& s, const char* argTypes, double* outArgs) noexcept;
+
+
+    static INLINE std::string toString(const ByteSpan& inChunk) noexcept
     {
-        outValue = vIn - '0';
-        return WG_SUCCESS;
-    }
-    
-    if (vIn >= 'a' && vIn <= 'f')
-    {
-        outValue = vIn - 'a' + 10;
-        return WG_SUCCESS;
-    }
-    
-    if (vIn >= 'A' && vIn <= 'F')
-    {
-        outValue = vIn - 'A' + 10;
-        return WG_SUCCESS;
+        if (!inChunk)
+            return std::string();
+
+        return std::string(inChunk.fStart, inChunk.fEnd);
     }
 
-    return WG_ERROR_Invalid_Argument;
-}
+    // hex_nibble
+    // 
+    // given an input character representing a hex digit
+    // put the decimal value of that hex digit in outValue
+    static INLINE WGResult hex_nibble(const uint8_t vIn, uint8_t& outValue) noexcept
+    {
+        if (vIn >= '0' && vIn <= '9')
+        {
+            outValue = vIn - '0';
+            return WG_SUCCESS;
+        }
 
-// Read two bytes representing a hex byte (e.g. '4F') and 
-// convert them to a single byte value (0x4F in this example).
-// Return: 
-//  WG_SUCCESS if successful, or 
-//  WG_ERROR_Invalid_Argument if either of 
-//      the input characters is not a valid hex digit.
-static INLINE WGResult hex_byte(const uint8_t highNibble, const uint8_t lowNibble, uint8_t& outValue) noexcept
-{
-    uint8_t highValue = 0;
-    uint8_t lowValue = 0;
-    if (hex_nibble(highNibble, highValue) != WG_SUCCESS)
+        if (vIn >= 'a' && vIn <= 'f')
+        {
+            outValue = vIn - 'a' + 10;
+            return WG_SUCCESS;
+        }
+
+        if (vIn >= 'A' && vIn <= 'F')
+        {
+            outValue = vIn - 'A' + 10;
+            return WG_SUCCESS;
+        }
+
         return WG_ERROR_Invalid_Argument;
-    
-    if (hex_nibble(lowNibble, lowValue) != WG_SUCCESS)
-        return WG_ERROR_Invalid_Argument;
-    
-    outValue = (highValue << 4) | lowValue;
+    }
 
-    return WG_SUCCESS;
-}
+    // Read two bytes representing a hex byte (e.g. '4F') and 
+    // convert them to a single byte value (0x4F in this example).
+    // Return: 
+    //  WG_SUCCESS if successful, or 
+    //  WG_ERROR_Invalid_Argument if either of 
+    //      the input characters is not a valid hex digit.
+    static INLINE WGResult hex_byte(const uint8_t highNibble, const uint8_t lowNibble, uint8_t& outValue) noexcept
+    {
+        uint8_t highValue = 0;
+        uint8_t lowValue = 0;
+        if (hex_nibble(highNibble, highValue) != WG_SUCCESS)
+            return WG_ERROR_Invalid_Argument;
 
-// return 1 if the chunk is "true" or "1" or "t" or "T" or "y" or "Y" or "yes" or "Yes" or "YES"
-// return 0 if the chunk is "false" or "0" or "f" or "F" or "n" or "N" or "no" or "No" or "NO"
-// return 0 otherwise
-static INLINE int toBoolInt(const waavs::ByteSpan& inChunk)
-{
-    waavs::ByteSpan s = inChunk;
+        if (hex_nibble(lowNibble, lowValue) != WG_SUCCESS)
+            return WG_ERROR_Invalid_Argument;
 
-    if (s == "true" || s == "1" || s == "t" || s == "T" || s == "y" || s == "Y" || s == "yes" || s == "Yes" || s == "YES")
-        return 1;
-    else if (s == "false" || s == "0" || s == "f" || s == "F" || s == "n" || s == "N" || s == "no" || s == "No" || s == "NO")
-        return 0;
-    else
-        return 0;
-}
+        outValue = (highValue << 4) | lowValue;
 
+        return WG_SUCCESS;
+    }
 
+    // return 1 if the chunk is "true" or "1" or "t" or "T" or "y" or "Y" or "yes" or "Yes" or "YES"
+    // return 0 if the chunk is "false" or "0" or "f" or "F" or "n" or "N" or "no" or "No" or "NO"
+    // return 0 otherwise
+    static INLINE int toBoolInt(const ByteSpan& inChunk)
+    {
+        ByteSpan s = inChunk;
 
-
-namespace waavs {
+        if (s == "true" || s == "1" || s == "t" || s == "T" || s == "y" || s == "Y" || s == "yes" || s == "Yes" || s == "YES")
+            return 1;
+        else if (s == "false" || s == "0" || s == "f" || s == "F" || s == "n" || s == "N" || s == "no" || s == "No" || s == "NO")
+            return 0;
+        else
+            return 0;
+    }
 
     // parseHex64u
     //
     // Parse a hex string into a 64-bit unsigned integer.
     // The string must be a valid hex string, and must not contain any spaces.
-    static INLINE bool parseHex64u(const ByteSpan& inSpan, uint64_t & outValue) noexcept
+    static INLINE bool parseHex64u(const ByteSpan& inSpan, uint64_t& outValue) noexcept
     {
         if (inSpan.size() == 0 || inSpan.size() > 16)
             return false;
@@ -136,12 +130,12 @@ namespace waavs {
 
             c++;
         }
-        
+
         return true;
     }
-}
 
-namespace waavs {
+
+
     // In these routines, the difference between parse and read
     // is that parse does not modify the input ByteSpan, whereas
     // read will advance the start of the ByteSpan to after the
@@ -433,7 +427,7 @@ namespace waavs {
                 s.fStart = startAt;
                 read_u64(s, expPart, digitsRead);
                 startAt = s.fStart;
-                res = res * std::pow(10, double(expSign * double(expPart)));
+                res = res * POW(10, double(expSign * double(expPart)));
             }
         }
         s.fStart = startAt;
@@ -478,7 +472,7 @@ namespace waavs {
         return false;
     }
 
-    static inline bool readNextNumber(ByteSpan& s, double& outNumber) noexcept
+    static INLINE bool readNextNumber(ByteSpan& s, double& outNumber) noexcept
     {
         // typical whitespace found in lists of numbers, 
         // like on paths and polylines
@@ -492,7 +486,7 @@ namespace waavs {
         return readNumber(s, outNumber);
     }
 
-    static inline bool readNextFlag(ByteSpan& s, int& outNumber) noexcept
+    static INLINE bool readNextFlag(ByteSpan& s, int& outNumber) noexcept
     {
         // typical whitespace found in lists of numbers, like on paths and polylines
         static charset wspChars = chrWspChars + ",";
@@ -523,7 +517,7 @@ namespace waavs {
     // 
     // The number of arguments read is determined by the length of the argTypes string
     //
-    static int readFloatArguments(ByteSpan& s, const char* argTypes, float* outArgs) noexcept
+    static INLINE int readFloatArguments(ByteSpan& s, const char* argTypes, float* outArgs) noexcept
     {
         int i = 0;
         for (i = 0; argTypes[i]; i++)
@@ -557,6 +551,3 @@ namespace waavs {
 
 
 }
-
-
-#endif // _CONVERTERS_H_INCLUDED

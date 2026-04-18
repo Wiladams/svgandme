@@ -428,18 +428,18 @@ namespace waavs
             fSource.reset();
             switch (fSourceKind)
             {
-                case waavs::FramesSourceKind::None:
+                case FramesSourceKind::None:
                 break;
                 
-                case waavs::FramesSourceKind::MONITOR:
+                case FramesSourceKind::MONITOR:
                     fSource = std::make_unique<ScreenSnapper>();
                 break;
             
-                case waavs::FramesSourceKind::Blend2DImage:
+                case FramesSourceKind::Blend2DImage:
                     fSource = std::make_unique<Blend2DImageSource>();
                 break;
             
-                case waavs::FramesSourceKind::FFmpeg:
+                case FramesSourceKind::FFmpeg:
                     fSource = std::make_unique<FFmpegFrameSource>();
                 break;
                 

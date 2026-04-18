@@ -3,7 +3,7 @@
 
 #include "definitions.h"
 
-#include "filterprogramexec.h"   // FilterProgramExecutor + IAmFroot<T>
+#include "filter_program_exec.h"   // FilterProgramExecutor + IAmFroot<T>
 #include "pixeling.h"
 #include "pixeling_porterduff.h" // Porter-Duff pixel ops
 

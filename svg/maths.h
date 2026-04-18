@@ -34,7 +34,7 @@
 */
 
 #include "maths_base.h"
-
+#include "maths_transcend.h"
 
 //=================================
 // CONSTANT Declarations
@@ -53,10 +53,8 @@ namespace {
 namespace waavs {
     struct vec2f 
     {
-
         float x=0;
         float y=0;
-
 
         INLINE float& operator[](int i);
         INLINE const float& operator[](int i) const;
@@ -182,15 +180,15 @@ namespace waavs
 
     // Functions applied to vector elements
     INLINE vec2f abs(const vec2f& a);
-    INLINE vec2f sqr(const vec2f& a);
-    INLINE vec2f sqrt(const vec2f& a);
-    INLINE vec2f exp(const vec2f& a);
-    INLINE vec2f log(const vec2f& a);
-    INLINE vec2f exp2(const vec2f& a);
-    INLINE vec2f log2(const vec2f& a);
+    INLINE vec2f SQR(const vec2f& a);
+    INLINE vec2f SQRT(const vec2f& a);
+    INLINE vec2f EXP(const vec2f& a);
+    INLINE vec2f LOG(const vec2f& a);
+    INLINE vec2f EXP2(const vec2f& a);
+    INLINE vec2f LOG2(const vec2f& a);
 
-    INLINE vec2f pow(const vec2f& a, float b);
-    INLINE vec2f pow(const vec2f& a, const vec2f& b);
+    INLINE vec2f POW(const vec2f& a, float b);
+    INLINE vec2f POW(const vec2f& a, const vec2f& b);
     INLINE vec2f gain(const vec2f& a, float b);
     INLINE bool isfinite(const vec2f& a);
     INLINE void swap(vec2f& a, vec2f& b);
@@ -266,7 +264,10 @@ namespace waavs
     }
 
 
-
+    // vec3_normalize()
+    //
+    // Normalize a vector in-place, returning false if the vector
+    // is degenerate (zero length).
     static INLINE bool vec3_normalize(float& x, float& y, float& z) noexcept
     {
         const float len2 = x * x + y * y + z * z;
@@ -281,10 +282,10 @@ namespace waavs
             return false;
         }
 
-            const float invLen = 1.0f / std::sqrt(len2);
-            x *= invLen;
-            y *= invLen;
-            z *= invLen;
+        const float invLen = 1.0f / SQRT(len2);
+        x *= invLen;
+        y *= invLen;
+        z *= invLen;
 
 
         return true;
@@ -365,15 +366,15 @@ namespace waavs
 
     // Functions applied to vector elements
     INLINE vec4f abs(const vec4f& a);
-    INLINE vec4f sqr(const vec4f& a);
-    INLINE vec4f sqrt(const vec4f& a);
-    INLINE vec4f exp(const vec4f& a);
-    INLINE vec4f log(const vec4f& a);
-    INLINE vec4f exp2(const vec4f& a);
-    INLINE vec4f log2(const vec4f& a);
+    INLINE vec4f SQR(const vec4f& a);
+    INLINE vec4f SQRT(const vec4f& a);
+    INLINE vec4f EXP(const vec4f& a);
+    INLINE vec4f LOG(const vec4f& a);
+    INLINE vec4f EXP2(const vec4f& a);
+    INLINE vec4f LOG2(const vec4f& a);
 
-    INLINE vec4f pow(const vec4f& a, float b);
-    INLINE vec4f pow(const vec4f& a, const vec4f& b);
+    INLINE vec4f POW(const vec4f& a, float b);
+    INLINE vec4f POW(const vec4f& a, const vec4f& b);
     INLINE vec4f gain(const vec4f& a, float b);
     INLINE bool isfinite(const vec4f& a);
     INLINE void swap(vec4f& a, vec4f& b);
@@ -1086,7 +1087,7 @@ namespace waavs
     INLINE float dot(const vec2f& a, const vec2f& b) { return a.x * b.x + a.y * b.y; }
     INLINE float cross(const vec2f& a, const vec2f& b) { return a.x * b.y - a.y * b.x; }
 
-    INLINE float length(const vec2f& a) { return sqrt(dot(a, a)); }
+    INLINE float length(const vec2f& a) { return SQRT(dot(a, a)); }
     INLINE float lengthSquared(const vec2f& a) { return dot(a, a); }
     INLINE vec2f normalize(const vec2f& a) { auto len = length(a); return (len != 0) ? a / len : a; }
 
@@ -1110,15 +1111,15 @@ namespace waavs
 
     // Functions applied to vector elements
     INLINE vec2f abs(const vec2f& a) { return { abs(a.x),abs(a.y) }; }
-    INLINE vec2f sqr(const vec2f& a) { return { sqr(a.x), sqr(a.y) }; }
-    INLINE vec2f sqrt(const vec2f& a) { return { sqrt(a.x), sqrt(a.y) }; }
-    INLINE vec2f exp(const vec2f& a) { return { exp(a.x), exp(a.y) }; }
-    INLINE vec2f log(const vec2f& a) { return { log(a.x), log(a.y) }; }
-    INLINE vec2f exp2(const vec2f& a) { return { exp2(a.x), exp2(a.y) }; }
-    INLINE vec2f log2(const vec2f& a) { return { log2(a.x), log2(a.y) }; }
+    INLINE vec2f SQR(const vec2f& a) { return { SQR(a.x), SQR(a.y) }; }
+    INLINE vec2f SQRT(const vec2f& a) { return { SQRT(a.x), SQRT(a.y) }; }
+    INLINE vec2f EXP(const vec2f& a) { return { EXP(a.x), EXP(a.y) }; }
+    INLINE vec2f LOG(const vec2f& a) { return { LOG(a.x), LOG(a.y) }; }
+    INLINE vec2f EXP2(const vec2f& a) { return { EXP2(a.x), EXP2(a.y) }; }
+    INLINE vec2f LOG2(const vec2f& a) { return { LOG2(a.x), LOG2(a.y) }; }
     INLINE bool isfinite(const vec2f& a) { return isfinite(a.x) && isfinite(a.y); }
-    INLINE vec2f pow(const vec2f& a, float b) { return { pow(a.x,b), pow(a.y,b) }; }
-    INLINE vec2f pow(const vec2f& a, const vec2f& b) { return { pow(a.x,b.x), pow(a.y, b.y) }; }
+    INLINE vec2f POW(const vec2f& a, float b) { return { POW(a.x,b), POW(a.y,b) }; }
+    INLINE vec2f POW(const vec2f& a, const vec2f& b) { return { POW(a.x,b.x), POW(a.y, b.y) }; }
     INLINE vec2f gain(const vec2f& a, float b) { return { gain(a.x,b), gain(a.y,b) }; }
     INLINE void swap(vec2f& a, vec2f& b) { std::swap(a, b); }
 }
@@ -1176,7 +1177,7 @@ namespace waavs
     INLINE float dot(const vec3f& a, const vec3f& b) { return a.x * b.x + a.y * b.y+a.z*b.z; }
     INLINE vec3f cross(const vec3f& a, const vec3f& b) { return { a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x }; }
 
-    INLINE float length(const vec3f& a) { return sqrt(dot(a, a)); }
+    INLINE float length(const vec3f& a) { return SQRT(dot(a, a)); }
     INLINE float lengthSquared(const vec3f& a) { return dot(a, a); }
     INLINE vec3f normalize(const vec3f& a) { auto len = length(a); return (len != 0) ? a / len : a; }
 
@@ -1192,7 +1193,7 @@ namespace waavs
         auto cosine = dot(n, w);
         auto k = 1 + inv_eta * inv_eta * (cosine * cosine - 1);
         if (k < 0) return { 0, 0, 0 };
-        return -w * inv_eta + (inv_eta * cosine - sqrt(k)) * n;
+        return -w * inv_eta + (inv_eta * cosine - SQRT(k)) * n;
     }
 
 
@@ -1212,15 +1213,15 @@ namespace waavs
 
     // Functions applied to vector elements
     INLINE vec3f abs(const vec3f& a) { return { abs(a.x),abs(a.y), abs(a.z)}; }
-    INLINE vec3f sqr(const vec3f& a) { return { sqr(a.x), sqr(a.y), sqr(a.z)}; }
-    INLINE vec3f sqrt(const vec3f& a) { return { sqrt(a.x), sqrt(a.y), sqrt(a.z)}; }
-    INLINE vec3f exp(const vec3f& a) { return { exp(a.x), exp(a.y), exp(a.z)}; }
-    INLINE vec3f log(const vec3f& a) { return { log(a.x), log(a.y), log(a.z)}; }
-    INLINE vec3f exp2(const vec3f& a) { return { exp2(a.x), exp2(a.y),exp2(a.z)}; }
-    INLINE vec3f log2(const vec3f& a) { return { log2(a.x), log2(a.y),log2(a.z)}; }
+    INLINE vec3f SQR(const vec3f& a) { return { SQR(a.x), SQR(a.y), SQR(a.z)}; }
+    INLINE vec3f SQRT(const vec3f& a) { return { SQRT(a.x), SQRT(a.y), SQRT(a.z)}; }
+    INLINE vec3f EXP(const vec3f& a) { return { EXP(a.x), EXP(a.y), EXP(a.z)}; }
+    INLINE vec3f LOG(const vec3f& a) { return { LOG(a.x), LOG(a.y), LOG(a.z)}; }
+    INLINE vec3f EXP2(const vec3f& a) { return { EXP2(a.x), EXP2(a.y),EXP2(a.z)}; }
+    INLINE vec3f LOG2(const vec3f& a) { return { LOG2(a.x), LOG2(a.y),LOG2(a.z)}; }
     INLINE bool isfinite(const vec3f& a) { return isfinite(a.x) && isfinite(a.y) && isfinite(a.z); }
-    INLINE vec3f pow(const vec3f& a, float b) { return { pow(a.x,b), pow(a.y,b),pow(a.z,b)}; }
-    INLINE vec3f pow(const vec3f& a, const vec3f& b) { return { pow(a.x,b.x), pow(a.y, b.y),pow(a.z,b.z)}; }
+    INLINE vec3f POW(const vec3f& a, float b) { return { POW(a.x,b), POW(a.y,b),POW(a.z,b)}; }
+    INLINE vec3f POW(const vec3f& a, const vec3f& b) { return { POW(a.x,b.x), POW(a.y, b.y),POW(a.z,b.z)}; }
     INLINE vec3f gain(const vec3f& a, float b) { return { gain(a.x,b), gain(a.y,b),gain(a.z,b)}; }
     INLINE void swap(vec3f& a, vec3f& b) { std::swap(a, b); }
 
@@ -1304,7 +1305,7 @@ namespace waavs
     INLINE float dot(const vec4f& a, const vec4f& b) {
         return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
     }
-    INLINE float length(const vec4f& a) { return sqrt(dot(a, a)); }
+    INLINE float length(const vec4f& a) { return SQRT(dot(a, a)); }
     INLINE float lengthSquared(const vec4f& a) { return dot(a, a); }
     INLINE vec4f normalize(const vec4f& a) {
         auto len = length(a);
@@ -1366,29 +1367,29 @@ namespace waavs
     INLINE vec4f abs(const vec4f& a) {
         return { abs(a.x), abs(a.y), abs(a.z), abs(a.w) };
     }
-    INLINE vec4f sqr(const vec4f& a) {
-        return { sqr(a.x), sqr(a.y), sqr(a.z), sqr(a.w) };
+    INLINE vec4f SQR(const vec4f& a) {
+        return { SQR(a.x), SQR(a.y), SQR(a.z), SQR(a.w) };
     }
-    INLINE vec4f sqrt(const vec4f& a) {
-        return { sqrt(a.x), sqrt(a.y), sqrt(a.z), sqrt(a.w) };
+    INLINE vec4f SQRT(const vec4f& a) {
+        return { SQRT(a.x), SQRT(a.y), SQRT(a.z), SQRT(a.w) };
     }
-    INLINE vec4f exp(const vec4f& a) {
-        return { exp(a.x), exp(a.y), exp(a.z), exp(a.w) };
+    INLINE vec4f EXP(const vec4f& a) {
+        return { EXP(a.x), EXP(a.y), EXP(a.z), EXP(a.w) };
     }
-    INLINE vec4f log(const vec4f& a) {
-        return { log(a.x), log(a.y), log(a.z), log(a.w) };
+    INLINE vec4f LOG(const vec4f& a) {
+        return { LOG(a.x), LOG(a.y), LOG(a.z), LOG(a.w) };
     }
-    INLINE vec4f exp2(const vec4f& a) {
-        return { exp2(a.x), exp2(a.y), exp2(a.z), exp2(a.w) };
+    INLINE vec4f EXP2(const vec4f& a) {
+        return { EXP2(a.x), EXP2(a.y), EXP2(a.z), EXP2(a.w) };
     }
-    INLINE vec4f log2(const vec4f& a) {
-        return { log2(a.x), log2(a.y), log2(a.z), log2(a.w) };
+    INLINE vec4f LOG2(const vec4f& a) {
+        return { LOG2(a.x), LOG2(a.y), LOG2(a.z), LOG2(a.w) };
     }
-    INLINE vec4f pow(const vec4f& a, float b) {
-        return { pow(a.x, b), pow(a.y, b), pow(a.z, b), pow(a.w, b) };
+    INLINE vec4f POW(const vec4f& a, float b) {
+        return { POW(a.x, b), POW(a.y, b), POW(a.z, b), POW(a.w, b) };
     }
-    INLINE vec4f pow(const vec4f& a, const vec4f& b) {
-        return { pow(a.x, b.x), pow(a.y, b.y), pow(a.z, b.z), pow(a.w, b.w) };
+    INLINE vec4f POW(const vec4f& a, const vec4f& b) {
+        return { POW(a.x, b.x), POW(a.y, b.y), POW(a.z, b.z), POW(a.w, b.w) };
     }
     INLINE vec4f gain(const vec4f& a, float b) {
         return { gain(a.x, b), gain(a.y, b), gain(a.z, b), gain(a.w, b) };
@@ -2053,7 +2054,7 @@ namespace waavs
     INLINE float dot(const quat4f& a, const quat4f& b) {
         return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
     }
-    INLINE float  length(const quat4f& a) { return sqrt(dot(a, a)); }
+    INLINE float  length(const quat4f& a) { return SQRT(dot(a, a)); }
     INLINE quat4f normalize(const quat4f& a) {
         auto l = length(a);
         return (l != 0) ? a / l : a;

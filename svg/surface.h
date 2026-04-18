@@ -48,17 +48,17 @@ namespace waavs
     static INLINE WGErrorCode wg_get_subarea(const Surface_ARGB32& src, const WGRectI& area, Surface_ARGB32& subarea) noexcept;
 
     // Low level pixel ops
-    static INLINE WGErrorCode wg_fill_hspan_raw(Pixel_ARGB32* dst, int len, Pixel_ARGB32 rgbaPremul) noexcept;
-    static INLINE WGErrorCode wg_fill_hspan(Surface_ARGB32& dst, int y, int x, int len, Pixel_ARGB32 color) noexcept;
+    //static INLINE WGResult wg_fill_hspan_raw(Pixel_ARGB32* dst, int len, Pixel_ARGB32 rgbaPremul) noexcept;
+    //static INLINE WGErrorCode wg_fill_hspan(Surface_ARGB32& dst, int y, int x, int len, Pixel_ARGB32 color) noexcept;
 
     // blending
-    static INLINE WGErrorCode wg_blend_hspan_mask8(Surface_ARGB32& dst, int y, int x, int len, Pixel_ARGB32 color, const uint8_t* mask) noexcept;
+    //static INLINE WGErrorCode wg_blend_hspan_mask8(Surface_ARGB32& dst, int y, int x, int len, Pixel_ARGB32 color, const uint8_t* mask) noexcept;
 
 
     // Whole surface drawing
-    static INLINE WGResult wg_clear_all(Surface_ARGB32& s) noexcept;
-    static INLINE WGResult wg_fill_all(Surface_ARGB32& s, const Pixel_ARGB32 rgbaPremul) noexcept;
-    static INLINE WGResult wg_blit(Surface_ARGB32& dst, const Surface_ARGB32& src, int dstX, int dstY) noexcept;
+    //static INLINE WGResult wg_clear_all(Surface_ARGB32& s) noexcept;
+    //static INLINE WGResult wg_fill_all(Surface_ARGB32& s, const Pixel_ARGB32 rgbaPremul) noexcept;
+    //static INLINE WGResult wg_blit(Surface_ARGB32& dst, const Surface_ARGB32& src, int dstX, int dstY) noexcept;
 
 
     // Implementations
@@ -100,7 +100,7 @@ namespace waavs
     // Assumes all boundary checks have already been performed by caller.
     // Fills a horizontal span of pixels with a constant premultiplied ARGB color.
     // SRCCOPY semantics: the color is directly copied to the destination, without blending.
-    static INLINE WGErrorCode wg_fill_hspan_raw(uint32_t* dst, size_t len, Pixel_ARGB32 rgbaPremul) noexcept
+    static INLINE WGResult wg_fill_hspan_raw(uint32_t* dst, size_t len, Pixel_ARGB32 rgbaPremul) noexcept
     {
         memset_l((uint32_t*)dst, (int32_t)rgbaPremul, (size_t)len);
         return WG_SUCCESS;

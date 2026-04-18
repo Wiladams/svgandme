@@ -1,3 +1,5 @@
+// filter_types.h
+
 #pragma once
 
 //
@@ -12,16 +14,16 @@
 #include "definitions.h"
 
 #include "wggeometry.h"
-#include "coloring.h"
 #include "nametable.h"
+#include "coloring.h"
 
 
 namespace waavs
 {
     enum FilterColorInterpolation : uint32_t
     {
-		FILTER_COLOR_INTERPOLATION_LINEAR_RGB = 0,
-		FILTER_COLOR_INTERPOLATION_SRGB
+        FILTER_COLOR_INTERPOLATION_LINEAR_RGB = 0,
+        FILTER_COLOR_INTERPOLATION_SRGB
     };
 
     // feBlend 'mode' attribute
@@ -107,9 +109,16 @@ namespace waavs
 
 namespace waavs::filter
 {
+
     // --------------------------------------------------------
     // Common filter keys
     // --------------------------------------------------------
+    INLINE InternedKey color_interpolation_filters() noexcept { static InternedKey k = PSNameTable::INTERN("color-interpolation-filters"); return k; }
+    INLINE InternedKey kColorInterp_linearRGB() noexcept { static InternedKey k = PSNameTable::INTERN("linearRGB"); return k; }
+    INLINE InternedKey kColorInterp_sRGB()      noexcept { static InternedKey k = PSNameTable::INTERN("sRGB");      return k; }
+
+
+    // Common filter primitive keys
     INLINE InternedKey Filter_SourceGraphic() noexcept { static InternedKey k = PSNameTable::INTERN("SourceGraphic"); return k; }
     INLINE InternedKey Filter_SourceAlpha() noexcept { static InternedKey k = PSNameTable::INTERN("SourceAlpha"); return k; }
     INLINE InternedKey Filter_Last() noexcept { static InternedKey k = PSNameTable::INTERN("__last__"); return k; }

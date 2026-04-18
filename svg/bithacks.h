@@ -1,10 +1,13 @@
+// bithacks.h
+
 #pragma once
 
 #include "definitions.h"
 
 //
 // Some bitwise manipulation routines
-//
+// Probably mostly not used
+// isLE, and isBE are probably the most useful
 
 namespace waavs
 {
@@ -14,7 +17,7 @@ namespace waavs
     
     // big-endian
     INLINE bool isBE() noexcept { return !isLE(); }
-}
+
 
 /*
     Binary operators
@@ -35,7 +38,7 @@ namespace waavs
     tobit
     tohex
 */
-namespace waavs {
+
 
 
     // tohex32
@@ -206,180 +209,182 @@ namespace waavs {
 
 namespace waavs {
 
-// Return various forms of pow(2,bitnum)
-// There are different ones, which allow the user to specify how
-// many bits they want
-INLINE constexpr uint8_t BIT8(size_t bitnum) noexcept {return (uint8_t)1 << bitnum; }
-INLINE constexpr uint16_t BIT16(size_t bitnum) noexcept {return (uint16_t)1 << bitnum; }
-INLINE constexpr uint32_t BIT32(size_t bitnum) noexcept {return (uint32_t)1 << bitnum; }
-INLINE constexpr uint64_t BIT64(size_t bitnum) noexcept {return (uint64_t)1 << bitnum; }
+    // Return various forms of pow(2,bitnum)
+    // There are different ones, which allow the user to specify how
+    // many bits they want
+    INLINE constexpr uint8_t BIT8(size_t bitnum) noexcept { return (uint8_t)1 << bitnum; }
+    INLINE constexpr uint16_t BIT16(size_t bitnum) noexcept { return (uint16_t)1 << bitnum; }
+    INLINE constexpr uint32_t BIT32(size_t bitnum) noexcept { return (uint32_t)1 << bitnum; }
+    INLINE constexpr uint64_t BIT64(size_t bitnum) noexcept { return (uint64_t)1 << bitnum; }
 
-// One general purpose which will default to BIT64
-//static inline uint64_t BIT(unsigned int bitnum) {return BIT64(bitnum);}
+    // One general purpose which will default to BIT64
+    //static inline uint64_t BIT(unsigned int bitnum) {return BIT64(bitnum);}
 
-// return true if the specified bit is set in the 64-bit value
-INLINE constexpr bool isset(const uint64_t value, const size_t bitnum) noexcept {return (value & BIT64(bitnum)) > 0; }
+    // return true if the specified bit is set in the 64-bit value
+    INLINE constexpr bool isset(const uint64_t value, const size_t bitnum) noexcept { return (value & BIT64(bitnum)) > 0; }
 
-// set a specific bit within a 64-bit value
-INLINE constexpr uint64_t setbit(const uint64_t value, const size_t bitnum) noexcept {return (value | BIT64(bitnum));}
+    // set a specific bit within a 64-bit value
+    INLINE constexpr uint64_t setbit(const uint64_t value, const size_t bitnum) noexcept { return (value | BIT64(bitnum)); }
 
-// BITMASK64
-// A bitmask is an integer where all the bits from the 
-// specified low value to the specified high value
-// are set to 1.
-// The trick used in BITMASK64 is to set a single bit
-// above the required range, then subtracting 1 from that
-// value.  By subtracting 1, we get all 1 bits below the
-// single bit value.
-// This set of 1 bits are then shifted upward by the number
-// of the low bit, and we have our mask.
-// Discussion: 
-//   https://stackoverflow.com/questions/28035794/masking-bits-within-a-range-given-in-parameter-in-c
-//
-//  uint64_t mask = (uint64_t)1 << (high-low);
-//  mask <<= 1;
-//  mask--;         // turn on all the bits below
-//  mask <<= low;   // shift up to proper position
-//  return mask;
+    // BITMASK64
+    // A bitmask is an integer where all the bits from the 
+    // specified low value to the specified high value
+    // are set to 1.
+    // The trick used in BITMASK64 is to set a single bit
+    // above the required range, then subtracting 1 from that
+    // value.  By subtracting 1, we get all 1 bits below the
+    // single bit value.
+    // This set of 1 bits are then shifted upward by the number
+    // of the low bit, and we have our mask.
+    // Discussion: 
+    //   https://stackoverflow.com/questions/28035794/masking-bits-within-a-range-given-in-parameter-in-c
+    //
+    //  uint64_t mask = (uint64_t)1 << (high-low);
+    //  mask <<= 1;
+    //  mask--;         // turn on all the bits below
+    //  mask <<= low;   // shift up to proper position
+    //  return mask;
 
-INLINE constexpr uint64_t BITMASK64(const size_t low, const size_t high) noexcept {return ((((uint64_t)1ULL << (high-low)) << 1) - 1) << low;}
+    INLINE constexpr uint64_t BITMASK64(const size_t low, const size_t high) noexcept { return ((((uint64_t)1ULL << (high - low)) << 1) - 1) << low; }
 
-INLINE constexpr uint8_t BITMASK8(const size_t low, const size_t high) noexcept {return (uint8_t)BITMASK64(low, high);}
-INLINE constexpr uint16_t BITMASK16(const size_t low, const size_t high) noexcept {return (uint16_t)BITMASK64(low,high);}
-INLINE constexpr uint32_t BITMASK32(const size_t low, const size_t high) noexcept {return (uint32_t)BITMASK64(low, high);}
-
-
-
-// BITSVALUE
-// Retrieve a value from a lowbit highbit pair
-INLINE  constexpr uint64_t BITSVALUE(uint64_t src, size_t lowbit, size_t highbit) noexcept
-{
-    return ((src & BITMASK64(lowbit, highbit)) >> lowbit);
-}
-
-//
-// getbitbyteoffset()
-// 
-// Given a bit number, calculate which byte
-// it would be in, and which bit within that
-// byte.
-INLINE constexpr void getbitbyteoffset(size_t bitnumber, size_t &byteoffset, size_t &bitoffset) noexcept
-{
-    byteoffset = (int)(bitnumber / 8);
-    bitoffset = bitnumber % 8;
-}
+    INLINE constexpr uint8_t BITMASK8(const size_t low, const size_t high) noexcept { return (uint8_t)BITMASK64(low, high); }
+    INLINE constexpr uint16_t BITMASK16(const size_t low, const size_t high) noexcept { return (uint16_t)BITMASK64(low, high); }
+    INLINE constexpr uint32_t BITMASK32(const size_t low, const size_t high) noexcept { return (uint32_t)BITMASK64(low, high); }
 
 
-INLINE constexpr uint64_t bitsValueFromBytes(const uint8_t *bytes, const size_t startbit, const size_t bitcount, bool bigendian = false) noexcept
-{
-    // Sanity check
-    if (nullptr == bytes)
-        return 0;
 
-    uint64_t value = 0;
-
-    if (bigendian) {
-        for (int i=(int)bitcount; i>= 0; i--) {
-            size_t byteoffset=0;
-            size_t bitoffset=0;
-            getbitbyteoffset(startbit+i, byteoffset, bitoffset);
-            bool bitval = isset(bytes[byteoffset], bitoffset);
-
-            if (bitval) {
-                value = setbit(value, i);
-            }
-        }
-    } else {
-        for (size_t i=0; i<bitcount; i++) {
-            size_t byteoffset=0;
-            size_t bitoffset=0;
-            getbitbyteoffset(startbit+i, byteoffset, bitoffset);
-            bool bitval = isset(bytes[byteoffset], bitoffset);
-
-            if (bitval) {
-                value = setbit(value, i);
-            }
-        }
+    // BITSVALUE
+    // Retrieve a value from a lowbit highbit pair
+    INLINE  constexpr uint64_t BITSVALUE(uint64_t src, size_t lowbit, size_t highbit) noexcept
+    {
+        return ((src & BITMASK64(lowbit, highbit)) >> lowbit);
     }
 
-    return value;
-}
+    //
+    // getbitbyteoffset()
+    // 
+    // Given a bit number, calculate which byte
+    // it would be in, and which bit within that
+    // byte.
+    INLINE constexpr void getbitbyteoffset(size_t bitnumber, size_t& byteoffset, size_t& bitoffset) noexcept
+    {
+        byteoffset = (int)(bitnumber / 8);
+        bitoffset = bitnumber % 8;
+    }
 
-// Using the octal representation of the bit numbers, makes
-// it more obvious what is going on.
-// 
-// swap 2 bytes (16-bit) around
-//#define SWAP16(x) \
-//    (((0x00000000000000ffull & (x)) << 010) |  \
-//     ((0x000000000000ff00ull & (x)) >> 010))
 
-//INLINE uint16_t swapUInt16(const uint16_t num) noexcept
-//{
-//    return (((num & 0x00ff) << 8) | ((num & 0xff00) >> 8));
-//}
+    INLINE constexpr uint64_t bitsValueFromBytes(const uint8_t* bytes, const size_t startbit, const size_t bitcount, bool bigendian = false) noexcept
+    {
+        // Sanity check
+        if (nullptr == bytes)
+            return 0;
 
-// swap 4 bytes (32-bit) around
-//#define SWAP32(x)                           \
-//  (((0x00000000000000ffull & (x)) << 030) | \
-//   ((0x000000000000ff00ull & (x)) << 010) | \
-//   ((0x0000000000ff0000ull & (x)) >> 010) | \
-//   ((0x00000000ff000000ull & (x)) >> 030))
+        uint64_t value = 0;
 
-//INLINE uint32_t swapUInt32(const uint32_t num) noexcept
-//{
-//    uint32_t x = (num & 0x0000FFFF) << 16 | (num & 0xFFFF0000) >> 16;
-//    x = (x & 0x00FF00FF) << 8 | (x & 0xFF00FF00) >> 8;
+        if (bigendian) {
+            for (int i = (int)bitcount; i >= 0; i--) {
+                size_t byteoffset = 0;
+                size_t bitoffset = 0;
+                getbitbyteoffset(startbit + i, byteoffset, bitoffset);
+                bool bitval = isset(bytes[byteoffset], bitoffset);
 
-//    return x;
-//}
+                if (bitval) {
+                    value = setbit(value, i);
+                }
+            }
+        }
+        else {
+            for (size_t i = 0; i < bitcount; i++) {
+                size_t byteoffset = 0;
+                size_t bitoffset = 0;
+                getbitbyteoffset(startbit + i, byteoffset, bitoffset);
+                bool bitval = isset(bytes[byteoffset], bitoffset);
 
-// swap 8 bytes (64-bit) around
-//#define SWAP64(x)                           \
-//  (((0x00000000000000ffull & (x)) << 070) | \
-//   ((0x000000000000ff00ull & (x)) << 050) | \
-//   ((0x0000000000ff0000ull & (x)) << 030) | \
-//   ((0x00000000ff000000ull & (x)) << 010) | \
-//   ((0x000000ff00000000ull & (x)) >> 010) | \
-//   ((0x0000ff0000000000ull & (x)) >> 030) | \
-//   ((0x00ff000000000000ull & (x)) >> 050) | \
-//   ((0xff00000000000000ull & (x)) >> 070))
+                if (bitval) {
+                    value = setbit(value, i);
+                }
+            }
+        }
 
-//INLINE uint64_t swapUInt64(const uint64_t num) noexcept
-//{
-//    return  (num >> 56) |
-//          ((num<<40) & 0x00FF000000000000) |
-//          ((num<<24) & 0x0000FF0000000000) |
-//          ((num<<8) & 0x000000FF00000000) |
-//          ((num>>8) & 0x00000000FF000000) |
-//          ((num>>24) & 0x0000000000FF0000) |
-//          ((num>>40) & 0x000000000000FF00) |
-//          (num << 56);
-//}
+        return value;
+    }
 
-INLINE int GetAlignedByteCount(const int width, const int bitsperpixel, const int alignment) noexcept
-{
-    return (((width * (bitsperpixel / 8)) + (alignment - 1)) & ~(alignment - 1));
-}
+    // Using the octal representation of the bit numbers, makes
+    // it more obvious what is going on.
+    // 
+    // swap 2 bytes (16-bit) around
+    //#define SWAP16(x) \
+    //    (((0x00000000000000ffull & (x)) << 010) |  \
+    //     ((0x000000000000ff00ull & (x)) >> 010))
 
-// fixedToFloat
-// 
-// Convert a fixed point number into a floating point number
-// the fixed number can be up to 64-bits in size
-// the 'scale' says where the decimal point is, starting from 
-// the least significant bit
-// so; 0x13 (0b0001.0011) ,4  == 1.1875
-INLINE double fixedToFloat(const uint64_t vint, const int scale) noexcept
-{
-    double whole = (double)waavs::BITSVALUE(vint, scale, 63);
-    double frac = (double)waavs::BITSVALUE(vint, 0, ((size_t)scale - 1));
+    //INLINE uint16_t swapUInt16(const uint16_t num) noexcept
+    //{
+    //    return (((num & 0x00ff) << 8) | ((num & 0xff00) >> 8));
+    //}
 
-    return (whole + (frac / ((uint64_t)1 << scale)));
-}
+    // swap 4 bytes (32-bit) around
+    //#define SWAP32(x)                           \
+    //  (((0x00000000000000ffull & (x)) << 030) | \
+    //   ((0x000000000000ff00ull & (x)) << 010) | \
+    //   ((0x0000000000ff0000ull & (x)) >> 010) | \
+    //   ((0x00000000ff000000ull & (x)) >> 030))
+
+    //INLINE uint32_t swapUInt32(const uint32_t num) noexcept
+    //{
+    //    uint32_t x = (num & 0x0000FFFF) << 16 | (num & 0xFFFF0000) >> 16;
+    //    x = (x & 0x00FF00FF) << 8 | (x & 0xFF00FF00) >> 8;
+
+    //    return x;
+    //}
+
+    // swap 8 bytes (64-bit) around
+    //#define SWAP64(x)                           \
+    //  (((0x00000000000000ffull & (x)) << 070) | \
+    //   ((0x000000000000ff00ull & (x)) << 050) | \
+    //   ((0x0000000000ff0000ull & (x)) << 030) | \
+    //   ((0x00000000ff000000ull & (x)) << 010) | \
+    //   ((0x000000ff00000000ull & (x)) >> 010) | \
+    //   ((0x0000ff0000000000ull & (x)) >> 030) | \
+    //   ((0x00ff000000000000ull & (x)) >> 050) | \
+    //   ((0xff00000000000000ull & (x)) >> 070))
+
+    //INLINE uint64_t swapUInt64(const uint64_t num) noexcept
+    //{
+    //    return  (num >> 56) |
+    //          ((num<<40) & 0x00FF000000000000) |
+    //          ((num<<24) & 0x0000FF0000000000) |
+    //          ((num<<8) & 0x000000FF00000000) |
+    //          ((num>>8) & 0x00000000FF000000) |
+    //          ((num>>24) & 0x0000000000FF0000) |
+    //          ((num>>40) & 0x000000000000FF00) |
+    //          (num << 56);
+    //}
+
+    INLINE int GetAlignedByteCount(const int width, const int bitsperpixel, const int alignment) noexcept
+    {
+        return (((width * (bitsperpixel / 8)) + (alignment - 1)) & ~(alignment - 1));
+    }
+
+    // fixedToFloat
+    // 
+    // Convert a fixed point number into a floating point number
+    // the fixed number can be up to 64-bits in size
+    // the 'scale' says where the decimal point is, starting from 
+    // the least significant bit
+    // so; 0x13 (0b0001.0011) ,4  == 1.1875
+    INLINE double fixedToFloat(const uint64_t vint, const int scale) noexcept
+    {
+        double whole = (double)BITSVALUE(vint, scale, 63);
+        double frac = (double)BITSVALUE(vint, 0, ((size_t)scale - 1));
+
+        return (whole + (frac / ((uint64_t)1 << scale)));
+    }
 
 } // namespace
 
 
-namespace waavs {
+namespace waavs 
+{
     INLINE int TOLOWER(int c) {
         if (c >= 'A' && c <= 'Z')
             return c & 0x20;

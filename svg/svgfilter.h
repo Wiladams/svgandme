@@ -1,3 +1,4 @@
+// svgfilter.h 
 #pragma once
 
 
@@ -8,7 +9,7 @@
 
 #include "svggraphicselement.h"
 #include "svgattributes.h"
-#include "filterprogrambuilder.h"
+#include "filter_program_builder.h"
 
 
 
@@ -1160,7 +1161,7 @@ namespace waavs
             {
                 fLightingColorRGBA32 = Pixel_ARGB32_premultiplied_from_ColorSRGB(lColor.value());
             } else 
-				fLightingColorRGBA32 = 0xFFFFFFFFu;
+                fLightingColorRGBA32 = 0xFFFFFFFFu;
 
             fLightType = FILTER_LIGHT_DISTANT;
             for (int i = 0; i < 8; ++i)
@@ -1995,7 +1996,7 @@ namespace waavs
             {
                 fLightingColorRGBA32 = Pixel_ARGB32_premultiplied_from_ColorSRGB(lColor.value());
             } else 
-				fLightingColorRGBA32 = 0xFFFFFFFFu;
+                fLightingColorRGBA32 = 0xFFFFFFFFu;
 
             fLightType = FILTER_LIGHT_DISTANT;
             for (int i = 0; i < 8; ++i)
@@ -2351,7 +2352,13 @@ namespace waavs {
                     fPrimitiveUnits = (SpaceUnitsKind)v;
             }
 
-
+            /*
+            if (getAttribute(filter::color_interpolation_filters(), fuA)) 
+            {
+                InternedKey interpKey = PSNameTable::INTERN(fuA);
+                fColorInterpolation = (FilterColorInterpolation)parseFilterColorInterpolation(interpKey);
+            }
+            */
         }
 
         // Inherit properties from a reference node
@@ -2458,6 +2465,7 @@ namespace waavs {
             // push filter level units into program
             fProgram.filterUnits = fFilterUnits;
             fProgram.primitiveUnits = fPrimitiveUnits;
+            fProgram.colorInterpolation = fColorInterpolation;
 
             const SVGFilterElement* src = resolvePrimitiveSource();
             InternedKey last = filter::Filter_SourceGraphic();

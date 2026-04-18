@@ -9,9 +9,9 @@
 #include "svgb2ddriver.h"
 
 #include "filter_types.h"
-#include "filterprogramexec.h"   
+#include "filter_program_exec.h"   
 #include "filter_noise.h"
-#include "svggraphicselement.h"
+//#include "svggraphicselement.h"
 #include "viewport.h"
 
 
@@ -183,7 +183,7 @@ namespace waavs
             if (!isValidRect(dstRect))
                 return {};
 
-            WGRectD srcViewBox = dstRect;
+            //WGRectD srcViewBox = dstRect;
             //WGRectD srcViewBox = computeReferencedViewBox(elem.get());
             //if (!isValidRect(srcViewBox))
             //    return {};
@@ -781,7 +781,7 @@ namespace waavs {
                 const uint32_t* s2 = (const uint32_t*)in2->rowPointer((size_t)y);
                 uint32_t* d = (uint32_t*)out->rowPointer((size_t)y);
 
-                waavs::feBlendRowPRGB32(d + x0, s1 + x0, s2 + x0, x1 - x0, mode);
+                feBlendRowPRGB32(d + x0, s1 + x0, s2 + x0, x1 - x0, mode);
             }
 
             if (!putImage(outKey, std::move(out)))
@@ -2081,8 +2081,8 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                 int boxX[3] = { 1, 1, 1 };
                 int boxY[3] = { 1, 1, 1 };
 
-                waavs::boxesForGauss((stdXPx > 0.0) ? stdXPx : 0.0, 3, boxX);
-                waavs::boxesForGauss((stdYPx > 0.0) ? stdYPx : 0.0, 3, boxY);
+                boxesForGauss((stdXPx > 0.0) ? stdXPx : 0.0, 3, boxX);
+                boxesForGauss((stdYPx > 0.0) ? stdYPx : 0.0, 3, boxY);
 
                 int spreadX = 0;
                 int spreadY = 0;
@@ -2096,8 +2096,8 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                 WGRectI blurArea = expandRect(area, spreadX, spreadY);
                 blurArea = intersectRect(blurArea, surfaceRect);
 
-                const waavs::Surface* curSrc = shadow0.get();
-                waavs::Surface* curDst = shadow1.get();
+                const Surface* curSrc = shadow0.get();
+                Surface* curDst = shadow1.get();
 
                 for (int pass = 0; pass < 3; ++pass)
                 {
@@ -2107,7 +2107,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                     if (rx > 0)
                     {
                         curDst->clearAll();
-                        waavs::boxBlurH_PRGB32(*curDst, *curSrc, rx, blurArea);
+                        boxBlurH_PRGB32(*curDst, *curSrc, rx, blurArea);
                         curSrc = curDst;
                         curDst = (curDst == shadow0.get()) ? shadow1.get() : shadow0.get();
                     }
@@ -2115,13 +2115,13 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                     if (ry > 0)
                     {
                         curDst->clearAll();
-                        waavs::boxBlurV_PRGB32(*curDst, *curSrc, ry, blurArea);
+                        boxBlurV_PRGB32(*curDst, *curSrc, ry, blurArea);
                         curSrc = curDst;
                         curDst = (curDst == shadow0.get()) ? shadow1.get() : shadow0.get();
                     }
                 }
 
-                finalShadow = const_cast<waavs::Surface*>(curSrc);
+                finalShadow = const_cast<Surface*>(curSrc);
             }
 
             // Resolve offset into user units.
@@ -2488,9 +2488,9 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             int boxY[3] = { 1, 1, 1 };
 
             if (doX)
-                waavs::boxesForGauss(sxPx, 3, boxX);
+                boxesForGauss(sxPx, 3, boxX);
             if (doY)
-                waavs::boxesForGauss(syPx, 3, boxY);
+                boxesForGauss(syPx, 3, boxY);
 
             int rx[3] = { 0, 0, 0 };
             int ry[3] = { 0, 0, 0 };
@@ -2530,8 +2530,8 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                 return true;
             }
 
-            waavs::Surface tmp0;
-            waavs::Surface tmp1;
+            Surface tmp0;
+            Surface tmp1;
 
             if (!tmp0.reset(in->width(), in->height()))
                 return false;
@@ -2541,21 +2541,21 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             tmp0.clearAll();
             tmp1.clearAll();
 
-            const waavs::Surface* curSrc = in;
-            waavs::Surface* curDst = &tmp0;
+            const Surface* curSrc = in;
+            Surface* curDst = &tmp0;
 
             for (int pass = 0; pass < 3; ++pass)
             {
                 if (doX && rx[pass] > 0)
                 {
-                    waavs::boxBlurH_PRGB32(*curDst, *curSrc, rx[pass], sampleArea);
+                    boxBlurH_PRGB32(*curDst, *curSrc, rx[pass], sampleArea);
                     curSrc = curDst;
                     curDst = (curDst == &tmp0) ? &tmp1 : &tmp0;
                 }
 
                 if (doY && ry[pass] > 0)
                 {
-                    waavs::boxBlurV_PRGB32(*curDst, *curSrc, ry[pass], sampleArea);
+                    boxBlurV_PRGB32(*curDst, *curSrc, ry[pass], sampleArea);
                     curSrc = curDst;
                     curDst = (curDst == &tmp0) ? &tmp1 : &tmp0;
                 }
@@ -2585,7 +2585,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
 
             // Copy only the primitive result area to the output.
             {
-                const waavs::Surface& blurred = *curSrc;
+                const Surface& blurred = *curSrc;
                 for (int y = writeArea.y; y < writeArea.y + writeArea.h; ++y)
                 {
                     const uint32_t* srow = (const uint32_t*)blurred.rowPointer((size_t)y);

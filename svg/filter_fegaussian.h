@@ -8,7 +8,6 @@
 
 #include "definitions.h"
 #include "coloring.h"
-#include "pixeling.h"
 #include "wggeometry.h"
 #include "surface.h"
 
@@ -60,8 +59,8 @@ namespace waavs
         const int H = (int)img.height();
         if (W <= 0 || H <= 0) return 0u;
 
-        x = waavs::clamp(x, 0, W - 1);
-        y = waavs::clamp(y, 0, H - 1);
+        x = clamp(x, 0, W - 1);
+        y = clamp(y, 0, H - 1);
 
         const uint32_t* row = (const uint32_t*)img.rowPointer((size_t)y);
         return row[(size_t)x];
@@ -84,10 +83,10 @@ namespace waavs
         const int b = (sb + (int)di.half) / (int)di.div;
 
         return argb32_pack_u8(
-            waavs::clamp0_255_i64(a),
-            waavs::clamp0_255_i64(r),
-            waavs::clamp0_255_i64(g),
-            waavs::clamp0_255_i64(b));
+            clamp0_255_i64(a),
+            clamp0_255_i64(r),
+            clamp0_255_i64(g),
+            clamp0_255_i64(b));
     }
 
     /*
@@ -143,49 +142,7 @@ static INLINE void store4_packAvgDivInfo_neon(
 #endif
     //*/
 
-    /*
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
-    static INLINE void store4_packAvgDivInfo_neon(
-        uint32_t* dst,
-        const int32x4_t& va,
-        const int32x4_t& vr,
-        const int32x4_t& vg,
-        const int32x4_t& vb,
-        const BoxBlurDivInfo& di) noexcept
-    {
-        int32x4_t halfv = vdupq_n_s32(di.half);
-        int32x4_t divv = vdupq_n_s32(di.div);
 
-        int32x4_t qa = vdivq_s32(vaddq_s32(va, halfv), divv);
-        int32x4_t qr = vdivq_s32(vaddq_s32(vr, halfv), divv);
-        int32x4_t qg = vdivq_s32(vaddq_s32(vg, halfv), divv);
-        int32x4_t qb = vdivq_s32(vaddq_s32(vb, halfv), divv);
-
-        qa = vmaxq_s32(vdupq_n_s32(0), vminq_s32(qa, vdupq_n_s32(255)));
-        qr = vmaxq_s32(vdupq_n_s32(0), vminq_s32(qr, vdupq_n_s32(255)));
-        qg = vmaxq_s32(vdupq_n_s32(0), vminq_s32(qg, vdupq_n_s32(255)));
-        qb = vmaxq_s32(vdupq_n_s32(0), vminq_s32(qb, vdupq_n_s32(255)));
-
-        uint16x4_t a16 = vmovn_u32(vreinterpretq_u32_s32(qa));
-        uint16x4_t r16 = vmovn_u32(vreinterpretq_u32_s32(qr));
-        uint16x4_t g16 = vmovn_u32(vreinterpretq_u32_s32(qg));
-        uint16x4_t b16 = vmovn_u32(vreinterpretq_u32_s32(qb));
-
-        uint8x8_t a8 = vmovn_u16(vcombine_u16(a16, vdup_n_u16(0)));
-        uint8x8_t r8 = vmovn_u16(vcombine_u16(r16, vdup_n_u16(0)));
-        uint8x8_t g8 = vmovn_u16(vcombine_u16(g16, vdup_n_u16(0)));
-        uint8x8_t b8 = vmovn_u16(vcombine_u16(b16, vdup_n_u16(0)));
-
-        uint32_t tmp[4];
-        tmp[0] = pack_argb32(vget_lane_u8(a8, 0), vget_lane_u8(r8, 0), vget_lane_u8(g8, 0), vget_lane_u8(b8, 0));
-        tmp[1] = pack_argb32(vget_lane_u8(a8, 1), vget_lane_u8(r8, 1), vget_lane_u8(g8, 1), vget_lane_u8(b8, 1));
-        tmp[2] = pack_argb32(vget_lane_u8(a8, 2), vget_lane_u8(r8, 2), vget_lane_u8(g8, 2), vget_lane_u8(b8, 2));
-        tmp[3] = pack_argb32(vget_lane_u8(a8, 3), vget_lane_u8(r8, 3), vget_lane_u8(g8, 3), vget_lane_u8(b8, 3));
-
-        vst1q_u32(dst, vld1q_u32(tmp));
-    }
-#endif
-*/
 
     // Convert desired sigma to N box sizes (odd), using common approximation.
     // See: "Fast almost-Gaussian filtering" (box blur approximation).
@@ -208,7 +165,7 @@ static INLINE void store4_packAvgDivInfo_neon(
             (-4.0 * wl - 4.0);
 
         int m = (int)std::round(mIdeal);
-        m = waavs::clamp(m, 0, n);
+        m = clamp(m, 0, n);
 
         for (int i = 0; i < n; ++i)
             sizesOut[i] = (i < m) ? wl : wu;
@@ -418,8 +375,8 @@ static INLINE void store4_packAvgDivInfo_neon(
 
         // If the middle region exists, we can do the optimized 
         // sliding window for it.
-        const int xMidBeg = waavs::clamp(xBeg, midMin, midMax);
-        const int xMidEnd = waavs::clamp(xEnd, midMin, midMax);
+        const int xMidBeg = clamp(xBeg, midMin, midMax);
+        const int xMidEnd = clamp(xEnd, midMin, midMax);
 
         // Left edge: [xBeg, xMidBeg)
         boxBlurH_PRGB32_row_edge_scalar(drow, src, y, xBeg, xMidBeg, radius, div);
@@ -519,7 +476,7 @@ static INLINE void store4_packAvgDivInfo_neon(
 
                 for (int k = -radius; k <= radius; ++k)
                 {
-                    const int yy = waavs::clamp(y + k, 0, H - 1);
+                    const int yy = clamp(y + k, 0, H - 1);
                     const uint32_t* srow = (const uint32_t*)src.rowPointer((size_t)yy);
 
                     uint8_t a, r, g, b;
@@ -539,7 +496,7 @@ static INLINE void store4_packAvgDivInfo_neon(
         // Gather clamped row pointers once for this output row.
         for (int i = 0; i < div; ++i)
         {
-            const int yy = waavs::clamp(y - radius + i, 0, H - 1);
+            const int yy = clamp(y - radius + i, 0, H - 1);
             rows[i] = (const uint32_t*)src.rowPointer((size_t)yy);
         }
 

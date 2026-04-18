@@ -559,8 +559,8 @@ return true;
         void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
             double dpi = groot ? groot->dpi() : 96.0;
-            double w = 1.0;
-            double h = 1.0;
+            //double w = 1.0;
+            //double h = 1.0;
 
             const BLFont* fontOpt = nullptr;    // font not relevant here
             const WGRectD paintVP = ctx->viewport();
