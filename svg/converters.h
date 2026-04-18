@@ -1,3 +1,5 @@
+// converters.h
+
 #ifndef CONVERTERS_H_INCLUDED
 #define CONVERTERS_H_INCLUDED
 
@@ -18,7 +20,7 @@
 // Forward declarations
 static INLINE bool read_required_digits(waavs::ByteSpan& s, uint64_t& v, size_t requiredDigits) noexcept;
 
-static INLINE uint8_t  hex_to_dec(const uint8_t vIn) ;
+//static INLINE uint8_t  hex_to_dec(const uint8_t vIn) = delete;
 static INLINE int toBoolInt(const waavs::ByteSpan& inChunk);
 
 static inline bool readNextNumber(waavs::ByteSpan& s, double& outNumber) noexcept;
@@ -35,24 +37,53 @@ static INLINE std::string toString(const waavs::ByteSpan& inChunk) noexcept
     return std::string(inChunk.fStart, inChunk.fEnd);
 }
 
-// hex_to_dec
+// hex_nibble
 // 
 // given an input character representing a hex digit
-// return the decimal value of that hex digit
-// BUGBUG - This assumes valid input.  
-// No error checking is done. The input is presumed to be valid
-static INLINE uint8_t  hex_to_dec(const uint8_t vIn)
+// put the decimal value of that hex digit in outValue
+static INLINE WGResult hex_nibble(const uint8_t vIn, uint8_t& outValue) noexcept
 {
     if (vIn >= '0' && vIn <= '9')
-        return vIn - '0';
-    else if (vIn >= 'a' && vIn <= 'f')
-        return vIn - 'a' + 10;
-    else if (vIn >= 'A' && vIn <= 'F')
-        return vIn - 'A' + 10;
-    else
-        return 0;
+    {
+        outValue = vIn - '0';
+        return WG_SUCCESS;
+    }
+    
+    if (vIn >= 'a' && vIn <= 'f')
+    {
+        outValue = vIn - 'a' + 10;
+        return WG_SUCCESS;
+    }
+    
+    if (vIn >= 'A' && vIn <= 'F')
+    {
+        outValue = vIn - 'A' + 10;
+        return WG_SUCCESS;
+    }
+
+    return WG_ERROR_Invalid_Argument;
 }
 
+// Read two bytes representing a hex byte (e.g. '4F') and 
+// convert them to a single byte value (0x4F in this example).
+// Return: 
+//  WG_SUCCESS if successful, or 
+//  WG_ERROR_Invalid_Argument if either of 
+//      the input characters is not a valid hex digit.
+static INLINE WGResult hex_byte(const uint8_t highNibble, const uint8_t lowNibble, uint8_t& outValue) noexcept
+{
+    uint8_t highValue = 0;
+    uint8_t lowValue = 0;
+    if (hex_nibble(highNibble, highValue) != WG_SUCCESS)
+        return WG_ERROR_Invalid_Argument;
+    
+    if (hex_nibble(lowNibble, lowValue) != WG_SUCCESS)
+        return WG_ERROR_Invalid_Argument;
+    
+    outValue = (highValue << 4) | lowValue;
+
+    return WG_SUCCESS;
+}
 
 // return 1 if the chunk is "true" or "1" or "t" or "T" or "y" or "Y" or "yes" or "Yes" or "YES"
 // return 0 if the chunk is "false" or "0" or "f" or "F" or "n" or "N" or "no" or "No" or "NO"
@@ -76,26 +107,35 @@ namespace waavs {
 
     // parseHex64u
     //
-	// Parse a hex string into a 64-bit unsigned integer.
-	// The string must be a valid hex string, and must not contain any spaces.
+    // Parse a hex string into a 64-bit unsigned integer.
+    // The string must be a valid hex string, and must not contain any spaces.
     static INLINE bool parseHex64u(const ByteSpan& inSpan, uint64_t & outValue) noexcept
     {
-		if (inSpan.size() == 0 || inSpan.size() > 8)
+        if (inSpan.size() == 0 || inSpan.size() > 16)
             return false;
 
 
         // building up outValue as we go
         outValue = 0;
         const uint8_t* c = inSpan.begin();
-		while (c != inSpan.end())
-		{
-            // We shift by 4 bits, because we're processing a nibble at a time
-            // and a nibble is 4 bits
-			outValue <<= 4;
-			outValue |= hex_to_dec(*c);
+        while (c != inSpan.end())
+        {
+            uint8_t nibble = 0;
+            if (hex_nibble(*c, nibble) == WG_SUCCESS)
+            {
+                // We shift by 4 bits, because we're processing a nibble
+                // at a time. so shift and add the latest nibble
+                outValue <<= 4;
+                outValue |= nibble;
+            }
+            else {
+                // if we get here, it means we had an invalid hex digit
+                // in the input string.  We return false to indicate a parse failure.
+                return false;
+            }
 
             c++;
-		}
+        }
         
         return true;
     }
@@ -144,7 +184,7 @@ namespace waavs {
     //
     // Read a 64-bit unsigned integer from the input span
     // advance the span 
-    static INLINE bool read_u64(ByteSpan& s, uint64_t& v, size_t digitsRead) noexcept
+    static INLINE bool read_u64(ByteSpan& s, uint64_t& v, size_t &digitsRead) noexcept
     {
         const unsigned char* sStart = s.fStart;
         const unsigned char* sEnd = s.fEnd;
@@ -222,26 +262,28 @@ namespace waavs {
         int i = 0;
         while (i < requiredDigits)
         {
-			// return false, because we've exhausted
+            // return false, because we've exhausted
             // the input, without reaching the required
             // number of digits
             // We shoud not need this test, as we already
             // checked the size above
             //if (!s)
-			//	return false;
+            //	return false;
 
             // get the current byte, and try to convert
             // to a digit.  
             // If not digit, return false, because we still
             // haven't satisfied the constraint of having a
             // required number of digits
-            unsigned char abyte = *s-'0';
 
-			// if the byte is not a digit, return false
+            // if the byte is not a digit, return false
             // leave the cursor where we failed in case
             // the caller wants to check the value
-            if (abyte < 0 || abyte>9)
+            unsigned char c = *s;
+            if (!is_digit(c))
                 return false;
+
+            unsigned char abyte = c - '0';
 
             ++s;
 
@@ -259,7 +301,7 @@ namespace waavs {
         // but there is still more input to be consumed.
         // We'll return true, as the constraint has been 
         // satisfied.
-		return true;
+        return true;
     }
 
 
@@ -281,7 +323,7 @@ namespace waavs {
     // Parse a number from the given ByteSpan, advancing the start
     // of the ByteSpan to beyond where we found the last character of the number.
     // 
-	// Note: These numbers support a full mantissa, so the extended 'e' notation
+    // Note: These numbers support a full mantissa, so the extended 'e' notation
     // is supported.  When reading numbers from a style sheet, readCSSNumber should
     // be used.
     // 
@@ -326,7 +368,7 @@ namespace waavs {
 
         // Parse integer part
         size_t digitsRead = 0;
-		unsigned char c = *startAt;
+        unsigned char c = *startAt;
         if (is_digit(c))
         {
             hasIntPart = true;
@@ -427,11 +469,11 @@ namespace waavs {
         double aNumber{ 0 };
         auto success = readNumber(s, aNumber);
 
-		if (success)
-		{
-			outNumber = (float)aNumber;
-			return true;
-		}
+        if (success)
+        {
+            outNumber = (float)aNumber;
+            return true;
+        }
 
         return false;
     }
@@ -442,12 +484,12 @@ namespace waavs {
         // like on paths and polylines
         static const charset nextNumWsp = chrWspChars + ","; // (",+\t\n\r ");
 
-		s.skipWhile(nextNumWsp);
+        s.skipWhile(nextNumWsp);
 
         if (s.empty())
             return false;
 
-		return readNumber(s, outNumber);
+        return readNumber(s, outNumber);
     }
 
     static inline bool readNextFlag(ByteSpan& s, int& outNumber) noexcept
@@ -477,9 +519,9 @@ namespace waavs {
     //
     // Read a list of numeric arguments as specified in the 'argTypes'
     // c, r - read a number
-	// f - read a flag
+    // f - read a flag
     // 
-	// The number of arguments read is determined by the length of the argTypes string
+    // The number of arguments read is determined by the length of the argTypes string
     //
     static int readFloatArguments(ByteSpan& s, const char* argTypes, float* outArgs) noexcept
     {

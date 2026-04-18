@@ -145,7 +145,7 @@ namespace waavs
         // get current value from fStart, like a 'peek' operation
         // If the ByteSpan is currently empty, these will return 0, rather than 
         // throwing an exception
-        uint8_t operator*() const noexcept {
+        constexpr uint8_t operator*() const noexcept {
             return (fStart < fEnd) ? *fStart : 0;
         }
 
@@ -161,29 +161,37 @@ namespace waavs
         // A pointer comparison
         bool isEqual(const ByteSpan& b) const noexcept
         {
-            if (fStart == b.fStart && fEnd == b.fEnd)
-                return true;
-
-            return false;
+            return fStart == b.fStart && size() == b.size();
         }
 
         bool equivalent(const ByteSpan& b) const noexcept
         {
-            if (size() != b.size())
+            const size_t n = size();
+            if (n != b.size())
                 return false;
-            return memcmp(fStart, b.fStart, size()) == 0;
+
+            if (n == 0)
+                return true;
+
+            if (!fStart || !b.fStart)
+                return false;
+
+            return std::memcmp(fStart, b.fStart, n) == 0;
         }
         
         // operator==
         // Perform a full content comparison of the two spans
         bool operator==(const ByteSpan& b) const noexcept
         {
-            return (size() == b.size()) && (std::memcmp(fStart, b.fStart, size()) == 0);
+            return equivalent(b);
         }
 
         bool operator==(const char* b) const noexcept
         {
-            return (b && std::strncmp(reinterpret_cast<const char*>(fStart), b, size()) == 0);
+            if (!b)
+                return false;
+
+            return equivalent(ByteSpan(b));
         }
 
 

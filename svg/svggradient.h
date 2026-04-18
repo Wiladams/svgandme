@@ -1,3 +1,4 @@
+// svggradient.h
 #pragma once
 
 //
@@ -15,7 +16,6 @@
 
 namespace waavs {
     // Helpers to resolve gradient coordinates, and to make the bbox to user transform
-    
     // For gradientUnits="objectBoundingBox":
     // Return coordinate in bbox-space (0..1 typical, but allow outside).
 
@@ -59,9 +59,12 @@ namespace waavs {
     struct SVGStopNode : public SVGObject
     {
         double fOffset = 0;
-        BLRgba32 fColor{ 0xff000000 };  // default black
+        BLRgba32 fColor{};  // default black
 
-        SVGStopNode() :SVGObject() {}
+        SVGStopNode() :SVGObject() 
+        {
+            fColor = BLRgba32(0xFF000000u);
+        }
 
         double offset() const { return fOffset; }
         BLRgba32 color() const { return fColor; }
@@ -73,7 +76,7 @@ namespace waavs {
             XmlAttributeCollection attrs{};
             scanAttributes(attrs, attrSpan);
             
-            ByteSpan styleAttr{}, offsetAttr{}, stopColorAttr{};
+            ByteSpan styleAttr{}, offsetAttr{};
 
 
             // If there's a style attribute, then add those to the collection
@@ -97,15 +100,19 @@ namespace waavs {
                 } else
                     WAAVS_ASSERT(false && "Gradient stop offset value not parsed properly");
 
-            }
+            } // else, value defaults to 0
+            // which is already set in the constructor
 
+            // Now, try to read a color value
             SVGColor sColor(svgattr::stop_color(), svgattr::stop_opacity());
-            if (sColor.loadFromAttributes(attrs) && sColor.isColor())
+
+            if (sColor.loadFromAttributes(attrs))
             {
-                fColor.value = Pixel_ARGB32_from_ColorSRGB(sColor.value());
+                if (sColor.isColor())
+                    fColor.value = Pixel_ARGB32_from_ColorSRGB(sColor.value());
             }
-            else
-                fColor.value = 0xFF000000u;
+            // do nothing, as the default color value is black
+            //    fColor.value = 0xFF000000u;
         }
         
         void bindToContext(IRenderSVG*, IAmGroot*) noexcept override

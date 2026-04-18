@@ -29,7 +29,7 @@ namespace waavs
     // in the range [0..1].  
     // The conversion is done by the caller, so that the caller can decide how 
     // to handle the conversion (e.g. whether to premultiply or not).
-    static ColorSRGB get_color_by_name_as_srgb(const ByteSpan &colorName) noexcept
+    static WGResult get_color_by_name_as_srgb(const ByteSpan &colorName, ColorSRGB &csrgb) noexcept
     {
 
         static std::unordered_map<ByteSpan, BLRgba32, ByteSpanInsensitiveHash, ByteSpanCaseInsensitive> svgcolors =
@@ -208,9 +208,8 @@ namespace waavs
             { "windowtext", BLRgba32(0xff000000) },
         };
 
-        BLRgba32 c = BLRgba32(128, 128, 128, 255);
-        uint8_t r, g, b, a = 128;
-        a = 255;
+        //BLRgba32 c = BLRgba32(128, 128, 128, 255);
+        uint8_t r=0, g=0, b=0, a = 255;
 
         auto it = svgcolors.find(colorName);
         if (it != svgcolors.end())
@@ -219,10 +218,15 @@ namespace waavs
             g = it->second.g();
             b = it->second.b();
             a = it->second.a();
+
+            csrgb = colorSRGB_from_straight_components0_255(r, g, b, a);
+            return WG_SUCCESS;
         }
         
-        // convert to ColorSRGB
-        return colorSRGB_from_straight_components0_255(r, g, b, a);
+        // If we don't find the color, return an error code.  
+        // The caller can decide how to handle this 
+        // (e.g. use a default color).
+        return WGErrorCode::WG_ERROR_Invalid_Argument;
     }
 }
 
@@ -272,35 +276,56 @@ namespace waavs {
         uint8_t a{ 0xffu };
 
         if (inSpan.size() == 4) {
+            uint8_t rNib, gNib, bNib;
+
+            // get the three nibbles, and validate that they are hex digits
+            if  (hex_nibble(inSpan[1], rNib) != WG_SUCCESS ||
+                hex_nibble(inSpan[2], gNib) != WG_SUCCESS ||
+                hex_nibble(inSpan[3], bNib) != WG_SUCCESS)
+            {
+                return WG_ERROR_Invalid_Argument;
+            }
+
             // #RGB
-            r = hex_to_dec(inSpan[1]); r |= r << 4;
-            g = hex_to_dec(inSpan[2]); g |= g << 4;
-            b = hex_to_dec(inSpan[3]); b |= b << 4;
+            r = rNib << 4 | rNib;
+            g = gNib << 4 | gNib;
+            b = bNib << 4 | bNib;
         }
         else if (inSpan.size() == 5) {
             // #RGBA
-            r = hex_to_dec(inSpan[1]); r |= r << 4;
-            g = hex_to_dec(inSpan[2]); g |= g << 4;
-            b = hex_to_dec(inSpan[3]); b |= b << 4;
-            a = hex_to_dec(inSpan[4]); a |= a << 4;
+            // double up each nibble to form bytes
+            uint8_t rNib, gNib, bNib, aNib;
+            if (hex_nibble(inSpan[1], rNib) != WG_SUCCESS ||
+                hex_nibble(inSpan[2], gNib) != WG_SUCCESS ||
+                hex_nibble(inSpan[3], bNib) != WG_SUCCESS ||
+                hex_nibble(inSpan[4], aNib) != WG_SUCCESS)
+            {
+                return WG_ERROR_Invalid_Argument;
+            }
+
+            r = rNib << 4 | rNib;
+            g = gNib << 4 | gNib;
+            b = bNib << 4 | bNib;
+            a = aNib << 4 | aNib;
         }
         else if (inSpan.size() == 7) {
             // #RRGGBB
-            r = (hex_to_dec(inSpan[1]) << 4) | hex_to_dec(inSpan[2]);
-            g = (hex_to_dec(inSpan[3]) << 4) | hex_to_dec(inSpan[4]);
-            b = (hex_to_dec(inSpan[5]) << 4) | hex_to_dec(inSpan[6]);
-
-
+            if (hex_byte(inSpan[1], inSpan[2], r) != WG_SUCCESS ||
+                hex_byte(inSpan[3], inSpan[4], g) != WG_SUCCESS ||
+                hex_byte(inSpan[5], inSpan[6], b) != WG_SUCCESS)
+            {
+                return WG_ERROR_Invalid_Argument;
+            }
         }
         else if (inSpan.size() == 9) {
             // #RRGGBBAA
-            r = (hex_to_dec(inSpan[1]) << 4) | hex_to_dec(inSpan[2]);
-            g = (hex_to_dec(inSpan[3]) << 4) | hex_to_dec(inSpan[4]);
-            b = (hex_to_dec(inSpan[5]) << 4) | hex_to_dec(inSpan[6]);
-            a = (hex_to_dec(inSpan[7]) << 4) | hex_to_dec(inSpan[8]);
-
-
-
+            if (hex_byte(inSpan[1], inSpan[2], r) != WG_SUCCESS ||
+                hex_byte(inSpan[3], inSpan[4], g) != WG_SUCCESS ||
+                hex_byte(inSpan[5], inSpan[6], b) != WG_SUCCESS ||
+                hex_byte(inSpan[7], inSpan[8], a) != WG_SUCCESS)
+            {
+                return WG_ERROR_Invalid_Argument;
+            }
         }
         else {
             return WG_ERROR_Invalid_Argument;
@@ -540,6 +565,7 @@ namespace waavs {
         charset delims = chrWspChars + ',';
         for (int i = 0; i < 3; i++)
         {
+            nums.skipSpaces();
             // get a component, separated by space or ','
             auto num = chunk_token(nums, delims);
 
@@ -559,6 +585,7 @@ namespace waavs {
 
         if (nums)
         {
+            nums.skipSpaces();
             double a = 1.0;
             if (!readCSSAlphaValue(nums, a))
                 return WG_ERROR_Invalid_Argument;

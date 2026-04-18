@@ -1,3 +1,4 @@
+// svgattributes.h
 #pragma once
 
 #include <memory>
@@ -656,14 +657,60 @@ namespace waavs {
     // Otherwise, one of the other symbolic tests will tell what it was
 	enum ColorSemantics : uint32_t
 	{
-        COLOR_SEMANTIC_UNKNOWN  = 0x01,     // failed
-		COLOR_SEMANTIC_NONE     = 0x02,     // literal 'none'
-		COLOR_SEMANTIC_COLOR    = 0x04,     // regular color
-		COLOR_SEMANTIC_INHERIT  = 0x08,     // inherit
-		COLOR_SEMANTIC_CURRENT  = 0x10,     // currentColor
-		COLOR_SEMANTIC_CONTEXT  = 0x20,
-        COLOR_SEMANTIC_REFERENCE= 0x40,     // A URL()
+        COLOR_SEMANTIC_UNKNOWN          = 0x01,     // neither opacity, nor color
+                                                    // distinctly different than 'none'
+        COLOR_SEMANTIC_NONE             = 0x02,     // literal 'none'
+        COLOR_SEMANTIC_OPACITY_ONLY     = 0x04,     // only opacity specified
+		COLOR_SEMANTIC_COLOR            = 0x08,     // regular color
+		COLOR_SEMANTIC_INHERIT          = 0x10,     // literal 'inherit'
+		COLOR_SEMANTIC_CURRENT          = 0x20,     // literal 'currentColor'
+        COLOR_SEMANTIC_CONTEXT_STROKE   = 0x40,     // literal 'context-stroke'
+        COLOR_SEMANTIC_CONTEXT_FILL     = 0x80,     // literal 'context-fill'
+        COLOR_SEMANTIC_REFERENCE        = 0x100,    // starts-with 'url('
     };
+
+    // Parse only the color portion of a color specification
+    // not concerned with a separate opacity value
+    static WGResult parseColor(const ByteSpan& colorSpan, ColorSRGB& cSRGB) noexcept
+    {
+        static const char* rgbStr = "rgb(";
+        static const char* rgbaStr = "rgba(";
+        static const char* rgbStrCaps = "RGB(";
+        static const char* rgbaStrCaps = "RGBA(";
+        static const char* hslStr = "hsl(";
+        static const char* hslaStr = "hsla(";
+
+        float opacity = 1.0f;
+
+        colorsrgb_reset(cSRGB, 0, 0, 0, opacity);
+
+        ByteSpan cSpan = colorSpan;
+        size_t len = 0;
+        len = cSpan.size();
+        if ((len >= 1) && (*cSpan == '#'))
+        {
+            return parse_colorsrgb_from_hex(cSpan, cSRGB);
+        }
+        else if (cSpan.startsWith(rgbStr) ||
+            cSpan.startsWith(rgbaStr) ||
+            cSpan.startsWith(rgbaStrCaps) ||
+            cSpan.startsWith(rgbStrCaps))
+        {
+            return parse_colorsrgb_from_func(cSpan, cSRGB);
+        }
+        else if (cSpan.startsWith(hslStr) ||
+            cSpan.startsWith(hslaStr))
+        {
+            // BUGBUG - need to modernize Hsl to fill
+            // in ColorSRGB
+            //c = parseColorHsl(str);
+            return WGErrorCode::WG_ERROR_NotImplemented;
+        }
+        else {
+            // so we can detect failure and return false from this function
+            return get_color_by_name_as_srgb(cSpan, cSRGB);
+        }
+    }
 
     struct SVGColor : public SVGVisualProperty
     {
@@ -689,8 +736,9 @@ namespace waavs {
 		bool isNone() const { return fSemantics == COLOR_SEMANTIC_NONE; }
 		bool isInherit() const { return fSemantics == COLOR_SEMANTIC_INHERIT; }
 		bool isCurrent() const { return fSemantics == COLOR_SEMANTIC_CURRENT; }
-		bool isContext() const { return fSemantics == COLOR_SEMANTIC_CONTEXT; }
-		bool isColor() const { return fSemantics == COLOR_SEMANTIC_COLOR; }
+		bool isContextStroke() const { return fSemantics == COLOR_SEMANTIC_CONTEXT_STROKE; }
+        bool isContextFill() const { return fSemantics == COLOR_SEMANTIC_CONTEXT_FILL; }
+        bool isColor() const { return fSemantics == COLOR_SEMANTIC_COLOR; }
         bool isReference() const { return fSemantics == COLOR_SEMANTIC_REFERENCE; }
 
         // load a color from a set of attributes
@@ -710,14 +758,20 @@ namespace waavs {
         //   #FFF       - single hex duplicated for RGB
         //   color name
 
-        // Importantly, NOT URL()!!  That is for paint servers
-        // This is strictly for a literal color value ONLY
-        // This can be used by the Paint servers, as well as
-		// places such as 'svg:stop-color' which only take color values, 
-        // and not paint servers.
-		// feFilterPrimitiveAttributes, which can take color values, 
-        // but not paint servers, will also use this.
-        //
+        // Note:  When the colorField is a 'url()' reference,
+        // we don't resolve the actual reference here, we just
+        // retain it as the rawValue() of the attribute, and 
+        // fill in the semantics to be: COLOR_SEMANTIC_REFERENCE
+        // so isReference() will return true.
+        // 
+        // Note: 'currentColor' is a special value.
+        // 1) If the current set of attributes has a 'color', then
+        // substitute that value in before trying to resolve the color
+        // 2) If the current attribute set does not contain a 'color'
+        // attribute, then mark the semantics as: COLOR_SEMANTIC_CURRENT
+        // so isCurrent() will return true.  In that case, the paint
+        // server dealing with it will resolve the current color, probably 
+        // taking it from the drawing context at the site of call.
 
         bool loadFromAttributes(const XmlAttributeCollection& attrs) override
         {
@@ -731,14 +785,20 @@ namespace waavs {
             ByteSpan colorSpan{};
             ByteSpan opacitySpan{};
 
-            if (!attrs.getValue(fColorField, colorSpan))
-                return false;
-
+            // You can still have a valid color if only 
+            // opacity is specified.
+            attrs.getValue(fColorField, colorSpan);
+            attrs.getValue(fOpacityField, opacitySpan);
             setRawValue(colorSpan);
 
-			attrs.getValue(fOpacityField, opacitySpan);
+            // only return if neither color nor opacity is specified
+            if (!colorSpan)
+            {
+                if (!opacitySpan)
+                    return false;
+            }
 
-
+            // Quick success if we have a URL reference
             if (chunk_starts_with_cstr(colorSpan, "url("))
             {
                 set(true);
@@ -748,95 +808,140 @@ namespace waavs {
                 return true;
             }
 
-            // temporary value
+            // temporary values
             ColorSRGB cSRGB{};
+            double opacity = 1.0;
+            colorsrgb_reset(cSRGB, 0, 0, 0, opacity);
 
-			// First, deal with the color value, if there is one
-			ByteSpan cSpan = colorSpan;
-            size_t len = 0;
-            len = cSpan.size();
-            if ((len >= 1) && (*cSpan == '#'))
+            // Check the opacity first, as it is valid to just
+            // specify an opacity, without a color value.  The default
+            // color value might be context specific, but we'll go
+            // with black for the moment.
+            // 
+            // If there is an opacity field, the value should be
+            // between [0..1], or a percentage.
+            // Include the opacity with the color, but DO NOT premultiply 
+            // 
+            if (opacitySpan)
             {
-                if (parse_colorsrgb_from_hex(cSpan, cSRGB) == WG_SUCCESS)
+                SVGNumberOrPercent op{};
+                ByteSpan s = opacitySpan;
+                if (readSVGNumberOrPercent(s, op))
                 {
-					fValue = cSRGB;
+                    opacity = waavs::clamp01f((float)op.calculatedValue());
+                    fSemantics = COLOR_SEMANTIC_COLOR;
                     set(true);
-					fSemantics = COLOR_SEMANTIC_COLOR;
-                }
-                else {
-                    return false;
                 }
             }
-            else if (cSpan.startsWith(rgbStr) ||
-                cSpan.startsWith(rgbaStr) ||
-                cSpan.startsWith(rgbaStrCaps) ||
-                cSpan.startsWith(rgbStrCaps))
+
+            // Finally, if we have a color value, we need to 
+            // parse it.  
+            if (colorSpan)
             {
-                if (parse_colorsrgb_from_func(cSpan, cSRGB) == WG_SUCCESS)
+                // Before we try to parse the color, check 
+                // to see if the value is 'currentColor'.
+                // If it is, then we need to check if there 
+                // is a 'color' attribute in the current set of attributes.
+                if (colorSpan == "currentColor")
                 {
-                    fValue = cSRGB;
+                    ByteSpan currentColorValue{};
+                    if (attrs.getValue(svgattr::color(), currentColorValue))
+                    {
+                        colorSpan = currentColorValue;
+                    }
+                    else {
+                        set(true);
+                        fSemantics = COLOR_SEMANTIC_CURRENT;
+                        return true;
+                    }
+                }
+
+
+                ByteSpan cSpan = colorSpan;
+                size_t len = 0;
+                len = cSpan.size();
+                if ((len >= 1) && (*cSpan == '#'))
+                {
+                    if (parse_colorsrgb_from_hex(cSpan, cSRGB) == WG_SUCCESS)
+                    {
+                        set(true);
+                        fSemantics = COLOR_SEMANTIC_COLOR;
+                    }
+                    else {
+                        return false;
+                    }
+                }
+                else if (cSpan.startsWith(rgbStr) ||
+                    cSpan.startsWith(rgbaStr) ||
+                    cSpan.startsWith(rgbaStrCaps) ||
+                    cSpan.startsWith(rgbStrCaps))
+                {
+                    if (parse_colorsrgb_from_func(cSpan, cSRGB) == WG_SUCCESS)
+                    {
+                        set(true);
+                        fSemantics = COLOR_SEMANTIC_COLOR;
+                    }
+                    else {
+                        return false;
+                    }
+                }
+                else if (cSpan.startsWith(hslStr) ||
+                    cSpan.startsWith(hslaStr))
+                {
+                    // BUGBUG - need to modernize Hsl to fill
+                    // in ColorSRGB
+                    //c = parseColorHsl(str);
+
                     set(true);
                     fSemantics = COLOR_SEMANTIC_COLOR;
                 }
                 else {
-                    return false;
-                }
-            }
-            else if (cSpan.startsWith(hslStr) ||
-                cSpan.startsWith(hslaStr))
-            {
-                // BUGBUG - need to modernize Hsl to fill
-                // in ColorSRGB
-                //c = parseColorHsl(str);
-
-                set(true);
-				fSemantics = COLOR_SEMANTIC_COLOR;
-            }
-            else {
-                if (cSpan == svgval::none()) {
-                    set(true);
-					fSemantics = COLOR_SEMANTIC_NONE;
-                }
-                else if ((cSpan == "context-stroke") || (cSpan == "context-fill"))
-                {
-                    set(true);
-					fSemantics = COLOR_SEMANTIC_CONTEXT;
-                }
-                else if ((cSpan == "inherit") || (cSpan == "currentColor"))
-                {
-                    // Take on whatever color value was previously set
-                    // somewhere in the tree
-                    set(true);
-					if (cSpan == "inherit")
-						fSemantics = COLOR_SEMANTIC_INHERIT;
-					else
-						fSemantics = COLOR_SEMANTIC_CURRENT;
-                }
-                else {
-                    // BUGBUG - should change the call to take 
-					// cSRGB as parameter and return WGResult, 
-                    // so we can detect failure and return false from this function
-                    fValue = get_color_by_name_as_srgb(cSpan);
-                    set(true);
-					fSemantics = COLOR_SEMANTIC_COLOR;
+                    if (cSpan == svgval::none()) {
+                        set(true);
+                        fSemantics = COLOR_SEMANTIC_NONE;
+                    }
+                    else if (cSpan == "context-stroke")
+                    {
+                        set(true);
+                        fSemantics = COLOR_SEMANTIC_CONTEXT_STROKE;
+                    }
+                    else if (cSpan == "context-fill")
+                    {
+                        set(true);
+                        fSemantics = COLOR_SEMANTIC_CONTEXT_FILL;
+                    }
+                    else if ((cSpan == "inherit"))
+                    {
+                        set(true);
+                        fSemantics = COLOR_SEMANTIC_INHERIT;
+                    }
+                    else if (cSpan == "currentColor")
+                    {
+                        // Take on whatever color was set in the 'color'
+                        // attribute of this node, or whatever is the 
+                        // currently Active color at the time of render
+                        set(true);
+                        fSemantics = COLOR_SEMANTIC_CURRENT;
+                    }
+                    else {
+                        // BUGBUG - should change the call to take 
+                        // cSRGB as parameter and return WGResult, 
+                        // so we can detect failure and return false from this function
+                        if (get_color_by_name_as_srgb(cSpan, cSRGB) == WG_SUCCESS)
+                        {
+                            set(true);
+                            fSemantics = COLOR_SEMANTIC_COLOR;
+                        }
+                    }
                 }
             }
 
-			// If there is an opacity field, the value should be
-            // between [0..1], or a percentage.
-            // Include the opacity with the color, but DO NOT premultiply 
-            // 
-			if (opacitySpan)
-			{
-				double opacity = 1.0;
-				SVGNumberOrPercent op{};
-				ByteSpan s = opacitySpan;
-				if (readSVGNumberOrPercent(s, op))
-				{
-                    opacity = waavs::clamp01f((float)op.calculatedValue());
-                    fValue.a = clamp01f(fValue.a * opacity);
-				}
-			}
+            // Finally, assign the color value.  Apply opacity by
+            // multiplaying by whatever opacity was already parsed
+            // as part of the color.  In that way, the authored opacity
+            // is altered by the opacity field, not replaced by it.
+            fValue = cSRGB;
+            fValue.a = clamp01f(fValue.a * opacity);
 
             return true;
         }
@@ -912,6 +1017,9 @@ namespace waavs {
                 // as 'currentColor'
                 // we'll keep it separate for now until we
                 // confirm the semantic differences
+                // this is a little more tricky, we want to retrieve
+                // the inherited color, depends on whether we are
+                // stroke or fill
                 return ctx->getDefaultColor();
             }
             else if (fColor.isReference())
