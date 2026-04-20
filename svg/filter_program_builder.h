@@ -14,22 +14,20 @@
 namespace waavs
 {
 
-    namespace waavs
+    static INLINE FilterColorInterpolation parseFilterColorInterpolation(InternedKey k, FilterColorInterpolation def) noexcept
     {
-        static INLINE FilterColorInterpolation parseFilterColorInterpolation(InternedKey k) noexcept
-        {
-            // Filter effects default to linearRGB.
-            if (!k) return FILTER_COLOR_INTERPOLATION_LINEAR_RGB;
+        // Filter effects default to linearRGB.
+        if (!k) return def;
 
-            if (k == filter::kColorInterp_linearRGB()) return FILTER_COLOR_INTERPOLATION_LINEAR_RGB;
-            if (k == filter::kColorInterp_sRGB())      return FILTER_COLOR_INTERPOLATION_SRGB;
+        if (k == filter::kColorInterp_linearRGB()) return FILTER_COLOR_INTERPOLATION_LINEAR_RGB;
+        if (k == filter::kColorInterp_sRGB())      return FILTER_COLOR_INTERPOLATION_SRGB;
 
-            // If you later admit "auto" at parse time, collapse it here for now.
-            // if (k == filter::kColorInterp_auto()) return FILTER_COLOR_INTERPOLATION_LINEAR_RGB;
+        // If you later admit "auto" at parse time, collapse it here for now.
+        // if (k == filter::kColorInterp_auto()) return FILTER_COLOR_INTERPOLATION_LINEAR_RGB;
 
-            return FILTER_COLOR_INTERPOLATION_LINEAR_RGB;
-        }
+        return def;
     }
+
 
     static INLINE FilterBlendMode parseFilterBlendMode(InternedKey k) noexcept
     {
@@ -215,6 +213,11 @@ namespace waavs
     // ------------------------------------
     // Emitters for common operand types
     // ------------------------------------
+    static INLINE void emit_u64(FilterProgramStream& out, uint64_t v) noexcept
+    {
+        out.mem.push_back(v);
+    }
+
     static INLINE void emit_u32(FilterProgramStream& out, uint32_t v) noexcept
     {
         out.mem.push_back((uint64_t)v);
@@ -255,6 +258,15 @@ namespace waavs
             out.mem.push_back(u64_from_key(vals[i]));
     }
 
+    static INLINE void emit_ColorSRGB(FilterProgramStream& out, const ColorSRGB& c) noexcept
+    {
+        // We carry color as a straight sRGB color, 
+        // so we just emit that directly
+        emit_f32(out, c.r);
+        emit_f32(out, c.g);
+        emit_f32(out, c.b);
+        emit_f32(out, c.a);
+    }
 
     static INLINE InternedKey finishLast(InternedKey resultKey) noexcept
     {
@@ -690,7 +702,7 @@ namespace waavs {
 //
 //   IO prefix (in1 unused, [out])
 //   [optional subregion]
-//   rgba32Premul (u32)
+//   srgba (ColorSRGB)
 //
 // ----------------------------------------------------------------------------
 //

@@ -139,7 +139,9 @@ static void onFrameEvent(const FrameCountEvent& fe)
 	gBrowsingView.onFrameEvent(fe);
 	
 	if (gAnimate)
-	{
+	{	// update current document
+		gBrowsingView.onFrameEvent(fe);
+
 		refreshDoc();
 	}
 	else {

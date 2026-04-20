@@ -27,8 +27,7 @@ namespace waavs {
             fFeatureNames.intern(feature);
         }
 
-
-        virtual bool hasFeature(const char* feature) const
+        bool hasFeature(const char* feature) const
         {
             return fFeatureNames.hasName(feature);
         }

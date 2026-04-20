@@ -22,7 +22,8 @@ namespace waavs
 {
     enum FilterColorInterpolation : uint32_t
     {
-        FILTER_COLOR_INTERPOLATION_LINEAR_RGB = 0,
+        FILTER_COLOR_INTERPOLATION_AUTO = 0,    // When there is not an authored value
+        FILTER_COLOR_INTERPOLATION_LINEAR_RGB,
         FILTER_COLOR_INTERPOLATION_SRGB
     };
 

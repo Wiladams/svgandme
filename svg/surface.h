@@ -934,7 +934,7 @@ namespace waavs
         void fillRect(const WGRectI& r, Pixel_ARGB32 rgbaPremul) const
         {
             Surface sub;
-            if (!getSubSurface(r, sub))
+            if (getSubSurface(r, sub) != WG_SUCCESS)
                 return;
 
             wg_fill_all(sub.fInfo, rgbaPremul);

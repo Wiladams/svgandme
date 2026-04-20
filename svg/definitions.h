@@ -131,5 +131,6 @@ enum WGErrorCode : uint32_t
 #define WAAVS_HAS_NEON 0
 #endif
 
+#define WAAVS_HAS_NEON 0
 
 

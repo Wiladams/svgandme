@@ -89,25 +89,7 @@ namespace waavs
             clamp0_255_i64(b));
     }
 
-    /*
-    // Keep this around a little while until we
-    // are sure the optimized version is correct and gives the same results.
-    static INLINE uint32_t packAvgDivInfo_ref(
-        int sa, int sr, int sg, int sb,
-        const BoxBlurDivInfo& di) noexcept
-    {
-        const int a = (sa + (int)di.half) / (int)di.div;
-        const int r = (sr + (int)di.half) / (int)di.div;
-        const int g = (sg + (int)di.half) / (int)di.div;
-        const int b = (sb + (int)di.half) / (int)di.div;
 
-        return pack_argb32(
-            waavs::clamp_u8(a),
-            waavs::clamp_u8(r),
-            waavs::clamp_u8(g),
-            waavs::clamp_u8(b));
-    }
-    */
     
     // -------------------------------------------
 ///*
@@ -115,7 +97,7 @@ namespace waavs
 // which avoids the use of vdivq_s32 (which is not supported
 // on all ARMv7 targets, and is slow on ARMv8).
 
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#if WAAVS_HAS_NEON
 static INLINE void store4_packAvgDivInfo_neon(
     uint32_t* dst,
     const int32x4_t va,
@@ -249,7 +231,7 @@ static INLINE void store4_packAvgDivInfo_neon(
     }
 
 
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#if WAAVS_HAS_NEON
 
     template<int Lane>
     static INLINE void blur_lane_insert(
@@ -385,7 +367,7 @@ static INLINE void store4_packAvgDivInfo_neon(
         if (xMidBeg < xMidEnd)
         {
             const uint32_t* srow = (const uint32_t*)src.rowPointer((size_t)y);
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#if WAAVS_HAS_NEON
             boxBlurH_PRGB32_row_middle_neon(drow, srow, xMidBeg, xMidEnd, radius, div);
 #else
             boxBlurH_PRGB32_row_middle_scalar(drow, srow, xMidBeg, xMidEnd, radius, div);
@@ -434,7 +416,7 @@ static INLINE void store4_packAvgDivInfo_neon(
 
     static void boxBlurH_PRGB32(Surface& dst, const Surface& src, int radius, const WGRectI& area) noexcept
     {
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#if WAAVS_HAS_NEON
         boxBlurH_PRGB32_scalar(dst, src, radius, area);
 #else
         boxBlurH_PRGB32_scalar(dst, src, radius, area);
@@ -658,7 +640,7 @@ static INLINE void store4_packAvgDivInfo_neon(
 
     static void boxBlurV_PRGB32(Surface& dst, const Surface& src, int radius, const WGRectI& area) noexcept
     {
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#if WAAVS_HAS_NEON
         boxBlurV_PRGB32_scalar(dst, src, radius, area);
 #else
         boxBlurV_PRGB32_scalar(dst, src, radius, area);

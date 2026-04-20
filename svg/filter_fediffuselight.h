@@ -55,8 +55,8 @@ namespace waavs
             const float az = light.L[0] * (kPi / 180.0f);
             const float el = light.L[1] * (kPi / 180.0f);
 
-            lx = std::cos(el) * std::cos(az);
-            ly = std::cos(el) * std::sin(az);
+            lx = -std::cos(el) * std::cos(az);
+            ly = -std::cos(el) * std::sin(az);
             lz = std::sin(el);
             vec3_normalize(lx, ly, lz);
             return;
@@ -135,10 +135,11 @@ namespace waavs
         // For diffuse lighting, we want a fully opaque
         // pixel where the RGB channels represent the lit color, 
         // so we can composite
-        const float a = 1.0f;
+
         const float pr = clamp01f(lcR * lit);
         const float pg = clamp01f(lcG * lit);
         const float pb = clamp01f(lcB * lit);
+        const float a = max(pr, max(pg, pb)); // 1.0f;
 
         return argb32_pack_u8(
             quantize0_255(a),
@@ -147,25 +148,7 @@ namespace waavs
             quantize0_255(pb));
     }
 
-    /*
-    static INLINE uint32_t packDiffuseLightingPixel(
-        float lcR, float lcG, float lcB,
-        float lit) noexcept
-    {
-        const float a = 1.0f;
-        const float pr = clamp01f(lcR * lit);
-        const float pg = clamp01f(lcG * lit);
-        const float pb = clamp01f(lcB * lit);
-
-        return pack_argb32(a, pr, pg, pb);
-    }
-    */
-
     // --------------------------------------------
-
-
-
-
     struct DiffuseLightingRowParams
     {
         float surfaceScale{ 1.0f };
@@ -200,12 +183,6 @@ namespace waavs
         return dequantize0_255((px >> 24) & 0xFFu);
     }
 
-    static INLINE int clampIndex(int v, int lo, int hi) noexcept = delete;
-    //{
-    //    if (v < lo) return lo;
-    //    if (v > hi) return hi;
-    //    return v;
-    //}
 
     static INLINE void diffuseLighting_row_scalar(
         uint32_t* dst,

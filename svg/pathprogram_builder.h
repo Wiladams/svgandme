@@ -57,6 +57,8 @@ namespace waavs
                 return false; // invalid opcode
             }
         }
+
+        return true;
     }
 
 

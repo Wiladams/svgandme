@@ -168,9 +168,7 @@ namespace waavs
         const float pg = clamp01f(lcG * lit);
         const float pb = clamp01f(lcB * lit);
 
-        float a = pr;
-        if (pg > a) a = pg;
-        if (pb > a) a = pb;
+        float a = max(pr, max(pg, pb)); // pr;
 
         return argb32_pack_u8(
             quantize0_255(a),

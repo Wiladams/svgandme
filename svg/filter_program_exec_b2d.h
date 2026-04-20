@@ -8,10 +8,10 @@
 #include "nametable.h"
 #include "svgb2ddriver.h"
 
+#include "svgstructuretypes.h"
 #include "filter_types.h"
 #include "filter_program_exec.h"   
 #include "filter_noise.h"
-//#include "svggraphicselement.h"
 #include "viewport.h"
 
 
@@ -52,15 +52,13 @@ namespace waavs
 
         return map[i];
     }
+
+
+
 }
 
 namespace waavs
 {
-
-
-
-
-
     template<class SurfaceT>
     struct B2DFilterResourceResolver : public IFilterResourceResolver<SurfaceT>
     {
@@ -442,13 +440,21 @@ namespace waavs {
         // SourceAlpha implementation
         // --------------------------------------
 
-        static INLINE void extractAlpha_row_scalar(
-            uint32_t* dst,
-            const uint32_t* src,
-            size_t n) noexcept
+        static  void extractAlpha_row_scalar( uint32_t* dst, const uint32_t* src, size_t n) noexcept
         {
             for (size_t i = 0; i < n; ++i)
-                dst[i] = src[i] & 0xFF000000u;
+            {
+                // extract alpha to all channels, 
+                // so that we can treat it as a single-channel 
+                // heightfield for lighting calculations.
+                auto alpha = argb32_unpack_alpha_u32(src[i]);
+                uint32_t newValue = alpha;
+                if (alpha > 0)
+                {
+                    newValue *= 0x01010101u; // replicate alpha to all channels
+                }
+                dst[i] = newValue;
+            }
         }
 
 #if defined(__ARM_NEON) || defined(__aarch64__)
@@ -472,13 +478,13 @@ namespace waavs {
                 dst[i] = src[i] & 0xFF000000u;
         }
 #endif
-        static INLINE void extractAlpha_row(
+        static  void extractAlpha_row(
             uint32_t* dst,
             const uint32_t* src,
             size_t n) noexcept
         {
 #if defined(__ARM_NEON) || defined(__aarch64__)
-            extractAlpha_row_neon(dst, src, n);
+            extractAlpha_row_scalar(dst, src, n);
 #else
             extractAlpha_row_scalar(dst, src, n);
 #endif
@@ -554,6 +560,7 @@ namespace waavs {
             // Setup runstate as soon as possible
             fRunState.filterUnits = program.filterUnits;
             fRunState.primitiveUnits = program.primitiveUnits;
+            fRunState.colorInterpolation = program.colorInterpolation;
             fRunState.filterRectUS = filterRectUS;
             fRunState.objectBBoxUS = objectBBoxUS;
 
@@ -626,6 +633,9 @@ namespace waavs {
             auto srcGraphic = createSurfaceHandle(W, H);
             if (!srcGraphic)
                 return false;
+            
+            // Start out with a blank slate
+            //srcGraphic->clearAll();
 
             {
                 WGMatrix3x3 off = ctm;
@@ -664,13 +674,16 @@ namespace waavs {
 
             // Prime the pump by placing the image we just drew into 
             // the registry as the SourceGraphic.
-            if (!putImage(filter::Filter_SourceGraphic(), std::move(srcGraphic)))
+            InternedKey srcGraphicKey = filter::Filter_SourceGraphic();
+            if (!putImage(srcGraphicKey, std::move(srcGraphic)))
                 return false;
 
             // make the alpha channel available as SourceAlpha, for primitives that need it.
             // BUGBUG - maybe this can be delayed and the filter primitives that need
             // it can request it on demand.
-            auto srcAlpha = makeSourceAlpha(*getImage(filter::Filter_SourceGraphic()));
+            auto srcGraphicPtr = getImage(srcGraphicKey);
+
+            auto srcAlpha = makeSourceAlpha(*srcGraphicPtr);
             if (!srcAlpha)
                 return false;
 
@@ -1620,7 +1633,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
         // -------------------------------------------
 
         bool onDiffuseLighting(const FilterIO& io, const WGRectD* subr,
-            uint32_t lightingRGBA, float surfaceScale, float diffuseConstant,
+            const ColorSRGB & lightingColor, float surfaceScale, float diffuseConstant,
             float kernelUnitLengthX, float kernelUnitLengthY,
             uint32_t lightType, const LightPayload& light) noexcept override
         {
@@ -1655,12 +1668,9 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
 
 			// Turn the lightingRGBA into separate R,G,B components in [0,1] range.
 			// We can use ColorSRGB here since the lighting color is in sRGB space, 
-            // but since it's pre-multiplied, we can skip the gamma expansion and just do a linear dequantization.
-			ColorSRGB lightingColor = colorsrgb_from_premultiplied_Pixel_ARGB32(lightingRGBA);
+            float lcR, lcG, lcB;
+            resolveColorInterpolationRGB(lightingColor, io.colorInterp, lcR, lcG, lcB);
 
-            const float lcR = lightingColor.r;  // dequantize0_255((lightingRGBA >> 16) & 0xFF);
-            const float lcG = lightingColor.g;  // dequantize0_255((lightingRGBA >> 8) & 0xFF);
-            const float lcB = lightingColor.b;  // dequantize0_255((lightingRGBA >> 0) & 0xFF);
 
             PixelToFilterUserMap map;
             map.surfaceW = int(in->width());
@@ -1956,7 +1966,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
 
         bool onDropShadow(const FilterIO& io, const WGRectD* subr,
             float dx, float dy, float sx, float sy,
-            uint32_t rgbaPremul) noexcept override
+            ColorSRGB srgb) noexcept override
         {
             InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
@@ -2029,10 +2039,14 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
 
             // Build the colored shadow source from the input alpha.
             {
-                const uint8_t floodA = (uint8_t)((rgbaPremul >> 24) & 0xFFu);
-                const uint8_t floodR = (uint8_t)((rgbaPremul >> 16) & 0xFFu);
-                const uint8_t floodG = (uint8_t)((rgbaPremul >> 8) & 0xFFu);
-                const uint8_t floodB = (uint8_t)((rgbaPremul >> 0) & 0xFFu);
+                Pixel_ARGB32 px = Pixel_ARGB32_premultiplied_from_ColorSRGB(srgb);
+
+                uint8_t floodA, floodR, floodG, floodB;
+                argb32_unpack_u8(px, floodA, floodR, floodG, floodB);
+                //const uint8_t floodA = (uint8_t)((px >> 24) & 0xFFu);
+                //const uint8_t floodR = (uint8_t)((px >> 16) & 0xFFu);
+                //const uint8_t floodG = (uint8_t)((px >> 8) & 0xFFu);
+                //const uint8_t floodB = (uint8_t)((px >> 0) & 0xFFu);
 
                 for (int y = area.y; y < area.y + area.h; ++y)
                 {
@@ -2349,7 +2363,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
         // Type: generator
         // -------------------------------------------
 
-        bool onFlood(const FilterIO& io, const WGRectD* subr, uint32_t rgbaPremul) noexcept override
+        bool onFlood(const FilterIO& io, const WGRectD* subr, const ColorSRGB &srgb) noexcept override
         {
             InternedKey outKey = resolveOutKeyStrict(io);
 
@@ -2380,8 +2394,11 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             }
 
             // No primitive subregion means flood the entire tile.
+            // create the premultiplied value we'll use to 
+            // fill in the surface
+            Pixel_ARGB32 px = Pixel_ARGB32_premultiplied_from_ColorSRGB(srgb);
             if (!subr) {
-                out->fillAll(rgbaPremul);
+                out->fillAll(px);
                 if (!putImage(outKey, std::move(out)))
                     return false;
                 setLastKey(outKey);
@@ -2396,7 +2413,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             out->clearAll();
 
             if (area.w > 0 && area.h > 0)
-                out->fillRect(area, rgbaPremul);
+                out->fillRect(area, px);
 
             if (!putImage(outKey, std::move(out)))
                 return false;
@@ -2411,6 +2428,187 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
         // unary
         // -----------------------------------------
 
+        bool onGaussianBlur(const FilterIO& io, const WGRectD* subr,
+            float sx, float sy) noexcept override
+        {
+            InternedKey inKey = resolveUnaryInputKey(io);
+            Surface* in = getInputImage(inKey);
+            if (!in)
+                return false;
+
+            InternedKey outKey = resolveOutKeyStrict(io);
+            if (!outKey)
+                outKey = filter::Filter_Last();
+
+            auto out = createLikeSurfaceHandle(*in);
+            if (!out)
+                return false;
+
+            auto primLenToUser = [&](double v, double range) noexcept -> double {
+                switch (fRunState.primitiveUnits) {
+                default:
+                case SpaceUnitsKind::SVG_SPACE_USER:
+                    return v;
+                case SpaceUnitsKind::SVG_SPACE_OBJECT:
+                    return v * range;
+                case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
+                    return v;
+                }
+                };
+
+            if (sx < 0.0f) sx = 0.0f;
+            if (sy < 0.0f) sy = 0.0f;
+
+            const double sxUS = primLenToUser((double)sx, (double)fRunState.objectBBoxUS.w);
+            const double syUS = primLenToUser((double)sy, (double)fRunState.objectBBoxUS.h);
+
+            const double sxPx = sxUS * std::abs((double)fSpace.sx);
+            const double syPx = syUS * std::abs((double)fSpace.sy);
+
+            WGRectI writeArea = resolveSubregionPx(subr, *in);
+
+            out->clearAll();
+
+            if (writeArea.w <= 0 || writeArea.h <= 0)
+            {
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+                setLastKey(outKey);
+                return true;
+            }
+
+            const bool doX = sxPx > 0.0;
+            const bool doY = syPx > 0.0;
+
+            if (!doX && !doY)
+            {
+                Surface srcView;
+                if (!in->getSubSurface(writeArea, srcView))
+                    return false;
+
+                out->blit(srcView, writeArea.x, writeArea.y);
+
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+
+                setLastKey(outKey);
+                return true;
+            }
+
+            int boxX[3] = { 1, 1, 1 };
+            int boxY[3] = { 1, 1, 1 };
+
+            if (doX)
+                boxesForGauss(sxPx, 3, boxX);
+            if (doY)
+                boxesForGauss(syPx, 3, boxY);
+
+            int rx[3] = { 0, 0, 0 };
+            int ry[3] = { 0, 0, 0 };
+
+            if (doX)
+            {
+                rx[0] = (boxX[0] - 1) / 2;
+                rx[1] = (boxX[1] - 1) / 2;
+                rx[2] = (boxX[2] - 1) / 2;
+            }
+
+            if (doY)
+            {
+                ry[0] = (boxY[0] - 1) / 2;
+                ry[1] = (boxY[1] - 1) / 2;
+                ry[2] = (boxY[2] - 1) / 2;
+            }
+
+            const int padPxX = rx[0] + rx[1] + rx[2];
+            const int padPxY = ry[0] + ry[1] + ry[2];
+
+            WGRectI sampleArea = writeArea;
+            sampleArea.x -= padPxX;
+            sampleArea.y -= padPxY;
+            sampleArea.w += padPxX * 2;
+            sampleArea.h += padPxY * 2;
+
+            WGRectI surfaceBounds{ 0, 0, (int)in->width(), (int)in->height() };
+            sampleArea = intersection(sampleArea, surfaceBounds);
+
+            if (sampleArea.w <= 0 || sampleArea.h <= 0)
+            {
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+                setLastKey(outKey);
+                return true;
+            }
+
+            Surface tmp0;
+            Surface tmp1;
+
+            if (!tmp0.reset(in->width(), in->height()))
+                return false;
+            if (!tmp1.reset(in->width(), in->height()))
+                return false;
+
+            tmp0.clearAll();
+            tmp1.clearAll();
+
+            const Surface* curSrc = in;
+            Surface* curDst = &tmp0;
+
+            for (int pass = 0; pass < 3; ++pass)
+            {
+                if (doX && rx[pass] > 0)
+                {
+                    boxBlurH_PRGB32(*curDst, *curSrc, rx[pass], sampleArea);
+                    curSrc = curDst;
+                    curDst = (curDst == &tmp0) ? &tmp1 : &tmp0;
+                }
+
+                if (doY && ry[pass] > 0)
+                {
+                    boxBlurV_PRGB32(*curDst, *curSrc, ry[pass], sampleArea);
+                    curSrc = curDst;
+                    curDst = (curDst == &tmp0) ? &tmp1 : &tmp0;
+                }
+            }
+
+            const bool didAnyPass =
+                (doX && (rx[0] > 0 || rx[1] > 0 || rx[2] > 0)) ||
+                (doY && (ry[0] > 0 || ry[1] > 0 || ry[2] > 0));
+
+            if (!didAnyPass)
+            {
+                Surface srcView;
+                if (!in->getSubSurface(writeArea, srcView))
+                    return false;
+
+                out->blit(srcView, writeArea.x, writeArea.y);
+
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+
+                setLastKey(outKey);
+                return true;
+            }
+
+            // Copy only the primitive result area to the output.
+            {
+                const Surface& blurred = *curSrc;
+                for (int y = writeArea.y; y < writeArea.y + writeArea.h; ++y)
+                {
+                    const uint32_t* srow = (const uint32_t*)blurred.rowPointer((size_t)y);
+                    uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
+                    std::memcpy(drow + writeArea.x, srow + writeArea.x, (size_t)writeArea.w * 4u);
+                }
+            }
+
+            if (!putImage(outKey, std::move(out)))
+                return false;
+
+            setLastKey(outKey);
+            return true;
+        }
+
+        /*
         bool onGaussianBlur(const FilterIO& io, const WGRectD* subr,
             float sx, float sy) noexcept override
         {
@@ -2600,7 +2798,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             setLastKey(outKey);
             return true;
         }
-
+        */
 
 
 
@@ -2608,8 +2806,11 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
         // onImage()
         // Type: generator
         // -----------------------------------------
-        bool onImage(const FilterIO& io, const WGRectD* subr, InternedKey imageKey,
-            AspectRatioAlignKind align, AspectRatioMeetOrSliceKind mos) noexcept override
+        bool onImage(const FilterIO& io, 
+            const WGRectD* subr, 
+            InternedKey imageKey,
+            AspectRatioAlignKind align, 
+            AspectRatioMeetOrSliceKind mos) noexcept override
         {
             if (!fResolver)
                 return false;
@@ -2835,7 +3036,83 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
         // onOffset
         // unary
         // -----------------------------------------
-        ///*
+
+        bool onOffset(const FilterIO& io, const WGRectD* subr, float dx, float dy) noexcept override
+        {
+            InternedKey inKey = resolveUnaryInputKey(io);
+            InternedKey outKey = resolveOutKeyStrict(io);
+
+            Surface* in = getInputImage(inKey);
+            if (!in)
+                return false;
+
+            if (!outKey)
+                outKey = filter::Filter_Last();
+
+            auto out = createLikeSurfaceHandle(*in);
+            if (!out)
+                return false;
+
+            out->clearAll();
+
+            const WGRectI area = resolveSubregionPx(subr, *in);
+            if (area.w <= 0 || area.h <= 0)
+            {
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+                setLastKey(outKey);
+                return true;
+            }
+
+            // Convert dx/dy from primitive units to user space.
+            double dxUS = (double)dx;
+            double dyUS = (double)dy;
+
+            switch (fRunState.primitiveUnits)
+            {
+            default:
+            case SpaceUnitsKind::SVG_SPACE_USER:
+                break;
+
+            case SpaceUnitsKind::SVG_SPACE_OBJECT:
+                dxUS *= (double)fRunState.objectBBoxUS.w;
+                dyUS *= (double)fRunState.objectBBoxUS.h;
+                break;
+
+            case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
+                break;
+            }
+
+            // Map the offset vector through the linear part of the CTM.
+            const WGMatrix3x3& m = fSpace.ctm;
+            const int offX = (int)std::lround(dxUS * m.m00 + dyUS * m.m10);
+            const int offY = (int)std::lround(dxUS * m.m01 + dyUS * m.m11);
+
+            // Restrict writes to the resolved primitive subregion.
+            // This preserves the behavior of the existing implementation:
+            // output is clear everywhere except where the translated image lands
+            // inside 'area'.
+            Surface outArea;
+            if (out->getSubSurface(area, outArea) != WG_SUCCESS)
+                return false;
+
+            // 'outArea' has local coordinates [0..area.w, 0..area.h), but maps to
+            // global destination coordinates [area.x..area.x+area.w, area.y..area.y+area.h).
+            //
+            // A global blit at (offX, offY) becomes a local blit at:
+            //   (offX - area.x, offY - area.y)
+            //
+            // wg_blit()/Surface::blit() will clip source and destination automatically.
+            outArea.blit(*in, offX - area.x, offY - area.y);
+
+            if (!putImage(outKey, std::move(out)))
+                return false;
+
+            setLastKey(outKey);
+            return true;
+        }
+
+        /*
 bool onOffset(const FilterIO& io, const WGRectD* subr, float dx, float dy) noexcept override
 {
     InternedKey inKey = resolveUnaryInputKey(io);
@@ -2931,7 +3208,7 @@ bool onOffset(const FilterIO& io, const WGRectD* subr, float dx, float dy) noexc
     setLastKey(outKey);
     return true;
 }
-        //*/
+        */
 
 
 
@@ -2940,7 +3217,8 @@ bool onOffset(const FilterIO& io, const WGRectD* subr, float dx, float dy) noexc
         // ------------------------------------------
 
 bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
-    uint32_t lightingRGBA, float surfaceScale,
+    const ColorSRGB& lightingColor,
+    float surfaceScale,
     float specularConstant, float specularExponent,
     float kernelUnitLengthX, float kernelUnitLengthY,
     uint32_t lightType, const LightPayload& light) noexcept override
@@ -2971,10 +3249,9 @@ bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
         return true;
     }
 
-    ColorSRGB lightingColor = colorsrgb_from_premultiplied_Pixel_ARGB32(lightingRGBA);
-    const float lcR = lightingColor.r;  // dequantize0_255((lightingRGBA >> 16) & 0xFF);
-    const float lcG = lightingColor.g;  // dequantize0_255((lightingRGBA >> 8) & 0xFF);
-    const float lcB = lightingColor.b;  // dequantize0_255((lightingRGBA >> 0) & 0xFF);
+    float lcR, lcG, lcB;
+    resolveColorInterpolationRGB(lightingColor, io.colorInterp, lcR, lcG, lcB);
+
 
 
     specularExponent = clamp(specularExponent, 1.0f, 128.0f);
@@ -3091,6 +3368,65 @@ bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
         // then it will repeat
         // -----------------------------------------
 
+bool onTile(const FilterIO& io, const WGRectD* subr) noexcept override
+{
+    InternedKey inKey = resolveUnaryInputKey(io);
+    InternedKey outKey = resolveOutKeyStrict(io);
+
+    Surface* in = getInputImage(inKey);
+    if (!in)
+        return false;
+
+    if (!outKey)
+        outKey = filter::Filter_Last();
+
+    auto out = createLikeSurfaceHandle(*in);
+    if (!out)
+        return false;
+
+    out->clearAll();
+
+    const WGRectI area = resolveSubregionPx(subr, *in);
+    if (area.w <= 0 || area.h <= 0)
+    {
+        if (!putImage(outKey, std::move(out)))
+            return false;
+
+        setLastKey(outKey);
+        return true;
+    }
+
+    Surface outArea;
+    if (out->getSubSurface(area, outArea) != WG_SUCCESS)
+        return false;
+
+    const int tileW = (int)in->width();
+    const int tileH = (int)in->height();
+
+    // Compute phase so tiling is stable
+    int startX = area.x % tileW;
+    if (startX < 0) startX += tileW;
+
+    int startY = area.y % tileH;
+    if (startY < 0) startY += tileH;
+
+    // Fill using repeated blits
+    for (int y = -startY; y < area.h; y += tileH)
+    {
+        for (int x = -startX; x < area.w; x += tileW)
+        {
+            outArea.blit(*in, x, y);
+        }
+    }
+
+    if (!putImage(outKey, std::move(out)))
+        return false;
+
+    setLastKey(outKey);
+    return true;
+}
+
+/*
         bool onTile(const FilterIO& io, const WGRectD* subr) noexcept override
         {
             InternedKey inKey = resolveUnaryInputKey(io);
@@ -3141,6 +3477,7 @@ bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
 
             return true;
         }
+        */
 
         // -----------------------------------------
         // onTurbulence

@@ -727,6 +727,14 @@ namespace waavs {
 			setName(colorField);
 		}
 
+        void setValue(float r, float g, float b, float a = 1.0f) noexcept
+        {
+            colorsrgb_reset(fValue, r, g, b, a);
+            fSemantics = COLOR_SEMANTIC_COLOR;
+            set(true);
+            setNeedsBinding(false);
+        }
+
 		ColorSRGB value() const { return fValue; }
         
         bool isSymbolicType(uint32_t aType) const noexcept 
@@ -828,7 +836,7 @@ namespace waavs {
                 ByteSpan s = opacitySpan;
                 if (readSVGNumberOrPercent(s, op))
                 {
-                    opacity = waavs::clamp01f((float)op.calculatedValue());
+                    opacity = clamp01f((float)op.calculatedValue());
                     fSemantics = COLOR_SEMANTIC_COLOR;
                     set(true);
                 }
@@ -936,10 +944,10 @@ namespace waavs {
                 }
             }
 
-            // Finally, assign the color value.  Apply opacity by
-            // multiplaying by whatever opacity was already parsed
-            // as part of the color.  In that way, the authored opacity
-            // is altered by the opacity field, not replaced by it.
+            // Finally, assign the color value.  
+            // Since we are not premultiplying, 
+            // we apply (multiply) the opacity against the alpha
+            // channel, but we don't modify the r,g,b values.
             fValue = cSRGB;
             fValue.a = clamp01f(fValue.a * opacity);
 

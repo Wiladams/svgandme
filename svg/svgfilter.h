@@ -69,11 +69,12 @@ namespace waavs
     };
 
     // Parse: <number> [<number>]
+    // Note: negative numbers are treated as 0, per SVG spec.
+    // 
     // Uses readNextNumber(), so it naturally accepts comma/space separators.
     static INLINE bool parseNumberPair(ByteSpan s, SVGNumberPair& out) noexcept
     {
-        s = chunk_trim(s, chrWspChars);
-        //s.skipSpaces();
+        s.skipSpaces();
 
         if (!s) { out.set(0.0f); return false; }
 
@@ -360,6 +361,7 @@ namespace waavs
         FilterOpId fOperator{ FOP_END };
 
         // Common attributes
+        FilterColorInterpolation fColorInterpolation{ FilterColorInterpolation::FILTER_COLOR_INTERPOLATION_AUTO };
         InternedKey fIn{nullptr};
         InternedKey fIn2{nullptr};
         InternedKey fResult{nullptr};  // optional
@@ -428,19 +430,33 @@ namespace waavs
         // -------------------------------------------
         void emitCommonIO(FilterProgramStream& out,const InternedKey in1,const InternedKey in2, const uint8_t flags) const noexcept
         {
-            out.mem.push_back(u64_from_key(in1));
-            if (flags & FOPF_HAS_IN2) 
-                out.mem.push_back(u64_from_key(in2));
+            // push the interpolation mode for this op,
+            // so that the executor can switch modes if needed.
+            if (fColorInterpolation == FilterColorInterpolation::FILTER_COLOR_INTERPOLATION_AUTO)
+                emit_u32(out, out.colorInterpolation);
+            else
+                emit_u32(out, fColorInterpolation);
 
-            if (flags & FOPF_HAS_OUT) 
-                out.mem.push_back(u64_from_key(fResult));
+            emit_key(out, in1);
+
+            if (flags & FOPF_HAS_IN2)
+            {
+                emit_key(out, in2);
+                //out.mem.push_back(u64_from_key(in2));
+            }
+
+            if (flags & FOPF_HAS_OUT)
+            {
+                emit_key(out, fResult);
+                //out.mem.push_back(u64_from_key(fResult));
+            }
 
             if (flags & FOPF_HAS_SUBR)
             {
-                out.mem.push_back(packNumberOrPercent(fX));
-                out.mem.push_back(packNumberOrPercent(fY));
-                out.mem.push_back(packNumberOrPercent(fWidth));
-                out.mem.push_back(packNumberOrPercent(fHeight));
+                emit_u64(out, packNumberOrPercent(fX));
+                emit_u64(out, packNumberOrPercent(fY));
+                emit_u64(out, packNumberOrPercent(fWidth));
+                emit_u64(out, packNumberOrPercent(fHeight));
             }
         }
 
@@ -476,6 +492,13 @@ namespace waavs
         {
             double dpi = groot ? groot->dpi() : 96.0;
             BLFont* fontOpt = nullptr;
+
+            ByteSpan interpAttr{};
+            if (getAttribute(filter::color_interpolation_filters(), interpAttr))
+            {
+                InternedKey interpKey = PSNameTable::INTERN(interpAttr);
+                fColorInterpolation = parseFilterColorInterpolation(interpKey, FilterColorInterpolation::FILTER_COLOR_INTERPOLATION_AUTO);
+            }
 
             ByteSpan fInAttr{}, fIn2Attr{}, fResultAttr{};
             if (getAttribute(filter::in(), fInAttr)) { fIn = PSNameTable::INTERN(fInAttr);}
@@ -850,7 +873,7 @@ namespace waavs
         static void registerSingularNode()
         {
             registerSVGSingularNodeByName("feColorMatrix", [](IAmGroot* groot, const XmlElement& elem) {
-                auto node = std::make_shared<SVGFeColorMatrixElement>(groot);
+                auto node = std::make_shared<SVGFeColorMatrixElement>();
                 node->loadFromXmlElement(elem, groot);
                 
                 return node;
@@ -860,7 +883,7 @@ namespace waavs
         static void registerFactory()
         {
             registerContainerNodeByName("feColorMatrix", [](IAmGroot* groot, XmlPull& iter) {
-                auto node = std::make_shared<SVGFeColorMatrixElement>(groot);
+                auto node = std::make_shared<SVGFeColorMatrixElement>();
                 node->loadFromXmlPull(iter, groot);
                 
                 return node;
@@ -880,7 +903,7 @@ namespace waavs
             0,0,0,1,0
         };
 
-        SVGFeColorMatrixElement(IAmGroot* )
+        SVGFeColorMatrixElement()
             : SVGFilterPrimitiveElement(FOP_COLOR_MATRIX)
         {
         }
@@ -1079,7 +1102,9 @@ namespace waavs
 
             ByteSpan kulAttr{};
             if (getAttribute(filter::kernelUnitLength(), kulAttr))
+            {
                 parseFloatPairAttr(kulAttr, fKernelUnitLengthX, fKernelUnitLengthY);
+            }
 
             ByteSpan paAttr{};
             if (getAttribute(filter::preserveAlpha(), paAttr))
@@ -1098,7 +1123,7 @@ namespace waavs
         static void registerSingularNode()
         {
             registerSVGSingularNodeByName("feDiffuseLighting", [](IAmGroot* groot, const XmlElement& elem) {
-                auto node = std::make_shared<SVGFeDiffuseLightingElement>(groot);
+                auto node = std::make_shared<SVGFeDiffuseLightingElement>();
                 node->loadFromXmlElement(elem, groot);
 
                 return node;
@@ -1108,7 +1133,7 @@ namespace waavs
         static void registerFactory()
         {
             registerContainerNodeByName("feDiffuseLighting", [](IAmGroot* groot, XmlPull& iter) {
-                auto node = std::make_shared<SVGFeDiffuseLightingElement>(groot);
+                auto node = std::make_shared<SVGFeDiffuseLightingElement>();
                 node->loadFromXmlPull(iter, groot);
                 return node;
                 });
@@ -1117,7 +1142,7 @@ namespace waavs
         }
 
         // -------------------------------------------------
-        Pixel_ARGB32 fLightingColorRGBA32{ 0xFFFFFFFFu };
+        SVGColor fLightingColor{ filter::lighting_color(), nullptr };
         float fSurfaceScale{ 1.0f };
         float fDiffuseConstant{ 1.0f };
         float fKernelUnitLengthX{ 0.0f };
@@ -1126,14 +1151,14 @@ namespace waavs
         float fLight[8]{};
 
 
-        SVGFeDiffuseLightingElement(IAmGroot* )
+        SVGFeDiffuseLightingElement( )
             : SVGFilterPrimitiveElement(FOP_DIFFUSE_LIGHTING)
         {
         }
 
         bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
         {
-            emit_u32(out, fLightingColorRGBA32);
+            emit_ColorSRGB(out, fLightingColor.value());
             emit_f32(out, fSurfaceScale);
             emit_f32(out, fDiffuseConstant);
             emit_f32(out, fKernelUnitLengthX);
@@ -1143,8 +1168,6 @@ namespace waavs
 
             return true;
         }
-
-
 
         void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
         {
@@ -1156,12 +1179,10 @@ namespace waavs
                 parseFloatPairAttr(kulAttr, fKernelUnitLengthX, fKernelUnitLengthY);
 
             // get the lighting color
-            SVGColor lColor(filter::lighting_color(), nullptr);
-            if (lColor.loadFromAttributes(fAttributes) && lColor.isColor())
+            if (!fLightingColor.loadFromAttributes(fAttributes))
             {
-                fLightingColorRGBA32 = Pixel_ARGB32_premultiplied_from_ColorSRGB(lColor.value());
-            } else 
-                fLightingColorRGBA32 = 0xFFFFFFFFu;
+                fLightingColor.setValue(1.0f, 1.0f, 1.0f, 1.0f);
+            }
 
             fLightType = FILTER_LIGHT_DISTANT;
             for (int i = 0; i < 8; ++i)
@@ -1180,6 +1201,7 @@ namespace waavs
 
                 n->fixupStyleAttributes(groot);
 
+                // If feDistantLight element
                 if (nm == filter::feDistantLight())
                 {
                     fLightType = FILTER_LIGHT_DISTANT;
@@ -1320,13 +1342,11 @@ namespace waavs
         float fDx{ 2.0f };
         float fDy{ 2.0f };
         SVGNumberPair fStdDeviation{};
-        uint32_t fFloodRGBA32Premul{ 0xFF000000u };
+        SVGColor fFloodColor{ filter::flood_color(), filter::flood_opacity() };
 
         SVGFeDropShadowElement(IAmGroot*)
             : SVGFilterPrimitiveElement(FOP_DROP_SHADOW)
         {
-
-
             // SVG default stdDeviation is 2 in common authoring practice for drop shadow?
             // Spec default is 0 if omitted. Keep the builder literal to spec behavior.
             fStdDeviation.set(0.0f);
@@ -1340,7 +1360,8 @@ namespace waavs
             emit_f32(out, fDy);
             emit_f32(out, fStdDeviation.a);
             emit_f32(out, fStdDeviation.hasB ? fStdDeviation.b : fStdDeviation.a);
-            emit_u32(out, fFloodRGBA32Premul);
+            //emit_u32(out, fFloodRGBA32Premul);
+            emit_ColorSRGB(out, fFloodColor.value());
 
             return true;
         }
@@ -1391,52 +1412,12 @@ namespace waavs
 
             // flood-color + flood-opacity
             // Same approach as feFlood.
-            fFloodRGBA32Premul = 0xFF000000u;
-
-            SVGColor sColor(filter::flood_color(), filter::flood_opacity());
-            if (sColor.loadFromAttributes(fAttributes))
+            if (!fFloodColor.loadFromAttributes(fAttributes) || !fFloodColor.isColor())
             {
-                BLRgba32 bColor = BLRgba32_premultiplied_from_ColorSRGB(sColor.value());
-                fFloodRGBA32Premul = bColor.value;
+                // default to black on failure
+                fFloodColor.setValue(0.0f, 0.0f, 0.0f, 1.0f);
             }
-/*
-            ByteSpan colorAttr{};
-            if (getAttribute(filter::flood_color(), colorAttr))
-            {
-                double opacity = 1.0;
-                ByteSpan opacityAttr{};
-                if (getAttribute(filter::flood_opacity(), opacityAttr))
-                {
-                    parseNumber(opacityAttr, opacity);
-                    if (opacity < 0.0) opacity = 0.0;
-                    if (opacity > 1.0) opacity = 1.0;
-                }
 
-                SVGPaint paint(groot);
-                paint.loadFromChunk(colorAttr);
-                paint.setOpacity((float)opacity);
-
-                BLVar c = paint.getVariant(nullptr, groot);
-                if (blVarToRgba32(&c, &fFloodRGBA32Premul) != BL_SUCCESS)
-                    fFloodRGBA32Premul = 0xFF000000u;
-            }
-            else
-            {
-                // If flood-color is omitted, SVG default is black.
-                // Respect flood-opacity if present.
-                double opacity = 1.0;
-                ByteSpan opacityAttr{};
-                if (getAttribute(filter::flood_opacity(), opacityAttr))
-                {
-                    parseNumber(opacityAttr, opacity);
-                    if (opacity < 0.0) opacity = 0.0;
-                    if (opacity > 1.0) opacity = 1.0;
-                }
-
-                const uint32_t a = (uint32_t)clamp0_255_i64((int)std::lround(opacity * 255.0));
-                fFloodRGBA32Premul = (a << 24);
-            }
-            */
         }
     };
 
@@ -1468,8 +1449,8 @@ namespace waavs
         }
 
         // -------------------------------------------------
-
-        uint32_t fFloodRGBA32Premul{ 0xFF000000u };
+        SVGColor fFloodColor{ filter::flood_color(), filter::flood_opacity() };
+        //uint32_t fFloodRGBA32Premul{ 0xFF000000u };
 
         SVGFeFloodElement(IAmGroot* )
             : SVGFilterPrimitiveElement(FOP_FLOOD)
@@ -1486,45 +1467,18 @@ namespace waavs
 
         bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
         {
-            emit_u32(out, fFloodRGBA32Premul);
+            emit_ColorSRGB(out, fFloodColor.value());
+            //emit_u32(out, fFloodRGBA32Premul);
 
             return true;
         }
 
         void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
         {
-            // default flood color black
-            fFloodRGBA32Premul = 0xFF000000u;
-
-            SVGColor sColor(filter::flood_color(), filter::flood_opacity());
-            if (sColor.loadFromAttributes(fAttributes))
+            if (fFloodColor.loadFromAttributes(fAttributes))
             {
-                BLRgba32 bColor = BLRgba32_premultiplied_from_ColorSRGB(sColor.value());
-                fFloodRGBA32Premul = bColor.value;
+                // nothing to do, we were successful in loading the color
             }
-
-/*
-            ByteSpan colorAttr{};
-            if (getAttribute(filter::flood_color(), colorAttr)) 
-            {
-                // Get the flood-opacity if specified, defaulting to 1.0
-                double opacity = 1.0f;
-                ByteSpan opacityAttr{};
-                if (getAttribute(filter::flood_opacity(), opacityAttr)) {
-                    parseNumber(opacityAttr, opacity);
-                    opacity = clamp(opacity, 0.0, 1.0);
-                }
-
-                SVGPaint paint();
-                paint.loadFromChunk(colorAttr);
-                paint.setOpacity((float)opacity);
-
-                BLVar c = paint.getVariant(nullptr, groot);
-                if (blVarToRgba32(&c, &fFloodRGBA32Premul) != BL_SUCCESS) {
-                    fFloodRGBA32Premul = 0xFF000000u; // default black with full opacity
-                }
-            }
-*/
         }
     };
 
@@ -1933,7 +1887,7 @@ namespace waavs
         static void registerSingularNode()
         {
             registerSVGSingularNodeByName("feSpecularLighting", [](IAmGroot* groot, const XmlElement& elem) {
-                auto node = std::make_shared<SVGFeSpecularLightingElement>(groot);
+                auto node = std::make_shared<SVGFeSpecularLightingElement>();
                 node->loadFromXmlElement(elem, groot);
                 return node;
                 });
@@ -1942,7 +1896,7 @@ namespace waavs
         static void registerFactory()
         {
             registerContainerNodeByName("feSpecularLighting", [](IAmGroot* groot, XmlPull& iter) {
-                auto node = std::make_shared<SVGFeSpecularLightingElement>(groot);
+                auto node = std::make_shared<SVGFeSpecularLightingElement>();
                 node->loadFromXmlPull(iter, groot);
                 return node;
                 });
@@ -1950,7 +1904,7 @@ namespace waavs
             registerSingularNode();
         }
 
-        uint32_t fLightingColorRGBA32{ 0xFFFFFFFFu };
+        SVGColor fLightingColor{ filter::lighting_color(), nullptr };
         float fSurfaceScale{ 1.0f };
         float fSpecularConstant{ 1.0f };
         float fSpecularExponent{ 1.0f };
@@ -1959,7 +1913,7 @@ namespace waavs
         FilterLightType fLightType{ FILTER_LIGHT_DISTANT };
         float fLight[8]{};
 
-        SVGFeSpecularLightingElement(IAmGroot*)
+        SVGFeSpecularLightingElement()
             : SVGFilterPrimitiveElement(FOP_SPECULAR_LIGHTING)
         {
             printf("feSpecularLighting\n");
@@ -1969,7 +1923,8 @@ namespace waavs
         {
             (void)last;
 
-            emit_u32(out, fLightingColorRGBA32);
+            //emit_u32(out, fLightingColorRGBA32);
+            emit_ColorSRGB(out, fLightingColor.value());
             emit_f32(out, fSurfaceScale);
             emit_f32(out, fSpecularConstant);
             emit_f32(out, fSpecularExponent);
@@ -1991,12 +1946,12 @@ namespace waavs
             if (getAttribute(filter::kernelUnitLength(), kulAttr))
                 parseFloatPairAttr(kulAttr, fKernelUnitLengthX, fKernelUnitLengthY);
 
-            SVGColor lColor(filter::lighting_color(), nullptr);
-            if (lColor.loadFromAttributes(fAttributes) && lColor.isColor())
+            if (!fLightingColor.loadFromAttributes(fAttributes))
             {
-                fLightingColorRGBA32 = Pixel_ARGB32_premultiplied_from_ColorSRGB(lColor.value());
-            } else 
-                fLightingColorRGBA32 = 0xFFFFFFFFu;
+                fLightingColor.setValue(1.0f, 1.0f, 1.0f, 1.0f);
+            }
+
+
 
             fLightType = FILTER_LIGHT_DISTANT;
             for (int i = 0; i < 8; ++i)
@@ -2352,13 +2307,13 @@ namespace waavs {
                     fPrimitiveUnits = (SpaceUnitsKind)v;
             }
 
-            /*
-            if (getAttribute(filter::color_interpolation_filters(), fuA)) 
+            ByteSpan interpAttr{};
+            if (getAttribute(filter::color_interpolation_filters(), interpAttr))
             {
-                InternedKey interpKey = PSNameTable::INTERN(fuA);
-                fColorInterpolation = (FilterColorInterpolation)parseFilterColorInterpolation(interpKey);
+                InternedKey interpKey = PSNameTable::INTERN(interpAttr);
+                fColorInterpolation = parseFilterColorInterpolation(interpKey, FilterColorInterpolation::FILTER_COLOR_INTERPOLATION_LINEAR_RGB);
             }
-            */
+            
         }
 
         // Inherit properties from a reference node

@@ -1,3 +1,4 @@
+// filter_program_exec.h
 #pragma once
 
 #include <memory>
@@ -15,6 +16,27 @@
 
 namespace waavs
 {
+    static  void resolveColorInterpolationRGB(
+        const ColorSRGB& in,
+        FilterColorInterpolation interp,
+        float& r,
+        float& g,
+        float& b) noexcept
+    {
+        if (interp == FILTER_COLOR_INTERPOLATION_LINEAR_RGB)
+        {
+            const ColorLinear lin = coloring_srgb_to_linear(in);
+            r = clamp01f(lin.r);
+            g = clamp01f(lin.g);
+            b = clamp01f(lin.b);
+        }
+        else if (interp == FILTER_COLOR_INTERPOLATION_SRGB)
+        {
+            r = clamp01f(in.r);
+            g = clamp01f(in.g);
+            b = clamp01f(in.b);
+        }
+    }
 
     // -----------------------------------------
     // Small decode helpers
@@ -50,9 +72,20 @@ namespace waavs
     static INLINE uint32_t   take_u32(FilterProgramCursor& c) noexcept { return u32_from_u64(c.take()); }
     static INLINE uint64_t   take_u64(FilterProgramCursor& c) noexcept { return c.take(); }
 
+    INLINE ColorSRGB take_ColorSRGB(FilterProgramCursor& c)
+    {
+        ColorSRGB out;
+        out.r = take_f32(c);
+        out.g = take_f32(c);
+        out.b = take_f32(c);
+        out.a = take_f32(c);
+        return out;
+    }
+
 
     struct FilterIO
     {
+        FilterColorInterpolation colorInterp;
         InternedKey in1{};
         InternedKey in2{};
         InternedKey out{};     // nullptr means "implicit last"
@@ -165,11 +198,6 @@ namespace waavs
                 return r ? r : implicitInputFallback();
             }
 
-            //INLINE InternedKey resolveBinaryInput1Key(const FilterIO& io) const noexcept
-            //{
-            //    return resolveExplicitOrImplicitInputKey(io.in1);
-            //}
-
             INLINE InternedKey resolveBinaryInput2Key(const FilterIO& io) const noexcept
             {
                 return resolveExplicitOrImplicitInputKey(io.in2);
@@ -195,6 +223,8 @@ namespace waavs
         // State associated with a running program
         struct FilterRunState
         {
+            FilterColorInterpolation colorInterpolation{ FilterColorInterpolation::FILTER_COLOR_INTERPOLATION_LINEAR_RGB };
+            
             // Filter-level coordinate systems
             SpaceUnitsKind filterUnits{ SpaceUnitsKind::SVG_SPACE_OBJECT };
             SpaceUnitsKind primitiveUnits{ SpaceUnitsKind::SVG_SPACE_USER };
@@ -370,8 +400,10 @@ namespace waavs
             return true;
         }
 
-        virtual bool onFlood(const FilterIO&, const WGRectD*,
-            uint32_t /*rgbaPremul*/) noexcept {
+        virtual bool onFlood(const FilterIO&, 
+            const WGRectD*,
+            const ColorSRGB& ) noexcept 
+        {
             return true;
         }
 
@@ -408,7 +440,7 @@ namespace waavs
         }
 
         virtual bool onDiffuseLighting(const FilterIO&, const WGRectD*,
-            uint32_t /*lightingRGBA*/, 
+            const ColorSRGB& ,
             float /*surfaceScale*/, 
             float /*diffuseConstant*/,
             float /*kernelUnitLengthX*/, 
@@ -419,16 +451,23 @@ namespace waavs
         }
 
         virtual bool onSpecularLighting(const FilterIO&, const WGRectD*,
-            uint32_t /*lightingRGBA*/, float /*surfaceScale*/,
-            float /*specularConstant*/, float /*specularExponent*/,
-            float /*kernelUnitLengthX*/, float /*kernelUnitLengthY*/,
-            uint32_t /*lightType*/, const LightPayload& /*light*/) noexcept {
+            const ColorSRGB & /*lightingRGBA*/, 
+            float /*surfaceScale*/,
+            float /*specularConstant*/, 
+            float /*specularExponent*/,
+            float /*kernelUnitLengthX*/, 
+            float /*kernelUnitLengthY*/,
+            uint32_t /*lightType*/, 
+            const LightPayload& /*light*/) noexcept {
             return true;
         }
 
         virtual bool onDropShadow(const FilterIO&, const WGRectD*,
-            float /*dx*/, float /*dy*/, float /*sx*/, float /*sy*/,
-            uint32_t /*rgbaPremul*/) noexcept {
+            float /*dx*/, 
+            float /*dy*/, 
+            float /*sx*/, 
+            float /*sy*/,
+            ColorSRGB ) noexcept {
             return true;
         }
 
@@ -472,11 +511,14 @@ namespace waavs
         INLINE float       takeF32() noexcept { return take_f32(cur()); }
         INLINE uint32_t    takeU32() noexcept { return take_u32(cur()); }
         INLINE uint64_t    takeU64() noexcept { return take_u64(cur()); }
+        INLINE ColorSRGB    takeColorSRGB() { return take_ColorSRGB(cur()); }
 
         void decodeCommonPrefix(uint8_t flags, FilterProgramCursor& c,
             FilterIO& io, WGRectD& subr, const WGRectD*& subrPtr) noexcept
         {
             io = {};
+
+            io.colorInterp = takeEnum<FilterColorInterpolation>();
             io.in1 = take_key(c);
 
             if (flags & FOPF_HAS_IN2) {
@@ -789,8 +831,9 @@ namespace waavs
             const WGRectD* subrPtr{};
             decodeCommon(flags, io, subr, subrPtr);
 
-            const uint32_t rgba = takeU32();
-            return onFlood(io, subrPtr, rgba);
+            ColorSRGB c = takeColorSRGB();
+            //const uint32_t rgba = takeU32();
+            return onFlood(io, subrPtr, c);
         }
 
         bool image(uint8_t flags) noexcept
@@ -887,7 +930,7 @@ namespace waavs
             const WGRectD* subrPtr{};
             decodeCommon(flags, io, subr, subrPtr);
 
-            const uint32_t rgba = takeU32();
+            const ColorSRGB srgb = takeColorSRGB();
             const float surfaceScale = takeF32();
             const float diffuseC = takeF32();
             const float kulx = takeF32();
@@ -898,7 +941,7 @@ namespace waavs
             for (int i = 0; i < 8; ++i)
                 L.L[i] = takeF32();
 
-            return onDiffuseLighting(io, subrPtr, rgba, surfaceScale, diffuseC, kulx, kuly, lightType, L);
+            return onDiffuseLighting(io, subrPtr, srgb, surfaceScale, diffuseC, kulx, kuly, lightType, L);
         }
 
         bool specularLighting(uint8_t flags) noexcept
@@ -908,7 +951,8 @@ namespace waavs
             const WGRectD* subrPtr{};
             decodeCommon(flags, io, subr, subrPtr);
 
-            const uint32_t rgba = takeU32();
+            //const uint32_t rgba = takeU32();
+            ColorSRGB srgb = takeColorSRGB();
             const float surfaceScale = takeF32();
             const float specC = takeF32();
             const float specExp = takeF32();
@@ -920,7 +964,7 @@ namespace waavs
             for (int i = 0; i < 8; ++i)
                 L.L[i] = takeF32();
 
-            return onSpecularLighting(io, subrPtr, rgba, surfaceScale, specC, specExp, kulx, kuly, lightType, L);
+            return onSpecularLighting(io, subrPtr, srgb, surfaceScale, specC, specExp, kulx, kuly, lightType, L);
         }
 
         bool dropShadow(uint8_t flags) noexcept
@@ -934,9 +978,9 @@ namespace waavs
             const float dy = takeF32();
             const float sx = takeF32();
             const float sy = takeF32();
-            const uint32_t rgba = takeU32();
+            const ColorSRGB srgb = takeColorSRGB();
 
-            return onDropShadow(io, subrPtr, dx, dy, sx, sy, rgba);
+            return onDropShadow(io, subrPtr, dx, dy, sx, sy, srgb);
         }
 
         // -----------------------------------------
