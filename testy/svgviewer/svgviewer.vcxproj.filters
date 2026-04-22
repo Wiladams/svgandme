@@ -371,5 +371,14 @@
     <ClInclude Include="..\..\svg\maths_transcend.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\svg\pixeling_blend.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\surface_info.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\waavsgraph.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

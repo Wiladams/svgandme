@@ -70,12 +70,12 @@ namespace waavs {
 
             // Fill attributes
             SVGFillPaint::registerFactory();
-            SVGFillOpacity::registerFactory();
+            //SVGFillOpacity::registerFactory();    // don't register as we handle alpha directly
             SVGFillRuleAttribute::registerFactory();
 
             // Stroke attributes
             SVGStrokePaint::registerFactory();
-            SVGStrokeOpacity::registerFactory();
+            //SVGStrokeOpacity::registerFactory();  // don't register, as we handle alpha directly
 
             SVGStrokeLineCap::registerFactory();
             SVGStrokeLineJoin::registerFactory();

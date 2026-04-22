@@ -15,14 +15,14 @@
 #include "viewport.h"
 
 
-
-#include "filter_fecomposite.h"
 #include "filter_feblend.h"
-#include "filter_fegaussian.h"
 #include "filter_fecolormatrix.h"
+#include "filter_fecomponenttransfer.h"
+#include "filter_fecomposite.h"
+#include "filter_fediffuselight.h"
+#include "filter_fegaussian.h"
 #include "filter_femorphology.h"
 #include "filter_fespecularlight.h"
-#include "filter_fediffuselight.h"
 
 namespace waavs
 {
@@ -748,7 +748,6 @@ namespace waavs {
             InternedKey in2Key = resolveBinaryInput2Key(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
-
             Surface* in1 = getInputImage(in1Key);
             Surface* in2 = getInputImage(in2Key);
             if (!in1 || !in2)
@@ -768,6 +767,7 @@ namespace waavs {
             {
                 if (!putImage(outKey, std::move(out)))
                     return false;
+
                 setLastKey(outKey);
                 return true;
             }
@@ -784,17 +784,29 @@ namespace waavs {
             {
                 if (!putImage(outKey, std::move(out)))
                     return false;
+
                 setLastKey(outKey);
                 return true;
             }
 
-            for (int y = y0; y < y1; ++y)
-            {
-                const uint32_t* s1 = (const uint32_t*)in1->rowPointer((size_t)y);
-                const uint32_t* s2 = (const uint32_t*)in2->rowPointer((size_t)y);
-                uint32_t* d = (uint32_t*)out->rowPointer((size_t)y);
+            const WGRectI clipped{ x0, y0, x1 - x0, y1 - y0 };
 
-                feBlendRowPRGB32(d + x0, s1 + x0, s2 + x0, x1 - x0, mode);
+            const WGBlendMode wgMode = to_wg_blend_mode(mode);
+
+
+
+            const WGFilterColorSpace wgColorSpace =
+                to_WGFilterColorSpace(io.colorInterp);
+
+            if (wg_blend_rect(
+                out->fInfo,
+                in1->fInfo,
+                in2->fInfo,
+                clipped,
+                wgMode,
+                wgColorSpace) != WG_SUCCESS)
+            {
+                return false;
             }
 
             if (!putImage(outKey, std::move(out)))
@@ -803,6 +815,7 @@ namespace waavs {
             setLastKey(outKey);
             return true;
         }
+
 
 
 
@@ -814,122 +827,65 @@ namespace waavs {
         // integer / half way to NEON
         // -------------------------------------------
 
-bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
-    FilterColorMatrixType type, float param, F32Span matrix) noexcept override
-{
-    InternedKey inKey = resolveUnaryInputKey(io);
-    InternedKey outKey = resolveOutKeyStrict(io);
-
-    Surface* in = getInputImage(inKey);
-    if (!in)
-        return false;
-
-    if (!outKey)
-        outKey = filter::Filter_Last();
-
-    auto out = createLikeSurfaceHandle(*in);
-    if (!out)
-        return false;
-
-    // doing full blit is a bit of a waste
-    // what we really want is a transparent black for the
-    // full thing, then only fillin what our area marks up
-    out->blit(*in, 0, 0);
-    //out->clearAll();
-
-    WGRectI area = resolveSubregionPx(subr, *in);
-    if (area.w <= 0 || area.h <= 0)
-    {
-        if (!putImage(outKey, std::move(out)))
-            return false;
-
-        setLastKey(outKey);
-        return true;
-    }
-
-    float Mf[20]{};
-
-    if (type == FILTER_COLOR_MATRIX_MATRIX)
-    {
-        if (!matrix.p || matrix.n != 20)
-            return false;
-
-        for (int i = 0; i < 20; ++i)
-            Mf[i] = matrix.p[i];
-    }
-    else if (type == FILTER_COLOR_MATRIX_SATURATE)
-    {
-        const float s = param;
-
-        Mf[0]  = 0.213f + 0.787f * s;  Mf[1]  = 0.715f - 0.715f * s;  Mf[2]  = 0.072f - 0.072f * s;  Mf[3]  = 0.0f;  Mf[4]  = 0.0f;
-        Mf[5]  = 0.213f - 0.213f * s;  Mf[6]  = 0.715f + 0.285f * s;  Mf[7]  = 0.072f - 0.072f * s;  Mf[8]  = 0.0f;  Mf[9]  = 0.0f;
-        Mf[10] = 0.213f - 0.213f * s;  Mf[11] = 0.715f - 0.715f * s;  Mf[12] = 0.072f + 0.928f * s;  Mf[13] = 0.0f;  Mf[14] = 0.0f;
-        Mf[15] = 0.0f;                 Mf[16] = 0.0f;                 Mf[17] = 0.0f;                 Mf[18] = 1.0f;  Mf[19] = 0.0f;
-    }
-    else if (type == FILTER_COLOR_MATRIX_HUE_ROTATE)
-    {
-        const float a = param * 3.14159265358979323846f / 180.0f;
-        const float c = std::cos(a);
-        const float s = std::sin(a);
-
-        Mf[0]  = 0.213f + 0.787f * c - 0.213f * s;
-        Mf[1]  = 0.715f - 0.715f * c - 0.715f * s;
-        Mf[2]  = 0.072f - 0.072f * c + 0.928f * s;
-        Mf[3]  = 0.0f;
-        Mf[4]  = 0.0f;
-
-        Mf[5]  = 0.213f - 0.213f * c + 0.143f * s;
-        Mf[6]  = 0.715f + 0.285f * c + 0.140f * s;
-        Mf[7]  = 0.072f - 0.072f * c - 0.283f * s;
-        Mf[8]  = 0.0f;
-        Mf[9]  = 0.0f;
-
-        Mf[10] = 0.213f - 0.213f * c - 0.787f * s;
-        Mf[11] = 0.715f - 0.715f * c + 0.715f * s;
-        Mf[12] = 0.072f + 0.928f * c + 0.072f * s;
-        Mf[13] = 0.0f;
-        Mf[14] = 0.0f;
-
-        Mf[15] = 0.0f;
-        Mf[16] = 0.0f;
-        Mf[17] = 0.0f;
-        Mf[18] = 1.0f;
-        Mf[19] = 0.0f;
-    }
-    else
-    {
-        // luminanceToAlpha
-        Mf[0]  = 0.0f;    Mf[1]  = 0.0f;    Mf[2]  = 0.0f;    Mf[3]  = 0.0f;    Mf[4]  = 0.0f;
-        Mf[5]  = 0.0f;    Mf[6]  = 0.0f;    Mf[7]  = 0.0f;    Mf[8]  = 0.0f;    Mf[9]  = 0.0f;
-        Mf[10] = 0.0f;    Mf[11] = 0.0f;    Mf[12] = 0.0f;    Mf[13] = 0.0f;    Mf[14] = 0.0f;
-        Mf[15] = 0.2125f; Mf[16] = 0.7154f; Mf[17] = 0.0721f; Mf[18] = 0.0f;    Mf[19] = 0.0f;
-    }
-
-    // Fast identity bypass.
-    {
-        static constexpr float kId[20] =
+        bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
+            FilterColorMatrixType type, float param, F32Span matrix) noexcept override
         {
-            1,0,0,0,0,
-            0,1,0,0,0,
-            0,0,1,0,0,
-            0,0,0,1,0
-        };
+            InternedKey inKey = resolveUnaryInputKey(io);
+            InternedKey outKey = resolveOutKeyStrict(io);
 
-        bool isIdentity = true;
-        for (int i = 0; i < 20; ++i)
-        {
-            if (std::fabs(Mf[i] - kId[i]) > 1.0e-6f)
+            Surface* in = getInputImage(inKey);
+            if (!in)
+                return false;
+
+            if (!outKey)
+                outKey = filter::Filter_Last();
+
+            auto out = createLikeSurfaceHandle(*in);
+            if (!out)
+                return false;
+
+            // Preserve existing behavior:
+            // copy the full input, then only rewrite the effected subregion.
+            //out->blit(*in, 0, 0);
+            out->clearAll();
+
+            WGRectI area = resolveSubregionPx(subr, *in);
+            if (area.w <= 0 || area.h <= 0)
             {
-                isIdentity = false;
-                break;
-            }
-        }
+                if (!putImage(outKey, std::move(out)))
+                    return false;
 
-        if (isIdentity)
-        {
-            //Surface srcSub{};
-            //if (in->getSubSurface(area, srcSub))
-            //    out->blit(srcSub, area.x, area.y);
+                setLastKey(outKey);
+                return true;
+            }
+
+            const int W = (int)in->width();
+            const int H = (int)in->height();
+
+            const int x0 = max(area.x, 0);
+            const int y0 = max(area.y, 0);
+            const int x1 = min(area.x + area.w, W);
+            const int y1 = min(area.y + area.h, H);
+
+            if (x0 >= x1 || y0 >= y1)
+            {
+                if (!putImage(outKey, std::move(out)))
+                    return false;
+
+                setLastKey(outKey);
+                return true;
+            }
+
+            const WGRectI clipped{ x0, y0, x1 - x0, y1 - y0 };
+
+            const WGFilterColorSpace cs = to_WGFilterColorSpace(io.colorInterp);
+
+            ColorMatrixPrepared M{};
+            if (!prepare_colormatrix(M, type, param, matrix, cs))
+                return false;
+
+            if (wg_colormatrix_rect(out->fInfo, in->fInfo, clipped, M) != WG_SUCCESS)
+                return false;
 
             if (!putImage(outKey, std::move(out)))
                 return false;
@@ -937,114 +893,142 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             setLastKey(outKey);
             return true;
         }
-    }
-
-    ColorMatrixQ88 Mq{};
-    for (int row = 0; row < 4; ++row)
-    {
-        const int b = row * 5;
-
-        Mq.c[b + 0] = (int32_t)std::lround(Mf[b + 0] * 256.0f);
-        Mq.c[b + 1] = (int32_t)std::lround(Mf[b + 1] * 256.0f);
-        Mq.c[b + 2] = (int32_t)std::lround(Mf[b + 2] * 256.0f);
-        Mq.c[b + 3] = (int32_t)std::lround(Mf[b + 3] * 256.0f);
-
-        // Bias is specified in normalized color space.
-        // Convert to byte domain first, then to Q8.8.
-        Mq.c[b + 4] = (int32_t)std::lround(Mf[b + 4] * 255.0f * 256.0f);
-    }
-
-    static uint16_t sInvAlphaQ8[256];
-    static bool sInvAlphaInit = false;
-
-    if (!sInvAlphaInit)
-    {
-        sInvAlphaQ8[0] = 0;
-        for (int a = 1; a < 256; ++a)
-            sInvAlphaQ8[a] = (uint16_t)((255u << 8) / (uint32_t)a);
-
-        sInvAlphaInit = true;
-    }
-
-    for (int y = area.y; y < area.y + area.h; ++y)
-    {
-        const uint32_t* srow = (const uint32_t*)in->rowPointer((size_t)y);
-        uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
-
-        colorMatrix_q88_row(
-            drow + area.x,
-            srow + area.x,
-            (size_t)area.w,
-            Mq,
-            sInvAlphaQ8);
-    }
-
-    if (!putImage(outKey, std::move(out)))
-        return false;
-
-    setLastKey(outKey);
-    return true;
-}
 
         // ----------------------------------------
         // onComponentTransfer()
         // unary
         // ----------------------------------------
-        static float applyTransferFunc(const ComponentFunc& f, float x) noexcept
+        bool onComponentTransfer(const FilterIO& io, const WGRectD* subr,
+            const ComponentFunc& rF,
+            const ComponentFunc& gF,
+            const ComponentFunc& bF,
+            const ComponentFunc& aF) noexcept override
         {
-            x = clamp01f(x);
+            InternedKey inKey = resolveUnaryInputKey(io);
+            InternedKey outKey = resolveOutKeyStrict(io);
 
-            switch (f.type)
+            Surface* in = getInputImage(inKey);
+            if (!in)
+                return false;
+
+            if (!outKey)
+                outKey = filter::Filter_Last();
+
+            auto out = createLikeSurfaceHandle(*in);
+            if (!out)
+                return false;
+
+            // Current executor model for this primitive:
+            // preserve the full input, then rewrite only the primitive region.
+            out->blit(*in, 0, 0);
+
+            WGRectI area = resolveSubregionPx(subr, *in);
+            if (area.w <= 0 || area.h <= 0)
             {
-            default:
-            case FILTER_TRANSFER_IDENTITY:
-                return x;
+                if (!putImage(outKey, std::move(out)))
+                    return false;
 
-            case FILTER_TRANSFER_LINEAR:
-                return clamp01f(f.p0 * x + f.p1);
-
-            case FILTER_TRANSFER_GAMMA:
-                return clamp01f(f.p0 * std::pow(x, f.p1) + f.p2);
-
-            case FILTER_TRANSFER_TABLE:
-            {
-                if (!f.table.p || f.table.n == 0)
-                    return x;
-
-                if (f.table.n == 1)
-                    return clamp01f(f.table.p[0]);
-
-                if (x >= 1.0f)
-                    return clamp01f(f.table.p[f.table.n - 1]);
-
-                const float pos = x * float(f.table.n - 1);
-                uint32_t i0 = (uint32_t)std::floor(pos);
-                if (i0 >= f.table.n - 1)
-                    i0 = f.table.n - 2;
-
-                const uint32_t i1 = i0 + 1;
-                const float t = pos - float(i0);
-
-                return clamp01f(f.table.p[i0] * (1.0f - t) + f.table.p[i1] * t);
+                setLastKey(outKey);
+                return true;
             }
 
-            case FILTER_TRANSFER_DISCRETE:
+            const int W = (int)in->width();
+            const int H = (int)in->height();
+
+            const int x0 = max(area.x, 0);
+            const int y0 = max(area.y, 0);
+            const int x1 = min(area.x + area.w, W);
+            const int y1 = min(area.y + area.h, H);
+
+            if (x0 >= x1 || y0 >= y1)
             {
-                if (!f.table.p || f.table.n == 0)
-                    return x;
+                if (!putImage(outKey, std::move(out)))
+                    return false;
 
-                if (x >= 1.0f)
-                    return clamp01f(f.table.p[f.table.n - 1]);
-
-                uint32_t idx = (uint32_t)std::floor(x * float(f.table.n));
-                if (idx >= f.table.n)
-                    idx = f.table.n - 1;
-
-                return clamp01f(f.table.p[idx]);
+                setLastKey(outKey);
+                return true;
             }
+
+            const WGFilterColorSpace cs = to_WGFilterColorSpace(io.colorInterp);
+            const bool useLinearRGB = (cs == WG_FILTER_COLORSPACE_LINEAR_RGB);
+
+            for (int y = y0; y < y1; ++y)
+            {
+                const uint32_t* srow = (const uint32_t*)in->rowPointer((size_t)y);
+                uint32_t* drow = (uint32_t*)out->rowPointer((size_t)y);
+
+                for (int x = x0; x < x1; ++x)
+                {
+                    const uint32_t px = srow[x];
+
+                    // Stored surface pixels are premultiplied ARGB32.
+                    const float a_p = dequantize0_255((px >> 24) & 0xFFu);
+                    const float r_p = dequantize0_255((px >> 16) & 0xFFu);
+                    const float g_p = dequantize0_255((px >> 8) & 0xFFu);
+                    const float b_p = dequantize0_255((px >> 0) & 0xFFu);
+
+                    // feComponentTransfer operates on non-premultiplied values.
+                    float a = a_p;
+                    float r = 0.0f;
+                    float g = 0.0f;
+                    float b = 0.0f;
+
+                    if (a_p > 0.0f)
+                    {
+                        const float invA = 1.0f / a_p;
+                        r = clamp01f(r_p * invA);
+                        g = clamp01f(g_p * invA);
+                        b = clamp01f(b_p * invA);
+                    }
+
+                    // Convert straight RGB into the primitive working color space.
+                    if (useLinearRGB)
+                    {
+                        r = clamp01f(coloring_srgb_component_to_linear(r));
+                        g = clamp01f(coloring_srgb_component_to_linear(g));
+                        b = clamp01f(coloring_srgb_component_to_linear(b));
+                    }
+
+                    // Apply transfer functions in straight RGBA working space.
+                    float rr = applyTransferFunc(rF, r);
+                    float gg = applyTransferFunc(gF, g);
+                    float bb = applyTransferFunc(bF, b);
+                    float aa = applyTransferFunc(aF, a);
+
+                    rr = clamp01f(rr);
+                    gg = clamp01f(gg);
+                    bb = clamp01f(bb);
+                    aa = clamp01f(aa);
+
+                    // Convert RGB back from working space to storage sRGB space.
+                    if (useLinearRGB)
+                    {
+                        rr = clamp01f(coloring_linear_component_to_srgb(rr));
+                        gg = clamp01f(coloring_linear_component_to_srgb(gg));
+                        bb = clamp01f(coloring_linear_component_to_srgb(bb));
+                    }
+
+                    // Re-premultiply for storage.
+                    rr *= aa;
+                    gg *= aa;
+                    bb *= aa;
+
+                    drow[x] = argb32_pack_u8(
+                        quantize0_255(aa),
+                        quantize0_255(rr),
+                        quantize0_255(gg),
+                        quantize0_255(bb));
+                }
             }
+
+            if (!putImage(outKey, std::move(out)))
+                return false;
+
+            setLastKey(outKey);
+            return true;
         }
 
+        /*
         bool onComponentTransfer(const FilterIO& io, const WGRectD* subr,
             const ComponentFunc& rF,
             const ComponentFunc& gF,
@@ -1150,10 +1134,24 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             setLastKey(outKey);
             return true;
         }
-
+        */
 
 
         //-----------------------------------------
+        WGCompositeOp WGCompositeOpFromFilterCompositeOp(FilterCompositeOp op) noexcept
+        {
+            switch (op)
+            {
+            case FILTER_COMPOSITE_OVER: return WG_COMP_SRC_OVER; break;
+            case FILTER_COMPOSITE_IN:   return WG_COMP_SRC_IN;   break;
+            case FILTER_COMPOSITE_OUT:  return WG_COMP_SRC_OUT;  break;
+            case FILTER_COMPOSITE_ATOP: return WG_COMP_SRC_ATOP; break;
+            case FILTER_COMPOSITE_XOR:  return WG_COMP_SRC_XOR;  break;
+            default: return WG_COMP_SRC_COPY;
+            }
+
+            return WG_COMP_SRC_COPY;
+        }
 
         bool onComposite(const FilterIO& io, const WGRectD* subr,
             FilterCompositeOp op,
@@ -1289,6 +1287,23 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             }
             else
             {
+                WGCompositeOp surfOp = WGCompositeOpFromFilterCompositeOp(op);
+                // Restrict work to the subregion via views
+                Surface outArea;
+                Surface in1Area;
+                Surface in2Area;
+
+                if (out->getSubSurface(WGRectI{ x0, y0, x1 - x0, y1 - y0 }, outArea) != WG_SUCCESS)
+                    return false;
+                if (in1->getSubSurface(WGRectI{ x0, y0, x1 - x0, y1 - y0 }, in1Area) != WG_SUCCESS)
+                    return false;
+                if (in2->getSubSurface(WGRectI{ x0, y0, x1 - x0, y1 - y0 }, in2Area) != WG_SUCCESS)
+                    return false;
+
+                outArea.blit(in2Area, 0, 0);
+                outArea.compositeBlit(in1Area, 0, 0, surfOp);
+
+                /*
                 for (int y = y0; y < y1; ++y)
                 {
                     const uint32_t* s1 = (const uint32_t*)in1->rowPointer((size_t)y);
@@ -1321,6 +1336,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                         return false;
                     }
                 }
+                */
             }
 
             if (!putImage(outKey, std::move(out)))
@@ -1334,6 +1350,45 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
         // ------------------------------------------
         // onConvolveMatrix
         // -------------------------------------------
+        static INLINE uint32_t samplePixelEdge(const Surface& s, int x, int y, FilterEdgeMode edgeMode) noexcept
+        {
+            const int W = (int)s.width();
+            const int H = (int)s.height();
+
+            if (W <= 0 || H <= 0)
+                return 0u;
+
+            switch (edgeMode)
+            {
+            case FILTER_EDGE_WRAP:
+                // Wrap coordinates periodically into the image extent.
+                x %= W;
+                y %= H;
+
+                if (x < 0) x += W;
+                if (y < 0) y += H;
+                break;
+
+            case FILTER_EDGE_NONE:
+                // Outside image contributes transparent black.
+                if (x < 0 || y < 0 || x >= W || y >= H)
+                    return 0u;
+                break;
+
+            case FILTER_EDGE_DUPLICATE:
+            default:
+                // Clamp to nearest valid edge pixel.
+                if (x < 0) x = 0;
+                else if (x >= W) x = W - 1;
+
+                if (y < 0) y = 0;
+                else if (y >= H) y = H - 1;
+                break;
+            }
+
+            const uint32_t* row = (const uint32_t*)s.rowPointer((size_t)y);
+            return row[x];
+        }
 
         bool onConvolveMatrix(const FilterIO& io, const WGRectD* subr,
             uint32_t orderX, uint32_t orderY,
@@ -2057,10 +2112,10 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
                     {
                         const uint8_t sa = (uint8_t)((srow[x] >> 24) & 0xFFu);
 
-                        const uint8_t a = (uint8_t)(mul0_255(uint32_t(sa), uint32_t(floodA)));
-                        const uint8_t r = (uint8_t)(mul0_255(uint32_t(sa), uint32_t(floodR)));
-                        const uint8_t g = (uint8_t)(mul0_255(uint32_t(sa), uint32_t(floodG)));
-                        const uint8_t b = (uint8_t)(mul0_255(uint32_t(sa), uint32_t(floodB)));
+                        const uint8_t a = (uint8_t)(mul255_round_u8(uint32_t(sa), uint32_t(floodA)));
+                        const uint8_t r = (uint8_t)(mul255_round_u8(uint32_t(sa), uint32_t(floodR)));
+                        const uint8_t g = (uint8_t)(mul255_round_u8(uint32_t(sa), uint32_t(floodG)));
+                        const uint8_t b = (uint8_t)(mul255_round_u8(uint32_t(sa), uint32_t(floodB)));
 
                         drow[x] = argb32_pack_u8(a, r, g, b);
                     }
@@ -2933,6 +2988,8 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             if (!out)
                 return false;
 
+
+
             double rxUS = (double)rx;
             double ryUS = (double)ry;
 
@@ -2958,7 +3015,7 @@ bool onColorMatrix(const FilterIO& io, const WGRectD* subr,
             WGRectI area = resolveSubregionPx(subr, *in);
             if (area.w <= 0 || area.h <= 0)
             {
-                out->clearAll();
+                //out->clearAll();
 
                 if (!putImage(outKey, std::move(out)))
                     return false;
@@ -3215,6 +3272,75 @@ bool onOffset(const FilterIO& io, const WGRectD* subr, float dx, float dy) noexc
         // -----------------------------------------
         // onSpecularLighting
         // ------------------------------------------
+        //     // pixelHeightFromAlpha()
+    //
+    // Interprets the alpha channel of a pixel as a height value in [0,1].
+    //
+static INLINE float pixelHeightFromAlpha(const Surface& s, int x, int y) noexcept
+{
+    const int W = (int)s.width();
+    const int H = (int)s.height();
+
+    if (W <= 0 || H <= 0)
+        return 0.0f;
+
+    if (x < 0) x = 0;
+    else if (x >= W) x = W - 1;
+
+    if (y < 0) y = 0;
+    else if (y >= H) y = H - 1;
+
+    const uint32_t* row = (const uint32_t*)s.rowPointer((size_t)y);
+    const uint32_t px = row[x];
+
+    return argb32_unpack_alpha_norm(px);
+}
+
+
+    // computeHeightNormal()
+    //
+    // Computes the normal vector at pixel (x,y) by sampling the alpha channel of
+    //
+static INLINE void computeHeightNormal(const Surface& s,
+    int x, int y,
+    float surfaceScale,
+    float dux, float duy,
+    float& nx, float& ny, float& nz) noexcept
+{
+    const float hL = pixelHeightFromAlpha(s, x - 1, y);
+    const float hR = pixelHeightFromAlpha(s, x + 1, y);
+    const float hU = pixelHeightFromAlpha(s, x, y - 1);
+    const float hD = pixelHeightFromAlpha(s, x, y + 1);
+
+    float dHx = 0.0f;
+    float dHy = 0.0f;
+
+    if (dux > 0.0f)
+        dHx = (hR - hL) / (2.0f * dux);
+
+    if (duy > 0.0f)
+        dHy = (hD - hU) / (2.0f * duy);
+
+    nx = -surfaceScale * dHx;
+    ny = -surfaceScale * dHy;
+    nz = 1.0f;
+
+    const float len2 = nx * nx + ny * ny + nz * nz;
+    if (len2 > 1e-20f)
+    {
+        const float invLen = 1.0f / std::sqrt(len2);
+        nx *= invLen;
+        ny *= invLen;
+        nz *= invLen;
+    }
+    else
+    {
+        nx = 0.0f;
+        ny = 0.0f;
+        nz = 1.0f;
+    }
+}
+
 
 bool onSpecularLighting(const FilterIO& io, const WGRectD* subr,
     const ColorSRGB& lightingColor,

@@ -5,158 +5,86 @@
 #include "filter_program.h"
 #include "nametable.h"
 #include "svgdatatypes.h"
-#include "surface.h"
 
 
-
-// Converting from string keys to enum values
-// for filter attributes that have a closed vocabulary
+// --------------------------------------
+// Encoder Helpers
+// 
+// Helpers to pack and unpack various types into the 64-bit mem words of the filter program.
+// --------------------------------------
 namespace waavs
 {
-
-    static INLINE FilterColorInterpolation parseFilterColorInterpolation(InternedKey k, FilterColorInterpolation def) noexcept
+    // Encode/decode u32 <-> u64 by storing the u32 in the low 32 bits of the u64.
+    static INLINE uint64_t u64_from_u32(uint32_t v) noexcept
     {
-        // Filter effects default to linearRGB.
-        if (!k) return def;
-
-        if (k == filter::kColorInterp_linearRGB()) return FILTER_COLOR_INTERPOLATION_LINEAR_RGB;
-        if (k == filter::kColorInterp_sRGB())      return FILTER_COLOR_INTERPOLATION_SRGB;
-
-        // If you later admit "auto" at parse time, collapse it here for now.
-        // if (k == filter::kColorInterp_auto()) return FILTER_COLOR_INTERPOLATION_LINEAR_RGB;
-
-        return def;
+        return (uint64_t)v;
+    }
+    
+    static INLINE uint32_t u32_from_u64(uint64_t v) noexcept
+    {
+        return (uint32_t)(v & 0xFFFFFFFFu);
     }
 
-
-    static INLINE FilterBlendMode parseFilterBlendMode(InternedKey k) noexcept
+    // Encode two u32 values into a single u64, with 'a' in the low 32 bits and 'b' in the high 32 bits.
+    static INLINE uint64_t u64_pack_u32x2(uint32_t a, uint32_t b) noexcept
     {
-        if (!k) return FILTER_BLEND_NORMAL;
-
-
-        if (k == filter::kBlend_normal())     return FILTER_BLEND_NORMAL;
-        if (k == filter::kBlend_multiply())   return FILTER_BLEND_MULTIPLY;
-        if (k == filter::kBlend_screen())     return FILTER_BLEND_SCREEN;
-        if (k == filter::kBlend_darken())     return FILTER_BLEND_DARKEN;
-        if (k == filter::kBlend_lighten())    return FILTER_BLEND_LIGHTEN;
-        if (k == filter::kBlend_overlay())    return FILTER_BLEND_OVERLAY;
-        if (k == filter::kBlend_color_dodge()) return FILTER_BLEND_COLOR_DODGE;
-        if (k == filter::kBlend_color_burn())  return FILTER_BLEND_COLOR_BURN;
-        if (k == filter::kBlend_hard_light())  return FILTER_BLEND_HARD_LIGHT;
-        if (k == filter::kBlend_soft_light())  return FILTER_BLEND_SOFT_LIGHT;
-        if (k == filter::kBlend_difference()) return FILTER_BLEND_DIFFERENCE;
-        if (k == filter::kBlend_exclusion())  return FILTER_BLEND_EXCLUSION;
-
-        return FILTER_BLEND_NORMAL;
+        return (uint64_t)a | ((uint64_t)b << 32);
+    }
+    
+    static INLINE void u32x2_from_u64(uint64_t v, uint32_t& a, uint32_t& b) noexcept
+    {
+        a = (uint32_t)(v & 0xFFFFFFFFu);
+        b = (uint32_t)(v >> 32);
     }
 
-    static INLINE FilterCompositeOp parseFilterCompositeOp(InternedKey k) noexcept
+    // Encode a float as a uint64_t with the float bits in the low 32 bits.
+    static INLINE uint64_t u64_from_f32(float f) noexcept
     {
-        if (!k) return FILTER_COMPOSITE_OVER;
-
-
-        if (k == filter::kCompOp_over())       return FILTER_COMPOSITE_OVER;
-        if (k == filter::kCompOp_in())         return FILTER_COMPOSITE_IN;
-        if (k == filter::kCompOp_out())        return FILTER_COMPOSITE_OUT;
-        if (k == filter::kCompOp_atop())       return FILTER_COMPOSITE_ATOP;
-        if (k == filter::kCompOp_xor())        return FILTER_COMPOSITE_XOR;
-        if (k == filter::kCompOp_arithmetic()) return FILTER_COMPOSITE_ARITHMETIC;
-
-        return FILTER_COMPOSITE_OVER;
+        static_assert(sizeof(float) == 4, "Expected float to be 32 bits");
+        uint32_t u{};
+        memcpy(&u, &f, 4);
+        return (uint64_t)u;
     }
 
-    static INLINE FilterColorMatrixType parseFilterColorMatrixType(InternedKey k) noexcept
+    // Encode/decode a float stored in the low 32 bits of a uint64_t.
+    static INLINE float f32_from_u64(uint64_t v) noexcept
     {
-        if (!k) return FILTER_COLOR_MATRIX_MATRIX;
-
-        static InternedKey kMatrix = PSNameTable::INTERN("matrix");
-        static InternedKey kSaturate = PSNameTable::INTERN("saturate");
-        static InternedKey kHueRotate = PSNameTable::INTERN("hueRotate");
-        static InternedKey kLuminanceToAlpha = PSNameTable::INTERN("luminanceToAlpha");
-
-        if (k == kMatrix)           return FILTER_COLOR_MATRIX_MATRIX;
-        if (k == kSaturate)         return FILTER_COLOR_MATRIX_SATURATE;
-        if (k == kHueRotate)        return FILTER_COLOR_MATRIX_HUE_ROTATE;
-        if (k == kLuminanceToAlpha) return FILTER_COLOR_MATRIX_LUMINANCE_TO_ALPHA;
-
-        return FILTER_COLOR_MATRIX_MATRIX;
+        uint32_t u = (uint32_t)(v & 0xFFFFFFFFu);
+        float f{};
+        memcpy(&f, &u, 4);
+        return f;
+    }
+    
+    static INLINE double f64_from_u64(uint64_t v) noexcept
+    {
+        double d{};
+        memcpy(&d, &v, 8);
+        return d;
     }
 
-    static INLINE FilterTransferFuncType parseFilterTransferFuncType(InternedKey k) noexcept
+    // Encode a double as a uint64_t with the double bits in the full 64 bits.
+    static INLINE uint64_t u64_from_f64(double d) noexcept
     {
-        if (!k) return FILTER_TRANSFER_IDENTITY;
+        uint64_t u{};
+        static_assert(sizeof(double) == 8, "double must be 64-bit");
+        memcpy(&u, &d, 8);
 
-        static InternedKey kIdentity = PSNameTable::INTERN("identity");
-        static InternedKey kTable = PSNameTable::INTERN("table");
-        static InternedKey kDiscrete = PSNameTable::INTERN("discrete");
-        static InternedKey kLinear = PSNameTable::INTERN("linear");
-        static InternedKey kGamma = PSNameTable::INTERN("gamma");
-
-        if (k == kIdentity) return FILTER_TRANSFER_IDENTITY;
-        if (k == kTable)    return FILTER_TRANSFER_TABLE;
-        if (k == kDiscrete) return FILTER_TRANSFER_DISCRETE;
-        if (k == kLinear)   return FILTER_TRANSFER_LINEAR;
-        if (k == kGamma)    return FILTER_TRANSFER_GAMMA;
-
-        return FILTER_TRANSFER_IDENTITY;
+        return u;
     }
 
-    static INLINE FilterMorphologyOp parseFilterMorphologyOp(InternedKey k) noexcept
+    // pack/unpack InternedKey as a uint64_t by storing the pointer bits.
+    static INLINE uint64_t u64_from_key(InternedKey k) noexcept
     {
-        if (!k) return FILTER_MORPHOLOGY_ERODE;
+        // InternedKey is a pointer type; store its bits.
+        static_assert(sizeof(uintptr_t) <= sizeof(uint64_t), "pointer must fit in 64 bits");
 
-        static InternedKey kErode = PSNameTable::INTERN("erode");
-        static InternedKey kDilate = PSNameTable::INTERN("dilate");
-
-        if (k == kErode)  return FILTER_MORPHOLOGY_ERODE;
-        if (k == kDilate) return FILTER_MORPHOLOGY_DILATE;
-
-        return FILTER_MORPHOLOGY_ERODE;
+        uintptr_t p = (uintptr_t)k;
+        return (uint64_t)p;
     }
 
-    static INLINE FilterEdgeMode parseFilterEdgeMode(InternedKey k) noexcept
+    static INLINE InternedKey key_from_u64(uint64_t v) noexcept
     {
-        if (!k) return FILTER_EDGE_DUPLICATE;
-
-        static InternedKey kDuplicate = PSNameTable::INTERN("duplicate");
-        static InternedKey kWrap = PSNameTable::INTERN("wrap");
-        static InternedKey kNone = PSNameTable::INTERN("none");
-
-        if (k == kDuplicate) return FILTER_EDGE_DUPLICATE;
-        if (k == kWrap)      return FILTER_EDGE_WRAP;
-        if (k == kNone)      return FILTER_EDGE_NONE;
-
-        return FILTER_EDGE_DUPLICATE;
-    }
-
-    static INLINE FilterChannelSelector parseFilterChannelSelector(InternedKey k) noexcept
-    {
-        if (!k) return FILTER_CHANNEL_A;
-
-        static InternedKey kR = PSNameTable::INTERN("R");
-        static InternedKey kG = PSNameTable::INTERN("G");
-        static InternedKey kB = PSNameTable::INTERN("B");
-        static InternedKey kA = PSNameTable::INTERN("A");
-
-        if (k == kR) return FILTER_CHANNEL_R;
-        if (k == kG) return FILTER_CHANNEL_G;
-        if (k == kB) return FILTER_CHANNEL_B;
-        if (k == kA) return FILTER_CHANNEL_A;
-
-        return FILTER_CHANNEL_A;
-    }
-
-    static INLINE FilterTurbulenceType parseFilterTurbulenceType(InternedKey k) noexcept
-    {
-        if (!k) return FILTER_TURBULENCE_TURBULENCE;
-
-        static InternedKey kTurbulence = PSNameTable::INTERN("turbulence");
-        static InternedKey kFractalNoise = PSNameTable::INTERN("fractalNoise");
-
-        if (k == kTurbulence)   return FILTER_TURBULENCE_TURBULENCE;
-        if (k == kFractalNoise) return FILTER_TURBULENCE_FRACTAL_NOISE;
-
-        return FILTER_TURBULENCE_TURBULENCE;
+        return (InternedKey)(uintptr_t)v;
     }
 }
 
@@ -208,7 +136,20 @@ namespace waavs
     }
 
 
+    // Unpacking a packed number or percentage
+    static INLINE SVGNumberOrPercent unpackNumberOrPercent(uint64_t packed) noexcept
+    {
+        SVGNumberOrPercent out{};
+        out.fIsSet = packedNumberOrPercentIsSet(packed);
+        out.fIsPercent = packedNumberOrPercentIsPercent(packed);
 
+        uint32_t lo = uint32_t(packed & 0xFFFFFFFFu);
+        float fv = 0.0f;
+        memcpy(&fv, &lo, sizeof(fv));
+        out.fValue = double(fv);
+
+        return out;
+    }
 
     // ------------------------------------
     // Emitters for common operand types
@@ -220,29 +161,29 @@ namespace waavs
 
     static INLINE void emit_u32(FilterProgramStream& out, uint32_t v) noexcept
     {
-        out.mem.push_back((uint64_t)v);
+        emit_u64(out, u64_from_u32(v));
     }
 
     static INLINE void emit_f32(FilterProgramStream& out, float v) noexcept
     {
-        out.mem.push_back(u64_from_f32(v));
+        emit_u64(out, u64_from_f32(v));
     }
 
     static INLINE void emit_key(FilterProgramStream& out, InternedKey k) noexcept
     {
-        out.mem.push_back(u64_from_key(k));
+        emit_u64(out, u64_from_key(k));
     }
 
     static INLINE void emit_u32x2(FilterProgramStream& out, uint32_t a, uint32_t b) noexcept
     {
-        out.mem.push_back(u64_pack_u32x2(a, b));
+        emit_u64(out, u64_pack_u32x2(a, b));
     }
 
     // For inline lists
     static INLINE void emit_f32_list(FilterProgramStream& out, const float* vals, uint32_t count) noexcept
     {
         for (uint32_t i = 0; i < count; ++i)
-            out.mem.push_back(u64_from_f32(vals[i]));
+            emit_u64(out, u64_from_f32(vals[i]));
     }
 
     static INLINE void emit_counted_f32_list(FilterProgramStream& out, const float* vals, uint32_t count) noexcept
@@ -255,7 +196,7 @@ namespace waavs
     {
         emit_u32(out, count);
         for (uint32_t i = 0; i < count; ++i)
-            out.mem.push_back(u64_from_key(vals[i]));
+            emit_u64(out, u64_from_key(vals[i]));
     }
 
     static INLINE void emit_ColorSRGB(FilterProgramStream& out, const ColorSRGB& c) noexcept
@@ -272,143 +213,6 @@ namespace waavs
     {
         return resultKey ? resultKey : filter::Filter_Last();
     }
-}
-
-
-// Some predicate helpers
-namespace waavs
-{
-    static INLINE bool compositeOpNeedsArithmeticCoeffs(FilterCompositeOp op) noexcept
-    {
-        return op == FILTER_COMPOSITE_ARITHMETIC;
-    }
-
-    static INLINE bool colorMatrixTypeHasMatrix(FilterColorMatrixType t) noexcept
-    {
-        return t == FILTER_COLOR_MATRIX_MATRIX;
-    }
-
-    static INLINE bool colorMatrixTypeHasSingleValue(FilterColorMatrixType t) noexcept
-    {
-        return t == FILTER_COLOR_MATRIX_SATURATE || t == FILTER_COLOR_MATRIX_HUE_ROTATE;
-    }
-
-    static INLINE bool transferFuncTypeUsesTable(FilterTransferFuncType t) noexcept
-    {
-        return t == FILTER_TRANSFER_TABLE || t == FILTER_TRANSFER_DISCRETE;
-    }
-}
-
-namespace waavs {
-    static INLINE uint32_t samplePixelEdge(const Surface& s, int x, int y, FilterEdgeMode edgeMode) noexcept
-    {
-        const int W = (int)s.width();
-        const int H = (int)s.height();
-
-        if (W <= 0 || H <= 0)
-            return 0u;
-
-        switch (edgeMode)
-        {
-        case FILTER_EDGE_WRAP:
-            // Wrap coordinates periodically into the image extent.
-            x %= W;
-            y %= H;
-
-            if (x < 0) x += W;
-            if (y < 0) y += H;
-            break;
-
-        case FILTER_EDGE_NONE:
-            // Outside image contributes transparent black.
-            if (x < 0 || y < 0 || x >= W || y >= H)
-                return 0u;
-            break;
-
-        case FILTER_EDGE_DUPLICATE:
-        default:
-            // Clamp to nearest valid edge pixel.
-            if (x < 0) x = 0;
-            else if (x >= W) x = W - 1;
-
-            if (y < 0) y = 0;
-            else if (y >= H) y = H - 1;
-            break;
-        }
-
-        const uint32_t* row = (const uint32_t*)s.rowPointer((size_t)y);
-        return row[x];
-    }
-
-    // pixelHeightFromAlpha()
-    //
-    // Interprets the alpha channel of a pixel as a height value in [0,1].
-    //
-    static INLINE float pixelHeightFromAlpha(const Surface& s, int x, int y) noexcept
-    {
-        const int W = (int)s.width();
-        const int H = (int)s.height();
-
-        if (W <= 0 || H <= 0)
-            return 0.0f;
-
-        if (x < 0) x = 0;
-        else if (x >= W) x = W - 1;
-
-        if (y < 0) y = 0;
-        else if (y >= H) y = H - 1;
-
-        const uint32_t* row = (const uint32_t*)s.rowPointer((size_t)y);
-        const uint32_t px = row[x];
-
-        return argb32_unpack_alpha_norm(px);
-    }
-
-    // computeHeightNormal()
-    //
-    // Computes the normal vector at pixel (x,y) by sampling the alpha channel of
-    //
-    static INLINE void computeHeightNormal(const Surface& s,
-        int x, int y,
-        float surfaceScale,
-        float dux, float duy,
-        float& nx, float& ny, float& nz) noexcept
-    {
-        const float hL = pixelHeightFromAlpha(s, x - 1, y);
-        const float hR = pixelHeightFromAlpha(s, x + 1, y);
-        const float hU = pixelHeightFromAlpha(s, x, y - 1);
-        const float hD = pixelHeightFromAlpha(s, x, y + 1);
-
-        float dHx = 0.0f;
-        float dHy = 0.0f;
-
-        if (dux > 0.0f)
-            dHx = (hR - hL) / (2.0f * dux);
-
-        if (duy > 0.0f)
-            dHy = (hD - hU) / (2.0f * duy);
-
-        nx = -surfaceScale * dHx;
-        ny = -surfaceScale * dHy;
-        nz = 1.0f;
-
-        const float len2 = nx * nx + ny * ny + nz * nz;
-        if (len2 > 1e-20f)
-        {
-            const float invLen = 1.0f / std::sqrt(len2);
-            nx *= invLen;
-            ny *= invLen;
-            nz *= invLen;
-        }
-        else
-        {
-            nx = 0.0f;
-            ny = 0.0f;
-            nz = 1.0f;
-        }
-    }
-
-
 }
 
 

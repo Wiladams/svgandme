@@ -238,6 +238,20 @@ namespace waavs
         return false;
     }
 
+    static INLINE bool colorMatrixTypeHasSingleValue(FilterColorMatrixType t) noexcept
+    {
+        return t == FILTER_COLOR_MATRIX_SATURATE || t == FILTER_COLOR_MATRIX_HUE_ROTATE;
+    }
+
+    static INLINE bool compositeOpNeedsArithmeticCoeffs(FilterCompositeOp op) noexcept
+    {
+        return op == FILTER_COMPOSITE_ARITHMETIC;
+    }
+
+    static INLINE bool transferFuncTypeUsesTable(FilterTransferFuncType t) noexcept
+    {
+        return t == FILTER_TRANSFER_TABLE || t == FILTER_TRANSFER_DISCRETE;
+    }
 }
 
 namespace waavs

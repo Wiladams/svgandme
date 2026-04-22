@@ -646,28 +646,53 @@ namespace waavs {
     // The internal representation is ColorSRGB, which is what the SVG
     // spec says the authored colors are.  We use 4 float values as a matter
     // of convenience to convert to other representations.
+    // 
     // The values are in the range [0..1].  
     // And the components are NOT premultiplied, so they are
     // 'straight' 
+    // 
     // This can be converted to pixel values, or other color
     // representations when needed
     // When parsing a color, it might be an actual color returned
     // or it might be symbolic.  If it is an actual color, then 
     // isColor() returns true
     // Otherwise, one of the other symbolic tests will tell what it was
+    // Multiple of the symbolic types might be set
+    // so, you can have: isReference() == true AND isOpacity() == true
+    //
 	enum ColorSemantics : uint32_t
 	{
-        COLOR_SEMANTIC_UNKNOWN          = 0x01,     // neither opacity, nor color
+        COLOR_SEMANTIC_UNKNOWN          = 0x00,     // neither opacity, nor color
                                                     // distinctly different than 'none'
-        COLOR_SEMANTIC_NONE             = 0x02,     // literal 'none'
-        COLOR_SEMANTIC_OPACITY_ONLY     = 0x04,     // only opacity specified
-		COLOR_SEMANTIC_COLOR            = 0x08,     // regular color
-		COLOR_SEMANTIC_INHERIT          = 0x10,     // literal 'inherit'
-		COLOR_SEMANTIC_CURRENT          = 0x20,     // literal 'currentColor'
-        COLOR_SEMANTIC_CONTEXT_STROKE   = 0x40,     // literal 'context-stroke'
-        COLOR_SEMANTIC_CONTEXT_FILL     = 0x80,     // literal 'context-fill'
-        COLOR_SEMANTIC_REFERENCE        = 0x100,    // starts-with 'url('
+        COLOR_SEMANTIC_NONE             = 0x01,     // literal 'none'
+        COLOR_SEMANTIC_OPACITY          = 0x02,     // opacity specified
+		COLOR_SEMANTIC_COLOR            = 0x04,     // regular color
+		COLOR_SEMANTIC_INHERIT          = 0x08,     // literal 'inherit'
+		COLOR_SEMANTIC_CURRENT          = 0x10,     // literal 'currentColor'
+        COLOR_SEMANTIC_CONTEXT_STROKE   = 0x20,     // literal 'context-stroke'
+        COLOR_SEMANTIC_CONTEXT_FILL     = 0x40,     // literal 'context-fill'
+        COLOR_SEMANTIC_REFERENCE        = 0x80,     // starts-with 'url('
     };
+
+    // A few little helpers for color semantics
+    inline ColorSemantics operator|(ColorSemantics a, ColorSemantics b) noexcept
+    {
+        return static_cast<ColorSemantics>(
+            static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
+    }
+
+    inline ColorSemantics operator&(ColorSemantics a, ColorSemantics b) noexcept
+    {
+        return static_cast<ColorSemantics>(
+            static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
+    }
+
+    inline ColorSemantics& operator|=(ColorSemantics& a, ColorSemantics b) noexcept
+    {
+        a = a | b;
+        return a;
+    }
+
 
     // Parse only the color portion of a color specification
     // not concerned with a separate opacity value
@@ -737,17 +762,26 @@ namespace waavs {
 
 		ColorSRGB value() const { return fValue; }
         
-        bool isSymbolicType(uint32_t aType) const noexcept 
+        void addSemantic(ColorSemantics sem) noexcept { fSemantics |= sem; }
+
+        bool hasSemantic(ColorSemantics sem) const noexcept 
         { 
-            return (fSemantics & aType) > 0; 
+            return (static_cast<uint32_t>(fSemantics & sem)) != 0; 
         }
-		bool isNone() const { return fSemantics == COLOR_SEMANTIC_NONE; }
-		bool isInherit() const { return fSemantics == COLOR_SEMANTIC_INHERIT; }
-		bool isCurrent() const { return fSemantics == COLOR_SEMANTIC_CURRENT; }
-		bool isContextStroke() const { return fSemantics == COLOR_SEMANTIC_CONTEXT_STROKE; }
-        bool isContextFill() const { return fSemantics == COLOR_SEMANTIC_CONTEXT_FILL; }
-        bool isColor() const { return fSemantics == COLOR_SEMANTIC_COLOR; }
-        bool isReference() const { return fSemantics == COLOR_SEMANTIC_REFERENCE; }
+		bool isNone() const { return hasSemantic(COLOR_SEMANTIC_NONE); }
+		bool isInherit() const { return hasSemantic(COLOR_SEMANTIC_INHERIT); }
+		bool isCurrent() const { return hasSemantic(COLOR_SEMANTIC_CURRENT); }
+		bool isContextStroke() const { return hasSemantic(COLOR_SEMANTIC_CONTEXT_STROKE); }
+        bool isContextFill() const { return hasSemantic(COLOR_SEMANTIC_CONTEXT_FILL); }
+        bool isColor() const { 
+            // Something is a color if it is explicityly a color,
+            // or if it is exclusively opacity, and nothing else.
+            return hasSemantic(COLOR_SEMANTIC_COLOR) ||
+                (fSemantics == COLOR_SEMANTIC_OPACITY); 
+        }
+        bool isOpacity() const { return hasSemantic(COLOR_SEMANTIC_OPACITY); }
+        bool isReference() const { return hasSemantic(COLOR_SEMANTIC_REFERENCE); }
+
 
         // load a color from a set of attributes
         // This function will try to figure out what the color is
@@ -773,14 +807,16 @@ namespace waavs {
         // so isReference() will return true.
         // 
         // Note: 'currentColor' is a special value.
-        // 1) If the current set of attributes has a 'color', then
-        // substitute that value in before trying to resolve the color
+        // 1) If the colorSpan == 'currentColor' and the set of attributes 
+        //  has a 'color' attribute, then substitute that value of that
+        //  attribute in as the colorSpan before trying to parse the color
         // 2) If the current attribute set does not contain a 'color'
-        // attribute, then mark the semantics as: COLOR_SEMANTIC_CURRENT
-        // so isCurrent() will return true.  In that case, the paint
-        // server dealing with it will resolve the current color, probably 
-        // taking it from the drawing context at the site of call.
-
+        //  attribute, then mark the semantics as: COLOR_SEMANTIC_CURRENT
+        //  so isCurrent() will return true.  
+        //  In that case, the paint server dealing with it will resolve 
+        //  the current color at time of render, probably taking it from 
+        //  the drawing context at the site of call.
+        //
         bool loadFromAttributes(const XmlAttributeCollection& attrs) override
         {
             static const char* rgbStr = "rgb(";
@@ -799,11 +835,42 @@ namespace waavs {
             attrs.getValue(fOpacityField, opacitySpan);
             setRawValue(colorSpan);
 
-            // only return if neither color nor opacity is specified
+            // only return early if neither color nor opacity is specified
             if (!colorSpan)
             {
                 if (!opacitySpan)
                     return false;
+            }
+
+            // temporary values
+            ColorSRGB cSRGB{};
+            double opacity = 1.0;
+            colorsrgb_reset(cSRGB, 0, 0, 0, opacity);
+
+
+            // Capture opacity early, because even if it ends up being
+            // a reference, we still might want to apply the opacity
+            
+            // Check the opacity first, as it is valid to just
+            // specify an opacity, without a color value.  The default
+            // color value might be context specific, but we'll go
+            // with black for the moment.
+            // 
+            // If there is an opacity field, the value should be
+            // between [0..1], or a percentage.
+            // Include the opacity with the color, but since the 
+            // color is sRGB, DO NOT PREMULTIPLY 
+            // 
+            if (opacitySpan)
+            {
+                SVGNumberOrPercent op{};
+                ByteSpan s = opacitySpan;
+                if (readSVGNumberOrPercent(s, op))
+                {
+                    opacity = clamp01f((float)op.calculatedValue());
+                    fSemantics = COLOR_SEMANTIC_OPACITY;
+                    set(true);
+                }
             }
 
             // Quick success if we have a URL reference
@@ -816,31 +883,8 @@ namespace waavs {
                 return true;
             }
 
-            // temporary values
-            ColorSRGB cSRGB{};
-            double opacity = 1.0;
-            colorsrgb_reset(cSRGB, 0, 0, 0, opacity);
 
-            // Check the opacity first, as it is valid to just
-            // specify an opacity, without a color value.  The default
-            // color value might be context specific, but we'll go
-            // with black for the moment.
-            // 
-            // If there is an opacity field, the value should be
-            // between [0..1], or a percentage.
-            // Include the opacity with the color, but DO NOT premultiply 
-            // 
-            if (opacitySpan)
-            {
-                SVGNumberOrPercent op{};
-                ByteSpan s = opacitySpan;
-                if (readSVGNumberOrPercent(s, op))
-                {
-                    opacity = clamp01f((float)op.calculatedValue());
-                    fSemantics = COLOR_SEMANTIC_COLOR;
-                    set(true);
-                }
-            }
+
 
             // Finally, if we have a color value, we need to 
             // parse it.  

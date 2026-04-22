@@ -7,8 +7,8 @@
 namespace waavs
 {
     // =============================================
-// feDiffuseLighting helpers
-// =============================================
+    // feDiffuseLighting helpers
+    // =============================================
 
     static INLINE void computeDiffuseNormalFromHeights(
         float h00, float h10, float h20,
@@ -136,10 +136,13 @@ namespace waavs
         // pixel where the RGB channels represent the lit color, 
         // so we can composite
 
+        // Diffuse light is supposed to be fully opaque
+        // unlike specular which can be composited additively,
+        // so we set alpha to 1.0.
         const float pr = clamp01f(lcR * lit);
         const float pg = clamp01f(lcG * lit);
         const float pb = clamp01f(lcB * lit);
-        const float a = max(pr, max(pg, pb)); // 1.0f;
+        const float a = 1.0;    // max(pr, max(pg, pb));
 
         return argb32_pack_u8(
             quantize0_255(a),

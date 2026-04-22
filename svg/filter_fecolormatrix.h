@@ -1,3 +1,5 @@
+// filter_fecolormatrix.h
+
 #pragma once
 
 #include "definitions.h"
@@ -5,6 +7,7 @@
 #include "pixeling.h"
 #include "wggeometry.h"
 #include "surface.h"
+#include "filter_program.h"
 
 namespace waavs
 {
@@ -13,6 +16,20 @@ namespace waavs
         int32_t c[20];
     };
 
+    struct ColorMatrixPrepared
+    {
+        WGFilterColorSpace colorSpace;
+        FilterColorMatrixType type;
+        float Mf[20];
+        ColorMatrixQ88 Mq;
+        const uint16_t* invAlphaQ8;
+        bool isIdentity;
+    };
+
+    static INLINE bool colorMatrixTypeHasMatrix(FilterColorMatrixType t) noexcept
+    {
+        return t == FILTER_COLOR_MATRIX_MATRIX;
+    }
 
     static INLINE uint32_t unpremul_byte_q8(uint32_t cp, uint32_t a, const uint16_t* invA) noexcept
     {
@@ -37,11 +54,7 @@ namespace waavs
         return clamp0_255_i32((acc + 128) >> 8);
     }
 
-    static INLINE uint32_t mul255_round_u8(uint32_t x, uint32_t a) noexcept
-    {
-        uint32_t t = x * a + 128u;
-        return (t + (t >> 8)) >> 8;
-    }
+
 
     static void colorMatrix_q88_row_scalar(
         uint32_t* dst,
@@ -74,8 +87,7 @@ namespace waavs
     }
 
 
-#if defined(__aarch64__) && defined(__ARM_NEON)
-#include <arm_neon.h>
+#if WAAVS_HAS_NEON
 
     static INLINE int32x4_t eval_row_q88_neon_4(
         const int32x4_t r,
@@ -169,19 +181,332 @@ namespace waavs
     }
 #endif
 
-    static INLINE void colorMatrix_q88_row(
+
+
+
+    static INLINE void colormatrix_srgb_prgb32_row(
         uint32_t* dst,
         const uint32_t* src,
         size_t n,
-        const ColorMatrixQ88& Mq,
-        const uint16_t* invA) noexcept
+        const ColorMatrixPrepared& M) noexcept
     {
-#if defined(__aarch64__) && defined(__ARM_NEON)
-        colorMatrix_q88_row_neon(dst, src, n, Mq, invA);
+#if WAAVS_HAS_NEON
+        colorMatrix_q88_row_neon(dst, src, n, M.Mq, M.invAlphaQ8);
 #else
-        colorMatrix_q88_row_scalar(dst, src, n, Mq, invA);
+        colorMatrix_q88_row_scalar(dst, src, n, M.Mq, M.invAlphaQ8);
 #endif
     }
 
+    // ------------------------------------------------------------
+    // LinearRGB path: convert to linear, apply matrix in float, convert back to sRGB
+    // ------------------------------------------------------------
 
+    static INLINE float eval_row_linear_scalar(
+        const float* row,
+        float r, float g, float b, float a) noexcept
+    {
+        const float v =
+            row[0] * r +
+            row[1] * g +
+            row[2] * b +
+            row[3] * a +
+            row[4];
+
+        return clamp01f(v);
+    }
+
+    static INLINE void colormatrix_linear_prgb32_row_scalar(
+        uint32_t* dst, const uint32_t* src, size_t n,
+        const float Mf[20]) noexcept
+    {
+        for (size_t i = 0; i < n; ++i)
+        {
+            uint32_t ap8, rp8, gp8, bp8;
+            argb32_unpack_u32(src[i], ap8, rp8, gp8, bp8);
+
+            const float ap = dequantize0_255(ap8);
+
+            float sr = 0.0f;
+            float sg = 0.0f;
+            float sb = 0.0f;
+
+            if (ap > 0.0f)
+            {
+                const float invA = 1.0f / ap;
+
+                const float r_srgb = clamp01f(dequantize0_255(rp8) * invA);
+                const float g_srgb = clamp01f(dequantize0_255(gp8) * invA);
+                const float b_srgb = clamp01f(dequantize0_255(bp8) * invA);
+
+                sr = coloring_srgb_component_to_linear(r_srgb);
+                sg = coloring_srgb_component_to_linear(g_srgb);
+                sb = coloring_srgb_component_to_linear(b_srgb);
+            }
+
+            const float sa = ap;
+
+            const float rr = eval_row_linear_scalar(&Mf[0], sr, sg, sb, sa);
+            const float gg = eval_row_linear_scalar(&Mf[5], sr, sg, sb, sa);
+            const float bb = eval_row_linear_scalar(&Mf[10], sr, sg, sb, sa);
+            const float aa = eval_row_linear_scalar(&Mf[15], sr, sg, sb, sa);
+
+            const float rrp_lin = rr * aa;
+            const float ggp_lin = gg * aa;
+            const float bbp_lin = bb * aa;
+
+            const float rrp_srgb = coloring_linear_component_to_srgb(rrp_lin);
+            const float ggp_srgb = coloring_linear_component_to_srgb(ggp_lin);
+            const float bbp_srgb = coloring_linear_component_to_srgb(bbp_lin);
+
+            dst[i] = argb32_pack_u8(
+                quantize0_255(aa),
+                quantize0_255(rrp_srgb),
+                quantize0_255(ggp_srgb),
+                quantize0_255(bbp_srgb));
+        }
+    }
+
+
+
+
+    static INLINE void colormatrix_linear_prgb32_row(
+        uint32_t* dst,
+        const uint32_t* src,
+        size_t n,
+        const ColorMatrixPrepared& M) noexcept
+    {
+        colormatrix_linear_prgb32_row_scalar(dst, src, n, M.Mf);
+    }
+
+    // ------------------------------------------------------------
+    // Identity detection (in float domain)
+    // ------------------------------------------------------------
+    static INLINE bool isIdentity(const float Mf[20])
+    {
+        static constexpr float kId[20] =
+        {
+            1,0,0,0,0,
+            0,1,0,0,0,
+            0,0,1,0,0,
+            0,0,0,1,0
+        };
+
+        const float epsf = 1.0e-6f;
+
+        for (int i = 0; i < 20; ++i)
+        {
+            if (std::fabs(Mf[i] - kId[i]) > epsf)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    static INLINE bool prepare_colormatrix(
+        ColorMatrixPrepared& out,
+        FilterColorMatrixType type,
+        float param,
+        F32Span matrix,
+        WGFilterColorSpace cs) noexcept
+    {
+        memset(&out, 0, sizeof(out));
+
+        out.colorSpace = cs;
+        out.type = type;
+
+        float Mf[20]{};
+
+        if (type == FILTER_COLOR_MATRIX_MATRIX)
+        {
+            if (!matrix.p || matrix.n != 20)
+                return false;
+
+            for (int i = 0; i < 20; ++i)
+                Mf[i] = matrix.p[i];
+        }
+        else if (type == FILTER_COLOR_MATRIX_SATURATE)
+        {
+            const float s = param;
+
+            Mf[0] = 0.213f + 0.787f * s;  Mf[1] = 0.715f - 0.715f * s;  Mf[2] = 0.072f - 0.072f * s;  Mf[3] = 0.0f;  Mf[4] = 0.0f;
+            Mf[5] = 0.213f - 0.213f * s;  Mf[6] = 0.715f + 0.285f * s;  Mf[7] = 0.072f - 0.072f * s;  Mf[8] = 0.0f;  Mf[9] = 0.0f;
+            Mf[10] = 0.213f - 0.213f * s;  Mf[11] = 0.715f - 0.715f * s;  Mf[12] = 0.072f + 0.928f * s;  Mf[13] = 0.0f;  Mf[14] = 0.0f;
+            Mf[15] = 0.0f;                 Mf[16] = 0.0f;                 Mf[17] = 0.0f;                 Mf[18] = 1.0f;  Mf[19] = 0.0f;
+        }
+        else if (type == FILTER_COLOR_MATRIX_HUE_ROTATE)
+        {
+            const float a = param * 3.14159265358979323846f / 180.0f;
+            const float c = std::cos(a);
+            const float s = std::sin(a);
+
+            Mf[0] = 0.213f + 0.787f * c - 0.213f * s;
+            Mf[1] = 0.715f - 0.715f * c - 0.715f * s;
+            Mf[2] = 0.072f - 0.072f * c + 0.928f * s;
+            Mf[3] = 0.0f;
+            Mf[4] = 0.0f;
+
+            Mf[5] = 0.213f - 0.213f * c + 0.143f * s;
+            Mf[6] = 0.715f + 0.285f * c + 0.140f * s;
+            Mf[7] = 0.072f - 0.072f * c - 0.283f * s;
+            Mf[8] = 0.0f;
+            Mf[9] = 0.0f;
+
+            Mf[10] = 0.213f - 0.213f * c - 0.787f * s;
+            Mf[11] = 0.715f - 0.715f * c + 0.715f * s;
+            Mf[12] = 0.072f + 0.928f * c + 0.072f * s;
+            Mf[13] = 0.0f;
+            Mf[14] = 0.0f;
+
+            Mf[15] = 0.0f;
+            Mf[16] = 0.0f;
+            Mf[17] = 0.0f;
+            Mf[18] = 1.0f;
+            Mf[19] = 0.0f;
+        }
+        else
+        {
+            // luminanceToAlpha
+            Mf[0] = 0.0f;    Mf[1] = 0.0f;    Mf[2] = 0.0f;    Mf[3] = 0.0f;    Mf[4] = 0.0f;
+            Mf[5] = 0.0f;    Mf[6] = 0.0f;    Mf[7] = 0.0f;    Mf[8] = 0.0f;    Mf[9] = 0.0f;
+            Mf[10] = 0.0f;    Mf[11] = 0.0f;    Mf[12] = 0.0f;    Mf[13] = 0.0f;    Mf[14] = 0.0f;
+            Mf[15] = 0.2125f; Mf[16] = 0.7154f; Mf[17] = 0.0721f; Mf[18] = 0.0f;    Mf[19] = 0.0f;
+        }
+
+        for (int i = 0; i < 20; ++i)
+            out.Mf[i] = Mf[i];
+
+        // Identity detection: check if Mf is approximately equal to the identity matrix.
+        out.isIdentity = isIdentity(Mf);
+
+        for (int row = 0; row < 4; ++row)
+        {
+            const int b = row * 5;
+
+            out.Mq.c[b + 0] = (int32_t)std::lround(Mf[b + 0] * 256.0f);
+            out.Mq.c[b + 1] = (int32_t)std::lround(Mf[b + 1] * 256.0f);
+            out.Mq.c[b + 2] = (int32_t)std::lround(Mf[b + 2] * 256.0f);
+            out.Mq.c[b + 3] = (int32_t)std::lround(Mf[b + 3] * 256.0f);
+            out.Mq.c[b + 4] = (int32_t)std::lround(Mf[b + 4] * 255.0f * 256.0f);
+        }
+
+        static uint16_t sInvAlphaQ8[256];
+        static bool sInvAlphaInit = false;
+
+        if (!sInvAlphaInit)
+        {
+            sInvAlphaQ8[0] = 0;
+            for (int a = 1; a < 256; ++a)
+                sInvAlphaQ8[a] = (uint16_t)((255u << 8) / (uint32_t)a);
+
+            sInvAlphaInit = true;
+        }
+
+        out.invAlphaQ8 = sInvAlphaQ8;
+        return true;
+    }
+
+
+    using ColorMatrixRowFn = void(*)(uint32_t* dst,
+        const uint32_t* src,
+        size_t n,
+        const ColorMatrixPrepared& M) noexcept;
+
+    // Get the appropriate row processing function for the given color space.
+    static INLINE ColorMatrixRowFn get_colormatrix_row_fn(
+        WGFilterColorSpace cs) noexcept
+    {
+        switch (cs)
+        {
+        case WG_FILTER_COLORSPACE_LINEAR_RGB:
+            return colormatrix_linear_prgb32_row;
+
+        case WG_FILTER_COLORSPACE_SRGB:
+            return colormatrix_srgb_prgb32_row;
+
+        default:
+            return nullptr;
+        }
+    }
+
+    // ------------------------------------------------
+    // Workhorse routines
+    // ------------------------------------------------
+
+    static INLINE WGResult wg_colormatrix_rect(
+        Surface_ARGB32& dst,
+        const Surface_ARGB32& src,
+        const WGRectI& area,
+        const ColorMatrixPrepared& M) noexcept
+    {
+        if (!dst.data || dst.width <= 0 || dst.height <= 0)
+            return WG_ERROR_Invalid_Argument;
+
+        if (!src.data || src.width <= 0 || src.height <= 0)
+            return WG_ERROR_Invalid_Argument;
+
+        if (area.w <= 0 || area.h <= 0)
+            return WG_SUCCESS;
+
+        Surface_ARGB32 dstView{};
+        Surface_ARGB32 srcView{};
+
+        if (Surface_ARGB32_get_subarea(dst, area, dstView) != WG_SUCCESS)
+            return WG_ERROR_Invalid_Argument;
+
+        if (Surface_ARGB32_get_subarea(src, area, srcView) != WG_SUCCESS)
+            return WG_ERROR_Invalid_Argument;
+
+        if (dstView.width <= 0 || dstView.height <= 0)
+            return WG_SUCCESS;
+
+        if (M.isIdentity)
+        {
+            const size_t rowBytes = (size_t)dstView.width * sizeof(uint32_t);
+
+            for (int y = 0; y < dstView.height; ++y)
+            {
+                uint8_t* drow = (uint8_t*)Surface_ARGB32_row_pointer(&dstView, y);
+                const uint8_t* srow = (const uint8_t*)Surface_ARGB32_row_pointer_const(&srcView, y);
+                memcpy(drow, srow, rowBytes);
+            }
+
+            return WG_SUCCESS;
+        }
+
+        ColorMatrixRowFn rowFn = get_colormatrix_row_fn(M.colorSpace);
+        if (!rowFn)
+            return WG_ERROR_Invalid_Argument;
+
+        for (int y = 0; y < dstView.height; ++y)
+        {
+            uint32_t* drow = Surface_ARGB32_row_pointer(&dstView, y);
+            const uint32_t* srow = Surface_ARGB32_row_pointer_const(&srcView, y);
+
+            rowFn(drow, srow, (size_t)dstView.width, M);
+        }
+
+        return WG_SUCCESS;
+    }
+
+
+
+    // Apply a color matrix to the specified area of the source image,
+    // writing results to the destination image.
+    static INLINE WGResult wg_colormatrix_rect(
+        Surface_ARGB32& dst,
+        const Surface_ARGB32& src,
+        const WGRectI& area,
+        FilterColorMatrixType type,
+        float param,
+        F32Span matrix,
+        WGFilterColorSpace cs) noexcept
+    {
+        ColorMatrixPrepared M{};
+        if (!prepare_colormatrix(M, type, param, matrix, cs))
+            return WG_ERROR_Invalid_Argument;
+
+        return wg_colormatrix_rect(dst, src, area, M);
+    }
 }

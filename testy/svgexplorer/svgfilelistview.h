@@ -315,6 +315,8 @@ namespace waavs {
                 {
                     // figure out which icon we're over
                     // and draw a highlight over it
+                    auto oldHoverIcon = fHoverIcon;
+
                     if (fHoverIcon != nullptr)
                         fHoverIcon->setHover(false);
                     
@@ -328,7 +330,9 @@ namespace waavs {
                         }
 
                     }
-                    refresh();
+
+                    if (fHoverIcon != oldHoverIcon)
+                        refresh();
                 }
                 break;
 

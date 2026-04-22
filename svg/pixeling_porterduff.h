@@ -5,9 +5,34 @@
 
 namespace waavs
 {
+    // Porter-Duff compositing operators 
+    // Independent of SVG or whatever backend
+    enum WGCompositeOp : uint8_t
+    {
+        WG_COMP_CLEAR = 0,
+        WG_COMP_SRC_COPY,
+        WG_COMP_SRC_OVER,
+        WG_COMP_SRC_IN,
+        WG_COMP_SRC_OUT,
+        WG_COMP_SRC_ATOP,
+        WG_COMP_SRC_XOR,
+        WG_COMP_DST_OVER,
+        WG_COMP_DST_IN,
+        WG_COMP_DST_OUT,
+        WG_COMP_DST_ATOP,
+
+    };
+
     // ----------------------------------------
     // Porter-Duff Pixel helpers (premultiplied ARGB32)
     // -------------------------------------------
+    static INLINE uint32_t composite_clear_prgb32_pixel(uint32_t p1, uint32_t p2) noexcept
+    {
+        (void)p1;
+        (void)p2;
+        return 0u;
+    }
+
     static INLINE uint32_t composite_over_prgb32_pixel(uint32_t p1, uint32_t p2) noexcept
     {
         // Unpack the source pixel into components.
@@ -28,10 +53,10 @@ namespace waavs
         const uint32_t isa = 255 - sa;
 
         // construct new pre-multiplied pixel values by multiplying the source color values
-        const uint32_t oa = sa + mul0_255(da, isa);
-        const uint32_t orr = sr + mul0_255(dr, isa);
-        const uint32_t og = sg + mul0_255(dg, isa);
-        const uint32_t ob = sb + mul0_255(db, isa);
+        const uint32_t oa = sa + mul255_round_u8(da, isa);
+        const uint32_t orr = sr + mul255_round_u8(dr, isa);
+        const uint32_t og = sg + mul255_round_u8(dg, isa);
+        const uint32_t ob = sb + mul255_round_u8(db, isa);
 
         return argb32_pack_u32(oa, orr, og, ob);
     }
@@ -47,10 +72,10 @@ namespace waavs
         uint32_t sa, sr, sg, sb;
         argb32_unpack_u32(p1, sa, sr, sg, sb);
 
-        const uint32_t oa = mul0_255(sa, da);
-        const uint32_t orr = mul0_255(sr, da);
-        const uint32_t og = mul0_255(sg, da);
-        const uint32_t ob = mul0_255(sb, da);
+        const uint32_t oa = mul255_round_u8(sa, da);
+        const uint32_t orr = mul255_round_u8(sr, da);
+        const uint32_t og = mul255_round_u8(sg, da);
+        const uint32_t ob = mul255_round_u8(sb, da);
 
         return argb32_pack_u32(oa, orr, og, ob);
     }
@@ -68,10 +93,10 @@ namespace waavs
 
         const uint32_t ida = 255 - da;
 
-        const uint32_t oa = mul0_255(sa, ida);
-        const uint32_t orr = mul0_255(sr, ida);
-        const uint32_t og = mul0_255(sg, ida);
-        const uint32_t ob = mul0_255(sb, ida);
+        const uint32_t oa = mul255_round_u8(sa, ida);
+        const uint32_t orr = mul255_round_u8(sr, ida);
+        const uint32_t og = mul255_round_u8(sg, ida);
+        const uint32_t ob = mul255_round_u8(sb, ida);
 
         return argb32_pack_u32(oa, orr, og, ob);
     }
@@ -93,18 +118,18 @@ namespace waavs
         if (sa == 255)
         {
             const uint32_t oa = da;
-            const uint32_t orr = mul0_255(sr, da);
-            const uint32_t og = mul0_255(sg, da);
-            const uint32_t ob = mul0_255(sb, da);
+            const uint32_t orr = mul255_round_u8(sr, da);
+            const uint32_t og = mul255_round_u8(sg, da);
+            const uint32_t ob = mul255_round_u8(sb, da);
             return argb32_pack_u32(oa, orr, og, ob);
         }
 
         const uint32_t isa = 255 - sa;
 
         const uint32_t oa = da;
-        const uint32_t orr = mul0_255(sr, da) + mul0_255(dr, isa);
-        const uint32_t og = mul0_255(sg, da) + mul0_255(dg, isa);
-        const uint32_t ob = mul0_255(sb, da) + mul0_255(db, isa);
+        const uint32_t orr = mul255_round_u8(sr, da) + mul255_round_u8(dr, isa);
+        const uint32_t og = mul255_round_u8(sg, da) + mul255_round_u8(dg, isa);
+        const uint32_t ob = mul255_round_u8(sb, da) + mul255_round_u8(db, isa);
 
         return argb32_pack_u32(oa, orr, og, ob);
     }
@@ -131,10 +156,10 @@ namespace waavs
         const uint32_t isa = 255 - sa;
         const uint32_t ida = 255 - da;
 
-        const uint32_t oa = mul0_255(sa, ida) + mul0_255(da, isa);
-        const uint32_t orr = mul0_255(sr, ida) + mul0_255(dr, isa);
-        const uint32_t og = mul0_255(sg, ida) + mul0_255(dg, isa);
-        const uint32_t ob = mul0_255(sb, ida) + mul0_255(db, isa);
+        const uint32_t oa = mul255_round_u8(sa, ida) + mul255_round_u8(da, isa);
+        const uint32_t orr = mul255_round_u8(sr, ida) + mul255_round_u8(dr, isa);
+        const uint32_t og = mul255_round_u8(sg, ida) + mul255_round_u8(dg, isa);
+        const uint32_t ob = mul255_round_u8(sb, ida) + mul255_round_u8(db, isa);
 
         return argb32_pack_u32(oa, orr, og, ob);
     }
@@ -259,6 +284,100 @@ namespace waavs {
 #endif
 
 
+    using CompositeRowFn = void(*)(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w);
+
+    // ------------------------------------------------------------
+    // Porter-Duff Row helpers (PARGB32)
+    // ------------------------------------------------------------
+    // They all have the same signature, so we can use them 
+    // as function pointers in the program executor.
+    template <typename PixelOp>
+    static INLINE void composite_binary_prgb32_row_scalar(
+        uint32_t* d,
+        const uint32_t* s1,
+        const uint32_t* s2,
+        int w,
+        PixelOp op) noexcept
+    {
+        for (int x = 0; x < w; ++x)
+            d[x] = op(s1[x], s2[x]);
+    }
+
+    // Operator: in
+    //
+    static  INLINE void composite_in_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
+    {
+#if WAAVS_HAS_NEON
+        composite_in_prgb32_row_neon(d, s1, s2, w);
+#else
+        composite_binary_prgb32_row_scalar(d, s1, s2, w, composite_in_prgb32_pixel);
+#endif
+    }
+
+    // Operator: over
+    //
+    static INLINE void composite_over_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
+    {
+#if WAAVS_HAS_NEON
+        composite_over_prgb32_row_neon(d, s1, s2, w);
+#else
+        composite_binary_prgb32_row_scalar(d, s1, s2, w, composite_over_prgb32_pixel);
+#endif
+    }
+
+    // Operator: out
+    //
+    static INLINE void composite_out_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
+    {
+#if WAAVS_HAS_NEON
+        composite_out_prgb32_row_neon(d, s1, s2, w);
+#else
+        composite_binary_prgb32_row_scalar(d, s1, s2, w, composite_out_prgb32_pixel);
+#endif
+    }
+
+
+    // Operator: atop
+    //
+    static INLINE void composite_atop_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
+    {
+        composite_binary_prgb32_row_scalar(d, s1, s2, w, composite_atop_prgb32_pixel);
+    }
+
+    // Operator: xor
+    static INLINE void composite_xor_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
+    {
+        composite_binary_prgb32_row_scalar(d, s1, s2, w, composite_xor_prgb32_pixel);
+    }
+
+    static INLINE void composite_clear_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
+    {
+        (void)s1;
+        (void)s2;
+        memset(d, 0, w * sizeof(uint32_t));
+    }
+
+    // Get a function pointer to the appropriate row function for a given operator.
+    static INLINE CompositeRowFn get_composite_row_fn(WGCompositeOp op) noexcept
+    {
+        switch (op)
+        {
+            case WG_COMP_CLEAR:
+            return composite_clear_prgb32_row;
+        case WG_COMP_SRC_OVER:
+            return composite_over_prgb32_row;
+        case WG_COMP_SRC_IN:
+            return composite_in_prgb32_row;
+        case WG_COMP_SRC_OUT:
+            return composite_out_prgb32_row;
+        case WG_COMP_SRC_ATOP:
+            return composite_atop_prgb32_row;
+        case WG_COMP_SRC_XOR:
+            return composite_xor_prgb32_row;
+        default:
+            return nullptr;
+        }
+    }
 } // namespace waavs
 
 // Dispatch implementation of porter-duff compositing for PRGB32 pixels, 
@@ -290,27 +409,27 @@ namespace waavs {
         case FILTER_COMPOSITE_OVER:
         {
             const uint32_t isa = 255 - sa;
-            oa = sa + mul0_255(da, isa);
-            orr = sr + mul0_255(dr, isa);
-            og = sg + mul0_255(dg, isa);
-            ob = sb + mul0_255(db, isa);
+            oa = sa + mul255_round_u8(da, isa);
+            orr = sr + mul255_round_u8(dr, isa);
+            og = sg + mul255_round_u8(dg, isa);
+            ob = sb + mul255_round_u8(db, isa);
             break;
         }
 
         case FILTER_COMPOSITE_IN:
-            oa = mul0_255(sa, da);
-            orr = mul0_255(sr, da);
-            og = mul0_255(sg, da);
-            ob = mul0_255(sb, da);
+            oa = mul255_round_u8(sa, da);
+            orr = mul255_round_u8(sr, da);
+            og = mul255_round_u8(sg, da);
+            ob = mul255_round_u8(sb, da);
             break;
 
         case FILTER_COMPOSITE_OUT:
         {
             const uint32_t ida = 255 - da;
-            oa = mul0_255(sa, ida);
-            orr = mul0_255(sr, ida);
-            og = mul0_255(sg, ida);
-            ob = mul0_255(sb, ida);
+            oa = mul255_round_u8(sa, ida);
+            orr = mul255_round_u8(sr, ida);
+            og = mul255_round_u8(sg, ida);
+            ob = mul255_round_u8(sb, ida);
             break;
         }
 
@@ -318,9 +437,9 @@ namespace waavs {
         {
             const uint32_t isa = 255 - sa;
             oa = da;
-            orr = mul0_255(sr, da) + mul0_255(dr, isa);
-            og = mul0_255(sg, da) + mul0_255(dg, isa);
-            ob = mul0_255(sb, da) + mul0_255(db, isa);
+            orr = mul255_round_u8(sr, da) + mul255_round_u8(dr, isa);
+            og = mul255_round_u8(sg, da) + mul255_round_u8(dg, isa);
+            ob = mul255_round_u8(sb, da) + mul255_round_u8(db, isa);
             break;
         }
 
@@ -328,10 +447,10 @@ namespace waavs {
         {
             const uint32_t ida = 255 - da;
             const uint32_t isa = 255 - sa;
-            oa = mul0_255(sa, ida) + mul0_255(da, isa);
-            orr = mul0_255(sr, ida) + mul0_255(dr, isa);
-            og = mul0_255(sg, ida) + mul0_255(dg, isa);
-            ob = mul0_255(sb, ida) + mul0_255(db, isa);
+            oa = mul255_round_u8(sa, ida) + mul255_round_u8(da, isa);
+            orr = mul255_round_u8(sr, ida) + mul255_round_u8(dr, isa);
+            og = mul255_round_u8(sg, ida) + mul255_round_u8(dg, isa);
+            ob = mul255_round_u8(sb, ida) + mul255_round_u8(db, isa);
             break;
         }
 

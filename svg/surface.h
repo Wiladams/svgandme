@@ -3,39 +3,13 @@
 
 #include "membuff.h"
 #include "pixeling.h"
+#include "pixeling_porterduff.h"
+#include "surface_info.h"
+
+
 
 namespace waavs
 {
-    // ----------------------------------------------------
-    // Surface type + rows + basic fills/blends for ARGB32 
-    // ----------------------------------------------------
-    typedef struct {
-        uint8_t* data;          // base pointer
-        int32_t  width;         // in pixels
-        int32_t  height;        // in pixels
-        intptr_t stride;        // in bytes between rows
-        bool     contiguous;    // whether the memory is contiguous (no gap between rows)
-    } Surface_ARGB32;
-
-    // rectangle convenience
-    static INLINE WGRectI Surface_ARGB32_bounds(const Surface_ARGB32* s) noexcept
-    {
-        return WGRectI{ 0, 0, s->width, s->height };
-    }
-
-    static  INLINE uint32_t* Surface_ARGB32_row_pointer(const Surface_ARGB32* s, int y) {
-        return (uint32_t*)(s->data + ((size_t)y * (size_t)s->stride));
-    }
-
-    static  INLINE const uint32_t* Surface_ARGB32_row_pointer_const(const Surface_ARGB32* s, int y) {
-        return (const uint32_t*)(s->data + (size_t)y * (size_t)s->stride);
-    }
-}
-
-namespace waavs
-{
-
-
     enum WGBlitFilter : uint32_t
     {
         WG_BLIT_FILTER_Nearest = 0,
@@ -43,57 +17,7 @@ namespace waavs
     };
 
 
-    // Forward declaration
-    // Surface management
-    static INLINE WGErrorCode wg_get_subarea(const Surface_ARGB32& src, const WGRectI& area, Surface_ARGB32& subarea) noexcept;
-
-    // Low level pixel ops
-    //static INLINE WGResult wg_fill_hspan_raw(Pixel_ARGB32* dst, int len, Pixel_ARGB32 rgbaPremul) noexcept;
-    //static INLINE WGErrorCode wg_fill_hspan(Surface_ARGB32& dst, int y, int x, int len, Pixel_ARGB32 color) noexcept;
-
-    // blending
-    //static INLINE WGErrorCode wg_blend_hspan_mask8(Surface_ARGB32& dst, int y, int x, int len, Pixel_ARGB32 color, const uint8_t* mask) noexcept;
-
-
-    // Whole surface drawing
-    //static INLINE WGResult wg_clear_all(Surface_ARGB32& s) noexcept;
-    //static INLINE WGResult wg_fill_all(Surface_ARGB32& s, const Pixel_ARGB32 rgbaPremul) noexcept;
-    //static INLINE WGResult wg_blit(Surface_ARGB32& dst, const Surface_ARGB32& src, int dstX, int dstY) noexcept;
-
-
     // Implementations
-
-    // wg_get_subarea()
-    //
-    // Get a subarea view of the given source surface. 
-    // The subarea shares memory with the original surface, 
-    // so changes to the subarea will affect the original surface.
-    // This is a 'view' onto the surface.  Efficient to create and 
-    // use with 'whole surface' operations like fill_all() or clear_all(), 
-    // or to read/write pixels within the subarea.
-    //
-    // This routine will perform boundary clipping and return a subarea
-    // that actually fits within the source surface.
-    //
-    static  WGErrorCode wg_get_subarea(const Surface_ARGB32& src, const WGRectI& area, Surface_ARGB32& subarea) noexcept
-    {
-        if (!src.data || src.width == 0 || src.height == 0)
-            return WG_ERROR_Invalid_Argument;
-        if (area.w <= 0 || area.h <= 0)
-            return WG_ERROR_Invalid_Argument;
-        if (area.x < 0 || area.y < 0 || area.x + area.w >(int)src.width || area.y + area.h >(int)src.height)
-            return WG_ERROR_Invalid_Argument;
-
-
-        subarea.data = src.data + (size_t)area.y * (size_t)src.stride + (size_t)area.x * 4;
-        subarea.width = area.w;
-        subarea.height = area.h;
-        subarea.stride = src.stride;
-        subarea.contiguous = false; // Subareas might not contiguous if they don't.
-        //. cover the whole area
-
-        return WG_SUCCESS;
-    }
 
     // wg_fill_hspan_raw()
     // 
@@ -146,6 +70,7 @@ namespace waavs
 
     }
 
+    /*
     // --------------------------------------
     // Horizontal blend with 8-bit mask
     // --------------------------------------
@@ -162,7 +87,8 @@ namespace waavs
 
         return argb32_pack_u8(sa, sr, sg, sb);
     }
-
+    */
+    /*
     static INLINE uint32_t wg_src_over_premul_argb32(uint32_t src, uint32_t dst) noexcept
     {
         uint8_t sa, sr, sg, sb;
@@ -180,7 +106,8 @@ namespace waavs
 
         return argb32_pack_u8(oa, or_, og, ob);
     }
-
+    */
+    /*
     static INLINE void wg_blend_span_mask8_raw(
         uint32_t* dst,
         const uint8_t* mask,
@@ -215,7 +142,8 @@ namespace waavs
             dst[i] = wg_src_over_premul_argb32(srcScaled, dst[i]);
         }
     }
-
+    */
+    /*
     static INLINE WGErrorCode wg_blend_hspan_mask8(
         Surface_ARGB32& dst,
         int y,
@@ -259,7 +187,7 @@ namespace waavs
 
         return WG_SUCCESS;
     }
-
+    */
 
     // --------------------------------------
     // Bulk surface operations
@@ -303,11 +231,11 @@ namespace waavs
             dstClipped.h
         };
 
-        WGErrorCode res = wg_get_subarea(src, srcRect, srcView);
+        WGErrorCode res = Surface_ARGB32_get_subarea(src, srcRect, srcView);
         if (res != WG_SUCCESS)
             return res;
 
-        res = wg_get_subarea(dst, dstClipped, dstView);
+        res = Surface_ARGB32_get_subarea(dst, dstClipped, dstView);
         if (res != WG_SUCCESS)
             return res;
 
@@ -362,7 +290,7 @@ namespace waavs
     {
         // get subarea for the rectangle, then fill it.
         Surface_ARGB32 subarea;
-        if (wg_get_subarea(s, area, subarea) != WG_SUCCESS)
+        if (Surface_ARGB32_get_subarea(s, area, subarea) != WG_SUCCESS)
             return WG_ERROR_Invalid_Argument;
 
         return wg_fill_all(subarea, rgbaPremul);
@@ -373,7 +301,7 @@ namespace waavs
     // Copy a source surface into a destination surface at the given destination coordinates.
     // Big caveat: This routine uses memcpy, so if the source and destination regions 
     // overlap, the behavior is undefined.
-    static INLINE WGResult wg_blit(Surface_ARGB32& dst, const Surface_ARGB32& src, int dstX, int dstY) noexcept
+    static INLINE WGResult wg_blit_copy(Surface_ARGB32& dst, const Surface_ARGB32& src, int dstX, int dstY) noexcept
     {
         Surface_ARGB32 srcView{};
         Surface_ARGB32 dstView{};
@@ -405,63 +333,40 @@ namespace waavs
         return WG_SUCCESS;
     }
 
-/*
-    static WGErrorCode wg_blit(Surface_ARGB32& dst, const Surface_ARGB32& src, int dstX, int dstY) noexcept
+    static INLINE WGResult wg_blit_composite(
+        Surface_ARGB32& dst,
+        const Surface_ARGB32& src,
+        int dstX,
+        int dstY,
+        WGCompositeOp op) noexcept
     {
-        // Reject empty source or destination.
-        if (!dst.data || dst.width == 0 || dst.height == 0)
+        Surface_ARGB32 srcView{};
+        Surface_ARGB32 dstView{};
+
+        WGResult res = wg_resolve_blit_views(src, dst, dstX, dstY, srcView, dstView);
+        if (res != WG_SUCCESS)
+            return res;
+
+        if (dstView.width <= 0 || dstView.height <= 0)
+            return WG_SUCCESS;
+
+        if (op == WG_COMP_SRC_COPY)
+            return wg_blit_copy(dst, src, dstX, dstY);
+
+        CompositeRowFn rowFn = get_composite_row_fn(op);
+        if (!rowFn)
             return WG_ERROR_Invalid_Argument;
-
-        if (!src.data || src.width == 0 || src.height == 0)
-            return WG_ERROR_Invalid_Argument;
-
-        // Boundary for the destination surface.
-        // Source pixels outside this boundary will be ignored
-        const WGRectI dstBounds{ 0, 0, (int)dst.width, (int)dst.height };
-
-        // Where the full source would land in destination coordinates.
-        const WGRectI dstPlacement{ dstX, dstY, src.width, src.height };
-
-        // Clip that placement against destination bounds.
-        const WGRectI dstClipped = intersection(dstPlacement, dstBounds);
-        if (dstClipped.w <= 0 || dstClipped.h <= 0)
-            return WG_ERROR_Invalid_Argument;
-
-        // Compute corresponding source subregion.
-        // If dstPlacement was clipped on the left/top, shift source origin by same amount.
-        const WGRectI srcRect{
-            dstClipped.x - dstPlacement.x,
-            dstClipped.y - dstPlacement.y,
-            dstClipped.w,
-            dstClipped.h
-        };
-
-        Surface_ARGB32 srcView;
-        if (wg_get_subarea(src, srcRect, srcView) != WG_SUCCESS)
-            return WG_ERROR_Invalid_Argument;
-
-
-        Surface_ARGB32 dstView;
-        if (wg_get_subarea(dst, dstClipped, dstView) != WG_SUCCESS)
-            return WG_ERROR_Invalid_Argument;
-
-        // Copy row by row. Since both views have same width/height now,
-        // each row is a straight memcpy.
-        const size_t rowBytes = dstView.stride;
 
         for (int y = 0; y < dstView.height; ++y)
         {
-            uint8_t* dstRow = (uint8_t*)Surface_ARGB32_row_pointer(&dstView, y);
-            const uint8_t* srcRow = (const uint8_t*)Surface_ARGB32_row_pointer(&srcView, y);
-            memcpy(dstRow, srcRow, rowBytes);
+            uint32_t* d = Surface_ARGB32_row_pointer(&dstView, y);
+            const uint32_t* s = Surface_ARGB32_row_pointer_const(&srcView, y);
+
+            rowFn(d, s, d, dstView.width);
         }
 
         return WG_SUCCESS;
     }
-*/
-
-
-
 
     static INLINE uint32_t wg_sample_nearest_argb32(const Surface_ARGB32& src, int sx, int sy) noexcept
     {
@@ -574,10 +479,10 @@ namespace waavs
                 dstRect.h
             };
 
-            if (wg_get_subarea(src, srcClip, srcView) != WG_SUCCESS)
+            if (Surface_ARGB32_get_subarea(src, srcClip, srcView) != WG_SUCCESS)
                 return WG_ERROR_Invalid_Argument;
 
-            if (wg_get_subarea(dst, dstRect, dstView) != WG_SUCCESS)
+            if (Surface_ARGB32_get_subarea(dst, dstRect, dstView) != WG_SUCCESS)
                 return WG_ERROR_Invalid_Argument;
 
             const size_t rowBytes = (size_t)dstView.width * 4;
@@ -659,139 +564,6 @@ namespace waavs
 }
 
 
-namespace waavs 
-{
-    // There are some interesting surface routines in here
-    // They are not being used for SVG at the moment, but
-    // they might be the basis of future routines.
-    // They're basically redundant though.
-/*
-    // Fill a span with a constant PRGBA color
-    static inline void surface_ARGB32_fill_span(uint32_t* dst, int n, const ColorPRGBA c)
-    {
-        const uint32_t px = pixeling_prgba_pack_ARGB32(c);
-        for (int i = 0; i < n; ++i)
-            dst[i] = px;
-    }
-*/
-
-/*
-    // Fill a rectangle (clamped) with a constant PRGBA color 
-    static inline void surface_ARGB32_fill_rect(Surface_ARGB32* s,
-        int x, int y, int w, int h,
-        const ColorPRGBA c)
-    {
-        // get the intersection of the rect with the surface bounds, 
-        // and skip if empty
-        if (x < 0) { w += x; x = 0; }
-        if (y < 0) { h += y; y = 0; }
-        if (x + w > s->width)  w = s->width - x;
-        if (y + h > s->height) h = s->height - y;
-        if (w <= 0 || h <= 0) return;
-
-        // Convert color value to a packed pixel
-        // Then fill each row of the rectangle with that pixel value
-        const uint32_t px = pixeling_prgba_pack_ARGB32(c);
-        for (int j = 0; j < h; ++j) {
-            uint32_t* row = Surface_ARGB32_row_pointer(s, y + j) + x;
-            for (int i = 0; i < w; ++i) row[i] = px;
-        }
-    }
-    */
-
-
-    /*
-    // Blend (src OVER dst) across a packed ARGB32 span 
-    // with a constant PRGBA src 
-    static inline void surface_ARGB32_over_span(const ColorPRGBA src, uint32_t* dst, int n)
-    {
-        for (int i = 0; i < n; ++i) {
-            const ColorPRGBA d = pixeling_ARGB32_unpack_prgba(dst[i]);
-            const ColorPRGBA o = coloring_prgba_over(src, d);
-            dst[i] = pixeling_prgba_pack_ARGB32(o);
-        }
-    }
-    */
-
-    // ----------------------------------------------------
-    // Sampling and resampling                             
-    // ----------------------------------------------------
-/*
-    // Bilinear sample from ARGB32 surface (normalized 0..1 UV), returns linear PRGBA
-    static inline ColorPRGBA surface_ARGB32_sample_bilinear_prgba(const Surface_ARGB32* s,
-        float u, float v)
-    {
-        // clamp to edge
-        if (u < 0.0f) u = 0.0f; else if (u > 1.0f) u = 1.0f;
-        if (v < 0.0f) v = 0.0f; else if (v > 1.0f) v = 1.0f;
-
-        const float fx = u * (float)(s->width - 1);
-        const float fy = v * (float)(s->height - 1);
-        const int x0 = (int)fx, y0 = (int)fy;
-        const int x1 = (x0 + 1 < s->width) ? (x0 + 1) : x0;
-        const int y1 = (y0 + 1 < s->height) ? (y0 + 1) : y0;
-        const float tx = fx - (float)x0, ty = fy - (float)y0;
-
-        const uint32_t* r0 = Surface_ARGB32_row_pointer_const(s, y0);
-        const uint32_t* r1 = Surface_ARGB32_row_pointer_const(s, y1);
-
-        const ColorPRGBA c00 = pixeling_ARGB32_unpack_prgba(r0[x0]);
-        const ColorPRGBA c10 = pixeling_ARGB32_unpack_prgba(r0[x1]);
-        const ColorPRGBA c01 = pixeling_ARGB32_unpack_prgba(r1[x0]);
-        const ColorPRGBA c11 = pixeling_ARGB32_unpack_prgba(r1[x1]);
-
-        // lerp horizontally then vertically (premultiplied linear)
-        const ColorPRGBA a = coloring_prgba_lerp(c00, c10, tx);
-        const ColorPRGBA b = coloring_prgba_lerp(c01, c11, tx);
-        return coloring_prgba_lerp(a, b, ty);
-    }
-    */
-
-    /*
-    //
-    // 2x box downsample: src ARGB32 -> dst ARGB32 
-    // (sizes should be ceil(src/2))
-    //
-    static inline void surface_ARGB32_downsample2x(const Surface_ARGB32* src,
-        Surface_ARGB32* dst)
-    {
-        for (int y = 0; y < dst->height; ++y) {
-            const int sy = y * 2;
-            const int sy1 = (sy + 1 < src->height) ? (sy + 1) : sy;
-
-            const uint32_t* r0 = Surface_ARGB32_row_pointer_const(src, sy);
-            const uint32_t* r1 = Surface_ARGB32_row_pointer_const(src, sy1);
-            uint32_t* rd = Surface_ARGB32_row_pointer(dst, y);
-
-            for (int x = 0; x < dst->width; ++x) {
-                const int sx = x * 2;
-                const int sx1 = (sx + 1 < src->width) ? (sx + 1) : sx;
-
-                const uint32_t p00 = r0[sx];
-                const uint32_t p10 = r0[sx1];
-                const uint32_t p01 = r1[sx];
-                const uint32_t p11 = r1[sx1];
-
-                const ColorPRGBA c00 = pixeling_ARGB32_unpack_prgba(p00);
-                const ColorPRGBA c10 = pixeling_ARGB32_unpack_prgba(p10);
-                const ColorPRGBA c01 = pixeling_ARGB32_unpack_prgba(p01);
-                const ColorPRGBA c11 = pixeling_ARGB32_unpack_prgba(p11);
-
-                // average premultiplied components 
-                const ColorPRGBA m = {
-                    0.25f * (c00.r + c10.r + c01.r + c11.r),
-                    0.25f * (c00.g + c10.g + c01.g + c11.g),
-                    0.25f * (c00.b + c10.b + c01.b + c11.b),
-                    0.25f * (c00.a + c10.a + c01.a + c11.a)
-                };
-                rd[x] = pixeling_prgba_pack_ARGB32(m);
-            }
-        }
-    }
-    */
-}
-
-
 namespace waavs
 {
     struct Surface
@@ -810,8 +582,6 @@ namespace waavs
         // Storage for the essential information that makes up 
         // the surface (width, height, stride, data pointer)
         Surface_ARGB32 fInfo;
-
-
 
     public:
         Surface() = default;
@@ -892,7 +662,7 @@ namespace waavs
         // Retrieve a sub-region of this surface as a new surface that wraps the same data.
         WGResult getSubSurface(const WGRectI& r, Surface& out) const noexcept
         {
-            WGErrorCode res = wg_get_subarea(fInfo, r, out.fInfo);
+            WGErrorCode res = Surface_ARGB32_get_subarea(fInfo, r, out.fInfo);
             if (res != WG_SUCCESS)
                 return res;
 
@@ -955,10 +725,23 @@ namespace waavs
         // Copy a source surface into this surface at the given destination coordinates.
         // Big caveat: This routine uses memcpy, so if the source and destination regions 
         // overlap, the behavior is undefined.
+        // Note: blit() routines DO NOT do scaling.
         void blit(const Surface& src, int dstX, int dstY) noexcept
         {
-            (void)wg_blit(fInfo, src.fInfo, dstX, dstY);
+            (void)wg_blit_copy(fInfo, src.fInfo, dstX, dstY);
         }
-
+        
+        // compositeBlit()
+        //
+        // Composite a source surface into this surface 
+        // at the given destination coordinates, using the 
+        // specified compositing operator.
+        // Big caveat: This routine does not handle overlapping 
+        // source and destination regions.
+        //
+        void compositeBlit(const Surface& src, int dstX, int dstY, WGCompositeOp op) noexcept
+        {
+            (void)wg_blit_composite(fInfo, src.fInfo, dstX, dstY, op);
+        }
     };
 }

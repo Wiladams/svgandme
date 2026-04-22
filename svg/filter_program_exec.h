@@ -16,7 +16,21 @@
 
 namespace waavs
 {
-    static  void resolveColorInterpolationRGB(
+    static INLINE WGFilterColorSpace to_WGFilterColorSpace(FilterColorInterpolation colorInterpolation) noexcept
+    {
+            // Adjust these enum names to match your actual ColorInterpolation enum.
+            switch (colorInterpolation)
+            {
+            case FILTER_COLOR_INTERPOLATION_SRGB:
+                return WG_FILTER_COLORSPACE_SRGB;
+
+            case FILTER_COLOR_INTERPOLATION_LINEAR_RGB:
+            default:
+                return WG_FILTER_COLORSPACE_LINEAR_RGB;
+            }
+    }
+
+    static  INLINE void resolveColorInterpolationRGB(
         const ColorSRGB& in,
         FilterColorInterpolation interp,
         float& r,
@@ -41,21 +55,6 @@ namespace waavs
     // -----------------------------------------
     // Small decode helpers
     // -----------------------------------------
-    
-    // Unpacking a packed number or percentage
-    static INLINE SVGNumberOrPercent unpackNumberOrPercent(uint64_t packed) noexcept
-    {
-        SVGNumberOrPercent out{};
-        out.fIsSet = packedNumberOrPercentIsSet(packed);
-        out.fIsPercent = packedNumberOrPercentIsPercent(packed);
-
-        uint32_t lo = uint32_t(packed & 0xFFFFFFFFu);
-        float fv = 0.0f;
-        memcpy(&fv, &lo, sizeof(fv));
-        out.fValue = double(fv);
-
-        return out;
-    }
 
 
     template<class EnumT>
@@ -96,7 +95,7 @@ namespace waavs
 
     static INLINE void unpack_listRef(uint64_t ref, uint32_t& off, uint32_t& cnt) noexcept
     {
-        u64_unpack_u32x2(ref, off, cnt);
+        u32x2_from_u64(ref, off, cnt);
     }
 
 
@@ -268,18 +267,6 @@ namespace waavs
     {
         IAmFrootBase* fFroot{ nullptr };
 
-        // Optional spans for list payloads (reference impl uses heap scratch).
-        struct F32Span { const float* p{}; uint32_t n{}; };
-        struct KeySpan { const InternedKey* p{}; uint32_t n{}; };
-
-        struct ComponentFunc {
-            FilterTransferFuncType type{FILTER_TRANSFER_IDENTITY};
-            float p0{}, p1{}, p2{};
-            F32Span table{};
-        };
-
-
-
         // Program execution state (set by execute())
         const FilterProgramStream* fProg{ nullptr };
         //FilterProgramCursor fCur{ *(const FilterProgramStream*)nullptr }; // set in execute via placement
@@ -289,7 +276,11 @@ namespace waavs
         alignas(FilterProgramCursor) uint8_t fCurStorage[sizeof(FilterProgramCursor)]{};
         bool fCurLive{ false };
 
+        // Meta information about the current run, 
+        // which may be useful to ops during execution 
+        // (e.g. feImage needs this for resolving resources)
         FilterRunState fRunState{};
+
 
         virtual ~FilterProgramExecutor()
         {
@@ -762,7 +753,7 @@ namespace waavs
             decodeCommon(flags, io, subr, subrPtr);
 
             uint32_t orderX = 0, orderY = 0;
-            u64_unpack_u32x2(takeU64(), orderX, orderY);
+            u32x2_from_u64(takeU64(), orderX, orderY);
 
             const uint32_t kcnt = orderX * orderY;
 
@@ -786,7 +777,7 @@ namespace waavs
             const float bias = takeF32();
 
             uint32_t targetX = 0, targetY = 0;
-            u64_unpack_u32x2(takeU64(), targetX, targetY);
+            u32x2_from_u64(takeU64(), targetX, targetY);
 
             const FilterEdgeMode edgeMode = takeEnum<FilterEdgeMode>();
 

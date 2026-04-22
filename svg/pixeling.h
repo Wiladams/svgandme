@@ -45,6 +45,11 @@ typedef uint32_t Pixel_SRGBA8_ARGB32; // [A:R:G:B] straight sRGB
 typedef uint32_t Pixel_SRGBA8_RGBA32; // [R:G:B:A] straight sRGB 
 
 namespace waavs {
+    enum WGFilterColorSpace : uint32_t
+    {
+        WG_FILTER_COLORSPACE_LINEAR_RGB = 0,
+        WG_FILTER_COLORSPACE_SRGB = 1
+    };
 
 #if WAAVS_HAS_NEON
 
@@ -120,7 +125,8 @@ static INLINE __m128i mm_splat_inv_alpha_u16(__m128i argb16) noexcept
 #endif
 
 namespace waavs {
-    
+
+
     // raw byte packing without any clamping or conversion; 
     // useful for where we just want to pack known 8-bit values 
     // into a pixel
@@ -132,6 +138,16 @@ namespace waavs {
     static INLINE Pixel_ARGB32 argb32_pack_u8(uint8_t a, uint8_t r, uint8_t g, uint8_t b) noexcept
     {
         return argb32_pack_u32(a, r, g, b);
+    }
+
+    static INLINE Pixel_ARGB32 argb32_pack_premul_u8(uint8_t a, uint8_t r, uint8_t g, uint8_t b) noexcept
+    {
+        // Premultiply the color channels by alpha in sRGB space
+        uint32_t rP = mul255_round_u8(r, a);
+        uint32_t gP = mul255_round_u8(g, a);
+        uint32_t bP = mul255_round_u8(b, a);
+
+        return argb32_pack_u32(a, rP, gP, bP);
     }
 
     // argb32_unpack...
@@ -163,8 +179,30 @@ namespace waavs {
         b = (uint8_t)(px & 0xFF);
     }
 
+    static INLINE void argb32_unpack_unpremul_u8(
+        Pixel_ARGB32 px,
+        uint8_t& a, uint8_t& r, uint8_t& g, uint8_t& b) noexcept
+    {
+        uint8_t rp, gp, bp;
+        argb32_unpack_u8(px, a, rp, gp, bp);
 
+        r = unmul255_round_u8(rp, a);
+        g = unmul255_round_u8(gp, a);
+        b = unmul255_round_u8(bp, a);
+    }
 
+    // argb32_from_pargb32
+    // 
+    // Convert a premultiplied ARGB32 pixel to a straight ARGB32 
+    // pixel by unpremultiplying the color channels in sRGB space
+    // and repacking.
+    static INLINE Pixel_ARGB32 argb32_from_pargb32(const Pixel_ARGB32 px) noexcept
+    {
+        uint8_t a, r, g, b;
+        argb32_unpack_unpremul_u8(px, a, r, g, b);
+    
+        return argb32_pack_u8(a, r, g, b);
+    }
 
     // argb32_unpack_alpha
     // 

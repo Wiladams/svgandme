@@ -1,10 +1,10 @@
+// filter_femorphology.h
 #pragma once
 
 #include <memory>
 
 #include "definitions.h"
 #include "coloring.h"
-#include "pixeling.h"
 #include "wggeometry.h"
 #include "surface.h"
 
@@ -89,43 +89,6 @@ namespace waavs
     }
 
 
-    static INLINE uint32_t morph_min_u8x4(uint32_t a, uint32_t b) noexcept
-    {
-        const uint8_t aa = (uint8_t)((a >> 24) & 0xFF);
-        const uint8_t ar = (uint8_t)((a >> 16) & 0xFF);
-        const uint8_t ag = (uint8_t)((a >> 8) & 0xFF);
-        const uint8_t ab = (uint8_t)((a >> 0) & 0xFF);
-
-        const uint8_t ba = (uint8_t)((b >> 24) & 0xFF);
-        const uint8_t br = (uint8_t)((b >> 16) & 0xFF);
-        const uint8_t bg = (uint8_t)((b >> 8) & 0xFF);
-        const uint8_t bb = (uint8_t)((b >> 0) & 0xFF);
-
-        return argb32_pack_u8(
-            (aa < ba) ? aa : ba,
-            (ar < br) ? ar : br,
-            (ag < bg) ? ag : bg,
-            (ab < bb) ? ab : bb);
-    }
-
-    static INLINE uint32_t morph_max_u8x4(uint32_t a, uint32_t b) noexcept
-    {
-        const uint8_t aa = (uint8_t)((a >> 24) & 0xFF);
-        const uint8_t ar = (uint8_t)((a >> 16) & 0xFF);
-        const uint8_t ag = (uint8_t)((a >> 8) & 0xFF);
-        const uint8_t ab = (uint8_t)((a >> 0) & 0xFF);
-
-        const uint8_t ba = (uint8_t)((b >> 24) & 0xFF);
-        const uint8_t br = (uint8_t)((b >> 16) & 0xFF);
-        const uint8_t bg = (uint8_t)((b >> 8) & 0xFF);
-        const uint8_t bb = (uint8_t)((b >> 0) & 0xFF);
-
-        return argb32_pack_u8(
-            (aa > ba) ? aa : ba,
-            (ar > br) ? ar : br,
-            (ag > bg) ? ag : bg,
-            (ab > bb) ? ab : bb);
-    }
 
     // -----------------------------
 
@@ -142,10 +105,18 @@ namespace waavs
         if (n <= 0)
             return true;
 
+
         if (radius <= 0)
         {
             for (int x = x0; x <= x1; ++x)
-                dst[x] = src[x];
+            {
+                const uint32_t px = src[x];
+                uint8_t a, r, g, b;
+                argb32_unpack_unpremul_u8(px, a, r, g, b);
+
+                dst[x] = argb32_pack_u8(a, r, g, b);
+            }
+
             return true;
         }
 
@@ -167,10 +138,8 @@ namespace waavs
             if (sx >= W) sx = W - 1;
 
             const uint32_t px = src[sx];
-            const uint8_t a = (uint8_t)((px >> 24) & 0xFF);
-            const uint8_t r = (uint8_t)((px >> 16) & 0xFF);
-            const uint8_t g = (uint8_t)((px >> 8) & 0xFF);
-            const uint8_t b = (uint8_t)((px >> 0) & 0xFF);
+            uint8_t a, r, g, b;
+            argb32_unpack_unpremul_u8(px, a, r, g, b);
 
             morph_push_max_u8(scratch.idxA.get(), scratch.valA.get(), headA, tailA, s, a);
             morph_push_max_u8(scratch.idxR.get(), scratch.valR.get(), headR, tailR, s, r);
@@ -187,6 +156,7 @@ namespace waavs
             morph_expire_front(scratch.idxB.get(), headB, tailB, winStart);
 
             const int x = x0 + winStart;
+            //dst[x] = argb32_pack_premul_u8(
             dst[x] = argb32_pack_u8(
                 scratch.valA[headA],
                 scratch.valR[headR],
@@ -210,12 +180,21 @@ namespace waavs
         if (n <= 0)
             return true;
 
+        
         if (radius <= 0)
         {
             for (int x = x0; x <= x1; ++x)
-                dst[x] = src[x];
+            {
+                const uint32_t px = src[x];
+                uint8_t a, r, g, b;
+                argb32_unpack_unpremul_u8(px, a, r, g, b);
+
+                dst[x] = argb32_pack_u8(a, r, g, b);
+            }
+
             return true;
         }
+        
 
         const int window = radius * 2 + 1;
         const int streamLen = n + radius * 2;
@@ -235,10 +214,8 @@ namespace waavs
             if (sx >= W) sx = W - 1;
 
             const uint32_t px = src[sx];
-            const uint8_t a = (uint8_t)((px >> 24) & 0xFF);
-            const uint8_t r = (uint8_t)((px >> 16) & 0xFF);
-            const uint8_t g = (uint8_t)((px >> 8) & 0xFF);
-            const uint8_t b = (uint8_t)((px >> 0) & 0xFF);
+            uint8_t a, r, g, b;
+            argb32_unpack_unpremul_u8(px, a, r, g, b);
 
             morph_push_min_u8(scratch.idxA.get(), scratch.valA.get(), headA, tailA, s, a);
             morph_push_min_u8(scratch.idxR.get(), scratch.valR.get(), headR, tailR, s, r);
@@ -255,6 +232,7 @@ namespace waavs
             morph_expire_front(scratch.idxB.get(), headB, tailB, winStart);
 
             const int x = x0 + winStart;
+            //dst[x] = argb32_pack_premul_u8(
             dst[x] = argb32_pack_u8(
                 scratch.valA[headA],
                 scratch.valR[headR],
@@ -281,6 +259,7 @@ namespace waavs
         if (n <= 0)
             return true;
 
+        
         if (radius <= 0)
         {
             for (int y = y0; y <= y1; ++y)
@@ -289,10 +268,20 @@ namespace waavs
                 const uint32_t* srow = (const uint32_t*)srcSurf.rowPointer((size_t)y);
 
                 for (int x = x0; x <= x1; ++x)
-                    drow[x] = srow[x];
+                {
+                    const uint32_t px = srow[x];
+                    uint8_t a, r, g, b;
+                    argb32_unpack_unpremul_u8(px, a, r, g, b);
+
+                    drow[x] = argb32_pack_u8(a, r, g, b);
+
+
+                    //drow[x] = srow[x];
+                }
             }
             return true;
         }
+        
 
         const int window = radius * 2 + 1;
         const int streamLen = n + radius * 2;
@@ -316,10 +305,9 @@ namespace waavs
                 const uint32_t* srow = (const uint32_t*)srcSurf.rowPointer((size_t)sy);
                 const uint32_t px = srow[x];
 
-                const uint8_t a = (uint8_t)((px >> 24) & 0xFF);
-                const uint8_t r = (uint8_t)((px >> 16) & 0xFF);
-                const uint8_t g = (uint8_t)((px >> 8) & 0xFF);
-                const uint8_t b = (uint8_t)((px >> 0) & 0xFF);
+                uint8_t a, r, g, b;
+                //argb32_unpack_unpremul_u8(px, a, r, g, b);
+                argb32_unpack_u8(px, a, r, g, b);
 
                 morph_push_max_u8(scratch.idxA.get(), scratch.valA.get(), headA, tailA, s, a);
                 morph_push_max_u8(scratch.idxR.get(), scratch.valR.get(), headR, tailR, s, r);
@@ -337,7 +325,7 @@ namespace waavs
 
                 const int y = y0 + winStart;
                 uint32_t* drow = (uint32_t*)dstSurf.rowPointer((size_t)y);
-                drow[x] = argb32_pack_u8(
+                drow[x] = argb32_pack_premul_u8(
                     scratch.valA[headA],
                     scratch.valR[headR],
                     scratch.valG[headG],
@@ -371,7 +359,15 @@ namespace waavs
                 const uint32_t* srow = (const uint32_t*)srcSurf.rowPointer((size_t)y);
 
                 for (int x = x0; x <= x1; ++x)
-                    drow[x] = srow[x];
+                {
+                    // the source has already been unpremultiplied in the row pass, 
+                    // so we need to pre-multiply it back for correct output
+                    const uint32_t px = srow[x];
+                    uint8_t a, r, g, b;
+                    argb32_unpack_u8(px, a, r, g, b);
+                    drow[x] = argb32_pack_premul_u8(a, r, g, b);
+                    //drow[x] = srow[x];
+                }
             }
             return true;
         }
@@ -398,10 +394,9 @@ namespace waavs
                 const uint32_t* srow = (const uint32_t*)srcSurf.rowPointer((size_t)sy);
                 const uint32_t px = srow[x];
 
-                const uint8_t a = (uint8_t)((px >> 24) & 0xFF);
-                const uint8_t r = (uint8_t)((px >> 16) & 0xFF);
-                const uint8_t g = (uint8_t)((px >> 8) & 0xFF);
-                const uint8_t b = (uint8_t)((px >> 0) & 0xFF);
+                uint8_t a, r, g, b;
+                //argb32_unpack_unpremul_u8(px, a, r, g, b);
+                argb32_unpack_u8(px, a, r, g, b);
 
                 morph_push_min_u8(scratch.idxA.get(), scratch.valA.get(), headA, tailA, s, a);
                 morph_push_min_u8(scratch.idxR.get(), scratch.valR.get(), headR, tailR, s, r);
@@ -419,7 +414,7 @@ namespace waavs
 
                 const int y = y0 + winStart;
                 uint32_t* drow = (uint32_t*)dstSurf.rowPointer((size_t)y);
-                drow[x] = argb32_pack_u8(
+                drow[x] = argb32_pack_premul_u8(
                     scratch.valA[headA],
                     scratch.valR[headR],
                     scratch.valG[headG],
@@ -444,7 +439,7 @@ namespace waavs
         int radius,
         MorphDequeScratch& scratch) noexcept
     {
-#if defined(__ARM_NEON)
+#if WAAVS_HAS_NEON
         // TODO: dilate_row_neon(...)
         return dilate_row_scalar(dst, src, x0, x1, W, radius, scratch);
 #else
@@ -461,7 +456,7 @@ namespace waavs
         int radius,
         MorphDequeScratch& scratch) noexcept
     {
-#if defined(__ARM_NEON)
+#if WAAVS_HAS_NEON
         // TODO: erode_row_neon(...)
         return erode_row_scalar(dst, src, x0, x1, W, radius, scratch);
 #else
@@ -480,7 +475,7 @@ namespace waavs
         int radius,
         MorphDequeScratch& scratch) noexcept
     {
-#if defined(__ARM_NEON)
+#if WAAVS_HAS_NEON
         // TODO: dilate_col_neon(...)
         return dilate_col_scalar(dstSurf, srcSurf, x0, x1, y0, y1, H, radius, scratch);
 #else
@@ -499,7 +494,7 @@ namespace waavs
         int radius,
         MorphDequeScratch& scratch) noexcept
     {
-#if defined(__ARM_NEON)
+#if WAAVS_HAS_NEON
         // TODO: erode_col_neon(...)
         return erode_col_scalar(dstSurf, srcSurf, x0, x1, y0, y1, H, radius, scratch);
 #else

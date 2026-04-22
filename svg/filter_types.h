@@ -204,6 +204,13 @@ namespace waavs::filter
     inline InternedKey feFuncG() { static InternedKey k = PSNameTable::INTERN("feFuncG"); return k; }
     inline InternedKey feFuncB() { static InternedKey k = PSNameTable::INTERN("feFuncB"); return k; }
     inline InternedKey feFuncA() { static InternedKey k = PSNameTable::INTERN("feFuncA"); return k; }
+    
+    
+    static InternedKey kIdentity = PSNameTable::INTERN("identity");
+    static InternedKey kTable = PSNameTable::INTERN("table");
+    static InternedKey kDiscrete = PSNameTable::INTERN("discrete");
+    static InternedKey kLinear = PSNameTable::INTERN("linear");
+    static InternedKey kGamma = PSNameTable::INTERN("gamma");
 
     // feConvolveMatrix
     inline InternedKey order() { static InternedKey k = PSNameTable::INTERN("order"); return k; }
@@ -263,9 +270,171 @@ namespace waavs::filter
 
 }
 
+// Converting from string keys to enum values
+// for filter attributes that have a closed vocabulary
+namespace waavs
+{
+
+    static INLINE FilterColorInterpolation parseFilterColorInterpolation(InternedKey k, FilterColorInterpolation def) noexcept
+    {
+        // Filter effects default to linearRGB.
+        if (!k) return def;
+
+        if (k == filter::kColorInterp_linearRGB()) return FILTER_COLOR_INTERPOLATION_LINEAR_RGB;
+        if (k == filter::kColorInterp_sRGB())      return FILTER_COLOR_INTERPOLATION_SRGB;
+
+        // If you later admit "auto" at parse time, collapse it here for now.
+        // if (k == filter::kColorInterp_auto()) return FILTER_COLOR_INTERPOLATION_LINEAR_RGB;
+
+        return def;
+    }
+
+
+    static INLINE FilterBlendMode parseFilterBlendMode(InternedKey k) noexcept
+    {
+        if (!k) return FILTER_BLEND_NORMAL;
+
+
+        if (k == filter::kBlend_normal())     return FILTER_BLEND_NORMAL;
+        if (k == filter::kBlend_multiply())   return FILTER_BLEND_MULTIPLY;
+        if (k == filter::kBlend_screen())     return FILTER_BLEND_SCREEN;
+        if (k == filter::kBlend_darken())     return FILTER_BLEND_DARKEN;
+        if (k == filter::kBlend_lighten())    return FILTER_BLEND_LIGHTEN;
+        if (k == filter::kBlend_overlay())    return FILTER_BLEND_OVERLAY;
+        if (k == filter::kBlend_color_dodge()) return FILTER_BLEND_COLOR_DODGE;
+        if (k == filter::kBlend_color_burn())  return FILTER_BLEND_COLOR_BURN;
+        if (k == filter::kBlend_hard_light())  return FILTER_BLEND_HARD_LIGHT;
+        if (k == filter::kBlend_soft_light())  return FILTER_BLEND_SOFT_LIGHT;
+        if (k == filter::kBlend_difference()) return FILTER_BLEND_DIFFERENCE;
+        if (k == filter::kBlend_exclusion())  return FILTER_BLEND_EXCLUSION;
+
+        return FILTER_BLEND_NORMAL;
+    }
+
+    static INLINE FilterCompositeOp parseFilterCompositeOp(InternedKey k) noexcept
+    {
+        if (!k) return FILTER_COMPOSITE_OVER;
+
+
+        if (k == filter::kCompOp_over())       return FILTER_COMPOSITE_OVER;
+        if (k == filter::kCompOp_in())         return FILTER_COMPOSITE_IN;
+        if (k == filter::kCompOp_out())        return FILTER_COMPOSITE_OUT;
+        if (k == filter::kCompOp_atop())       return FILTER_COMPOSITE_ATOP;
+        if (k == filter::kCompOp_xor())        return FILTER_COMPOSITE_XOR;
+        if (k == filter::kCompOp_arithmetic()) return FILTER_COMPOSITE_ARITHMETIC;
+
+        return FILTER_COMPOSITE_OVER;
+    }
+
+    static INLINE FilterColorMatrixType parseFilterColorMatrixType(InternedKey k) noexcept
+    {
+        if (!k) return FILTER_COLOR_MATRIX_MATRIX;
+
+        static InternedKey kMatrix = PSNameTable::INTERN("matrix");
+        static InternedKey kSaturate = PSNameTable::INTERN("saturate");
+        static InternedKey kHueRotate = PSNameTable::INTERN("hueRotate");
+        static InternedKey kLuminanceToAlpha = PSNameTable::INTERN("luminanceToAlpha");
+
+        if (k == kMatrix)           return FILTER_COLOR_MATRIX_MATRIX;
+        if (k == kSaturate)         return FILTER_COLOR_MATRIX_SATURATE;
+        if (k == kHueRotate)        return FILTER_COLOR_MATRIX_HUE_ROTATE;
+        if (k == kLuminanceToAlpha) return FILTER_COLOR_MATRIX_LUMINANCE_TO_ALPHA;
+
+        return FILTER_COLOR_MATRIX_MATRIX;
+    }
+
+    static INLINE FilterTransferFuncType parseFilterTransferFuncType(InternedKey k) noexcept
+    {
+        if (!k) return FILTER_TRANSFER_IDENTITY;
+
+        static InternedKey kIdentity = PSNameTable::INTERN("identity");
+        static InternedKey kTable = PSNameTable::INTERN("table");
+        static InternedKey kDiscrete = PSNameTable::INTERN("discrete");
+        static InternedKey kLinear = PSNameTable::INTERN("linear");
+        static InternedKey kGamma = PSNameTable::INTERN("gamma");
+
+        if (k == kIdentity) return FILTER_TRANSFER_IDENTITY;
+        if (k == kTable)    return FILTER_TRANSFER_TABLE;
+        if (k == kDiscrete) return FILTER_TRANSFER_DISCRETE;
+        if (k == kLinear)   return FILTER_TRANSFER_LINEAR;
+        if (k == kGamma)    return FILTER_TRANSFER_GAMMA;
+
+        return FILTER_TRANSFER_IDENTITY;
+    }
+
+    static INLINE FilterMorphologyOp parseFilterMorphologyOp(InternedKey k) noexcept
+    {
+        if (!k) return FILTER_MORPHOLOGY_ERODE;
+
+        static InternedKey kErode = PSNameTable::INTERN("erode");
+        static InternedKey kDilate = PSNameTable::INTERN("dilate");
+
+        if (k == kErode)  return FILTER_MORPHOLOGY_ERODE;
+        if (k == kDilate) return FILTER_MORPHOLOGY_DILATE;
+
+        return FILTER_MORPHOLOGY_ERODE;
+    }
+
+    static INLINE FilterEdgeMode parseFilterEdgeMode(InternedKey k) noexcept
+    {
+        if (!k) return FILTER_EDGE_DUPLICATE;
+
+        static InternedKey kDuplicate = PSNameTable::INTERN("duplicate");
+        static InternedKey kWrap = PSNameTable::INTERN("wrap");
+        static InternedKey kNone = PSNameTable::INTERN("none");
+
+        if (k == kDuplicate) return FILTER_EDGE_DUPLICATE;
+        if (k == kWrap)      return FILTER_EDGE_WRAP;
+        if (k == kNone)      return FILTER_EDGE_NONE;
+
+        return FILTER_EDGE_DUPLICATE;
+    }
+
+    static INLINE FilterChannelSelector parseFilterChannelSelector(InternedKey k) noexcept
+    {
+        if (!k) return FILTER_CHANNEL_A;
+
+        static InternedKey kR = PSNameTable::INTERN("R");
+        static InternedKey kG = PSNameTable::INTERN("G");
+        static InternedKey kB = PSNameTable::INTERN("B");
+        static InternedKey kA = PSNameTable::INTERN("A");
+
+        if (k == kR) return FILTER_CHANNEL_R;
+        if (k == kG) return FILTER_CHANNEL_G;
+        if (k == kB) return FILTER_CHANNEL_B;
+        if (k == kA) return FILTER_CHANNEL_A;
+
+        return FILTER_CHANNEL_A;
+    }
+
+    static INLINE FilterTurbulenceType parseFilterTurbulenceType(InternedKey k) noexcept
+    {
+        if (!k) return FILTER_TURBULENCE_TURBULENCE;
+
+        static InternedKey kTurbulence = PSNameTable::INTERN("turbulence");
+        static InternedKey kFractalNoise = PSNameTable::INTERN("fractalNoise");
+
+        if (k == kTurbulence)   return FILTER_TURBULENCE_TURBULENCE;
+        if (k == kFractalNoise) return FILTER_TURBULENCE_FRACTAL_NOISE;
+
+        return FILTER_TURBULENCE_TURBULENCE;
+    }
+}
+
+
 
 namespace waavs
 {
+    // Optional spans for list payloads (reference impl uses heap scratch).
+    struct F32Span { const float* p{}; uint32_t n{}; };
+    struct KeySpan { const InternedKey* p{}; uint32_t n{}; };
+
+    // feComponentTransfer function specification for a single channel.
+    struct ComponentFunc {
+        FilterTransferFuncType type{ FILTER_TRANSFER_IDENTITY };
+        float p0{}, p1{}, p2{};
+        F32Span table{};
+    };
 
 
     // For feComposite, arithmetic operator parameters k1..k4 

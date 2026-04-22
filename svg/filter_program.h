@@ -5,10 +5,19 @@
 #include <vector>
 
 #include "definitions.h"
-#include "filter_types.h"
-#include "svgenums.h"
+//#include "filter_types.h"
+//#include "svgenums.h"
+//#include "nametable.h"
 
-
+// Here we have only the FilterProgramStream, 
+// which is the actual representation of a filter program, 
+// and the opcodes and flags that go into it.
+//
+// There is nothing about actual building or execution in here,
+// except for the FilterProgramCursor, which is a helper for execution.
+// So, this represents the raw "machine code" of the filter program, 
+// and the "architecture" of how the opcodes and operands are represented.
+//
 namespace waavs
 {
     typedef uint16_t FilterOpType;
@@ -184,6 +193,8 @@ namespace waavs
             return true;
         }
 
+        // take()
+        // 
         // Retrieve the next operand word from mem, advance the mem counter.
         // Caller is responsible for ensuring that the operand type matches 
         // the expected type for the current op.
@@ -197,71 +208,5 @@ namespace waavs
             return prog->mem[mi++];
         }
     };
-
-
-    // Helpers to pack and unpack various types into the 64-bit mem words of the filter program.
-    static INLINE uint64_t u64_from_key(InternedKey k) noexcept
-    {
-        // InternedKey is a pointer type; store its bits.
-        static_assert(sizeof(uintptr_t) <= sizeof(uint64_t), "pointer must fit in 64 bits");
-
-        uintptr_t p = (uintptr_t)k;
-        return (uint64_t)p;
-    }
-
-    static INLINE InternedKey key_from_u64(uint64_t v) noexcept
-    {
-        return (InternedKey)(uintptr_t)v;
-    }
-
-
-    static INLINE uint64_t u64_from_f32(float f) noexcept
-    {
-        static_assert(sizeof(float) == 4, "Expected float to be 32 bits");
-        uint32_t u{};
-        memcpy(&u, &f, 4);
-        return (uint64_t)u;
-    }
-
-    static INLINE float f32_from_u64(uint64_t v) noexcept
-    {
-        uint32_t u = (uint32_t)(v & 0xFFFFFFFFu);
-        float f{};
-        memcpy(&f, &u, 4);
-        return f;
-    }
-
-    static INLINE uint32_t u32_from_u64(uint64_t v) noexcept
-    {
-        return (uint32_t)(v & 0xFFFFFFFFu);
-    }
-
-    static INLINE uint64_t u64_from_f64(double d) noexcept
-    {
-        uint64_t u{};
-        static_assert(sizeof(double) == 8, "double must be 64-bit");
-        memcpy(&u, &d, 8);
-
-        return u;
-    }
-
-    static INLINE double f64_from_u64(uint64_t v) noexcept
-    {
-        double d{};
-        memcpy(&d, &v, 8);
-        return d;
-    }
-
-
-    static INLINE uint64_t u64_pack_u32x2(uint32_t a, uint32_t b) noexcept
-    {
-        return (uint64_t)a | ((uint64_t)b << 32);
-    }
-
-    static INLINE void u64_unpack_u32x2(uint64_t v, uint32_t& a, uint32_t& b) noexcept
-    {
-        a = (uint32_t)(v & 0xFFFFFFFFu);
-        b = (uint32_t)(v >> 32);
-    }
  
 }

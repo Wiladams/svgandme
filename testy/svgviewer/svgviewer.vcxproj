@@ -293,12 +293,14 @@
     <ClInclude Include="..\..\svg\pathsegment_normalizer.h" />
     <ClInclude Include="..\..\svg\pixelaccessor.h" />
     <ClInclude Include="..\..\svg\pixeling.h" />
+    <ClInclude Include="..\..\svg\pixeling_blend.h" />
     <ClInclude Include="..\..\svg\pixeling_porterduff.h" />
     <ClInclude Include="..\..\svg\pubsub.h" />
     <ClInclude Include="..\..\svg\scanning.h" />
     <ClInclude Include="..\..\svg\smildatatypes.h" />
     <ClInclude Include="..\..\svg\stopwatch.h" />
     <ClInclude Include="..\..\svg\surface.h" />
+    <ClInclude Include="..\..\svg\surface_info.h" />
     <ClInclude Include="..\..\svg\svg.h" />
     <ClInclude Include="..\..\svg\svgatoms.h" />
     <ClInclude Include="..\..\svg\svgattributes.h" />
@@ -342,6 +344,7 @@
     <ClInclude Include="..\..\svg\twobitpu.h" />
     <ClInclude Include="..\..\svg\utf8.h" />
     <ClInclude Include="..\..\svg\viewport.h" />
+    <ClInclude Include="..\..\svg\waavsgraph.h" />
     <ClInclude Include="..\..\svg\wggeometry.h" />
     <ClInclude Include="..\..\svg\wsenum.h" />
     <ClInclude Include="..\..\svg\xmlentity.h" />

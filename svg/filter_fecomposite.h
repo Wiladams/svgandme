@@ -21,69 +21,7 @@ namespace waavs
         return v == 0;
     }
 
-    // ------------------------------------------------------------
-    // Porter-Duff Row helpers (PARGB32)
-    // ------------------------------------------------------------
-    // They all have the same signature, so we can use them 
-    // as function pointers in the program executor.
-    template <typename PixelOp>
-    static INLINE void composite_binary_prgb32_row_scalar(
-        uint32_t* d,
-        const uint32_t* s1,
-        const uint32_t* s2,
-        int w,
-        PixelOp op) noexcept
-    {
-        for (int x = 0; x < w; ++x)
-            d[x] = op(s1[x], s2[x]);
-    }
 
-    // Operator: in
-    //
-    static  INLINE void composite_in_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
-    {
-#if WAAVS_HAS_NEON
-        composite_in_prgb32_row_neon(d, s1, s2, w);
-#else
-        composite_binary_prgb32_row_scalar(d, s1, s2, w, composite_in_prgb32_pixel);
-#endif
-    }
-
-    // Operator: over
-    //
-    static INLINE void composite_over_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
-    {
-#if WAAVS_HAS_NEON
-        composite_over_prgb32_row_neon(d, s1, s2, w);
-#else
-        composite_binary_prgb32_row_scalar(d, s1, s2, w, composite_over_prgb32_pixel);
-#endif
-    }
-
-    // Operator: out
-    //
-    static INLINE void composite_out_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
-    {
-#if WAAVS_HAS_NEON
-        composite_out_prgb32_row_neon(d, s1, s2, w);
-#else
-        composite_binary_prgb32_row_scalar(d, s1, s2, w, composite_out_prgb32_pixel);
-#endif
-    }
-
-
-    // Operator: atop
-    //
-    static INLINE void composite_atop_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
-    {
-        composite_binary_prgb32_row_scalar(d, s1, s2, w, composite_atop_prgb32_pixel);
-    }
-
-    // Operator: xor
-    static INLINE void composite_xor_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
-    {
-        composite_binary_prgb32_row_scalar(d, s1, s2, w, composite_xor_prgb32_pixel);
-    }
 }
 
 

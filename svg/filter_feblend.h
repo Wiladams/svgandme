@@ -5,9 +5,31 @@
 #include "filter_types.h"
 #include "filter_program_exec.h"   // FilterProgramExecutor + IAmFroot<T>
 #include "pixeling_porterduff.h"
+#include "pixeling_blend.h"
 
 namespace waavs
 {
+    static INLINE WGBlendMode to_wg_blend_mode(FilterBlendMode m) noexcept
+    {
+        switch (m)
+        {
+        case FILTER_BLEND_NORMAL:      return WG_BLEND_NORMAL;
+        case FILTER_BLEND_MULTIPLY:    return WG_BLEND_MULTIPLY;
+        case FILTER_BLEND_SCREEN:      return WG_BLEND_SCREEN;
+        case FILTER_BLEND_DARKEN:      return WG_BLEND_DARKEN;
+        case FILTER_BLEND_LIGHTEN:     return WG_BLEND_LIGHTEN;
+        case FILTER_BLEND_OVERLAY:     return WG_BLEND_OVERLAY;
+        case FILTER_BLEND_COLOR_DODGE: return WG_BLEND_COLOR_DODGE;
+        case FILTER_BLEND_COLOR_BURN:  return WG_BLEND_COLOR_BURN;
+        case FILTER_BLEND_HARD_LIGHT:  return WG_BLEND_HARD_LIGHT;
+        case FILTER_BLEND_SOFT_LIGHT:  return WG_BLEND_SOFT_LIGHT;
+        case FILTER_BLEND_DIFFERENCE:  return WG_BLEND_DIFFERENCE;
+        case FILTER_BLEND_EXCLUSION:   return WG_BLEND_EXCLUSION;
+        default:                       return WG_BLEND_NORMAL;
+        }
+    }
+
+
     static INLINE float blend_channel_normal(float cb, float cs) noexcept
     {
         (void)cb;
