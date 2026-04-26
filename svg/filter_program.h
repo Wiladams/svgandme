@@ -5,9 +5,7 @@
 #include <vector>
 
 #include "definitions.h"
-//#include "filter_types.h"
-//#include "svgenums.h"
-//#include "nametable.h"
+
 
 // Here we have only the FilterProgramStream, 
 // which is the actual representation of a filter program, 

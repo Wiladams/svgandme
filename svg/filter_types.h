@@ -120,8 +120,8 @@ namespace waavs::filter
 
 
     // Common filter primitive keys
-    INLINE InternedKey Filter_SourceGraphic() noexcept { static InternedKey k = PSNameTable::INTERN("SourceGraphic"); return k; }
-    INLINE InternedKey Filter_SourceAlpha() noexcept { static InternedKey k = PSNameTable::INTERN("SourceAlpha"); return k; }
+    INLINE InternedKey SourceGraphic() noexcept { static InternedKey k = PSNameTable::INTERN("SourceGraphic"); return k; }
+    INLINE InternedKey SourceAlpha() noexcept { static InternedKey k = PSNameTable::INTERN("SourceAlpha"); return k; }
     INLINE InternedKey Filter_Last() noexcept { static InternedKey k = PSNameTable::INTERN("__last__"); return k; }
 
 
@@ -283,7 +283,7 @@ namespace waavs
         if (k == filter::kColorInterp_linearRGB()) return FILTER_COLOR_INTERPOLATION_LINEAR_RGB;
         if (k == filter::kColorInterp_sRGB())      return FILTER_COLOR_INTERPOLATION_SRGB;
 
-        // If you later admit "auto" at parse time, collapse it here for now.
+        // If we admit "auto" later at parse time, collapse it here for now.
         // if (k == filter::kColorInterp_auto()) return FILTER_COLOR_INTERPOLATION_LINEAR_RGB;
 
         return def;

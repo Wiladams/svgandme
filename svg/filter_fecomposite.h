@@ -112,7 +112,7 @@ namespace waavs
     // set a span to a specified value
     static INLINE void arithmetic_fill_prgb32_row(uint32_t* dst, size_t n, uint32_t px) noexcept
     {
-        memset_l(dst, px, n);
+        memset_u32(dst, px, n);
     }
 
     // Set a span to zeros

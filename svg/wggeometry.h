@@ -91,6 +91,10 @@
 
 namespace waavs 
 {
+    static INLINE bool wg_rectD_is_valid(const WGRectD& r) noexcept
+    {
+        return (r.w > 0.0) && (r.h > 0.0);
+    }
     static INLINE void wg_rectD_reset(WGRectD& r) { r.x = 0.0; r.y = 0.0; r.w = 0.0; r.h = 0.0; }
 
     static INLINE double right(const WGRectD& r) { return r.x + r.w; }
@@ -111,6 +115,21 @@ namespace waavs
     static INLINE bool containsRect(const WGRectD& a, const WGPointD& pt)
     {
         return containsRect(a, pt.x, pt.y);
+    }
+
+    // Inflate a rectangle by a given amount in each direction.  
+    // The dw and dh parameters specify how much to inflate 
+    // the rectangle on each edge in the horizontal and vertical directions, respectively.
+    // So, the final rectangle will be: width+2dw, height+2dh, 
+    // and the x and y will be moved by -dw and -dh respectively.
+    static INLINE WGRectI wg_rectI_inflate(const WGRectI& r, const int dw, const int dh) noexcept
+    {
+        return WGRectI{ r.x - dw, r.y - dh, r.w + 2 * dw, r.h + 2 * dh };
+    }
+
+    static INLINE WGRectD wg_rectD_inflate(const WGRectD& r, const double dw, const double dh) noexcept
+    {
+        return WGRectD{ r.x - dw, r.y - dh, r.w + 2 * dw, r.h + 2 * dh };
     }
 
     static INLINE WGRectI intersection(const WGRectI& a, const WGRectI& b) noexcept {
@@ -720,13 +739,13 @@ namespace waavs {
         }
 
         WG_NODISCARD
-            static INLINE bool invert(WGMatrix3x3& dst, const WGMatrix3x3& src) noexcept {
+        static INLINE bool invert(WGMatrix3x3& dst, const WGMatrix3x3& src) noexcept {
             dst = src;
             return dst.invert();
         }
 
         WG_NODISCARD
-            static INLINE bool invertAffine2D(WGMatrix3x3& dst, const WGMatrix3x3& src) noexcept {
+        static INLINE bool invertAffine2D(WGMatrix3x3& dst, const WGMatrix3x3& src) noexcept {
             dst = src;
             return dst.invertAffine2D();
         }
@@ -743,7 +762,7 @@ namespace waavs {
         // y' = x*m01 + y*m11 + m21
         //
         WG_NODISCARD
-            INLINE WGPointD mapPoint(double x, double y) const noexcept {
+        INLINE WGPointD mapPoint(double x, double y) const noexcept {
             const double xp = x * m00 + y * m10 + m20;
             const double yp = x * m01 + y * m11 + m21;
             const double wp = x * m02 + y * m12 + m22;
@@ -757,19 +776,19 @@ namespace waavs {
         }
 
         WG_NODISCARD
-            INLINE WGPointD mapPoint(const WGPointD& p) const noexcept {
+        INLINE WGPointD mapPoint(const WGPointD& p) const noexcept {
             return mapPoint(p.x, p.y);
         }
 
         WG_NODISCARD
-            INLINE WGPointD mapVector(double x, double y) const noexcept {
+        INLINE WGPointD mapVector(double x, double y) const noexcept {
             const double xp = x * m00 + y * m10;
             const double yp = x * m01 + y * m11;
             return WGPointD{ xp, yp };
         }
 
         WG_NODISCARD
-            INLINE WGPointD mapVector(const WGPointD& v) const noexcept {
+        INLINE WGPointD mapVector(const WGPointD& v) const noexcept {
             return mapVector(v.x, v.y);
         }
     };

@@ -1,15 +1,19 @@
+// membuff.h
+
 #pragma once
 
 #include "bspan.h"
+#include <atomic>
 
 namespace waavs
 {
-    INLINE void memset_l(void* dstvoid, uint32_t pixel, size_t count) noexcept
+    INLINE void memset_u32(void* dstvoid, uint32_t pixel, size_t count) noexcept
     {
         if (count == 0)
             return;
 
         uint32_t* dst32 = static_cast<uint32_t*>(dstvoid);
+
         // If all bytes of the uint32_t are the same, 
         // we can use memset for a faster fill
         const uint8_t b = uint8_t(pixel & 0xFF);
@@ -18,7 +22,7 @@ namespace waavs
             return;
         }
 
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#if WAAS_HAS_NEON
         size_t i = 0;
         uint32x4_t v = vdupq_n_u32(pixel);
 
@@ -35,6 +39,8 @@ namespace waavs
             dst32[i] = pixel;
         }
 #else
+        // Fallback to scalar fill if there's any leftover
+        // or if SIMD is not available
         for (size_t i = 0; i < count; ++i)
             dst32[i] = pixel;
 #endif
@@ -211,4 +217,45 @@ namespace waavs {
         // by the MemBuff object.  This is something the caller must manage.
         ByteSpan span() const noexcept { return ByteSpan::fromPointers(begin(), end()); }
     };
+
+
+    struct RefMemBuff final
+    {
+        std::atomic<uint32_t> refCount{ 1 };
+        MemBuff buffer;
+
+        static RefMemBuff* create(size_t size) noexcept
+        {
+            RefMemBuff* mem = new RefMemBuff();
+            if (!mem)
+                return nullptr;
+
+            if (!mem->buffer.resetFromSize(size))
+            {
+                delete mem;
+                return nullptr;
+            }
+
+            return mem;
+        }
+
+        void addRef() noexcept
+        {
+            refCount.fetch_add(1, std::memory_order_relaxed);
+        }
+
+        void release() noexcept
+        {
+            if (refCount.fetch_sub(1, std::memory_order_acq_rel) == 1)
+                delete this;
+        }
+
+        uint8_t* data() noexcept { return buffer.data(); }
+        const uint8_t* data() const noexcept { return buffer.data(); }
+
+        size_t size() const noexcept { return buffer.size(); }
+        bool empty() const noexcept { return buffer.empty(); }
+    };
+
+
 }

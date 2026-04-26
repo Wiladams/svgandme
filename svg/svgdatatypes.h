@@ -46,6 +46,12 @@
 
 namespace waavs
 {
+    // mapRectAABB
+    // 
+    // Given what is a typical Current Transformation Matrix (CTM) and a rectangle, 
+    // compute the axis-aligned bounding box of the transformed rectangle.
+    // This is typically done when you want to figure out the physical
+    // pixel rectangle that corresponds to a user-space rectangle after applying the CTM.
     static INLINE WGRectD mapRectAABB(const WGMatrix3x3 & m, const WGRectD& r) noexcept
     {
         // Treat empty/degenerate as-is (or return empty).

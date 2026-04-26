@@ -6,9 +6,9 @@ namespace waavs
 {
     struct IAmGroot;            // forward declaration
     struct IRenderSVG;
-    struct AnimationProgram; // forward declaration
-    class AnimationValueContext;
-    struct CSSStyleSheet;
+//    struct AnimationProgram; // forward declaration
+//    class AnimationValueContext;
+//    struct CSSStyleSheet;
 
     // Base class of many things.  This is just to ensure a virtual destructor
     // and binding behavior.

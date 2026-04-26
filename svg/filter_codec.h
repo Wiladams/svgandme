@@ -6,7 +6,7 @@
 // and the encoded filter program serialized form.
 // This helps keep the ABI in one place with respect to those filters
 
-#include "filterprogram.h"
+#include "filter_program.h"
 
 namespace waavs
 {

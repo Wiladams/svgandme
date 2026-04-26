@@ -51,6 +51,7 @@ namespace waavs
 {
 
 
+
     static INLINE bool lengthToFilterNumberOrPercent(const SVGLengthValue& inVal,
         SVGNumberOrPercent& outVal,
         double dpi = 96.0,
@@ -238,20 +239,19 @@ namespace waavs
         return false;
     }
 
+    /*
     static INLINE bool colorMatrixTypeHasSingleValue(FilterColorMatrixType t) noexcept
     {
         return t == FILTER_COLOR_MATRIX_SATURATE || t == FILTER_COLOR_MATRIX_HUE_ROTATE;
     }
 
-    static INLINE bool compositeOpNeedsArithmeticCoeffs(FilterCompositeOp op) noexcept
-    {
-        return op == FILTER_COMPOSITE_ARITHMETIC;
-    }
+
 
     static INLINE bool transferFuncTypeUsesTable(FilterTransferFuncType t) noexcept
     {
         return t == FILTER_TRANSFER_TABLE || t == FILTER_TRANSFER_DISCRETE;
     }
+    */
 }
 
 namespace waavs
@@ -429,7 +429,7 @@ namespace waavs
             if (fIn) 
                 return fIn;
 
-            return last ? last : filter::Filter_SourceGraphic();
+            return last ? last : filter::SourceGraphic();
         }
 
 
@@ -438,7 +438,7 @@ namespace waavs
             if (fIn2) 
                 return fIn2;
 
-            return filter::Filter_SourceGraphic();
+            return filter::SourceGraphic();
         }
 
         // -------------------------------------------
@@ -843,6 +843,11 @@ namespace waavs
             : SVGFilterPrimitiveElement(FOP_COMPOSITE)
         {
             setIsVisible(false);
+        }
+
+        static INLINE bool compositeOpNeedsArithmeticCoeffs(FilterCompositeOp op) noexcept
+        {
+            return op == FILTER_COMPOSITE_ARITHMETIC;
         }
 
         bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
@@ -2437,7 +2442,7 @@ namespace waavs {
             fProgram.colorInterpolation = fColorInterpolation;
 
             const SVGFilterElement* src = resolvePrimitiveSource();
-            InternedKey last = filter::Filter_SourceGraphic();
+            InternedKey last = filter::SourceGraphic();
 
             if (src)
             {

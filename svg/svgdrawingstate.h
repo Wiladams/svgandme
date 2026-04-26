@@ -6,7 +6,7 @@
 #include <memory>
 #include <deque>
 
-#include "blend2d.h"
+#include "blend2d_connect.h"
 #include "fonthandler.h"
 #include "svgenums.h"
 #include "svgdatatypes.h"
@@ -61,7 +61,7 @@ namespace waavs {
         TXTALIGNMENT fTextVAlignment = BASELINE;
 
         // ViewportState
-		BLMatrix2D fTransform{};
+		WGMatrix3x3 fTransform{};
         WGRectD fClipRect{};
         WGRectD fViewport{};
         WGRectD fObjectFrame{};
@@ -76,7 +76,7 @@ namespace waavs {
             fStrokePaint = BLVar::null();
 			fDefaultColor = BLRgba32(0, 0, 0, 255);
             fBackgroundPaint = BLVar::null();
-			fTransform = BLMatrix2D::makeIdentity();
+			fTransform = WGMatrix3x3::makeIdentity();
         }
 
         SVGDrawingState(const SVGDrawingState& other)
@@ -176,8 +176,8 @@ namespace waavs {
         /// </summary>
         /// <param name="r"></param>
         /// 
-        BLMatrix2D getTransform() const { return fDrawingState->fTransform; }
-        void setTransform(const BLMatrix2D& r) {
+        WGMatrix3x3 getTransform() const { return fDrawingState->fTransform; }
+        void setTransform(const WGMatrix3x3& r) {
             fDrawingState->fTransform = r;
             markModified();
         }
@@ -193,9 +193,9 @@ namespace waavs {
         // Map viewport to user space using inverse transform
         WGRectD getViewportUserSpace() const 
         {
-            BLMatrix2D invTransform = getTransform();
-            BLResult res = invTransform.invert();
-            if (res != BL_SUCCESS) {
+            WGMatrix3x3 invTransform = getTransform();
+            if (!invTransform.invert())
+            {
                 printf("IAccessDrawingState::getViewportUserSpace, ERROR: Transform is not invertible\n");
                 return WGRectD{};
             }
@@ -204,8 +204,8 @@ namespace waavs {
             // using the inverse transform
             WGRectD vport = viewport();
             WGRectD viewportUserSpace{};
-            BLPoint origin = invTransform.mapPoint(vport.x, vport.y);
-            BLPoint corner = invTransform.mapPoint(vport.x + vport.w, vport.y + vport.h);
+            WGPointD origin = invTransform.mapPoint(vport.x, vport.y);
+            WGPointD corner = invTransform.mapPoint(vport.x + vport.w, vport.y + vport.h);
 
             return WGRectD{
                 origin.x,
@@ -480,7 +480,8 @@ namespace waavs {
             ctx->setFillRule((BLFillRule)getFillRule());
 
             // Set the transform
-            ctx->setTransform(getTransform());
+            BLMatrix2D t = blMatrix_from_WGMatrix3x3(getTransform());
+            ctx->setTransform(t);
 
             // Stroke Options
             ctx->setStrokeOptions(fDrawingState->fStrokeOptions);

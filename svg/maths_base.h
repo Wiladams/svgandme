@@ -116,6 +116,10 @@ namespace waavs
         return rlow + (x - olow) * ((rhigh - rlow) / (ohigh - olow));
     }
 
+    INLINE int iroundf_fast(float v) noexcept
+    {
+        return int(v + (v >= 0.0f ? 0.5f : -0.5f));
+    }
     INLINE float floor(float a) { return std::floor(a); }
     INLINE int floorI(float x) noexcept
     {

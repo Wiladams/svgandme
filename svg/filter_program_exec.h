@@ -3,6 +3,7 @@
 
 #include <memory>
 
+#include "filter_exec.h"
 #include "filter_types.h"
 #include "filter_program.h"
 #include "filter_program_builder.h"
@@ -16,6 +17,16 @@
 
 namespace waavs
 {
+    struct FilterPrimitiveSubregion
+    {
+        SVGNumberOrPercent x;
+        SVGNumberOrPercent y;
+        SVGNumberOrPercent w;
+        SVGNumberOrPercent h;
+        bool isValid{ false };
+    };
+
+
     static INLINE WGFilterColorSpace to_WGFilterColorSpace(FilterColorInterpolation colorInterpolation) noexcept
     {
             // Adjust these enum names to match your actual ColorInterpolation enum.
@@ -82,15 +93,7 @@ namespace waavs
     }
 
 
-    struct FilterIO
-    {
-        FilterColorInterpolation colorInterp;
-        InternedKey in1{};
-        InternedKey in2{};
-        InternedKey out{};     // nullptr means "implicit last"
-        bool hasIn2{ false };
-        bool hasOut{ false };
-    };
+
 
 
     static INLINE void unpack_listRef(uint64_t ref, uint32_t& off, uint32_t& cnt) noexcept
@@ -111,15 +114,14 @@ namespace waavs
     // -----------------------------------------------------------------------------
     // IAmFroot<TImage>
     // Filter Root: Key->Image registry used by filter program execution.
-    // A typical instantiation would be IAmFroot<BLImage>, but it can be used for other 
+    // A typical instantiation would be IAmFroot<Surface>, but it can be used for other 
     // image types as well.
     // -----------------------------------------------------------------------------
 
         template<class ImageT>
         struct IAmFroot : IAmFrootBase
         {
-            using Image = ImageT;
-            using SurfaceHandle = std::unique_ptr<ImageT>;
+            using ImageHandle = std::unique_ptr<ImageT>;
 
             virtual ~IAmFroot() = default;
 
@@ -131,7 +133,7 @@ namespace waavs
             virtual const ImageT* getImage(InternedKey key) const noexcept = 0;
 
             // Transfer ownership into the registry.
-            virtual bool putImage(InternedKey key, SurfaceHandle&& img) noexcept = 0;
+            virtual bool putImage(InternedKey key, ImageHandle&& img) noexcept = 0;
 
             virtual void eraseImage(InternedKey key) noexcept = 0;
             virtual void clearSurfaces() noexcept = 0;
@@ -141,11 +143,9 @@ namespace waavs
             virtual void setLastKey(InternedKey k) noexcept = 0;
 
             // Image allocation helpers (backend decides pixel format, alignment, etc.)
-            //virtual ImageT& createSurface(InternedKey key, size_t w, size_t h) noexcept = 0;
-            //virtual ImageT& createLikeSurface(InternedKey key, const ImageT& like) noexcept = 0;
-            virtual SurfaceHandle createSurfaceHandle(size_t w, size_t h) noexcept = 0;
-            virtual SurfaceHandle createLikeSurfaceHandle(const ImageT& like) noexcept = 0;
-            virtual SurfaceHandle copySurfaceHandle(const ImageT& src) noexcept = 0;
+            virtual ImageHandle createSurfaceHandle(size_t w, size_t h) noexcept = 0;
+            virtual ImageHandle createLikeSurfaceHandle(const ImageT& like) noexcept = 0;
+            virtual ImageHandle copySurfaceHandle(const ImageT& src) noexcept = 0;
         
             // Resolve empty / "__last__" sentinel to concrete key.
             InternedKey resolveKey(InternedKey k) const noexcept override
@@ -167,7 +167,7 @@ namespace waavs
             
             INLINE InternedKey implicitInputFallback() const noexcept
             {
-                return lastKey() ? lastKey() : filter::Filter_SourceGraphic();
+                return lastKey() ? lastKey() : filter::SourceGraphic();
             }
 
             INLINE InternedKey resolveExplicitOrImplicitInputKey(InternedKey k) const noexcept
@@ -219,33 +219,21 @@ namespace waavs
 
 
 
-        // State associated with a running program
-        struct FilterRunState
-        {
-            FilterColorInterpolation colorInterpolation{ FilterColorInterpolation::FILTER_COLOR_INTERPOLATION_LINEAR_RGB };
-            
-            // Filter-level coordinate systems
-            SpaceUnitsKind filterUnits{ SpaceUnitsKind::SVG_SPACE_OBJECT };
-            SpaceUnitsKind primitiveUnits{ SpaceUnitsKind::SVG_SPACE_USER };
 
-            // Geometry resolved at apply time
-            WGRectD objectBBoxUS{};
-            WGRectD filterRectUS;
-        };
 
         // Resolver interface for filter primitives that need to fetch images by key (e.g. feImage).
 
         template<class ImageT>
         struct IFilterResourceResolver
         {
-            using SurfaceHandle = std::unique_ptr<ImageT>;
+            using ImageHandle = std::unique_ptr<ImageT>;
 
             virtual ~IFilterResourceResolver() = default;
 
-            virtual SurfaceHandle resolveFeImage(
+            virtual ImageHandle resolveFeImage(
                 InternedKey imageKey,
                 const FilterRunState& runState,
-                const WGRectD* subr,
+                const WGRectD& subr,
                 AspectRatioAlignKind align,
                 AspectRatioMeetOrSliceKind meetOrSlice) noexcept = 0;
         };
@@ -312,64 +300,47 @@ namespace waavs
         virtual bool onBeginProgram(const FilterProgramStream&) noexcept { return true; }
         virtual void onEndProgram(const FilterProgramStream&) noexcept {}
 
-        virtual bool onGaussianBlur(const FilterIO&, const WGRectD*, float sx, float sy) noexcept 
+        virtual bool onGaussianBlur(const FilterIO&, const FilterPrimitiveSubregion &, float sx, float sy) noexcept
         {
             return true;
         }
 
-        virtual bool onOffset(const FilterIO&, const WGRectD*, float dx, float dy) noexcept 
+        virtual bool onOffset(const FilterIO&, const FilterPrimitiveSubregion&, float dx, float dy) noexcept
         {
             return true;
         }
 
-        virtual bool onBlend(const FilterIO&, const WGRectD*,FilterBlendMode ) noexcept 
+        virtual bool onBlend(const FilterIO&, const FilterPrimitiveSubregion&,FilterBlendMode ) noexcept
         {
             return true;
         }
 
-        // ----------------------------------------------
-        // onComposite
-        // ----------------------------------------------
-        // default implementation of operator per row and per pixel operations
-
-
-
-        //static void composite_over_prgb32_row(uint32_t* d, const uint32_t* s, const uint32_t* b, int w) noexcept
-        //{
-        //    for (int x = 0; x < w; ++x)
-        //        d[x] = composite_over_prgb32_pixel(s[x], b[x]);
-        //}
-
-
-
-
-
-
-        virtual bool onComposite(const FilterIO&, const WGRectD*,
-            FilterCompositeOp /*opKey*/, 
-            float /*k1*/, 
-            float /*k2*/, 
-            float /*k3*/, 
-            float /*k4*/) noexcept 
+        virtual bool onComposite(const FilterIO&, const FilterPrimitiveSubregion&,
+            FilterCompositeOp opKey, 
+            float k1, 
+            float k2, 
+            float k3, 
+            float k4) noexcept 
         {
             return true;
         }
 
-        virtual bool onColorMatrix(const FilterIO&, const WGRectD*,
+        virtual bool onColorMatrix(const FilterIO&, const FilterPrimitiveSubregion&,
             FilterColorMatrixType /*typeKey*/, float /*param*/,
             F32Span /*matrix*/) noexcept {
             return true;
         }
 
-        virtual bool onComponentTransfer(const FilterIO&, const WGRectD*,
-            const ComponentFunc& /*r*/,
-            const ComponentFunc& /*g*/,
-            const ComponentFunc& /*b*/,
-            const ComponentFunc& /*a*/) noexcept {
+        virtual bool onComponentTransfer(const FilterIO&, const FilterPrimitiveSubregion&,
+            const ComponentFunc& r,
+            const ComponentFunc& g,
+            const ComponentFunc& b,
+            const ComponentFunc& a) noexcept 
+        {
             return true;
         }
 
-        virtual bool onConvolveMatrix(const FilterIO&, const WGRectD*,
+        virtual bool onConvolveMatrix(const FilterIO&, const FilterPrimitiveSubregion&,
             uint32_t /*orderX*/, uint32_t /*orderY*/,
             F32Span /*kernel*/,
             float /*divisor*/, 
@@ -383,7 +354,7 @@ namespace waavs
             return true;
         }
 
-        virtual bool onDisplacementMap(const FilterIO&, const WGRectD*,
+        virtual bool onDisplacementMap(const FilterIO&, const FilterPrimitiveSubregion&,
             float /*scale*/, 
             FilterChannelSelector /*xChannel*/, 
             FilterChannelSelector /*yChannel*/) noexcept 
@@ -392,34 +363,34 @@ namespace waavs
         }
 
         virtual bool onFlood(const FilterIO&, 
-            const WGRectD*,
+            const FilterPrimitiveSubregion&,
             const ColorSRGB& ) noexcept 
         {
             return true;
         }
 
-        virtual bool onImage(const FilterIO&, const WGRectD*,
+        virtual bool onImage(const FilterIO&, const FilterPrimitiveSubregion&,
             InternedKey, 
             AspectRatioAlignKind,
             AspectRatioMeetOrSliceKind) noexcept {
             return true;
         }
 
-        virtual bool onMerge(const FilterIO&, const WGRectD*,
+        virtual bool onMerge(const FilterIO&, const FilterPrimitiveSubregion&,
             KeySpan /*inputs*/) noexcept {
             return true;
         }
 
-        virtual bool onMorphology(const FilterIO&, const WGRectD*,
+        virtual bool onMorphology(const FilterIO&, const FilterPrimitiveSubregion&,
             FilterMorphologyOp /*opKey*/, 
             float /*rx*/, 
             float /*ry*/) noexcept {
             return true;
         }
 
-        virtual bool onTile(const FilterIO&, const WGRectD*) noexcept { return true; }
+        virtual bool onTile(const FilterIO&, const FilterPrimitiveSubregion&) noexcept { return true; }
 
-        virtual bool onTurbulence(const FilterIO&, const WGRectD*,
+        virtual bool onTurbulence(const FilterIO&, const FilterPrimitiveSubregion&,
             FilterTurbulenceType /*typeKey*/, 
             float /*baseFreqX*/, 
             float /*baseFreqY*/,
@@ -430,7 +401,7 @@ namespace waavs
             return true;
         }
 
-        virtual bool onDiffuseLighting(const FilterIO&, const WGRectD*,
+        virtual bool onDiffuseLighting(const FilterIO&, const FilterPrimitiveSubregion&,
             const ColorSRGB& ,
             float /*surfaceScale*/, 
             float /*diffuseConstant*/,
@@ -441,7 +412,7 @@ namespace waavs
             return true;
         }
 
-        virtual bool onSpecularLighting(const FilterIO&, const WGRectD*,
+        virtual bool onSpecularLighting(const FilterIO&, const FilterPrimitiveSubregion&,
             const ColorSRGB & /*lightingRGBA*/, 
             float /*surfaceScale*/,
             float /*specularConstant*/, 
@@ -453,7 +424,7 @@ namespace waavs
             return true;
         }
 
-        virtual bool onDropShadow(const FilterIO&, const WGRectD*,
+        virtual bool onDropShadow(const FilterIO&, const FilterPrimitiveSubregion&,
             float /*dx*/, 
             float /*dy*/, 
             float /*sx*/, 
@@ -505,7 +476,7 @@ namespace waavs
         INLINE ColorSRGB    takeColorSRGB() { return take_ColorSRGB(cur()); }
 
         void decodeCommonPrefix(uint8_t flags, FilterProgramCursor& c,
-            FilterIO& io, WGRectD& subr, const WGRectD*& subrPtr) noexcept
+            FilterIO& io, FilterPrimitiveSubregion& subr) noexcept
         {
             io = {};
 
@@ -524,28 +495,20 @@ namespace waavs
 
             if (flags & FOPF_HAS_SUBR) {
                 // Decode the value
-                SVGNumberOrPercent x = unpackNumberOrPercent(c.take());
-                SVGNumberOrPercent y = unpackNumberOrPercent(c.take());
-                SVGNumberOrPercent w = unpackNumberOrPercent(c.take());
-                SVGNumberOrPercent h = unpackNumberOrPercent(c.take());
-
-                // Resolve the value to user space using the current run state.
-                subr.x = x.isPercent() ? x.value() * fRunState.objectBBoxUS.w : x.value();
-                subr.y = y.isPercent() ? y.value() * fRunState.objectBBoxUS.h : y.value();
-                subr.w = w.isPercent() ? w.value() * fRunState.objectBBoxUS.w : w.value();
-                subr.h = h.isPercent() ? h.value() * fRunState.objectBBoxUS.h : h.value();
-
-                subrPtr = &subr;
+                subr.x = unpackNumberOrPercent(c.take());
+                subr.y = unpackNumberOrPercent(c.take());
+                subr.w = unpackNumberOrPercent(c.take());
+                subr.h = unpackNumberOrPercent(c.take());
+                subr.isValid = true;
             }
             else {
                 subr = {};
-                subrPtr = nullptr;
             }
         }
 
-        INLINE void decodeCommon(uint8_t flags, FilterIO& io, WGRectD& subr, const WGRectD*& subrPtr) noexcept
+        INLINE void decodeCommon(uint8_t flags, FilterIO& io, FilterPrimitiveSubregion& subr) noexcept
         {
-            decodeCommonPrefix(flags, cur(), io, subr, subrPtr);
+            decodeCommonPrefix(flags, cur(), io, subr);
         }
 
         // Convert a mem list (f32 stored via u64_from_f32) to a scratch float buffer.
@@ -610,46 +573,42 @@ namespace waavs
         bool gaussianBlur(uint8_t flags) noexcept
         {
             FilterIO io{};
-            WGRectD subr{};
-            const WGRectD* subrPtr{};
-            decodeCommon(flags, io, subr, subrPtr);
+            FilterPrimitiveSubregion subr{};
+            decodeCommon(flags, io, subr);
 
             const float sx = takeF32();
             const float sy = takeF32();
 
-            return onGaussianBlur(io, subrPtr, sx, sy);
+            return onGaussianBlur(io, subr, sx, sy);
         }
 
         bool offset(uint8_t flags) noexcept
         {
             FilterIO io{};
-            WGRectD subr{};
-            const WGRectD* subrPtr{};
-            decodeCommon(flags, io, subr, subrPtr);
+            FilterPrimitiveSubregion subr{};
+            decodeCommon(flags, io, subr);
 
             const float dx = takeF32();
             const float dy = takeF32();
 
-            return onOffset(io, subrPtr, dx, dy);
+            return onOffset(io, subr, dx, dy);
         }
 
         bool blend(uint8_t flags) noexcept
         {
             FilterIO io{};
-            WGRectD subr{};
-            const WGRectD* subrPtr{};
-            decodeCommon(flags, io, subr, subrPtr);
+            FilterPrimitiveSubregion subr{};
+            decodeCommon(flags, io, subr);
 
             FilterBlendMode mode = takeEnum< FilterBlendMode>();
-            return onBlend(io, subrPtr, mode);
+            return onBlend(io, subr, mode);
         }
 
         bool composite(uint8_t flags) noexcept
         {
             FilterIO io{};
-            WGRectD subr{};
-            const WGRectD* subrPtr{};
-            decodeCommon(flags, io, subr, subrPtr);
+            FilterPrimitiveSubregion subr{};
+            decodeCommon(flags, io, subr);
 
             FilterCompositeOp op = takeEnum<FilterCompositeOp>();
 
@@ -663,15 +622,14 @@ namespace waavs
                 k4 = takeF32();
             }
 
-            return onComposite(io, subrPtr, op, k1, k2, k3, k4);
+            return onComposite(io, subr, op, k1, k2, k3, k4);
         }
 
         bool colorMatrix(uint8_t flags) noexcept
         {
             FilterIO io{};
-            WGRectD subr{};
-            const WGRectD* subrPtr{};
-            decodeCommon(flags, io, subr, subrPtr);
+            FilterPrimitiveSubregion subr{};
+            decodeCommon(flags, io, subr);
 
             FilterColorMatrixType type_ = takeEnum<FilterColorMatrixType>(); 
 
@@ -700,15 +658,14 @@ namespace waavs
                 break;
             }
 
-            return onColorMatrix(io, subrPtr, type_, param, matrix);
+            return onColorMatrix(io, subr, type_, param, matrix);
         }
 
         bool componentTransfer(uint8_t flags) noexcept
         {
             FilterIO io{};
-            WGRectD subr{};
-            const WGRectD* subrPtr{};
-            decodeCommon(flags, io, subr, subrPtr);
+            FilterPrimitiveSubregion subr{};
+            decodeCommon(flags, io, subr);
 
             ComponentFunc ch[4]{};
 
@@ -737,7 +694,7 @@ namespace waavs
                 }
             }
 
-            const bool ok = onComponentTransfer(io, subrPtr, ch[0], ch[1], ch[2], ch[3]);
+            const bool ok = onComponentTransfer(io, subr, ch[0], ch[1], ch[2], ch[3]);
 
             for (int i = 0; i < 4; ++i)
                 freeF32Scratch(ch[i].table);
@@ -748,9 +705,8 @@ namespace waavs
         bool convolveMatrix(uint8_t flags) noexcept
         {
             FilterIO io{};
-            WGRectD subr{};
-            const WGRectD* subrPtr{};
-            decodeCommon(flags, io, subr, subrPtr);
+            FilterPrimitiveSubregion subr{};
+            decodeCommon(flags, io, subr);
 
             uint32_t orderX = 0, orderY = 0;
             u32x2_from_u64(takeU64(), orderX, orderY);
@@ -786,7 +742,7 @@ namespace waavs
 
             const bool preserveAlpha = takeU32() != 0;
 
-            const bool ok = onConvolveMatrix(io, subrPtr,
+            const bool ok = onConvolveMatrix(io, subr,
                 orderX, orderY,
                 kernel,
                 divisor, bias,
@@ -804,50 +760,45 @@ namespace waavs
         bool displacementMap(uint8_t flags) noexcept
         {
             FilterIO io{};
-            WGRectD subr{};
-            const WGRectD* subrPtr{};
-            decodeCommon(flags, io, subr, subrPtr);
+            FilterPrimitiveSubregion subr{};
+            decodeCommon(flags, io, subr);
 
             const float scale = takeF32();
             FilterChannelSelector xCh = takeEnum< FilterChannelSelector>();
             FilterChannelSelector yCh = takeEnum< FilterChannelSelector>();
 
-            return onDisplacementMap(io, subrPtr, scale, xCh, yCh);
+            return onDisplacementMap(io, subr, scale, xCh, yCh);
         }
 
         bool flood(uint8_t flags) noexcept
         {
             FilterIO io{};
-            WGRectD subr{};
-            const WGRectD* subrPtr{};
-            decodeCommon(flags, io, subr, subrPtr);
+            FilterPrimitiveSubregion subr{};
+            decodeCommon(flags, io, subr);
 
             ColorSRGB c = takeColorSRGB();
-            //const uint32_t rgba = takeU32();
-            return onFlood(io, subrPtr, c);
+            return onFlood(io, subr, c);
         }
 
         bool image(uint8_t flags) noexcept
         {
             FilterIO io{};
-            WGRectD subr{};
-            const WGRectD* subrPtr{};
+            FilterPrimitiveSubregion subr{};
             
-            decodeCommon(flags, io, subr, subrPtr);
+            decodeCommon(flags, io, subr);
             
             InternedKey imageKey = takeKey();
             AspectRatioAlignKind align = takeEnum<AspectRatioAlignKind>();
             AspectRatioMeetOrSliceKind mos = takeEnum<AspectRatioMeetOrSliceKind>();
 
-            return onImage(io, subrPtr, imageKey, align, mos);
+            return onImage(io, subr, imageKey, align, mos);
         }
 
         bool merge(uint8_t flags) noexcept
         {
             FilterIO io{};
-            WGRectD subr{};
-            const WGRectD* subrPtr{};
-            decodeCommon(flags, io, subr, subrPtr);
+            FilterPrimitiveSubregion subr{};
+            decodeCommon(flags, io, subr);
 
             const uint32_t cnt = takeU32();
 
@@ -864,7 +815,7 @@ namespace waavs
                 inputs = { buf, cnt };
             }
 
-            const bool ok = onMerge(io, subrPtr, inputs);
+            const bool ok = onMerge(io, subr, inputs);
             freeKeyScratch(inputs);
             return ok;
         }
@@ -872,9 +823,8 @@ namespace waavs
         bool morphology(uint8_t flags) noexcept
         {
             FilterIO io{};
-            WGRectD subr{};
-            const WGRectD* subrPtr{};
-            decodeCommon(flags, io, subr, subrPtr);
+            FilterPrimitiveSubregion subr{};
+            decodeCommon(flags, io, subr);
 
             FilterMorphologyOp op = takeEnum<FilterMorphologyOp>();
 
@@ -882,25 +832,24 @@ namespace waavs
             const float rx = takeF32();
             const float ry = takeF32();
 
-            return onMorphology(io, subrPtr, op, rx, ry);
+            return onMorphology(io, subr, op, rx, ry);
         }
 
         bool tile(uint8_t flags) noexcept
         {
             FilterIO io{};
-            WGRectD subr{};
-            const WGRectD* subrPtr{};
-            decodeCommon(flags, io, subr, subrPtr);
+            FilterPrimitiveSubregion subr{};
 
-            return onTile(io, subrPtr);
+            decodeCommon(flags, io, subr);
+
+            return onTile(io, subr);
         }
 
         bool turbulence(uint8_t flags) noexcept
         {
             FilterIO io{};
-            WGRectD subr{};
-            const WGRectD* subrPtr{};
-            decodeCommon(flags, io, subr, subrPtr);
+            FilterPrimitiveSubregion subr{};
+            decodeCommon(flags, io, subr);
 
 
             FilterTurbulenceType type_ = takeEnum< FilterTurbulenceType>();
@@ -911,15 +860,14 @@ namespace waavs
             float seed = takeF32();
             bool stitch = takeU32() != 0;
 
-            return onTurbulence(io, subrPtr, type_, fx, fy, oct, seed, stitch);
+            return onTurbulence(io, subr, type_, fx, fy, oct, seed, stitch);
         }
 
         bool diffuseLighting(uint8_t flags) noexcept
         {
             FilterIO io{};
-            WGRectD subr{};
-            const WGRectD* subrPtr{};
-            decodeCommon(flags, io, subr, subrPtr);
+            FilterPrimitiveSubregion subr{};
+            decodeCommon(flags, io, subr);
 
             const ColorSRGB srgb = takeColorSRGB();
             const float surfaceScale = takeF32();
@@ -932,17 +880,16 @@ namespace waavs
             for (int i = 0; i < 8; ++i)
                 L.L[i] = takeF32();
 
-            return onDiffuseLighting(io, subrPtr, srgb, surfaceScale, diffuseC, kulx, kuly, lightType, L);
+            return onDiffuseLighting(io, subr, srgb, surfaceScale, diffuseC, kulx, kuly, lightType, L);
         }
 
         bool specularLighting(uint8_t flags) noexcept
         {
             FilterIO io{};
-            WGRectD subr{};
-            const WGRectD* subrPtr{};
-            decodeCommon(flags, io, subr, subrPtr);
+            FilterPrimitiveSubregion subr{};
 
-            //const uint32_t rgba = takeU32();
+            decodeCommon(flags, io, subr);
+
             ColorSRGB srgb = takeColorSRGB();
             const float surfaceScale = takeF32();
             const float specC = takeF32();
@@ -955,15 +902,15 @@ namespace waavs
             for (int i = 0; i < 8; ++i)
                 L.L[i] = takeF32();
 
-            return onSpecularLighting(io, subrPtr, srgb, surfaceScale, specC, specExp, kulx, kuly, lightType, L);
+            return onSpecularLighting(io, subr, srgb, surfaceScale, specC, specExp, kulx, kuly, lightType, L);
         }
 
         bool dropShadow(uint8_t flags) noexcept
         {
             FilterIO io{};
-            WGRectD subr{};
-            const WGRectD* subrPtr{};
-            decodeCommon(flags, io, subr, subrPtr);
+            FilterPrimitiveSubregion subr{};
+
+            decodeCommon(flags, io, subr);
 
             const float dx = takeF32();
             const float dy = takeF32();
@@ -971,7 +918,7 @@ namespace waavs
             const float sy = takeF32();
             const ColorSRGB srgb = takeColorSRGB();
 
-            return onDropShadow(io, subrPtr, dx, dy, sx, sy, srgb);
+            return onDropShadow(io, subr, dx, dy, sx, sy, srgb);
         }
 
         // -----------------------------------------

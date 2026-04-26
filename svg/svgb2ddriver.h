@@ -121,7 +121,8 @@ namespace waavs
         {
             BLMatrix2D m = blMatrix_from_WGMatrix3x3(value);
             fDrawingContext->setTransform(m);
-            setTransform(fDrawingContext->userTransform());
+            WGMatrix3x3 wgM = wgMatrix_from_BLMatrix2D(fDrawingContext->userTransform());
+            setTransform(wgM);
         }
 
         void onApplyTransform(const WGMatrix3x3& value) override
@@ -129,26 +130,34 @@ namespace waavs
             BLMatrix2D m = blMatrix_from_WGMatrix3x3(value);
 
             fDrawingContext->applyTransform(m);
-            setTransform(fDrawingContext->userTransform());
+            WGMatrix3x3 wgM = wgMatrix_from_BLMatrix2D(fDrawingContext->userTransform());
+
+            setTransform(wgM);
         }
 
         void onScale(double x, double y) override
         {
             fDrawingContext->scale(x, y);
-            setTransform(fDrawingContext->userTransform());
+            WGMatrix3x3 wgM = wgMatrix_from_BLMatrix2D(fDrawingContext->userTransform());
+
+            setTransform(wgM);
         }
 
         void onTranslate(double x, double y) override
         {
             fDrawingContext->translate(x, y);
-            setTransform(fDrawingContext->userTransform());
+            WGMatrix3x3 wgM = wgMatrix_from_BLMatrix2D(fDrawingContext->userTransform());
+
+            setTransform(wgM);
         }
 
 
         void onRotate(double angle, double cx, double cy) override
         {
             fDrawingContext->rotate(angle);
-            setTransform(fDrawingContext->userTransform());
+            WGMatrix3x3 wgM = wgMatrix_from_BLMatrix2D(fDrawingContext->userTransform());
+
+            setTransform(wgM);
         }
 
         // Drawing attributes

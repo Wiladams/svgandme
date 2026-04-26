@@ -181,10 +181,10 @@ namespace waavs
 
     // returns a height value in [0..1] based 
     // on the alpha component of a packed ARGB32 pixel
-    static INLINE float alphaHeightFromPRGB32(uint32_t px) noexcept
-    {
-        return dequantize0_255((px >> 24) & 0xFFu);
-    }
+    //static INLINE float alphaHeightFromPRGB32(uint32_t px) noexcept
+    //{
+    //    return dequantize0_255((px >> 24) & 0xFFu);
+    //}
 
 
     static INLINE void diffuseLighting_row_scalar(
@@ -205,17 +205,17 @@ namespace waavs
             const int xp0 = clamp(x, 0, surfaceW - 1);
             const int xp1 = clamp(x + 1, 0, surfaceW - 1);
 
-            const float h00 = alphaHeightFromPRGB32(row0[xm1]);
-            const float h10 = alphaHeightFromPRGB32(row0[xp0]);
-            const float h20 = alphaHeightFromPRGB32(row0[xp1]);
+            const float h00 = argb32_unpack_alpha_norm(row0[xm1]);
+            const float h10 = argb32_unpack_alpha_norm(row0[xp0]);
+            const float h20 = argb32_unpack_alpha_norm(row0[xp1]);
 
-            const float h01 = alphaHeightFromPRGB32(row1[xm1]);
-            const float h11 = alphaHeightFromPRGB32(row1[xp0]);
-            const float h21 = alphaHeightFromPRGB32(row1[xp1]);
+            const float h01 = argb32_unpack_alpha_norm(row1[xm1]);
+            const float h11 = argb32_unpack_alpha_norm(row1[xp0]);
+            const float h21 = argb32_unpack_alpha_norm(row1[xp1]);
 
-            const float h02 = alphaHeightFromPRGB32(row2[xm1]);
-            const float h12 = alphaHeightFromPRGB32(row2[xp0]);
-            const float h22 = alphaHeightFromPRGB32(row2[xp1]);
+            const float h02 = argb32_unpack_alpha_norm(row2[xm1]);
+            const float h12 = argb32_unpack_alpha_norm(row2[xp0]);
+            const float h22 = argb32_unpack_alpha_norm(row2[xp1]);
 
             float nx, ny, nz;
             computeDiffuseNormalFromHeights(
@@ -244,7 +244,8 @@ namespace waavs
                 p.diffuseConstant,
                 lightFactor);
 
-            dst[x] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, lit);
+            //dst[x] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, lit);
+            dst[i] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, lit);
         }
     }
 

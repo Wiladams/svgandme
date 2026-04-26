@@ -198,8 +198,8 @@ namespace waavs
         }
 
         // Set a single pixel value
-    // Assume range checking has already occured
-    // Perform SRCCOPY operation on a pixel
+        // Assume range checking has already occured
+        // Perform SRCCOPY operation on a pixel
         virtual void setPixel(const size_t x, const size_t y, const TP& c)
         {
             pixelPointer(x, y)[0] = c;
@@ -210,7 +210,7 @@ namespace waavs
     // the whole area
         virtual void setAllPixels(const TP& c)
         {
-            // Could use memset_l if we check size
+            // Could use memset_u32 if we check size
             // of TP == 4
             for (size_t row = 0; row < static_cast<size_t>(height()); row++)
                 for (size_t col = 0; col < static_cast<size_t>(width()); col++)

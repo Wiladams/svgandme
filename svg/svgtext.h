@@ -500,7 +500,7 @@ namespace waavs {
                 const double tx = originX + double(absX) * sx;
                 const double ty = originY + double(absY) * sy;;
 
-                const WGMatrix3x3 saved = wgMatrix_from_BLMatrix2D(ctx->getTransform());
+                const WGMatrix3x3 saved = ctx->getTransform();
                 WGMatrix3x3 delta{};
                 delta.reset();	// start with identity
                 delta.translate(tx, ty);

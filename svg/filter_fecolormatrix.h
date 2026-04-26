@@ -2,12 +2,8 @@
 
 #pragma once
 
-#include "definitions.h"
-#include "coloring.h"
-#include "pixeling.h"
-#include "wggeometry.h"
-#include "surface.h"
-#include "filter_program.h"
+
+#include "filter_exec.h"
 
 namespace waavs
 {
@@ -371,7 +367,7 @@ namespace waavs
             Mf[0] = 0.0f;    Mf[1] = 0.0f;    Mf[2] = 0.0f;    Mf[3] = 0.0f;    Mf[4] = 0.0f;
             Mf[5] = 0.0f;    Mf[6] = 0.0f;    Mf[7] = 0.0f;    Mf[8] = 0.0f;    Mf[9] = 0.0f;
             Mf[10] = 0.0f;    Mf[11] = 0.0f;    Mf[12] = 0.0f;    Mf[13] = 0.0f;    Mf[14] = 0.0f;
-            Mf[15] = 0.2125f; Mf[16] = 0.7154f; Mf[17] = 0.0721f; Mf[18] = 0.0f;    Mf[19] = 0.0f;
+            Mf[15] = 0.2126f; Mf[16] = 0.7152f; Mf[17] = 0.0722f; Mf[18] = 0.0f;    Mf[19] = 0.0f;
         }
 
         for (int i = 0; i < 20; ++i)
@@ -414,7 +410,7 @@ namespace waavs
         const ColorMatrixPrepared& M) noexcept;
 
     // Get the appropriate row processing function for the given color space.
-    static INLINE ColorMatrixRowFn get_colormatrix_row_fn(
+    static  ColorMatrixRowFn get_colormatrix_row_fn(
         WGFilterColorSpace cs) noexcept
     {
         switch (cs)
@@ -430,73 +426,78 @@ namespace waavs
         }
     }
 
+    static INLINE void colormatrix_row_scalar(
+        uint32_t* dst,
+        const uint32_t* src,
+        size_t n,
+        const ColorMatrixPrepared& M) noexcept
+    {
+        if (n == 0)
+            return;
+
+        if (M.isIdentity)
+        {
+            wg_hspan_copy_unchecked(dst, src, n);
+            return;
+        }
+
+        ColorMatrixRowFn rowFn = nullptr;
+
+        // luminanceToAlpha should use the linear coefficients path.
+        if (M.type == FILTER_COLOR_MATRIX_LUMINANCE_TO_ALPHA)
+            rowFn = colormatrix_linear_prgb32_row;
+        else
+            rowFn = get_colormatrix_row_fn(M.colorSpace);
+
+        if (!rowFn)
+            return;
+
+        rowFn(dst, src, n, M);
+    }
+
+
     // ------------------------------------------------
     // Workhorse routines
     // ------------------------------------------------
-
-    static INLINE WGResult wg_colormatrix_rect(
-        Surface_ARGB32& dst,
-        const Surface_ARGB32& src,
+    INLINE WGResult wg_colormatrix_rect(
+        Surface dst,
+        const Surface src,
         const WGRectI& area,
         const ColorMatrixPrepared& M) noexcept
     {
-        if (!dst.data || dst.width <= 0 || dst.height <= 0)
-            return WG_ERROR_Invalid_Argument;
-
-        if (!src.data || src.width <= 0 || src.height <= 0)
-            return WG_ERROR_Invalid_Argument;
-
-        if (area.w <= 0 || area.h <= 0)
-            return WG_SUCCESS;
+        Surface_ARGB32 dstInfo = dst.info();
+        Surface_ARGB32 srcInfo = src.info();
 
         Surface_ARGB32 dstView{};
         Surface_ARGB32 srcView{};
 
-        if (Surface_ARGB32_get_subarea(dst, area, dstView) != WG_SUCCESS)
-            return WG_ERROR_Invalid_Argument;
+        WGRectI clipped = intersection(area, Surface_ARGB32_bounds(&dstInfo));
+        clipped = intersection(clipped, Surface_ARGB32_bounds(&srcInfo));
 
-        if (Surface_ARGB32_get_subarea(src, area, srcView) != WG_SUCCESS)
-            return WG_ERROR_Invalid_Argument;
-
-        if (dstView.width <= 0 || dstView.height <= 0)
+        if (clipped.w <= 0 || clipped.h <= 0)
             return WG_SUCCESS;
 
-        if (M.isIdentity)
-        {
-            const size_t rowBytes = (size_t)dstView.width * sizeof(uint32_t);
+        if (Surface_ARGB32_get_subarea(dstInfo, clipped, dstView) != WG_SUCCESS)
+            return WG_ERROR_Invalid_Argument;
 
-            for (int y = 0; y < dstView.height; ++y)
+        if (Surface_ARGB32_get_subarea(srcInfo, clipped, srcView) != WG_SUCCESS)
+            return WG_ERROR_Invalid_Argument;
+
+        return wg_surface_rows_apply_unary_unchecked(
+            dstView,
+            srcView,
+            [&M](uint32_t* d, const uint32_t* s, int w) noexcept
             {
-                uint8_t* drow = (uint8_t*)Surface_ARGB32_row_pointer(&dstView, y);
-                const uint8_t* srow = (const uint8_t*)Surface_ARGB32_row_pointer_const(&srcView, y);
-                memcpy(drow, srow, rowBytes);
-            }
-
-            return WG_SUCCESS;
-        }
-
-        ColorMatrixRowFn rowFn = get_colormatrix_row_fn(M.colorSpace);
-        if (!rowFn)
-            return WG_ERROR_Invalid_Argument;
-
-        for (int y = 0; y < dstView.height; ++y)
-        {
-            uint32_t* drow = Surface_ARGB32_row_pointer(&dstView, y);
-            const uint32_t* srow = Surface_ARGB32_row_pointer_const(&srcView, y);
-
-            rowFn(drow, srow, (size_t)dstView.width, M);
-        }
-
-        return WG_SUCCESS;
+                colormatrix_row_scalar(d, s, size_t(w), M);
+            });
     }
-
 
 
     // Apply a color matrix to the specified area of the source image,
     // writing results to the destination image.
     static INLINE WGResult wg_colormatrix_rect(
-        Surface_ARGB32& dst,
-        const Surface_ARGB32& src,
+        Surface dst,
+        const Surface src,
         const WGRectI& area,
         FilterColorMatrixType type,
         float param,
@@ -510,3 +511,63 @@ namespace waavs
         return wg_colormatrix_rect(dst, src, area, M);
     }
 }
+
+
+namespace waavs
+{
+
+    struct ColorMatrixPayload
+    {
+        FilterColorMatrixType type;
+        float param;
+        F32Span matrix;
+    };
+
+    struct ColorMatrixExecutor final
+        : FilterPrimitiveExecutorBase<ColorMatrixExecutor,
+        ColorMatrixTraits,
+        ColorMatrixPayload>
+    {
+        FilterOpId opId() const noexcept override
+        {
+            return FilterOpId::FOP_COLOR_MATRIX;
+        }
+
+        bool executeTyped(FilterExecContext& ctx,
+            FilterResolvedIO& rio,
+            const ColorMatrixPayload& p) const noexcept
+        {
+            if (rio.in1.empty() || rio.out.empty())
+                return false;
+
+            if (rio.writeAreaPx.w <= 0 || rio.writeAreaPx.h <= 0)
+                return ctx.putImage(rio.outKey, rio.out);
+
+
+            //static INLINE WGResult wg_colormatrix_rect(
+            //    Surface dst,
+            //    const Surface src,
+            //    const WGRectI & area,
+            //    FilterColorMatrixType type,
+            //    float param,
+            //    F32Span matrix,
+            //    WGFilterColorSpace cs) noexcept
+
+
+            WGResult r = wg_colormatrix_rect(
+                rio.out,
+                rio.in1,
+                rio.writeAreaPx,
+                p.type,
+                p.param,
+                p.matrix,
+                to_WGFilterColorSpace(rio.colorSpace));
+
+            if (r != WG_SUCCESS)
+                return false;
+
+            return ctx.putImage(rio.outKey, std::move(rio.out));
+        }
+    };
+}
+

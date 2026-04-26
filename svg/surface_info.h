@@ -1,4 +1,4 @@
-// surface_info.h - Defines the Surface_ARGB32 structure for representing ARGB32 surfaces in the waavs library.
+// surface_info.h
 #pragma once
 
 #include "definitions.h"
@@ -7,16 +7,27 @@
 
 namespace waavs
 {
+    struct SurfaceInfo
+    {
+        uint8_t* data;
+        int32_t width;
+        int32_t height;
+        ptrdiff_t stride;
+        uint32_t bitsPerPixel;
+    };
+
+
     // ----------------------------------------------------
     // Surface type + rows + basic fills/blends for ARGB32 
     // ----------------------------------------------------
-    typedef struct {
+    struct Surface_ARGB32 
+    {
         uint8_t* data;          // base pointer
         int32_t  width;         // in pixels
         int32_t  height;        // in pixels
-        intptr_t stride;        // in bytes between rows
+        ptrdiff_t stride;        // in bytes between rows
         bool     contiguous;    // whether the memory is contiguous (no gap between rows)
-    } Surface_ARGB32;
+    } ;
 
 
     // rectangle convenience
@@ -45,19 +56,26 @@ namespace waavs
     // This routine will perform boundary clipping and return a subarea
     // that actually fits within the source surface.
     //
-    static  WGErrorCode Surface_ARGB32_get_subarea(const Surface_ARGB32& src, const WGRectI& area, Surface_ARGB32& subarea) noexcept
+    static  WGResult Surface_ARGB32_get_subarea(const Surface_ARGB32& src, const WGRectI& area, Surface_ARGB32& subarea) noexcept
     {
-        if (!src.data || src.width == 0 || src.height == 0)
-            return WG_ERROR_Invalid_Argument;
-        if (area.w <= 0 || area.h <= 0)
-            return WG_ERROR_Invalid_Argument;
-        if (area.x < 0 || area.y < 0 || area.x + area.w >(int)src.width || area.y + area.h >(int)src.height)
+        // If there's not associated data in the source
+        // then return an early error
+        if (!src.data || (src.width <= 0) || (src.height <= 0) || (src.stride < src.width*4))
             return WG_ERROR_Invalid_Argument;
 
+        // Get the intersection of the requested area with 
+        // the source bounds, and use that as the actual area 
+        // for the subarea.
+        WGRectI srcBounds = Surface_ARGB32_bounds(&src);
+        WGRectI clippedArea = intersection(srcBounds, area);
 
-        subarea.data = src.data + (size_t)area.y * (size_t)src.stride + (size_t)area.x * 4;
-        subarea.width = area.w;
-        subarea.height = area.h;
+        // early return if no intersection
+        if (clippedArea.w <= 0 || clippedArea.h <= 0)
+            return WG_ERROR_Invalid_Argument;
+
+        subarea.data = src.data + (size_t)clippedArea.y * (size_t)src.stride + (size_t)clippedArea.x * 4;
+        subarea.width = clippedArea.w;
+        subarea.height = clippedArea.h;
         subarea.stride = src.stride;
         subarea.contiguous = false; // Subareas might not contiguous if they don't.
         //. cover the whole area

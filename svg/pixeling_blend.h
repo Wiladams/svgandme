@@ -7,6 +7,7 @@
 
 #include "coloring.h"
 #include "surface_info.h"
+#include "surface.h"
 
 namespace waavs
 {
@@ -759,54 +760,12 @@ namespace waavs
     {
         if (mode >= WG_BLEND_COUNT)
             return nullptr;
+        if (cs != WG_FILTER_COLORSPACE_LINEAR_RGB &&
+            cs != WG_FILTER_COLORSPACE_SRGB)
+            return nullptr;
 
         return kBlendRowTable[(int)cs][(int)mode];
     }
 
-    static INLINE WGResult wg_blend_rect(
-        Surface_ARGB32& dst,
-        const Surface_ARGB32& backdrop,
-        const Surface_ARGB32& source,
-        const WGRectI& area,
-        WGBlendMode mode,
-        WGFilterColorSpace cs) noexcept
-    {
-        // Resolve clipped views
-        Surface_ARGB32 dView{};
-        Surface_ARGB32 bView{};
-        Surface_ARGB32 sView{};
-
-        if (Surface_ARGB32_get_subarea(dst, area, dView) != WG_SUCCESS)
-            return WG_ERROR_Invalid_Argument;
-
-        if (Surface_ARGB32_get_subarea(backdrop, area, bView) != WG_SUCCESS)
-            return WG_ERROR_Invalid_Argument;
-
-        if (Surface_ARGB32_get_subarea(source, area, sView) != WG_SUCCESS)
-            return WG_ERROR_Invalid_Argument;
-
-        if (dView.width <= 0 || dView.height <= 0)
-            return WG_SUCCESS;
-
-        // Resolve row function once (critical for performance)
-        BlendRowFn rowFn = get_blend_row_fn(mode, cs);
-        if (!rowFn)
-            return WG_ERROR_Invalid_Argument;
-
-        // Row loop
-        const int h = dView.height;
-        const int w = dView.width;
-
-        for (int y = 0; y < h; ++y)
-        {
-            uint32_t* d = Surface_ARGB32_row_pointer(&dView, y);
-            const uint32_t* b = Surface_ARGB32_row_pointer_const(&bView, y);
-            const uint32_t* s = Surface_ARGB32_row_pointer_const(&sView, y);
-
-            rowFn(d, b, s, w);
-        }
-
-        return WG_SUCCESS;
-    }
 
 }

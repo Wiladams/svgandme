@@ -96,7 +96,16 @@ static void drawBackground()
 
 static void drawForeground()
 {
-    //getAppSurface()->fillRect(WGRectD(0,0,100,100),0xffff0000);
+    // Tracking the conversion of a rectangle through the current transform, 
+    // to see how it maps to the surface
+    // Works with a .svg where there is a rectangle of the same size being
+    // drawn in red.  If we see any of that red, instead of green, then there
+    // is something wrong with the transform.
+    //WGRectD inFrame{ 100, 100, 200, 200 };
+    //WGMatrix3x3 m = getDrawingContext()->getTransform();
+    //WGRectD greenFrame = mapRectAABB(m, inFrame);
+
+    //getAppSurface()->fillRect(greenFrame, 0xff00ff00);
 }
 
 static void drawDocument()
