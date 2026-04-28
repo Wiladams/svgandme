@@ -37,6 +37,35 @@
 //
 namespace waavs
 {
+    static INLINE WGResult wg_surface_resolve_rect_unary(
+        Surface_ARGB32& dst,
+        const Surface_ARGB32& src,
+        const WGRectI& area,
+        Surface_ARGB32& dstView,
+        Surface_ARGB32& srcView) noexcept
+    {
+        if (!dst.data || dst.width <= 0 || dst.height <= 0)
+            return WG_ERROR_Invalid_Argument;
+
+        if (!src.data || src.width <= 0 || src.height <= 0)
+            return WG_ERROR_Invalid_Argument;
+
+        WGRectI clipped = intersection(area, Surface_ARGB32_bounds(&dst));
+        clipped = intersection(clipped, Surface_ARGB32_bounds(&src));
+
+        if (clipped.w <= 0 || clipped.h <= 0)
+            return WG_SUCCESS;
+
+        if (Surface_ARGB32_get_subarea(dst, clipped, dstView) != WG_SUCCESS)
+            return WG_ERROR_Invalid_Argument;
+
+        if (Surface_ARGB32_get_subarea(src, clipped, srcView) != WG_SUCCESS)
+            return WG_ERROR_Invalid_Argument;
+
+        return WG_SUCCESS;
+    }
+
+
     // Given a source surface and a destination surface, 
 // and a destination coordinate for the top-left of the source,
 // calculate the corresponding source and destination subareas 

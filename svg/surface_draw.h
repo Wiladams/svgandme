@@ -382,8 +382,8 @@ namespace waavs
 
     static INLINE WGResult wg_blit_blend_rect(
         Surface_ARGB32& dst,
-        const Surface_ARGB32& backdrop,
         const Surface_ARGB32& source,
+        const Surface_ARGB32& backdrop,
         const WGRectI& area,
         WGBlendMode mode,
         WGFilterColorSpace cs) noexcept

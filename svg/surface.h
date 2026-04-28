@@ -10,9 +10,12 @@ namespace waavs
 {
     struct Surface
     {
+        static constexpr int32_t kBytesPerPixel = 4; // ARGB32
+
     private:
         RefMemBuff* fMemory = nullptr;
         Surface_ARGB32 fInfo{};
+
 
         void addRef() noexcept
         {
@@ -43,6 +46,8 @@ namespace waavs
         {
             addRef();
         }
+
+
 
         Surface& operator=(const Surface& other) noexcept
         {
@@ -84,18 +89,38 @@ namespace waavs
             return *this;
         }
 
+        bool operator==(const Surface& other)
+        {
+            return ((fInfo.data == other.fInfo.data) &&
+                (fInfo.width == other.fInfo.width) &&
+                (fInfo.height == other.fInfo.height) &&
+                (fInfo.stride == other.fInfo.stride));
+        }
+
         ~Surface() noexcept
         {
             release();
         }
+
+
 
         bool reset(int32_t w, int32_t h) noexcept
         {
             if (w <= 0 || h <= 0)
                 return false;
 
-            const intptr_t stride = intptr_t(w) * 4;
-            const size_t totalBytes = size_t(stride) * size_t(h);
+            // Make sure we're not going to overflow allocation
+
+            if (w > INT32_MAX / kBytesPerPixel)
+                return false;
+
+            const size_t astride = size_t(w) * kBytesPerPixel;
+
+            // Again, check for overflow, before it can happen
+            if (size_t(h) > SIZE_MAX / astride)
+                return false;
+
+            const size_t totalBytes = astride * size_t(h);
 
             RefMemBuff* mem = RefMemBuff::create(totalBytes);
             if (!mem || !mem->data())
@@ -112,7 +137,7 @@ namespace waavs
             fInfo.data = mem->data();
             fInfo.width = w;
             fInfo.height = h;
-            fInfo.stride = stride;
+            fInfo.stride = astride;
             fInfo.contiguous = true;
 
             return true;
@@ -165,14 +190,33 @@ namespace waavs
             return !fInfo.data || fInfo.width <= 0 || fInfo.height <= 0;
         }
 
-        bool ownsMemory() const noexcept
+        bool hasOwnedBacking() const noexcept
         {
             return fMemory != nullptr;
+        }
+
+        bool isBorrowed() const noexcept
+        {
+            return fInfo.data && fMemory == nullptr;
         }
 
         bool isContiguous() const noexcept
         {
             return fInfo.contiguous;
+        }
+
+        bool isValid() const noexcept
+        {
+            return fInfo.data &&
+                fInfo.width > 0 &&
+                fInfo.height > 0 &&
+                fInfo.stride >= ptrdiff_t(fInfo.width) * kBytesPerPixel;
+        
+        }
+
+        bool isView() const noexcept
+        {
+            return fMemory != nullptr && fInfo.data != fMemory->data();
         }
 
         WGRectI boundsI() const noexcept

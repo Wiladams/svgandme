@@ -89,6 +89,7 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 static void drawBackground()
 {
     // We need to clear the context first
+    getAppSurface()->clearAll();
     getDrawingContext()->renew();
     getDrawingContext()->background(BLRgba32(0xffffffff));
     getDrawingContext()->clearToBackground();

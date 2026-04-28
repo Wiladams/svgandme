@@ -8,10 +8,23 @@
 #include "coloring.h"
 #include "surface_info.h"
 #include "surface.h"
+#include "pixeling_porterduff.h"
 
 namespace waavs
 {
-    // Blend modes for pixel art. These are designed to be simple and fast, 
+    enum WGFilterColorSpace : uint32_t
+    {
+        WG_FILTER_COLORSPACE_LINEAR_RGB = 0,
+        WG_FILTER_COLORSPACE_SRGB = 1
+    };
+    
+    // We need these assertions because these values are used as
+    // table indices, and MUST NOT CHANGE
+    static_assert(WG_FILTER_COLORSPACE_LINEAR_RGB == 0);
+    static_assert(WG_FILTER_COLORSPACE_SRGB == 1);
+
+    // Blend modes for pixel art. 
+    // These are designed to be simple and fast, 
     // and to produce results that are visually pleasing for pixel art.
     enum WGBlendMode : uint8_t
     {
@@ -161,9 +174,17 @@ namespace waavs
     }
 
     static INLINE Pixel_ARGB32 blend_hard_light_linear_prgb32_pixel(
-        Pixel_ARGB32 b, Pixel_ARGB32 s) noexcept
+        Pixel_ARGB32 backdrop,
+        Pixel_ARGB32 source) noexcept
     {
-        return blend_overlay_linear_prgb32_pixel(s, b);
+        return blend_separable_linear_prgb32_pixel(
+            backdrop,
+            source,
+            [](float cb, float cs) noexcept {
+                return (cs <= 0.5f)
+                    ? (2.0f * cb * cs)
+                    : (1.0f - 2.0f * (1.0f - cb) * (1.0f - cs));
+            });
     }
 
     static INLINE Pixel_ARGB32 blend_soft_light_linear_prgb32_pixel(
@@ -204,8 +225,8 @@ namespace waavs
         Pixel_ARGB32 source,
         BlendFn blendFn) noexcept
     {
-        const ColorPRGBA bp = coloring_ARGB32_to_prgba(backdrop);
-        const ColorPRGBA sp = coloring_ARGB32_to_prgba(source);
+        const ColorSRGB bp = colorsrgb_from_premultiplied_Pixel_ARGB32(backdrop);
+        const ColorSRGB sp = colorsrgb_from_premultiplied_Pixel_ARGB32(source);
 
         const float ab = clamp01f(bp.a);
         const float as = clamp01f(sp.a);
@@ -214,40 +235,40 @@ namespace waavs
         if (!(outA > 0.0f))
             return 0u;
 
-        const float cb_r = (ab > 0.0f) ? clamp01f(bp.r / ab) : 0.0f;
-        const float cb_g = (ab > 0.0f) ? clamp01f(bp.g / ab) : 0.0f;
-        const float cb_b = (ab > 0.0f) ? clamp01f(bp.b / ab) : 0.0f;
+        const float cb_r = clamp01f(bp.r);
+        const float cb_g = clamp01f(bp.g);
+        const float cb_b = clamp01f(bp.b);
 
-        const float cs_r = (as > 0.0f) ? clamp01f(sp.r / as) : 0.0f;
-        const float cs_g = (as > 0.0f) ? clamp01f(sp.g / as) : 0.0f;
-        const float cs_b = (as > 0.0f) ? clamp01f(sp.b / as) : 0.0f;
+        const float cs_r = clamp01f(sp.r);
+        const float cs_g = clamp01f(sp.g);
+        const float cs_b = clamp01f(sp.b);
 
         const float br = blendFn(cb_r, cs_r);
         const float bg = blendFn(cb_g, cs_g);
         const float bb = blendFn(cb_b, cs_b);
 
         const float outR_p =
-            (1.0f - as) * bp.r +
-            (1.0f - ab) * sp.r +
+            (1.0f - as) * ab * cb_r +
+            (1.0f - ab) * as * cs_r +
             ab * as * br;
 
         const float outG_p =
-            (1.0f - as) * bp.g +
-            (1.0f - ab) * sp.g +
+            (1.0f - as) * ab * cb_g +
+            (1.0f - ab) * as * cs_g +
             ab * as * bg;
 
         const float outB_p =
-            (1.0f - as) * bp.b +
-            (1.0f - ab) * sp.b +
+            (1.0f - as) * ab * cb_b +
+            (1.0f - ab) * as * cs_b +
             ab * as * bb;
 
-        ColorPRGBA out{};
+        ColorSRGB out{};
         out.a = outA;
         out.r = clamp01f(outR_p);
         out.g = clamp01f(outG_p);
         out.b = clamp01f(outB_p);
 
-        return coloring_prgba_to_ARGB32(out);
+        return Pixel_ARGB32_premultiplied_from_ColorSRGB(out);
     }
 
     static INLINE Pixel_ARGB32 blend_normal_srgb_prgb32_pixel(

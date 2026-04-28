@@ -7,16 +7,6 @@
 
 namespace waavs
 {
-    struct SurfaceInfo
-    {
-        uint8_t* data;
-        int32_t width;
-        int32_t height;
-        ptrdiff_t stride;
-        uint32_t bitsPerPixel;
-    };
-
-
     // ----------------------------------------------------
     // Surface type + rows + basic fills/blends for ARGB32 
     // ----------------------------------------------------
@@ -36,7 +26,26 @@ namespace waavs
         return WGRectI{ 0, 0, s->width, s->height };
     }
 
-    static  INLINE uint32_t* Surface_ARGB32_row_pointer(const Surface_ARGB32* s, int y) {
+    //
+    // Surface_ARGB32_row_pointer_unchecked
+    // 
+    // Preconditions:
+    //  - s is a valid pointer to a Surface_ARGB32
+    //  - s->data is a valid pointer to the surface data, 
+    //    and the memory layout matches the width, height, 
+    //    and stride specified in the structure.
+    //  - y is a valid row index (0 <= y < s->height)
+    // 
+    // Returns a pointer to the start of the specified row.  
+    // The caller is responsible for ensuring that the preconditions are met.
+
+    static  INLINE uint32_t* Surface_ARGB32_row_pointer_unchecked(const Surface_ARGB32* s, int y) 
+    {
+        return (uint32_t*)(s->data + ((size_t)y * (size_t)s->stride));
+    }
+    
+    static  INLINE uint32_t* Surface_ARGB32_row_pointer(const Surface_ARGB32* s, int y)
+    {
         return (uint32_t*)(s->data + ((size_t)y * (size_t)s->stride));
     }
 
@@ -77,8 +86,10 @@ namespace waavs
         subarea.width = clippedArea.w;
         subarea.height = clippedArea.h;
         subarea.stride = src.stride;
-        subarea.contiguous = false; // Subareas might not contiguous if they don't.
-        //. cover the whole area
+        subarea.contiguous =
+            src.contiguous &&
+            clippedArea.x == 0 &&
+            clippedArea.w == src.width;
 
         return WG_SUCCESS;
     }

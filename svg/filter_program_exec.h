@@ -121,7 +121,7 @@ namespace waavs
         template<class ImageT>
         struct IAmFroot : IAmFrootBase
         {
-            using ImageHandle = std::unique_ptr<ImageT>;
+            //using ImageHandle = std::unique_ptr<ImageT>;
 
             virtual ~IAmFroot() = default;
 
@@ -129,11 +129,11 @@ namespace waavs
             virtual bool hasImage(InternedKey key) const noexcept = 0;
 
             // Non-owning access to registry contents (valid while registry holds it)
-            virtual ImageT* getImage(InternedKey key) noexcept = 0;
-            virtual const ImageT* getImage(InternedKey key) const noexcept = 0;
+            virtual ImageT getImage(InternedKey key) noexcept = 0;
+            virtual const ImageT getImage(InternedKey key) const noexcept = 0;
 
             // Transfer ownership into the registry.
-            virtual bool putImage(InternedKey key, ImageHandle&& img) noexcept = 0;
+            virtual bool putImage(InternedKey key, ImageT img) noexcept = 0;
 
             virtual void eraseImage(InternedKey key) noexcept = 0;
             virtual void clearSurfaces() noexcept = 0;
@@ -143,9 +143,9 @@ namespace waavs
             virtual void setLastKey(InternedKey k) noexcept = 0;
 
             // Image allocation helpers (backend decides pixel format, alignment, etc.)
-            virtual ImageHandle createSurfaceHandle(size_t w, size_t h) noexcept = 0;
-            virtual ImageHandle createLikeSurfaceHandle(const ImageT& like) noexcept = 0;
-            virtual ImageHandle copySurfaceHandle(const ImageT& src) noexcept = 0;
+            virtual ImageT createSurfaceHandle(size_t w, size_t h) noexcept = 0;
+            virtual ImageT createLikeSurfaceHandle(const ImageT& like) noexcept = 0;
+            virtual ImageT copySurfaceHandle(const ImageT& src) noexcept = 0;
         
             // Resolve empty / "__last__" sentinel to concrete key.
             InternedKey resolveKey(InternedKey k) const noexcept override
@@ -230,7 +230,7 @@ namespace waavs
 
             virtual ~IFilterResourceResolver() = default;
 
-            virtual ImageHandle resolveFeImage(
+            virtual ImageT resolveFeImage(
                 InternedKey imageKey,
                 const FilterRunState& runState,
                 const WGRectD& subr,

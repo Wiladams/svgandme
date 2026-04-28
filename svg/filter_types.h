@@ -122,6 +122,7 @@ namespace waavs::filter
     // Common filter primitive keys
     INLINE InternedKey SourceGraphic() noexcept { static InternedKey k = PSNameTable::INTERN("SourceGraphic"); return k; }
     INLINE InternedKey SourceAlpha() noexcept { static InternedKey k = PSNameTable::INTERN("SourceAlpha"); return k; }
+    INLINE InternedKey BackgroundImage() noexcept { static InternedKey k = PSNameTable::INTERN("BackgroundImage"); return k; }
     INLINE InternedKey Filter_Last() noexcept { static InternedKey k = PSNameTable::INTERN("__last__"); return k; }
 
 

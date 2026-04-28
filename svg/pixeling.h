@@ -1,4 +1,5 @@
 // pixeling.h
+#pragma once
 
 #ifndef PIXELING_H_INCLUDED
 #define PIXELING_H_INCLUDED
@@ -34,9 +35,6 @@
  */
 
 
-
-
-
 // In a 32-bit word: [A:R:G:B] means (A<<24)|(R<<16)|(G<<8)|B 
 typedef uint32_t Pixel_ARGB32;
 typedef uint32_t Pixel_RGBA32;
@@ -45,11 +43,7 @@ typedef uint32_t Pixel_SRGBA8_ARGB32; // [A:R:G:B] straight sRGB
 typedef uint32_t Pixel_SRGBA8_RGBA32; // [R:G:B:A] straight sRGB 
 
 namespace waavs {
-    enum WGFilterColorSpace : uint32_t
-    {
-        WG_FILTER_COLORSPACE_LINEAR_RGB = 0,
-        WG_FILTER_COLORSPACE_SRGB = 1
-    };
+
 
 #if WAAVS_HAS_NEON
 
@@ -140,7 +134,7 @@ namespace waavs {
         return argb32_pack_u32(a, r, g, b);
     }
 
-    static INLINE Pixel_ARGB32 argb32_pack_premul_u8(uint8_t a, uint8_t r, uint8_t g, uint8_t b) noexcept
+    static INLINE Pixel_ARGB32 argb32_pack_straight_to_premul_u8(uint8_t a, uint8_t r, uint8_t g, uint8_t b) noexcept
     {
         // Premultiply the color channels by alpha in sRGB space
         uint32_t rP = mul255_round_u8(r, a);
@@ -217,6 +211,57 @@ namespace waavs {
     static INLINE float argb32_unpack_alpha_norm(Pixel_ARGB32 p) noexcept
     {
         return dequantize0_255((p >> 24) & 0xFFu);
+    }
+
+    static INLINE void argb32_unpack_dequantized_prgba(Pixel_ARGB32 px,
+        float& a,
+        float& r,
+        float& g,
+        float& b) noexcept
+    {
+        uint8_t A;
+        uint8_t R;
+        uint8_t G;
+        uint8_t B;
+
+        argb32_unpack_u8(px, A, R, G, B);
+
+        a = dequantize0_255(A);
+        r = dequantize0_255(R);
+        g = dequantize0_255(G);
+        b = dequantize0_255(B);
+    }
+
+    // argb32_unpack_dequantized_straight
+    // 
+    // unpack
+    // de-quantize
+    // unpremultiply
+    // to get straight RGB components
+    // 
+    static INLINE void argb32_unpack_dequantized_straight(Pixel_ARGB32 px,
+        float& a,
+        float& r,
+        float& g,
+        float& b) noexcept
+    {
+        float rp;
+        float gp;
+        float bp;
+
+        argb32_unpack_dequantized_prgba(px, a, rp, gp, bp);
+
+        r = 0.0f;
+        g = 0.0f;
+        b = 0.0f;
+
+        if (a > 0.0f)
+        {
+            const float invA = 1.0f / a;
+            r = clamp01f(rp * invA);
+            g = clamp01f(gp * invA);
+            b = clamp01f(bp * invA);
+        }
     }
 }
 

@@ -16,6 +16,8 @@ namespace waavs
         WG_COMP_SRC_OUT,
         WG_COMP_SRC_ATOP,
         WG_COMP_SRC_XOR,
+
+        // Note supported yet
         WG_COMP_DST_OVER,
         WG_COMP_DST_IN,
         WG_COMP_DST_OUT,
@@ -293,68 +295,83 @@ namespace waavs {
     // as function pointers in the program executor.
     template <typename PixelOp>
     static INLINE void composite_binary_prgb32_row_scalar(
-        uint32_t* d,
-        const uint32_t* s1,
-        const uint32_t* s2,
+        uint32_t* dst,
+        const uint32_t* src,
+        const uint32_t* backdrop,
         int w,
         PixelOp op) noexcept
     {
         for (int x = 0; x < w; ++x)
-            d[x] = op(s1[x], s2[x]);
+            dst[x] = op(src[x], backdrop[x]);
     }
 
     // Operator: in
     //
-    static  INLINE void composite_in_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
+    static  INLINE void composite_in_prgb32_row(uint32_t* dst, const uint32_t* src, const uint32_t* backdrop, int w) noexcept
     {
 #if WAAVS_HAS_NEON
-        composite_in_prgb32_row_neon(d, s1, s2, w);
+        composite_in_prgb32_row_neon(dst, src, backdrop, w);
 #else
-        composite_binary_prgb32_row_scalar(d, s1, s2, w, composite_in_prgb32_pixel);
+        composite_binary_prgb32_row_scalar(dst, src, backdrop, w, composite_in_prgb32_pixel);
 #endif
     }
 
     // Operator: over
     //
-    static INLINE void composite_over_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
+    static INLINE void composite_over_prgb32_row(uint32_t* dst, const uint32_t* src, const uint32_t* backdrop, int w) noexcept
     {
 #if WAAVS_HAS_NEON
-        composite_over_prgb32_row_neon(d, s1, s2, w);
+        composite_over_prgb32_row_neon(dst, src, backdrop, w);
 #else
-        composite_binary_prgb32_row_scalar(d, s1, s2, w, composite_over_prgb32_pixel);
+        composite_binary_prgb32_row_scalar(dst, src, backdrop, w, composite_over_prgb32_pixel);
 #endif
     }
 
     // Operator: out
     //
-    static INLINE void composite_out_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
+    static INLINE void composite_out_prgb32_row(uint32_t* dst, const uint32_t* src, const uint32_t* backdrop, int w) noexcept
     {
 #if WAAVS_HAS_NEON
-        composite_out_prgb32_row_neon(d, s1, s2, w);
+        composite_out_prgb32_row_neon(dst, src, backdrop, w);
 #else
-        composite_binary_prgb32_row_scalar(d, s1, s2, w, composite_out_prgb32_pixel);
+        composite_binary_prgb32_row_scalar(dst, src, backdrop, w, composite_out_prgb32_pixel);
 #endif
     }
 
 
     // Operator: atop
     //
-    static INLINE void composite_atop_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
+    static INLINE void composite_atop_prgb32_row(uint32_t* dst, const uint32_t* src, const uint32_t* backdrop, int w) noexcept
     {
-        composite_binary_prgb32_row_scalar(d, s1, s2, w, composite_atop_prgb32_pixel);
+        composite_binary_prgb32_row_scalar(dst, src, backdrop, w, composite_atop_prgb32_pixel);
     }
 
     // Operator: xor
-    static INLINE void composite_xor_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
+    static INLINE void composite_xor_prgb32_row(uint32_t* dst, const uint32_t* src, const uint32_t* backdrop, int w) noexcept
     {
-        composite_binary_prgb32_row_scalar(d, s1, s2, w, composite_xor_prgb32_pixel);
+        composite_binary_prgb32_row_scalar(dst, src, backdrop, w, composite_xor_prgb32_pixel);
     }
 
-    static INLINE void composite_clear_prgb32_row(uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
+    // Operator: clear
+    static INLINE void composite_clear_prgb32_row(uint32_t* dst, const uint32_t* src, const uint32_t* backdrop, int w) noexcept
     {
-        (void)s1;
-        (void)s2;
-        memset(d, 0, w * sizeof(uint32_t));
+        (void)src;
+        (void)backdrop;
+
+        if (w > 0)
+            memset(dst, 0, w * sizeof(uint32_t));
+    }
+
+    // Operator: src copy
+    static INLINE void composite_src_copy_prgb32_row(
+        uint32_t* dst,
+        const uint32_t* src,
+        const uint32_t* backdrop,
+        int w) noexcept
+    {
+        (void)backdrop;
+        if (w > 0)
+            memcpy(dst, src, size_t(w) * sizeof(uint32_t));
     }
 
     // Get a function pointer to the appropriate row function for a given operator.
@@ -363,19 +380,22 @@ namespace waavs {
         switch (op)
         {
             case WG_COMP_CLEAR:
-            return composite_clear_prgb32_row;
-        case WG_COMP_SRC_OVER:
-            return composite_over_prgb32_row;
-        case WG_COMP_SRC_IN:
-            return composite_in_prgb32_row;
-        case WG_COMP_SRC_OUT:
-            return composite_out_prgb32_row;
-        case WG_COMP_SRC_ATOP:
-            return composite_atop_prgb32_row;
-        case WG_COMP_SRC_XOR:
-            return composite_xor_prgb32_row;
-        default:
-            return nullptr;
+                return composite_clear_prgb32_row;
+            case WG_COMP_SRC_COPY:
+                return composite_src_copy_prgb32_row;
+            case WG_COMP_SRC_OVER:
+                return composite_over_prgb32_row;
+            case WG_COMP_SRC_IN:
+                return composite_in_prgb32_row;
+            case WG_COMP_SRC_OUT:
+                return composite_out_prgb32_row;
+            case WG_COMP_SRC_ATOP:
+                return composite_atop_prgb32_row;
+            case WG_COMP_SRC_XOR:
+                return composite_xor_prgb32_row;
+            
+            default:
+                return nullptr;
         }
     }
 } // namespace waavs

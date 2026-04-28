@@ -147,7 +147,11 @@ namespace waavs {
             fSize = srcSpan.size();
 
             if (fSize > 0) {
-                fData = new uint8_t[fSize];
+                fData = new (std::nothrow) uint8_t[fSize];
+                if (!fData) {
+                    fSize = 0;
+                    return false; // allocation failed
+                }
                 memcpy(fData, srcSpan.fStart, fSize);
             }
 

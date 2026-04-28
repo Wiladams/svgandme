@@ -95,12 +95,16 @@ namespace waavs
         };
     }
 
+    // colorsrgb_from_premultiplied_Pixel_ARGB32
+    //
+    // convert a premultiplied pixel into a 
+    // straight SRGB value
 	static INLINE ColorSRGB colorsrgb_from_premultiplied_Pixel_ARGB32(const Pixel_ARGB32& px) noexcept
 	{
 		// need to dequantize the components from 0..255 to 0..1
 		// and unpremultiply the color components by the alpha
 		float a = dequantize0_255((px >> 24) & 0xFFu);
-		if (a <= kInv255f) { // treat sub-1 LSB alpha as transparent
+		if (a <= 0.0f) { // treat near zero alpha as transparent
 			return ColorSRGB{ 0.0f, 0.0f, 0.0f, 0.0f };
 		}
 		else {
@@ -319,35 +323,11 @@ namespace waavs
 {
     static INLINE ColorPRGBA coloring_ARGB32_to_prgba(Pixel_ARGB32 px) noexcept
     {
-        const float a = dequantize0_255((px >> 24) & 0xFFu);
-        const float rp = dequantize0_255((px >> 16) & 0xFFu);
-        const float gp = dequantize0_255((px >> 8) & 0xFFu);
-        const float bp = dequantize0_255((px >> 0) & 0xFFu);
-
-        ColorPRGBA out{};
-
-        if (!(a > 0.0f))
-            return out;
-
-        // Packed channels are premultiplied in sRGB space.
-        // Recover straight sRGB first, then convert to linear,
-        // then premultiply again in linear space.
-        const float invA = 1.0f / a;
-
-        const float rs = clamp01f(rp * invA);
-        const float gs = clamp01f(gp * invA);
-        const float bs = clamp01f(bp * invA);
-
-        const float rl = coloring_srgb_component_to_linear(rs);
-        const float gl = coloring_srgb_component_to_linear(gs);
-        const float bl = coloring_srgb_component_to_linear(bs);
-
-        out.a = a;
-        out.r = rl * a;
-        out.g = gl * a;
-        out.b = bl * a;
+        ColorSRGB srgb = colorsrgb_from_premultiplied_Pixel_ARGB32(px);
+        ColorPRGBA out = coloring_prgba_from_srgb(srgb);
 
         return out;
+
     }
 
 

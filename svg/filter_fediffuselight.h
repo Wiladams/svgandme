@@ -35,7 +35,6 @@ namespace waavs
                     (h00 + 2.0f * h10 + h20)) / (8.0f * duy);
         }
 
-        // Same sign convention that now matches your corrected specular path.
         nx = -surfaceScale * dHx;
         ny = -surfaceScale * dHy;
         nz = 1.0f;
@@ -55,8 +54,8 @@ namespace waavs
             const float az = light.L[0] * (kPi / 180.0f);
             const float el = light.L[1] * (kPi / 180.0f);
 
-            lx = -std::cos(el) * std::cos(az);
-            ly = -std::cos(el) * std::sin(az);
+            lx = std::cos(el) * std::cos(az);
+            ly = std::cos(el) * std::sin(az);
             lz = std::sin(el);
             vec3_normalize(lx, ly, lz);
             return;
@@ -175,18 +174,6 @@ namespace waavs
 
 
 
-
-
-
-
-    // returns a height value in [0..1] based 
-    // on the alpha component of a packed ARGB32 pixel
-    //static INLINE float alphaHeightFromPRGB32(uint32_t px) noexcept
-    //{
-    //    return dequantize0_255((px >> 24) & 0xFFu);
-    //}
-
-
     static INLINE void diffuseLighting_row_scalar(
         uint32_t* dst,
         const uint32_t* row0,
@@ -244,7 +231,6 @@ namespace waavs
                 p.diffuseConstant,
                 lightFactor);
 
-            //dst[x] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, lit);
             dst[i] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, lit);
         }
     }
@@ -456,14 +442,19 @@ namespace waavs
             vst1q_f32(litArr, lit);
 
             // Pack with the existing scalar packer to keep behavior identical.
-            dst[xA] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, litArr[0]);
-            dst[xB] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, litArr[1]);
-            dst[xC] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, litArr[2]);
-            dst[xD] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, litArr[3]);
+            dst[i + 0] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, litArr[0]);
+            dst[i + 1] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, litArr[1]);
+            dst[i + 2] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, litArr[2]);
+            dst[i + 3] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, litArr[3]);
+
+            //dst[xA] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, litArr[0]);
+            //dst[xB] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, litArr[1]);
+            //dst[xC] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, litArr[2]);
+            //dst[xD] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, litArr[3]);
         }
 
         if (i < count)
-            diffuseLighting_row_scalar(dst, row0, row1, row2, x0 + i, count - i, surfaceW, p);
+            diffuseLighting_row_scalar(dst+i, row0, row1, row2, x0 + i, count - i, surfaceW, p);
     }
 #endif
 

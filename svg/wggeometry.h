@@ -61,7 +61,7 @@
         WGRectD() : x(0), y(0), w(0), h(0) {}
         WGRectD(const double x, const double y, const double w, const double h) : x(x), y(y), w(w), h(h) {}
     
-        bool operator == (const WGRectD& other)
+        bool operator == (const WGRectD& other) const
         {
             return x == other.x && y == other.y &&
                 w == other.w && h == other.h;
@@ -78,7 +78,7 @@
         WGRectI() : x(0), y(0), w(0), h(0) {}
         WGRectI(const int x, const int y, const int w, const int h) : x(x), y(y), w(w), h(h) {}
     
-        bool operator == (const WGRectI& other)
+        bool operator == (const WGRectI& other) const
         {
             return x == other.x && y == other.y &&
                 w == other.w && h == other.h;

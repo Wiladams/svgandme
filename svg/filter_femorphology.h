@@ -325,7 +325,7 @@ namespace waavs
 
                 const int y = y0 + winStart;
                 uint32_t* drow = (uint32_t*)dstSurf.rowPointer((size_t)y);
-                drow[x] = argb32_pack_premul_u8(
+                drow[x] = argb32_pack_straight_to_premul_u8(
                     scratch.valA[headA],
                     scratch.valR[headR],
                     scratch.valG[headG],
@@ -365,8 +365,7 @@ namespace waavs
                     const uint32_t px = srow[x];
                     uint8_t a, r, g, b;
                     argb32_unpack_u8(px, a, r, g, b);
-                    drow[x] = argb32_pack_premul_u8(a, r, g, b);
-                    //drow[x] = srow[x];
+                    drow[x] = argb32_pack_straight_to_premul_u8(a, r, g, b);
                 }
             }
             return true;
@@ -414,7 +413,7 @@ namespace waavs
 
                 const int y = y0 + winStart;
                 uint32_t* drow = (uint32_t*)dstSurf.rowPointer((size_t)y);
-                drow[x] = argb32_pack_premul_u8(
+                drow[x] = argb32_pack_straight_to_premul_u8(
                     scratch.valA[headA],
                     scratch.valR[headR],
                     scratch.valG[headG],
