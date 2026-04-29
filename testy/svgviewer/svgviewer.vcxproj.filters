@@ -398,5 +398,8 @@
     <ClInclude Include="..\..\svg\surface_area_resolver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\svg\filter_lighting.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

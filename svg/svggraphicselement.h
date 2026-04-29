@@ -96,18 +96,6 @@ namespace waavs {
         }
 
 
-        //std::shared_ptr<FilterProgramStream> getReferencedFilterProgram(IAmGroot *groot) const noexcept 
-        //{ 
-
-        //    auto filterElem = getReferencedFilterNode(groot);
-        //    if (!filterElem)
-        //        return nullptr;
-
-            // If we have a valid filter element, return its program stream
-        //    return filterElem->getFilterProgramStream(groot);
-        //}
-
-
 
         const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
         {
@@ -119,10 +107,15 @@ namespace waavs {
             {
                 for (auto& node : fNodes)
                 {
-                    auto& var = node->getVariant(ctx, groot);
-                    if (!var.isNull())
+                    // cast to IServePaint, if it fails, then we can't use it as a paint server
+                    //auto paintServer = std::dynamic_pointer_cast<IServePaint *>(node);
+                    //if (paintServer == nullptr)
+                    //    continue;
+
+                    BLVar tmpVar = node->getVariant(ctx, groot);
+                    if (!tmpVar.isNull())
                     {
-                        return node->getVariant(ctx, groot);
+                        return tmpVar;
                     }
                 }
             }

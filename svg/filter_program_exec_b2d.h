@@ -633,15 +633,15 @@ namespace waavs {
             return out;
         }
 
-
-        // --------------------------------------------------------
-        // applyFilter()
+        // --------------------------------------
+        // getBackgroundLocal()
         //
+        //   - Reads the current target from the context, and extracts 
+        //      the portion that intersects the filter region into the output surface.
+        // 
+        // Note:  This just creates a sub-region, it does NOT make a copy
+        // So, it's essentially 'free' to call.
         //
-        // SubtreeT requirements:
-        //   WGRectD objectBoundingBox() const noexcept;
-        //   void draw(IRenderSVG*, IAmGroot*);
-        // --------------------------------------------------------
         bool getBackgroundLocal(
             IRenderSVG* ctx,
             const WGRectI& filterRectPX,
@@ -690,7 +690,15 @@ namespace waavs {
         }
 
 
-        // -------------------------------------------
+        // --------------------------------------------------------
+        // applyFilter()
+        //
+        //
+        // SubtreeT requirements:
+        //   WGRectD objectBoundingBox() const noexcept;
+        //   void draw(IRenderSVG*, IAmGroot*);
+        // --------------------------------------------------------
+
         template<class SubtreeT>
         bool applyFilter(IRenderSVG* ctx,
             IAmGroot* groot,
@@ -775,10 +783,8 @@ namespace waavs {
                 if (!(fSpace.sy > 0.0)) fSpace.sy = 1.0;
             }
 
-
             // Setup resolver
             fResolver = std::make_unique<B2DFilterResourceResolver<Surface>>(groot, ctx, this);
-
 
             // --------------------------------------------------
             // Render SourceGraphic into tile-local surface
@@ -808,7 +814,9 @@ namespace waavs {
                 // Root object frame must match main rendering path
                 tmp.setObjectFrame(objectBBoxUS);
 
-                // Render subtree content only (avoid recursive filter call)
+                // Render subtree content only.  
+                // Don't just call 'draw()', or we'll end up
+                // in a loop trying to do the filtering again
                 subtree->drawContent(&tmp, groot);
 
                 tmp.detach();
@@ -827,8 +835,9 @@ namespace waavs {
             // the registry as the SourceGraphic.
             InternedKey srcGraphicKey = filter::SourceGraphic();
             if (!putImage(srcGraphicKey, std::move(srcGraphic)))
+            {
                 return false;
-
+            }
 
             // make the alpha channel available as SourceAlpha, for primitives that need it.
             // BUGBUG - maybe this can be delayed and the filter primitives that need
@@ -1000,9 +1009,9 @@ namespace waavs {
             Surface_ARGB32 inInfo = in.info();
 
             // Preserve behavior: copy full input first
-            //if (wg_blit_copy(outInfo, inInfo, 0, 0) != WG_SUCCESS)
-            //    return false;
-            out.clearAll();
+            if (wg_blit_copy(outInfo, inInfo, 0, 0) != WG_SUCCESS)
+                return false;
+            //out.clearAll();
 
             const WGRectI area = resolveSubregionPx(subr, in);
             if (area.w <= 0 || area.h <= 0)
@@ -1174,27 +1183,7 @@ namespace waavs {
                 return false;
             }
 
-            //WGRectI clipped = intersection(area, Surface_ARGB32_bounds(&outInfo));
-            //clipped = intersection(clipped, Surface_ARGB32_bounds(&in1Info));
-            //clipped = intersection(clipped, Surface_ARGB32_bounds(&in2Info));
 
-            //if (clipped.w <= 0 || clipped.h <= 0)
-            //{
-            //    if (!putImage(outKey, std::move(out)))
-            //        return false;
-
-            //    setLastKey(outKey);
-            //    return true;
-            //}
-
-            //if (Surface_ARGB32_get_subarea(outInfo, clipped, outView) != WG_SUCCESS)
-            //    return false;
-
-            //if (Surface_ARGB32_get_subarea(in1Info, clipped, in1View) != WG_SUCCESS)
-            //    return false;
-
-            //if (Surface_ARGB32_get_subarea(in2Info, clipped, in2View) != WG_SUCCESS)
-            //    return false;
 
             if (op == FILTER_COMPOSITE_ARITHMETIC)
             {
@@ -1589,7 +1578,7 @@ namespace waavs {
 
             float defaultDux = 1.0f;
             float defaultDuy = 1.0f;
-            computeSpecularLocalPixelStep(map, area.x, area.y, defaultDux, defaultDuy);
+            computeLightingLocalPixelStep(map, area.x, area.y, defaultDux, defaultDuy);
 
             const float dux = (kernelUnitLengthX > 0.0f) ? kernelUnitLengthX : defaultDux;
             const float duy = (kernelUnitLengthY > 0.0f) ? kernelUnitLengthY : defaultDuy;
@@ -2722,214 +2711,144 @@ namespace waavs {
         // -----------------------------------------
         // onSpecularLighting
         // ------------------------------------------
-        // pixelHeightFromAlpha()
-        //
-        // Interprets the alpha channel of a pixel as a height value in [0,1].
-        //
-        static INLINE float pixelHeightFromAlpha(const Surface& s, int x, int y) noexcept
-        {
-    const int W = (int)s.width();
-    const int H = (int)s.height();
-
-    if (W <= 0 || H <= 0)
-        return 0.0f;
-
-    if (x < 0) x = 0;
-    else if (x >= W) x = W - 1;
-
-    if (y < 0) y = 0;
-    else if (y >= H) y = H - 1;
-
-    const uint32_t* row = (const uint32_t*)s.rowPointer((size_t)y);
-    const uint32_t px = row[x];
-
-    return argb32_unpack_alpha_norm(px);
-        }
-
-/*
-        // computeHeightNormal()
-        //
-        // Computes the normal vector at pixel (x,y) by sampling the alpha channel of
-        //
-        static INLINE void computeHeightNormal(const Surface& s,
-            int x, int y,
+        bool onSpecularLighting(const FilterIO& io, const FilterPrimitiveSubregion& subr,
+            const ColorSRGB& lightingColor,
             float surfaceScale,
-            float dux, float duy,
-            float& nx, float& ny, float& nz) noexcept
+            float specularConstant, float specularExponent,
+            float kernelUnitLengthX, float kernelUnitLengthY,
+            uint32_t lightType,
+            const LightPayload& light) noexcept override
         {
-    const float hL = pixelHeightFromAlpha(s, x - 1, y);
-    const float hR = pixelHeightFromAlpha(s, x + 1, y);
-    const float hU = pixelHeightFromAlpha(s, x, y - 1);
-    const float hD = pixelHeightFromAlpha(s, x, y + 1);
+            InternedKey inKey = resolveUnaryInputKey(io);
+            InternedKey outKey = resolveOutKeyStrict(io);
 
-    float dHx = 0.0f;
-    float dHy = 0.0f;
+            Surface in = getInputImage(inKey);
+            if (in.empty())
+                return false;
 
-    if (dux > 0.0f)
-        dHx = (hR - hL) / (2.0f * dux);
+            if (!outKey)
+                outKey = filter::Filter_Last();
 
-    if (duy > 0.0f)
-        dHy = (hD - hU) / (2.0f * duy);
+            auto out = createLikeSurfaceHandle(in);
+            if (out.empty())
+                return false;
 
-    nx = -surfaceScale * dHx;
-    ny = -surfaceScale * dHy;
-    nz = 1.0f;
+            out.clearAll();
 
-    const float len2 = nx * nx + ny * ny + nz * nz;
-    if (len2 > 1e-20f)
-    {
-        const float invLen = 1.0f / std::sqrt(len2);
-        nx *= invLen;
-        ny *= invLen;
-        nz *= invLen;
-    }
-    else
-    {
-        nx = 0.0f;
-        ny = 0.0f;
-        nz = 1.0f;
-    }
-}
-*/
+            WGRectI area = resolveSubregionPx(subr, in);
+            if (area.w <= 0 || area.h <= 0)
+            {
+                if (!putImage(outKey, out))
+                    return false;
 
+                setLastKey(outKey);
+                return true;
+            }
 
-bool onSpecularLighting(const FilterIO& io, const FilterPrimitiveSubregion& subr,
-    const ColorSRGB& lightingColor,
-    float surfaceScale,
-    float specularConstant, float specularExponent,
-    float kernelUnitLengthX, float kernelUnitLengthY,
-    uint32_t lightType, const LightPayload& light) noexcept override
-{
-    InternedKey inKey = resolveUnaryInputKey(io);
-    InternedKey outKey = resolveOutKeyStrict(io);
-
-    Surface in = getInputImage(inKey);
-    if (in.empty())
-        return false;
-
-    if (!outKey)
-        outKey = filter::Filter_Last();
-
-    auto out = createLikeSurfaceHandle(in);
-    if (out.empty())
-        return false;
-
-    out.clearAll();
-
-    WGRectI area = resolveSubregionPx(subr, in);
-    if (area.w <= 0 || area.h <= 0)
-    {
-        if (!putImage(outKey, out))
-            return false;
-
-        setLastKey(outKey);
-        return true;
-    }
-
-    float lcR, lcG, lcB;
-    resolveColorInterpolationRGB(lightingColor, io.colorInterp, lcR, lcG, lcB);
+            float lcR, lcG, lcB;
+            resolveColorInterpolationRGB(lightingColor, io.colorInterp, lcR, lcG, lcB);
 
 
 
-    specularExponent = clamp(specularExponent, 1.0f, 128.0f);
+            specularExponent = clamp(specularExponent, 1.0f, 128.0f);
 
-    PixelToFilterUserMap map;
-    map.surfaceW = int(in.width());
-    map.surfaceH = int(in.height());
-    
-    // need a localized extent
-    map.filterExtentUS = WGRectD{ 0.0, 0.0, fSpace.filterRectUS.w, fSpace.filterRectUS.h };
-    map.uxPerPixel = (map.surfaceW > 0)
-        ? float(map.filterExtentUS.w / double(map.surfaceW))
-        : 1.0f;
-    map.uyPerPixel = (map.surfaceH > 0)
-        ? float(map.filterExtentUS.h / double(map.surfaceH))
-        : 1.0f;
+            PixelToFilterUserMap map;
+            map.surfaceW = int(in.width());
+            map.surfaceH = int(in.height());
 
-    float defaultDux = 1.0f;
-    float defaultDuy = 1.0f;
-    computeSpecularLocalPixelStep(map, area.x, area.y, defaultDux, defaultDuy);
+            // need a localized extent
+            map.filterExtentUS = WGRectD{ 0.0, 0.0, fSpace.filterRectUS.w, fSpace.filterRectUS.h };
+            map.uxPerPixel = (map.surfaceW > 0)
+                ? float(map.filterExtentUS.w / double(map.surfaceW))
+                : 1.0f;
+            map.uyPerPixel = (map.surfaceH > 0)
+                ? float(map.filterExtentUS.h / double(map.surfaceH))
+                : 1.0f;
 
-    const float dux = (kernelUnitLengthX > 0.0f) ? kernelUnitLengthX : defaultDux;
-    const float duy = (kernelUnitLengthY > 0.0f) ? kernelUnitLengthY : defaultDuy;
+            float defaultDux = 1.0f;
+            float defaultDuy = 1.0f;
+            computeLightingLocalPixelStep(map, area.x, area.y, defaultDux, defaultDuy);
 
-    // Convert light into the same local filter-space used by pixelCenterToFilterUserStandalone().
-    LightPayload localLight = light;
+            const float dux = (kernelUnitLengthX > 0.0f) ? kernelUnitLengthX : defaultDux;
+            const float duy = (kernelUnitLengthY > 0.0f) ? kernelUnitLengthY : defaultDuy;
 
-    if (lightType == FILTER_LIGHT_POINT || lightType == FILTER_LIGHT_SPOT)
-    {
-        localLight.L[0] -= float(fSpace.filterRectUS.x);
-        localLight.L[1] -= float(fSpace.filterRectUS.y);
+            // Convert light into the same local filter-space used by pixelCenterToFilterUserStandalone().
+            LightPayload localLight = light;
 
-        // z stays as-is
-        // localLight.L[2] unchanged
-    }
+            if (lightType == FILTER_LIGHT_POINT || lightType == FILTER_LIGHT_SPOT)
+            {
+                localLight.L[0] -= float(fSpace.filterRectUS.x);
+                localLight.L[1] -= float(fSpace.filterRectUS.y);
 
-    if (lightType == FILTER_LIGHT_SPOT)
-    {
-        localLight.L[3] -= float(fSpace.filterRectUS.x);
-        localLight.L[4] -= float(fSpace.filterRectUS.y);
+                // z stays as-is
+                // localLight.L[2] unchanged
+            }
 
-        // pointsAtZ stays as-is
-        // localLight.L[5] unchanged
-    }
-
-    for (int y = area.y; y < area.y + area.h; ++y)
-    {
-        uint32_t* drow = (uint32_t*)out.rowPointer((size_t)y);
-
-        for (int x = area.x; x < area.x + area.w; ++x)
-        {
-            const float h00 = pixelHeightFromAlpha(in, x - 1, y - 1);
-            const float h10 = pixelHeightFromAlpha(in, x, y - 1);
-            const float h20 = pixelHeightFromAlpha(in, x + 1, y - 1);
-
-            const float h01 = pixelHeightFromAlpha(in, x - 1, y);
-            const float h11 = pixelHeightFromAlpha(in, x, y);
-            const float h21 = pixelHeightFromAlpha(in, x + 1, y);
-
-            const float h02 = pixelHeightFromAlpha(in, x - 1, y + 1);
-            const float h12 = pixelHeightFromAlpha(in, x, y + 1);
-            const float h22 = pixelHeightFromAlpha(in, x + 1, y + 1);
-
-            float nx, ny, nz;
-            computeSpecularNormalFromHeights(
-                h00, h10, h20,
-                h01, h11, h21,
-                h02, h12, h22,
-                surfaceScale,
-                dux, duy,
-                nx, ny, nz);
-
-            float ux, uy;
-            pixelCenterToFilterUserStandalone(map, x, y, ux, uy);
-
-            const float h = surfaceScale * h11;
-
-            float lx, ly, lz;
-            computeSpecularLightVector(lightType, localLight, ux, uy, h, lx, ly, lz);
-
-            float lightFactor = 1.0f;
             if (lightType == FILTER_LIGHT_SPOT)
-                lightFactor = computeSpecularSpotFactor(localLight, ux, uy, h);
+            {
+                localLight.L[3] -= float(fSpace.filterRectUS.x);
+                localLight.L[4] -= float(fSpace.filterRectUS.y);
 
-            const float lit = computeSpecularTerm(
-                nx, ny, nz,
-                lx, ly, lz,
-                specularConstant,
-                specularExponent,
-                lightFactor);
+                // pointsAtZ stays as-is
+                // localLight.L[5] unchanged
+            }
 
-            drow[x] = packSpecularLightingPixel(lcR, lcG, lcB, lit);
+            for (int y = area.y; y < area.y + area.h; ++y)
+            {
+                uint32_t* drow = (uint32_t*)out.rowPointer((size_t)y);
+
+                for (int x = area.x; x < area.x + area.w; ++x)
+                {
+                    const float h00 = lightingHeightFromAlpha(in, x - 1, y - 1);
+                    const float h10 = lightingHeightFromAlpha(in, x, y - 1);
+                    const float h20 = lightingHeightFromAlpha(in, x + 1, y - 1);
+
+                    const float h01 = lightingHeightFromAlpha(in, x - 1, y);
+                    const float h11 = lightingHeightFromAlpha(in, x, y);
+                    const float h21 = lightingHeightFromAlpha(in, x + 1, y);
+
+                    const float h02 = lightingHeightFromAlpha(in, x - 1, y + 1);
+                    const float h12 = lightingHeightFromAlpha(in, x, y + 1);
+                    const float h22 = lightingHeightFromAlpha(in, x + 1, y + 1);
+
+                    float nx, ny, nz;
+                    computeLightingNormalFromHeights(
+                        h00, h10, h20,
+                        h01, h11, h21,
+                        h02, h12, h22,
+                        surfaceScale,
+                        dux, duy,
+                        nx, ny, nz);
+
+                    float ux, uy;
+                    pixelCenterToFilterUserStandalone(map, x, y, ux, uy);
+
+                    const float h = surfaceScale * h11;
+
+                    float lx, ly, lz;
+                    computeSurfaceToLightVector(lightType, localLight, ux, uy, h, lx, ly, lz);
+
+                    float lightFactor = 1.0f;
+                    if (lightType == FILTER_LIGHT_SPOT)
+                        lightFactor = computeLightingSpotConeFactor(localLight, ux, uy, h);
+
+                    const float lit = computeSpecularTerm(
+                        nx, ny, nz,
+                        lx, ly, lz,
+                        specularConstant,
+                        specularExponent,
+                        lightFactor);
+
+                    drow[x] = packSpecularLightingPixel(lcR, lcG, lcB, lit);
+                }
+            }
+
+            if (!putImage(outKey, std::move(out)))
+                return false;
+
+            setLastKey(outKey);
+            return true;
         }
-    }
-
-    if (!putImage(outKey, std::move(out)))
-        return false;
-
-    setLastKey(outKey);
-    return true;
-}
 
 
 
@@ -2947,60 +2866,60 @@ bool onSpecularLighting(const FilterIO& io, const FilterPrimitiveSubregion& subr
 
         bool onTile(const FilterIO& io, const FilterPrimitiveSubregion& subr) noexcept override
         {
-    InternedKey inKey = resolveUnaryInputKey(io);
-    InternedKey outKey = resolveOutKeyStrict(io);
+            InternedKey inKey = resolveUnaryInputKey(io);
+            InternedKey outKey = resolveOutKeyStrict(io);
 
-    Surface in = getInputImage(inKey);
-    if (in.empty())
-        return false;
+            Surface in = getInputImage(inKey);
+            if (in.empty())
+                return false;
 
-    if (!outKey)
-        outKey = filter::Filter_Last();
+            if (!outKey)
+                outKey = filter::Filter_Last();
 
-    auto out = createLikeSurfaceHandle(in);
-    if (out.empty())
-        return false;
+            auto out = createLikeSurfaceHandle(in);
+            if (out.empty())
+                return false;
 
-    out.clearAll();
+            out.clearAll();
 
-    const WGRectI area = resolveSubregionPx(subr, in);
-    if (area.w <= 0 || area.h <= 0)
-    {
-        if (!putImage(outKey, out))
-            return false;
+            const WGRectI area = resolveSubregionPx(subr, in);
+            if (area.w <= 0 || area.h <= 0)
+            {
+                if (!putImage(outKey, out))
+                    return false;
 
-        setLastKey(outKey);
-        return true;
-    }
+                setLastKey(outKey);
+                return true;
+            }
 
-    Surface outArea;
-    if (out.getSubSurface(area, outArea) != WG_SUCCESS)
-        return false;
+            Surface outArea;
+            if (out.getSubSurface(area, outArea) != WG_SUCCESS)
+                return false;
 
-    const int tileW = (int)in.width();
-    const int tileH = (int)in.height();
+            const int tileW = (int)in.width();
+            const int tileH = (int)in.height();
 
-    // Compute phase so tiling is stable
-    int startX = area.x % tileW;
-    if (startX < 0) startX += tileW;
+            // Compute phase so tiling is stable
+            int startX = area.x % tileW;
+            if (startX < 0) startX += tileW;
 
-    int startY = area.y % tileH;
-    if (startY < 0) startY += tileH;
+            int startY = area.y % tileH;
+            if (startY < 0) startY += tileH;
 
-    // Fill using repeated blits
-    for (int y = -startY; y < area.h; y += tileH)
-    {
-        for (int x = -startX; x < area.w; x += tileW)
-        {
-            outArea.blit(in, x, y);
-        }
-    }
+            // Fill using repeated blits
+            for (int y = -startY; y < area.h; y += tileH)
+            {
+                for (int x = -startX; x < area.w; x += tileW)
+                {
+                    outArea.blit(in, x, y);
+                }
+            }
 
-    if (!putImage(outKey, out))
-        return false;
+            if (!putImage(outKey, out))
+                return false;
 
-    setLastKey(outKey);
-    return true;
+            setLastKey(outKey);
+            return true;
         }
 
 
@@ -3010,186 +2929,186 @@ bool onSpecularLighting(const FilterIO& io, const FilterPrimitiveSubregion& subr
         // -----------------------------------------
 
         bool onTurbulence(
-    const FilterIO& io,
-    const FilterPrimitiveSubregion& subr,
-    FilterTurbulenceType typeKey,
-    float baseFreqX,
-    float baseFreqY,
-    uint32_t numOctaves,
-    float seed,
-    bool stitchTiles) noexcept override
+            const FilterIO& io,
+            const FilterPrimitiveSubregion& subr,
+            FilterTurbulenceType typeKey,
+            float baseFreqX,
+            float baseFreqY,
+            uint32_t numOctaves,
+            float seed,
+            bool stitchTiles) noexcept override
         {
-    InternedKey outKey = resolveOutKeyStrict(io);
-    if (!outKey)
-        outKey = filter::Filter_Last();
+            InternedKey outKey = resolveOutKeyStrict(io);
+            if (!outKey)
+                outKey = filter::Filter_Last();
 
-    Surface like = getImage(lastKey());
-    if (like.empty())
-        return false;
+            Surface like = getImage(lastKey());
+            if (like.empty())
+                return false;
 
-    auto out = createLikeSurfaceHandle(like);
-    if (out.empty())
-        return false;
+            auto out = createLikeSurfaceHandle(like);
+            if (out.empty())
+                return false;
 
-    out.clearAll();
+            out.clearAll();
 
-    WGRectI area = resolveSubregionPx(subr, out);
-    if (area.w <= 0 || area.h <= 0)
-    {
-        if (!putImage(outKey, out))
-            return false;
-
-        setLastKey(outKey);
-        return true;
-    }
-
-    // --- Pixel mapping ---
-    PixelToFilterUserMap map;
-    map.surfaceW = int(out.width());
-    map.surfaceH = int(out.height());
-    map.filterExtentUS = fSpace.filterExtentUS;
-    map.uxPerPixel = (map.surfaceW > 0)
-        ? float(map.filterExtentUS.w / double(map.surfaceW))
-        : 1.0f;
-    map.uyPerPixel = (map.surfaceH > 0)
-        ? float(map.filterExtentUS.h / double(map.surfaceH))
-        : 1.0f;
-
-    // --- Noise params ---
-    TurbulenceNoiseParams params{};
-    params.baseFreqX = baseFreqX;
-    params.baseFreqY = baseFreqY;
-    params.seed = seed;
-    params.octaves = numOctaves;
-
-    TurbulenceState turb{};
-    buildTurbulenceState(turb, (int32_t)seed);
-
-    // --- User -> primitive mapping ---
-    auto userToPrimitive = [&](float ux, float uy, float& px, float& py) noexcept
-        {
-            switch (fRunState.primitiveUnits)
+            WGRectI area = resolveSubregionPx(subr, out);
+            if (area.w <= 0 || area.h <= 0)
             {
-            default:
-            case SpaceUnitsKind::SVG_SPACE_USER:
-                px = ux;
-                py = uy;
-                break;
+                if (!putImage(outKey, out))
+                    return false;
 
-            case SpaceUnitsKind::SVG_SPACE_OBJECT:
-            {
-                const double absUx = double(ux) + fSpace.filterRectUS.x;
-                const double absUy = double(uy) + fSpace.filterRectUS.y;
+                setLastKey(outKey);
+                return true;
+            }
 
-                const double bx = fRunState.objectBBoxUS.x;
-                const double by = fRunState.objectBBoxUS.y;
-                const double bw = fRunState.objectBBoxUS.w;
-                const double bh = fRunState.objectBBoxUS.h;
+            // --- Pixel mapping ---
+            PixelToFilterUserMap map;
+            map.surfaceW = int(out.width());
+            map.surfaceH = int(out.height());
+            map.filterExtentUS = fSpace.filterExtentUS;
+            map.uxPerPixel = (map.surfaceW > 0)
+                ? float(map.filterExtentUS.w / double(map.surfaceW))
+                : 1.0f;
+            map.uyPerPixel = (map.surfaceH > 0)
+                ? float(map.filterExtentUS.h / double(map.surfaceH))
+                : 1.0f;
 
-                if (bw > 0.0 && bh > 0.0)
+            // --- Noise params ---
+            TurbulenceNoiseParams params{};
+            params.baseFreqX = baseFreqX;
+            params.baseFreqY = baseFreqY;
+            params.seed = seed;
+            params.octaves = numOctaves;
+
+            TurbulenceState turb{};
+            buildTurbulenceState(turb, (int32_t)seed);
+
+            // --- User -> primitive mapping ---
+            auto userToPrimitive = [&](float ux, float uy, float& px, float& py) noexcept
                 {
-                    px = float((absUx - bx) / bw);
-                    py = float((absUy - by) / bh);
-                }
-                else
+                    switch (fRunState.primitiveUnits)
+                    {
+                    default:
+                    case SpaceUnitsKind::SVG_SPACE_USER:
+                        px = ux;
+                        py = uy;
+                        break;
+
+                    case SpaceUnitsKind::SVG_SPACE_OBJECT:
+                    {
+                        const double absUx = double(ux) + fSpace.filterRectUS.x;
+                        const double absUy = double(uy) + fSpace.filterRectUS.y;
+
+                        const double bx = fRunState.objectBBoxUS.x;
+                        const double by = fRunState.objectBBoxUS.y;
+                        const double bw = fRunState.objectBBoxUS.w;
+                        const double bh = fRunState.objectBBoxUS.h;
+
+                        if (bw > 0.0 && bh > 0.0)
+                        {
+                            px = float((absUx - bx) / bw);
+                            py = float((absUy - by) / bh);
+                        }
+                        else
+                        {
+                            px = 0.0f;
+                            py = 0.0f;
+                        }
+                        break;
+                    }
+
+                    case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
+                        px = ux;
+                        py = uy;
+                        break;
+                    }
+                };
+
+            // --- Stitch setup (derived from resolved area) ---
+            TurbulenceStitchInfo stitchInfo{};
+            const TurbulenceStitchInfo* stitchPtr = nullptr;
+
+            if (stitchTiles)
+            {
+                // Convert resolved pixel area back to user space
+                const WGRectD areaUS = resolveSubregionUS(subr);
+
+                if (areaUS.w > 0.0 && areaUS.h > 0.0)
                 {
-                    px = 0.0f;
-                    py = 0.0f;
+                    adjust_base_frequencies_for_stitch(
+                        (float)areaUS.w,
+                        (float)areaUS.h,
+                        params.baseFreqX,
+                        params.baseFreqY);
+
+                    stitchInfo = prepare_stitch_info(
+                        (float)areaUS.x,
+                        (float)areaUS.y,
+                        (float)areaUS.w,
+                        (float)areaUS.h,
+                        params.baseFreqX,
+                        params.baseFreqY);
+
+                    stitchPtr = &stitchInfo;
                 }
-                break;
             }
 
-            case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
-                px = ux;
-                py = uy;
-                break;
-            }
-        };
+            const bool fractalNoise = (typeKey == FILTER_TURBULENCE_FRACTAL_NOISE);
 
-    // --- Stitch setup (derived from resolved area) ---
-    TurbulenceStitchInfo stitchInfo{};
-    const TurbulenceStitchInfo* stitchPtr = nullptr;
-
-    if (stitchTiles)
-    {
-        // Convert resolved pixel area back to user space
-        const WGRectD areaUS = resolveSubregionUS(subr);
-
-        if (areaUS.w > 0.0 && areaUS.h > 0.0)
-        {
-            adjust_base_frequencies_for_stitch(
-                (float)areaUS.w,
-                (float)areaUS.h,
-                params.baseFreqX,
-                params.baseFreqY);
-
-            stitchInfo = prepare_stitch_info(
-                (float)areaUS.x,
-                (float)areaUS.y,
-                (float)areaUS.w,
-                (float)areaUS.h,
-                params.baseFreqX,
-                params.baseFreqY);
-
-            stitchPtr = &stitchInfo;
-        }
-    }
-
-    const bool fractalNoise = (typeKey == FILTER_TURBULENCE_FRACTAL_NOISE);
-
-    // --- Main loop ---
-    for (int y = area.y; y < area.y + area.h; ++y)
-    {
-        uint32_t* drow = (uint32_t*)out.rowPointer((size_t)y);
-
-        for (int x = area.x; x < area.x + area.w; ++x)
-        {
-            float ux, uy;
-            pixelCenterToFilterUserStandalone(map, x, y, ux, uy);
-
-            float tx, ty;
-            userToPrimitive(ux, uy, tx, ty);
-
-            float r, g, b, a;
-
-            if (fractalNoise)
+            // --- Main loop ---
+            for (int y = area.y; y < area.y + area.h; ++y)
             {
-                r = sampleFractalChannel(tx, ty, params, turb, 0, stitchTiles, stitchPtr);
-                g = sampleFractalChannel(tx, ty, params, turb, 1, stitchTiles, stitchPtr);
-                b = sampleFractalChannel(tx, ty, params, turb, 2, stitchTiles, stitchPtr);
-                a = sampleFractalChannel(tx, ty, params, turb, 3, stitchTiles, stitchPtr);
+                uint32_t* drow = (uint32_t*)out.rowPointer((size_t)y);
+
+                for (int x = area.x; x < area.x + area.w; ++x)
+                {
+                    float ux, uy;
+                    pixelCenterToFilterUserStandalone(map, x, y, ux, uy);
+
+                    float tx, ty;
+                    userToPrimitive(ux, uy, tx, ty);
+
+                    float r, g, b, a;
+
+                    if (fractalNoise)
+                    {
+                        r = sampleFractalChannel(tx, ty, params, turb, 0, stitchTiles, stitchPtr);
+                        g = sampleFractalChannel(tx, ty, params, turb, 1, stitchTiles, stitchPtr);
+                        b = sampleFractalChannel(tx, ty, params, turb, 2, stitchTiles, stitchPtr);
+                        a = sampleFractalChannel(tx, ty, params, turb, 3, stitchTiles, stitchPtr);
+                    }
+                    else
+                    {
+                        r = sampleTurbulenceChannel(tx, ty, params, turb, 0, stitchTiles, stitchPtr);
+                        g = sampleTurbulenceChannel(tx, ty, params, turb, 1, stitchTiles, stitchPtr);
+                        b = sampleTurbulenceChannel(tx, ty, params, turb, 2, stitchTiles, stitchPtr);
+                        a = sampleTurbulenceChannel(tx, ty, params, turb, 3, stitchTiles, stitchPtr);
+                    }
+
+                    r = clamp01f(r);
+                    g = clamp01f(g);
+                    b = clamp01f(b);
+                    a = clamp01f(a);
+
+                    r *= a;
+                    g *= a;
+                    b *= a;
+
+                    drow[x] = argb32_pack_u8(
+                        quantize0_255(a),
+                        quantize0_255(r),
+                        quantize0_255(g),
+                        quantize0_255(b));
+                }
             }
-            else
-            {
-                r = sampleTurbulenceChannel(tx, ty, params, turb, 0, stitchTiles, stitchPtr);
-                g = sampleTurbulenceChannel(tx, ty, params, turb, 1, stitchTiles, stitchPtr);
-                b = sampleTurbulenceChannel(tx, ty, params, turb, 2, stitchTiles, stitchPtr);
-                a = sampleTurbulenceChannel(tx, ty, params, turb, 3, stitchTiles, stitchPtr);
-            }
 
-            r = clamp01f(r);
-            g = clamp01f(g);
-            b = clamp01f(b);
-            a = clamp01f(a);
+            if (!putImage(outKey, out))
+                return false;
 
-            r *= a;
-            g *= a;
-            b *= a;
-
-            drow[x] = argb32_pack_u8(
-                quantize0_255(a),
-                quantize0_255(r),
-                quantize0_255(g),
-                quantize0_255(b));
+            setLastKey(outKey);
+            return true;
         }
-    }
-
-    if (!putImage(outKey, out))
-        return false;
-
-    setLastKey(outKey);
-    return true;
-            }
 
 
 

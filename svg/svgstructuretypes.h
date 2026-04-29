@@ -22,58 +22,12 @@
 
 #include "svgatoms.h"
 
-/*
-namespace waavs 
-{
-    struct IAmGroot;            // forward declaration
-    struct AnimationProgram; // forward declaration
-    class AnimationValueContext;
-    struct CSSStyleSheet;
 
-    // Base class of many things.  This is just to ensure a virtual destructor
-    // and binding behavior.
-    // BUGBUG - I'm not sure binding needs to be represented universally at this
-    // level.  I think having it at the IViewable level might be ok.
-    // Having the ability to call: getVariant, is still useful, because both
-    // attributes, and elements can produce paint variants, so that's still good.
-    //
-    struct SVGObject
-    {
-    protected:
-        bool fNeedsBinding{ false };
-
-    public:
-
-        // default and copy constructor not allowed, let's see what breaks
-        SVGObject() = default;
-
-        // want to know when a copy or assignment is happening
-        // so mark these as 'delete' for now so we can catch it
-        SVGObject(const SVGObject& other) = delete;
-        SVGObject& operator=(const SVGObject& other) = delete;
-
-        virtual ~SVGObject() = default;
-
-
-        bool needsBinding() const noexcept { return fNeedsBinding; }
-        void setNeedsBinding(bool needsIt) noexcept { fNeedsBinding = needsIt; }
-
-
-        virtual void bindToContext(IRenderSVG*, IAmGroot*) noexcept = 0;
-
-        // sub-classes should return something interesting as BLVar
-        // This can be used for styling, so images, colors, patterns, gradients, etc
-        virtual const BLVar getVariant(IRenderSVG*, IAmGroot*) noexcept { return BLVar::null(); }
-
-
-    };
-}
-*/
 
 
 namespace waavs {
 
-    struct IViewable : public SVGObject
+    struct IViewable : public SVGObject, public IServePaint
     {
         bool fIsVisible{ true };
         bool fIsStructural{ true };
@@ -82,6 +36,9 @@ namespace waavs {
         ByteSpan fId{};      // The id of the element
 
         virtual ~IViewable() = default;
+
+        virtual const BLVar getVariant(IRenderSVG*, IAmGroot*) noexcept { return BLVar::null(); }
+
 
         const ByteSpan& id() const noexcept { return fId; }
         void setId(const ByteSpan& aid) noexcept { fId = aid; }

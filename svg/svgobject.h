@@ -1,6 +1,7 @@
 #pragma once
 
 #include "blend2d.h"
+#include "blend2d_connect.h"
 
 namespace waavs
 {
@@ -41,10 +42,12 @@ namespace waavs
 
         virtual void bindToContext(IRenderSVG*, IAmGroot*) noexcept = 0;
 
-        // sub-classes should return something interesting as BLVar
-        // This can be used for styling, so images, colors, patterns, gradients, etc
-        virtual const BLVar getVariant(IRenderSVG*, IAmGroot*) noexcept { return BLVar::null(); }
+    };
 
+    struct IServePaint
+    {
+        virtual ~IServePaint() = default;
 
+        virtual const BLVar getVariant(IRenderSVG*, IAmGroot*) noexcept = 0;
     };
 }

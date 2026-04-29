@@ -3,116 +3,13 @@
 #pragma once
 
 #include "filter_types.h"
+#include "filter_lighting.h"
 
 namespace waavs
 {
     // =============================================
     // feDiffuseLighting helpers
     // =============================================
-
-    static INLINE void computeDiffuseNormalFromHeights(
-        float h00, float h10, float h20,
-        float h01, float h11, float h21,
-        float h02, float h12, float h22,
-        float surfaceScale,
-        float dux, float duy,
-        float& nx, float& ny, float& nz) noexcept
-    {
-        float dHx = 0.0f;
-        float dHy = 0.0f;
-
-        if (dux > 0.0f)
-        {
-            dHx =
-                ((h20 + 2.0f * h21 + h22) -
-                    (h00 + 2.0f * h01 + h02)) / (8.0f * dux);
-        }
-
-        if (duy > 0.0f)
-        {
-            dHy =
-                ((h02 + 2.0f * h12 + h22) -
-                    (h00 + 2.0f * h10 + h20)) / (8.0f * duy);
-        }
-
-        nx = -surfaceScale * dHx;
-        ny = -surfaceScale * dHy;
-        nz = 1.0f;
-        vec3_normalize(nx, ny, nz);
-    }
-
-    static INLINE void computeDiffuseLightVector(
-        uint32_t lightType,
-        const LightPayload& light,
-        float ux, float uy, float h,
-        float& lx, float& ly, float& lz) noexcept
-    {
-        const float kPi = kPif;
-
-        if (lightType == FILTER_LIGHT_DISTANT)
-        {
-            const float az = light.L[0] * (kPi / 180.0f);
-            const float el = light.L[1] * (kPi / 180.0f);
-
-            lx = std::cos(el) * std::cos(az);
-            ly = std::cos(el) * std::sin(az);
-            lz = std::sin(el);
-            vec3_normalize(lx, ly, lz);
-            return;
-        }
-
-        if (lightType == FILTER_LIGHT_POINT || lightType == FILTER_LIGHT_SPOT)
-        {
-            lx = light.L[0] - ux;
-            ly = light.L[1] - uy;
-            lz = light.L[2] - h;
-            vec3_normalize(lx, ly, lz);
-            return;
-        }
-
-        lx = 0.0f;
-        ly = 0.0f;
-        lz = 1.0f;
-    }
-
-    static INLINE float computeDiffuseSpotFactor(
-        const LightPayload& light,
-        float ux, float uy, float h) noexcept
-    {
-        const float kPi = kPif;
-
-        float ax = light.L[3] - light.L[0];
-        float ay = light.L[4] - light.L[1];
-        float az = light.L[5] - light.L[2];
-
-        float sx = ux - light.L[0];
-        float sy = uy - light.L[1];
-        float sz = h - light.L[2];
-
-        const bool axisOk = vec3_normalize(ax, ay, az);
-        const bool rayOk = vec3_normalize(sx, sy, sz);
-
-        if (!axisOk || !rayOk)
-            return 0.0f;
-
-        float cosAng = ax * sx + ay * sy + az * sz;
-
-        const float limitDeg = light.L[7];
-        if (limitDeg > 0.0f)
-        {
-            const float limitCos = std::cos(limitDeg * (kPi / 180.0f));
-            if (cosAng < limitCos)
-                return 0.0f;
-        }
-
-        cosAng = clamp01f(cosAng);
-
-        float spotExp = light.L[6];
-        if (!(spotExp > 0.0f))
-            spotExp = 1.0f;
-
-        return std::pow(cosAng, spotExp);
-    }
 
     static INLINE float computeDiffuseTerm(
         float nx, float ny, float nz,
@@ -205,7 +102,7 @@ namespace waavs
             const float h22 = argb32_unpack_alpha_norm(row2[xp1]);
 
             float nx, ny, nz;
-            computeDiffuseNormalFromHeights(
+            computeLightingNormalFromHeights(
                 h00, h10, h20,
                 h01, h11, h21,
                 h02, h12, h22,
@@ -219,11 +116,11 @@ namespace waavs
             const float h = p.surfaceScale * h11;
 
             float lx, ly, lz;
-            computeDiffuseLightVector(p.lightType, p.localLight, ux, uy, h, lx, ly, lz);
+            computeSurfaceToLightVector(p.lightType, p.localLight, ux, uy, h, lx, ly, lz);
 
             float lightFactor = 1.0f;
             if (p.lightType == FILTER_LIGHT_SPOT)
-                lightFactor = computeDiffuseSpotFactor(p.localLight, ux, uy, h);
+                lightFactor = computeLightingSpotConeFactor(p.localLight, ux, uy, h);
 
             const float lit = computeDiffuseTerm(
                 nx, ny, nz,
@@ -239,7 +136,7 @@ namespace waavs
     // NEON helpers for feDiffuseLighting.
     //---------------------------------------------
 
-#if defined(__ARM_NEON) || defined(__aarch64__)
+#if WAAVS_HAS_NEON
 
     //static INLINE float32x4_t neon_clamp01_f32(float32x4_t v) noexcept
     //{
@@ -274,7 +171,7 @@ namespace waavs
     }
 #endif
 
-#if defined(__ARM_NEON) || defined(__aarch64__)
+#if WAAVS_HAS_NEON
     static INLINE void diffuseLighting_row_neon(
         uint32_t* dst,
         const uint32_t* row0,
@@ -325,7 +222,7 @@ namespace waavs
             float lx = 0.0f;
             float ly = 0.0f;
             float lz = 1.0f;
-            computeDiffuseLightVector(FILTER_LIGHT_DISTANT, p.localLight, 0.0f, 0.0f, 0.0f, lx, ly, lz);
+            computeSurfaceToLightVector(FILTER_LIGHT_DISTANT, p.localLight, 0.0f, 0.0f, 0.0f, lx, ly, lz);
 
             kLx = vdupq_n_f32(lx);
             kLy = vdupq_n_f32(ly);

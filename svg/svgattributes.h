@@ -180,7 +180,7 @@ namespace waavs {
     // with this attribute during it's own drawing.  That might include
     // simply inheriting the value.
     //
-    struct SVGOpacity : public SVGVisualProperty
+    struct SVGOpacity : public SVGVisualProperty // , public IServePaint
     {
         static void registerFactory() {
             registerSVGAttribute(svgattr::opacity(), [](const XmlAttributeCollection& attrs) {
@@ -195,7 +195,7 @@ namespace waavs {
         
         SVGOpacity(IAmGroot* groot) :SVGVisualProperty(groot) { setName(svgattr::opacity()); }
 
-        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override { return fOpacityVar; }
+        //const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override { return fOpacityVar; }
         
         
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
@@ -1024,7 +1024,7 @@ namespace waavs {
             //   that when it comes time to draw.
 
     //=====================================================
-    struct SVGPaint : public SVGVisualProperty
+    struct SVGPaint : public SVGVisualProperty, public IServePaint
     {
         ByteSpan fPaintReference{};
         SVGColor fColor;
@@ -1085,9 +1085,14 @@ namespace waavs {
                 if (nullptr == node)
                     return BLVar::null();
 
+                // dynamic cast to IServePaint, if it fails, then we can't use it as a paint server
+                auto paintServer = dynamic_cast<IServePaint*>(node.get());
+                if (paintServer == nullptr)
+                    return BLVar::null();
+                
                 // assume calling getVariant on the referant node will
                 // cause itself to do binding
-                BLVar tmpVar = node->getVariant(ctx, groot);
+                BLVar tmpVar = paintServer->getVariant(ctx, groot);
                 return tmpVar;
             }
 
@@ -1830,15 +1835,15 @@ namespace waavs {
         
         SVGClipPathAttribute(IAmGroot* groot) : SVGVisualProperty(groot) { setName(svgattr::clip_path()); }
 
-        const BLVar getVariant(IRenderSVG*, IAmGroot*) noexcept override
-        {
-            if (fClipNode == nullptr)
-                return fClipVar;
+        //const BLVar getVariant(IRenderSVG*, IAmGroot*) noexcept override
+        //{
+        //    if (fClipNode == nullptr)
+        //        return fClipVar;
 
             // BUGBUG
             //return fClipNode->getVariant();
-            return BLVar::null();
-        }
+        //    return BLVar::null();
+        //}
 
         
         bool loadFromUrl(IRenderSVG *ctx, IAmGroot* groot, const ByteSpan& inChunk)

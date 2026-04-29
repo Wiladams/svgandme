@@ -59,7 +59,7 @@ namespace waavs
         void bindToContext(IRenderSVG*, IAmGroot*) noexcept override {}
         void fixupStyleAttributes(IAmGroot*) override {}
 
-        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override { return BLVar{}; }
+//        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override { return BLVar{}; }
 
         
         void setBBox(const WGRectD& box) { fBBox = box; }

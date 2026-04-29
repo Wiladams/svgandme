@@ -44,6 +44,8 @@ namespace waavs {
 
         void fixupSelfStyleAttributes(IAmGroot* groot) override
         {
+            (void)groot;
+
             fColor.loadFromAttributes(fAttributes);
         }
 
