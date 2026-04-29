@@ -385,7 +385,6 @@ namespace waavs {
 
         bool buildBoundGradient(IRenderSVG* ctx, IAmGroot* groot, BLGradient &grad)
         {
-            grad.setType(BL_GRADIENT_TYPE_LINEAR);
 
             double dpi = groot ? groot->dpi() : 96.0;
 
@@ -431,7 +430,6 @@ namespace waavs {
                 const WGRectD objFrame = ctx->getObjectFrame();
 
                 // resolve into bbox space (0..1),
-                // then use transform to map bbox -> user
                 values.x0 = resolveLengthBBoxUnits(x1, 0.0);
                 values.y0 = resolveLengthBBoxUnits(y1, 0.0);
                 values.x1 = resolveLengthBBoxUnits(x2, 1.0);
@@ -440,6 +438,8 @@ namespace waavs {
                 xform = composeGradientTransformBBox(objFrame, fHasGradientTransform, fGradientTransform);
             }
 
+            grad.setType(BL_GRADIENT_TYPE_LINEAR);
+            grad.setExtendMode(fGradient.extendMode());
             grad.setValues(values);
             grad.setTransform(blMatrix_from_WGMatrix3x3(xform));
             grad.resetStops();
@@ -633,26 +633,13 @@ namespace waavs {
             double dpi = groot ? groot->dpi() : 96.0;
 
             grad.setType(BL_GRADIENT_TYPE_RADIAL);
-
-
+            grad.setExtendMode(fGradient.extendMode());
+            
             // Start setting up the gradient
             BLRadialGradientValues values{};
-            WGMatrix3x3 xform = WGMatrix3x3::makeIdentity();
+            //WGMatrix3x3 xform = WGMatrix3x3::makeIdentity();
 
 
-
-
-
-            // Before we go any further, get our current gradientUnits
-            // default is objectBoundingBox
-            //getEnumValue(SVGSpaceUnits, getAttributeByName("gradientUnits"), (uint32_t&)fGradientUnits);
-
-            //if (getEnumValue(SVGSpreadMethod, getAttributeByName("spreadMethod"), (uint32_t&)fSpreadMethod))
-            //{
-            //    fGradient.setExtendMode((BLExtendMode)fSpreadMethod);
-            //}
-
-            //fHasGradientTransform = parseTransform(getAttributeByName("gradientTransform"), fGradientTransform);
 
             // If the gradientUnits are ObjectBoundingBox, then 
             // the parameters are relative to the size of that box
@@ -672,8 +659,8 @@ namespace waavs {
                 const double fyN = resolveLengthBBoxUnits(fFy, cyN);
                 const double frN = resolveLengthBBoxUnits(fFr, 0.0);
 
-                values.x0 = x + cxN * w;
-                values.y0 = y + cyN * h;
+                values.x0 = x + (cxN * w);
+                values.y0 = y + (cyN * h);
                 values.r0 = calculateDistance(crN, w, h);
 
 
@@ -681,10 +668,10 @@ namespace waavs {
                 values.y1 = y + fyN * h;
                 values.r1 = calculateDistance(frN, w, h);
 
-                xform = composeGradientTransformBBox(objFrame, fHasGradientTransform, fGradientTransform);
+                //if (fHasGradientTransform)
+                //    xform = fGradientTransform;
 
-
-
+                //xform = composeGradientTransformBBox(objFrame, fHasGradientTransform, fGradientTransform);
             }
             else if (fGradientUnits == SVG_SPACE_USER)
             {
@@ -712,16 +699,18 @@ namespace waavs {
                 values.y1 = resolveLengthOr(fFy, fhCtx, values.y0);
                 values.r1 = resolveLengthOr(fFr, frCtx, 0.0);
 
-                //clampFocalPointToOuterCircle(values);
 
-                if (fHasGradientTransform)
-                    xform = fGradientTransform;
+                //if (fHasGradientTransform)
+                //    xform = fGradientTransform;
             }
 
+            //clampFocalPointToOuterCircle(values);
+
             grad.setValues(values);
-            grad.setTransform(blMatrix_from_WGMatrix3x3(xform));
             grad.resetStops();
             grad.assignStops(fGradient.stopsView());
+            if (fHasGradientTransform)
+                grad.setTransform(blMatrix_from_WGMatrix3x3(fGradientTransform));
 
             return true;
         }

@@ -565,21 +565,10 @@ namespace waavs {
         static  void extractAlpha_row_scalar( uint32_t* dst, const uint32_t* src, size_t n) noexcept
         {
             for (size_t i = 0; i < n; ++i)
-            {
-                // extract alpha to all channels, 
-                // so that we can treat it as a single-channel 
-                // heightfield for lighting calculations.
-                auto alpha = argb32_unpack_alpha_u32(src[i]);
-                uint32_t newValue = alpha;
-                if (alpha > 0)
-                {
-                    newValue *= 0x01010101u; // replicate alpha to all channels
-                }
-                dst[i] = newValue;
-            }
+                dst[i] = src[i] & 0xFF000000u;
         }
 
-#if defined(__ARM_NEON) || defined(__aarch64__)
+#if WAAVS_HAS_NEON
         static INLINE void extractAlpha_row_neon(
             uint32_t* dst,
             const uint32_t* src,
@@ -600,13 +589,14 @@ namespace waavs {
                 dst[i] = src[i] & 0xFF000000u;
         }
 #endif
+
         static  void extractAlpha_row(
             uint32_t* dst,
             const uint32_t* src,
             size_t n) noexcept
         {
-#if defined(__ARM_NEON) || defined(__aarch64__)
-            extractAlpha_row_scalar(dst, src, n);
+#if WAAVS_HAS_NEON
+            extractAlpha_row_neon(dst, src, n);
 #else
             extractAlpha_row_scalar(dst, src, n);
 #endif
@@ -2756,7 +2746,7 @@ namespace waavs {
     return argb32_unpack_alpha_norm(px);
         }
 
-
+/*
         // computeHeightNormal()
         //
         // Computes the normal vector at pixel (x,y) by sampling the alpha channel of
@@ -2800,6 +2790,7 @@ namespace waavs {
         nz = 1.0f;
     }
 }
+*/
 
 
 bool onSpecularLighting(const FilterIO& io, const FilterPrimitiveSubregion& subr,
@@ -2846,8 +2837,8 @@ bool onSpecularLighting(const FilterIO& io, const FilterPrimitiveSubregion& subr
     map.surfaceW = int(in.width());
     map.surfaceH = int(in.height());
     
-    map.filterExtentUS = fSpace.filterExtentUS;
-    //map.filterExtentUS = fSpace.filterRectUS;
+    // need a localized extent
+    map.filterExtentUS = WGRectD{ 0.0, 0.0, fSpace.filterRectUS.w, fSpace.filterRectUS.h };
     map.uxPerPixel = (map.surfaceW > 0)
         ? float(map.filterExtentUS.w / double(map.surfaceW))
         : 1.0f;
