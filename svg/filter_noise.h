@@ -72,6 +72,23 @@ namespace waavs
     static constexpr int32_t kTurbulenceTableMask = 255;
     static constexpr int32_t kPerlinN = 0x1000;
 
+    // Helper to compute the sum of amplitudes for a given 
+    // number of octaves, used for normalization
+    static INLINE float turbulence_amplitude_sum(uint32_t octaves) noexcept
+    {
+        float amp = 0.0f;
+        float ratio = 1.0f;
+
+        for (uint32_t i = 0; i < octaves; ++i)
+        {
+            amp += 1.0f / ratio;
+            ratio *= 2.0f;
+        }
+
+        return amp;
+    }
+
+
     // ------------------------------------------------------------
     // Gradient basis
     // ------------------------------------------------------------
@@ -300,6 +317,7 @@ namespace waavs
         float baseFreqY{ 0.01f };
         float seed{ 0.0f };
         uint32_t octaves{ 1 };
+        float amplitudeSum{ 1.0f };
     };
 
     // ------------------------------------------------------------
@@ -433,16 +451,37 @@ namespace waavs
     // ------------------------------------------------------------
     // Final SVG-style mapping helpers
     // ------------------------------------------------------------
+    static  float fractal_to_unit(float v, float amp) noexcept
+    {
+        if (!(amp > 0.0f))
+            return 0.5f;
+        
+        float rv = (v + 1) * 0.5f;
+        
+        return clamp01f(rv);
+    }
 
+    static  float turbulence_to_unit(float v, float amp) noexcept
+    {
+        if (!(amp > 0.0f))
+            return 0.0f;
+
+        return clamp01f(v);
+    }
+
+    /*
     static INLINE float fractal_to_unit(float v) noexcept
     {
         return clamp01(v * 0.5f + 0.5f);
     }
 
+    // Note:  The absolute value of the noise function can
+    // be between [0..2], so we need to scale by 0.5 to fit into [0..1]
     static INLINE float turbulence_to_unit(float v) noexcept
     {
-        return clamp01(v);
+        return clamp01(v * 0.5); //return clamp01(v);
     }
+    */
 
     // ------------------------------------------------------------
     // Convenience helpers for preparing stitch frequencies/state
@@ -475,6 +514,7 @@ namespace waavs
     // ------------------------------------------------------------
     // Convenience helpers for sampling RGBA channels
     // ------------------------------------------------------------
+    static float minChannelValue = 0.0f, maxChannelValue = 0.0f;
 
     static INLINE float sampleFractalChannel(
         float x,
@@ -485,24 +525,31 @@ namespace waavs
         bool stitchTiles,
         const TurbulenceStitchInfo* stitchInfo) noexcept
     {
+
         if ((unsigned)channel >= 4u)
             return 0.0f;
 
+        float noiseValue;
+
         if (stitchTiles && stitchInfo != nullptr)
         {
-            return fractal_to_unit(
-                fractalNoise2_stitch(
-                    x, y, p,
-                    *stitchInfo,
-                    s.channels[channel],
-                    s.perm));
+            noiseValue = fractalNoise2_stitch(
+                x, y, p,
+                *stitchInfo,
+                s.channels[channel],
+                s.perm);
+
+            minChannelValue = min(noiseValue, minChannelValue);
+            maxChannelValue = max(noiseValue, maxChannelValue);
+
+            return fractal_to_unit( noiseValue, p.amplitudeSum);
         }
 
-        return fractal_to_unit(
-            fractalNoise2(
-                x, y, p,
-                s.channels[channel],
-                s.perm));
+        noiseValue = fractalNoise2( x, y, p, s.channels[channel], s.perm);
+        minChannelValue = min(noiseValue, minChannelValue);
+        maxChannelValue = max(noiseValue, maxChannelValue);
+
+        return fractal_to_unit( noiseValue, p.amplitudeSum);
     }
 
     static INLINE float sampleTurbulenceChannel(
@@ -524,13 +571,13 @@ namespace waavs
                     x, y, p,
                     *stitchInfo,
                     s.channels[channel],
-                    s.perm));
+                    s.perm), p.amplitudeSum);
         }
 
         return turbulence_to_unit(
             turbulence2(
                 x, y, p,
                 s.channels[channel],
-                s.perm));
+                s.perm), p.amplitudeSum);
     }
 }

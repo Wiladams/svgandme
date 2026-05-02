@@ -16,8 +16,11 @@ namespace waavs
 
         // If all bytes of the uint32_t are the same, 
         // we can use memset for a faster fill
+        // multiplying a single byte by the bit pattern 
+        // 0x01010101 replicates that byte across all four 
+        // bytes of the uint32_t
         const uint8_t b = uint8_t(pixel & 0xFF);
-        if (pixel == (uint32_t(b) * 0x01010101u)) {
+        if (pixel == repl_u8_u32(b)) {
             std::memset(dst32, b, count * sizeof(uint32_t));
             return;
         }

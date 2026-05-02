@@ -27,6 +27,12 @@
 namespace waavs 
 {
 
+    // get the numbr of bytes required to store the given number of 
+    // bytes, assuming the desired alignment
+    static INLINE int GetAlignedByteCount(const int width, const int bitsperpixel, const int alignment) noexcept
+    {
+        return (((width * (bitsperpixel / 8)) + (alignment - 1)) & ~(alignment - 1));
+    }
 
     class User32PixelMap : public PixelAccessor<vec4b>
     {

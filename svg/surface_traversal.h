@@ -325,7 +325,7 @@ namespace waavs
         int baseY,
         PixelFn pixelFn) noexcept
     {
-        PixelNeighborhood_ARGB32 nb{ &srcFull, srcFull.width, srcFull.height };
+        PixelNeighborhood_ARGB32 nb{ &srcFull };
 
         return wg_surface_rows_apply_unchecked(
             dstView,

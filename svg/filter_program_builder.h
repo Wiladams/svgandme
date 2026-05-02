@@ -14,16 +14,7 @@
 // --------------------------------------
 namespace waavs
 {
-    // Encode/decode u32 <-> u64 by storing the u32 in the low 32 bits of the u64.
-    static INLINE uint64_t u64_from_u32(uint32_t v) noexcept
-    {
-        return (uint64_t)v;
-    }
-    
-    static INLINE uint32_t u32_from_u64(uint64_t v) noexcept
-    {
-        return (uint32_t)(v & 0xFFFFFFFFu);
-    }
+
 
     // Encode two u32 values into a single u64, with 'a' in the low 32 bits and 'b' in the high 32 bits.
     static INLINE uint64_t u64_pack_u32x2(uint32_t a, uint32_t b) noexcept
@@ -37,14 +28,7 @@ namespace waavs
         b = (uint32_t)(v >> 32);
     }
 
-    // Encode a float as a uint64_t with the float bits in the low 32 bits.
-    static INLINE uint64_t u64_from_f32(float f) noexcept
-    {
-        static_assert(sizeof(float) == 4, "Expected float to be 32 bits");
-        uint32_t u{};
-        memcpy(&u, &f, 4);
-        return (uint64_t)u;
-    }
+
 
     // Encode/decode a float stored in the low 32 bits of a uint64_t.
     static INLINE float f32_from_u64(uint64_t v) noexcept
@@ -55,22 +39,7 @@ namespace waavs
         return f;
     }
     
-    static INLINE double f64_from_u64(uint64_t v) noexcept
-    {
-        double d{};
-        memcpy(&d, &v, 8);
-        return d;
-    }
 
-    // Encode a double as a uint64_t with the double bits in the full 64 bits.
-    static INLINE uint64_t u64_from_f64(double d) noexcept
-    {
-        uint64_t u{};
-        static_assert(sizeof(double) == 8, "double must be 64-bit");
-        memcpy(&u, &d, 8);
-
-        return u;
-    }
 
     // pack/unpack InternedKey as a uint64_t by storing the pointer bits.
     static INLINE uint64_t u64_from_key(InternedKey k) noexcept
@@ -161,12 +130,12 @@ namespace waavs
 
     static INLINE void emit_u32(FilterProgramStream& out, uint32_t v) noexcept
     {
-        emit_u64(out, u64_from_u32(v));
+        emit_u64(out, conv_u32_to_u64(v));
     }
 
     static INLINE void emit_f32(FilterProgramStream& out, float v) noexcept
     {
-        emit_u64(out, u64_from_f32(v));
+        emit_u64(out, conv_f32_to_u64(v));
     }
 
     static INLINE void emit_key(FilterProgramStream& out, InternedKey k) noexcept
@@ -183,7 +152,7 @@ namespace waavs
     static INLINE void emit_f32_list(FilterProgramStream& out, const float* vals, uint32_t count) noexcept
     {
         for (uint32_t i = 0; i < count; ++i)
-            emit_u64(out, u64_from_f32(vals[i]));
+            emit_u64(out, conv_f32_to_u64(vals[i]));
     }
 
     static INLINE void emit_counted_f32_list(FilterProgramStream& out, const float* vals, uint32_t count) noexcept

@@ -11,7 +11,7 @@
 #include <utility>
 
 #include "definitions.h"
-#include "bithacks.h"
+#include "bit_hacks.h"
 
 namespace waavs
 {

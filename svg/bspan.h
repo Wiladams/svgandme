@@ -10,9 +10,12 @@
 #include <iterator>	// for std::data(), std::size()
 #include <string.h>
 
-#include "bithacks.h"
+#include "bit_hacks.h"
+#include "bit_util.h"
 #include "charset.h"
 #include "scanning.h"
+
+
 
 // Forward declaration of some useful functions
 namespace waavs

@@ -445,117 +445,6 @@ namespace waavs {
 
             return intersection(subArea, surfArea);
         }
-        /*
-        WGRectI resolveSubregionPx(
-            const FilterPrimitiveSubregion& subr,
-            const Surface& like,
-            double padUserX = 0.0,
-            double padUserY = 0.0) const noexcept
-        {
-            const int W = (int)like.width();
-            const int H = (int)like.height();
-
-            WGRectI surfArea{ 0, 0, W, H };
-
-            WGRectD ur{};
-
-            if (!subr.isValid)
-            {
-                // Default: entire filter region
-                ur = fRunState.filterRectUS;
-            }
-            else
-            {
-                const auto& x = subr.x;
-                const auto& y = subr.y;
-                const auto& w = subr.w;
-                const auto& h = subr.h;
-
-                switch (fRunState.primitiveUnits)
-                {
-                default:
-                case SpaceUnitsKind::SVG_SPACE_USER:
-                {
-                    // Percentages relative to filter region
-                    const double fx = x.isPercent()
-                        ? fRunState.filterRectUS.x + x.calculatedValue() * fRunState.filterRectUS.w
-                        : x.value();
-
-                    const double fy = y.isPercent()
-                        ? fRunState.filterRectUS.y + y.calculatedValue() * fRunState.filterRectUS.h
-                        : y.value();
-
-                    const double fw = w.isPercent()
-                        ? w.calculatedValue() * fRunState.filterRectUS.w
-                        : w.value();
-
-                    const double fh = h.isPercent()
-                        ? h.calculatedValue() * fRunState.filterRectUS.h
-                        : h.value();
-
-                    ur = WGRectD(fx, fy, fw, fh);
-                    break;
-                }
-
-                case SpaceUnitsKind::SVG_SPACE_OBJECT:
-                {
-                    const double bx = fRunState.objectBBoxUS.x;
-                    const double by = fRunState.objectBBoxUS.y;
-                    const double bw = fRunState.objectBBoxUS.w;
-                    const double bh = fRunState.objectBBoxUS.h;
-
-                    // BOTH percent and number are bbox-relative
-                    const double fx = bx + x.calculatedValue() * bw;
-                    const double fy = by + y.calculatedValue() * bh;
-                    const double fw = w.calculatedValue() * bw;
-                    const double fh = h.calculatedValue() * bh;
-
-                    ur = WGRectD(fx, fy, fw, fh);
-                    break;
-                }
-
-                case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
-                {
-                    // Leave as raw values (you may refine later)
-                    ur = WGRectD(
-                        x.value(),
-                        y.value(),
-                        w.value(),
-                        h.value()
-                    );
-                    break;
-                }
-                }
-            }
-
-            if (!(ur.w > 0.0) || !(ur.h > 0.0))
-                return WGRectI{};
-
-            // Kernel padding (blur, morphology, etc.)
-            if (padUserX > 0.0 || padUserY > 0.0)
-            {
-                ur.x -= padUserX;
-                ur.y -= padUserY;
-                ur.w += 2.0 * padUserX;
-                ur.h += 2.0 * padUserY;
-            }
-
-            // Map to pixel space
-            const WGRectD subrPX = mapRectAABB(fSpace.ctm, ur);
-
-            int ix0 = (int)std::floor(subrPX.x - fSpace.filterRectPX.x);
-            int iy0 = (int)std::floor(subrPX.y - fSpace.filterRectPX.y);
-            int ix1 = (int)std::ceil((subrPX.x + subrPX.w) - fSpace.filterRectPX.x);
-            int iy1 = (int)std::ceil((subrPX.y + subrPX.h) - fSpace.filterRectPX.y);
-
-            WGRectI subArea{ ix0, iy0, ix1 - ix0, iy1 - iy0 };
-
-            return intersection(subArea, surfArea);
-        }
-        */
-
-
-
 
 
         // --------------------------------------
@@ -852,8 +741,8 @@ namespace waavs {
 
             if (!backgroundLocal.empty())
             {
-                if (!putImage(backgroundKey, backgroundLocal))
-                    return false;
+                //if (!putImage(backgroundKey, backgroundLocal))
+                //    return false;
             }
 
 
@@ -1009,9 +898,9 @@ namespace waavs {
             Surface_ARGB32 inInfo = in.info();
 
             // Preserve behavior: copy full input first
-            if (wg_blit_copy(outInfo, inInfo, 0, 0) != WG_SUCCESS)
-                return false;
-            //out.clearAll();
+            //if (wg_blit_copy(outInfo, inInfo, 0, 0) != WG_SUCCESS)
+            //    return false;
+            out.clearAll();
 
             const WGRectI area = resolveSubregionPx(subr, in);
             if (area.w <= 0 || area.h <= 0)
@@ -2942,7 +2831,11 @@ namespace waavs {
             if (!outKey)
                 outKey = filter::Filter_Last();
 
-            Surface like = getImage(lastKey());
+            // try sizing on SourceGraphic first, then fallback to lastKey
+            // if both fail, quit since we have no reference for size
+            Surface like = getImage(filter::SourceGraphic());
+            if (like.empty())
+                like = getImage(lastKey());
             if (like.empty())
                 return false;
 
@@ -2966,7 +2859,9 @@ namespace waavs {
             PixelToFilterUserMap map;
             map.surfaceW = int(out.width());
             map.surfaceH = int(out.height());
-            map.filterExtentUS = fSpace.filterExtentUS;
+            //map.filterExtentUS = fSpace.filterExtentUS;
+            map.filterExtentUS = WGRectD{ 0,0, fSpace.filterRectUS.w,fSpace.filterRectUS.h };
+
             map.uxPerPixel = (map.surfaceW > 0)
                 ? float(map.filterExtentUS.w / double(map.surfaceW))
                 : 1.0f;
@@ -2980,6 +2875,7 @@ namespace waavs {
             params.baseFreqY = baseFreqY;
             params.seed = seed;
             params.octaves = numOctaves;
+            params.amplitudeSum = turbulence_amplitude_sum(numOctaves);
 
             TurbulenceState turb{};
             buildTurbulenceState(turb, (int32_t)seed);
@@ -3056,6 +2952,9 @@ namespace waavs {
 
             const bool fractalNoise = (typeKey == FILTER_TURBULENCE_FRACTAL_NOISE);
 
+            minChannelValue = waavs::flt_max;
+            maxChannelValue = waavs::flt_min;
+
             // --- Main loop ---
             for (int y = area.y; y < area.y + area.h; ++y)
             {
@@ -3091,9 +2990,6 @@ namespace waavs {
                     b = clamp01f(b);
                     a = clamp01f(a);
 
-                    r *= a;
-                    g *= a;
-                    b *= a;
 
                     drow[x] = argb32_pack_u8(
                         quantize0_255(a),
@@ -3102,6 +2998,10 @@ namespace waavs {
                         quantize0_255(b));
                 }
             }
+
+            //printf("Fractal CHANNEL STATS - Octaves: %d  Amp: %3.2f  Min: %3.2f  Max: %3.2f\n",
+            //    params.octaves, params.amplitudeSum,
+            //    minChannelValue, maxChannelValue);
 
             if (!putImage(outKey, out))
                 return false;

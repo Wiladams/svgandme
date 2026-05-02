@@ -86,7 +86,7 @@
     <ClInclude Include="..\..\svg\xmlscan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\bithacks.h">
+    <ClInclude Include="..\..\svg\bit_hacks.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\svgtext.h">
@@ -399,6 +399,27 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\filter_lighting.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\pixel_effects.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\filter_primitive_fevoronoi.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\filter_primitive_element.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\filter_primitive_subcomponent.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\bit_util.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\bit_bops.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\bit_reader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

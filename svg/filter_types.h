@@ -13,9 +13,11 @@
 
 #include "definitions.h"
 
+#include "bit_hacks.h"
 #include "wggeometry.h"
 #include "nametable.h"
 #include "coloring.h"
+#include "svgdatatypes.h"
 
 
 namespace waavs
@@ -271,10 +273,213 @@ namespace waavs::filter
 
 }
 
+namespace waavs
+{
+    // A simple struct to hold a pair of numbers, 
+// with the possibility of the second being optional/implied.
+    struct SVGNumberPair
+    {
+        float a{ 0.0f };
+        float b{ 0.0f };
+        bool hasB{ false }; // if false, b is implied = a
+
+        void set(float v) { a = v; b = v; hasB = false; }
+    };
+
+
+    static INLINE bool lengthToFilterNumberOrPercent(const SVGLengthValue& inVal,
+        SVGNumberOrPercent& outVal,
+        double dpi = 96.0,
+        const BLFont* font = nullptr) noexcept
+    {
+        return lengthValueToNumberOrPercent(inVal, outVal, dpi, font, true);
+    }
+
+    // Parse: <number> [<number>]
+    // Note: negative numbers are treated as 0, per SVG spec.
+    // 
+    // Uses readNextNumber(), so it naturally accepts comma/space separators.
+    static INLINE bool parseNumberPair(ByteSpan s, SVGNumberPair& out) noexcept
+    {
+        s.skipSpaces();
+
+        if (!s) { out.set(0.0f); return false; }
+
+        double x = 0.0;
+        if (!readNextNumber(s, x)) { out.set(0.0f); return false; }
+
+        double y = 0.0;
+        if (readNextNumber(s, y)) {
+            out.a = (float)x;
+            out.b = (float)y;
+            out.hasB = true;
+        }
+        else {
+            out.set((float)x);
+        }
+
+        // SVG behavior: negative treated as 0
+        if (out.a < 0.0f) out.a = 0.0f;
+        if (out.b < 0.0f) out.b = 0.0f;
+
+        return true;
+    }
+
+    static INLINE bool parseF32Attr(const ByteSpan& s, float& out) noexcept
+    {
+        double v = 0.0;
+        if (!parseNumber(s, v))
+            return false;
+
+        out = static_cast<float>(v);
+
+        return true;
+    }
+
+    // Note: negative numbers are treated as 0, per SVG spec.
+    static INLINE bool parseU32Attr(const ByteSpan& s, uint32_t& out) noexcept
+    {
+        double v = 0.0;
+        if (!parseNumber(s, v))
+            return false;
+
+        if (v < 0.0)
+            v = 0.0;
+
+        out = static_cast<uint32_t>(v);
+
+        return true;
+    }
+
+    // Parse a pair of numbers
+    // Different from parseNumberPair in that the second value
+    // is NOT optional.
+    // Note: negative numbers are NOT treated as 0 here
+    static INLINE bool parseFloatPairAttr(const ByteSpan& s, float& a, float& b) noexcept
+    {
+        SVGTokenListView tv(s);
+        double x = 0.0;
+        double y = 0.0;
+
+        if (!tv.readANumber(x))
+            return false;
+
+        if (!tv.readANumber(y))
+            y = x;
+
+        a = (float)x;
+        b = (float)y;
+        return true;
+    }
+
+    static INLINE bool parseU32PairAttr(const ByteSpan& s, uint32_t& a, uint32_t& b) noexcept
+    {
+        SVGTokenListView tv(s);
+        double x = 0.0;
+        double y = 0.0;
+
+        if (!tv.readANumber(x))
+            return false;
+
+        if (!tv.readANumber(y))
+            y = x;
+
+        if (x < 1.0) x = 1.0;
+        if (y < 1.0) y = 1.0;
+
+        a = (uint32_t)x;
+        b = (uint32_t)y;
+        return true;
+    }
+
+    // Parse a list of numbers, e.g. for feColorMatrix values.
+    static INLINE bool parseFloatListAttr(const ByteSpan& s, std::vector<float>& out) noexcept
+    {
+        out.clear();
+
+        SVGTokenListView tv(s);
+        double v = 0.0;
+        while (tv.readANumber(v))
+            out.push_back((float)v);
+
+        return !out.empty();
+    }
+
+    // Parse a list of numbers, with an expected count. 
+    // Return false if the count doesn't match.
+    static INLINE bool parseFloatListExact(const ByteSpan& s, float* dst, size_t n) noexcept
+    {
+        SVGTokenListView tv(s);
+        double v = 0.0;
+
+        for (size_t i = 0; i < n; ++i)
+        {
+            if (!tv.readANumber(v))
+                return false;
+            dst[i] = (float)v;
+        }
+
+        return true;
+    }
+
+}
+
+
+
 // Converting from string keys to enum values
 // for filter attributes that have a closed vocabulary
 namespace waavs
 {
+    // Parse an exact boolean value, which can be "true"/"false" 
+    // or a number (0=false, nonzero=true).
+    static INLINE bool parseBoolAttr(const ByteSpan& s, bool& out) noexcept
+    {
+        if (!s)
+            return false;
+
+        static InternedKey kTrue = PSNameTable::INTERN("true");
+        static InternedKey kFalse = PSNameTable::INTERN("false");
+        InternedKey k = PSNameTable::INTERN(s);
+
+        if (k == kTrue) {
+            out = true;
+            return true;
+        }
+
+        if (k == kFalse) {
+            out = false;
+            return true;
+        }
+
+        uint32_t v = 0;
+        if (!parseU32Attr(s, v))
+            return false;
+
+        out = (v != 0);
+        return true;
+    }
+
+    static INLINE bool parseStitchTilesAttr(const ByteSpan& s, bool& out) noexcept
+    {
+        if (!s)
+            return false;
+
+        static InternedKey kStitch = PSNameTable::INTERN("stitch");
+        static InternedKey kNoStitch = PSNameTable::INTERN("noStitch");
+        InternedKey k = PSNameTable::INTERN(s);
+
+        if (k == kStitch) {
+            out = true;
+            return true;
+        }
+
+        if (k == kNoStitch) {
+            out = false;
+            return true;
+        }
+
+        return false;
+    }
 
     static INLINE FilterColorInterpolation parseFilterColorInterpolation(InternedKey k, FilterColorInterpolation def) noexcept
     {
@@ -437,6 +642,14 @@ namespace waavs
         F32Span table{};
     };
 
+    struct SVGComponentTransferFunc
+    {
+        FilterTransferFuncType fType{ FILTER_TRANSFER_IDENTITY };
+        float fP0{ 1.0f };
+        float fP1{ 0.0f };
+        float fP2{ 0.0f };
+        std::vector<float> fTable{};
+    };
 
     // For feComposite, arithmetic operator parameters k1..k4 
 // often have special cases when they are zero.

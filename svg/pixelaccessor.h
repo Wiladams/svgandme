@@ -206,8 +206,8 @@ namespace waavs
         }
 
         // Set every pixel to a specified value
-    // we can use this fast intrinsic to fill
-    // the whole area
+        // we can use this fast intrinsic to fill
+        // the whole area
         virtual void setAllPixels(const TP& c)
         {
             // Could use memset_u32 if we check size

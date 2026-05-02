@@ -177,41 +177,27 @@ namespace waavs
         lz = 1.0f;
     }
 
-    /*
-    static INLINE void computeSpecularLightVector(
-        uint32_t lightType,
-        const LightPayload& light,
-        float ux, float uy, float h,
-        float& lx, float& ly, float& lz) noexcept
+
+
+    static  INLINE void resolveColorInterpolationRGB(
+        const ColorSRGB& in,
+        FilterColorInterpolation interp,
+        float& r,
+        float& g,
+        float& b) noexcept
     {
-        const float kPi = kPif;
-
-        if (lightType == FILTER_LIGHT_DISTANT)
+        if (interp == FILTER_COLOR_INTERPOLATION_LINEAR_RGB)
         {
-            const float az = light.L[0] * (kPi / 180.0f);
-            const float el = light.L[1] * (kPi / 180.0f);
-
-            lx = std::cos(el) * std::cos(az);
-            ly = std::cos(el) * std::sin(az);
-            lz = std::sin(el);
-            vec3_normalize(lx, ly, lz);
-
-            return;
+            const ColorLinear lin = coloring_srgb_to_linear(in);
+            r = clamp01f(lin.r);
+            g = clamp01f(lin.g);
+            b = clamp01f(lin.b);
         }
-
-        if (lightType == FILTER_LIGHT_POINT || lightType == FILTER_LIGHT_SPOT)
+        else if (interp == FILTER_COLOR_INTERPOLATION_SRGB)
         {
-            lx = light.L[0] - ux;
-            ly = light.L[1] - uy;
-            lz = light.L[2] - h;
-            vec3_normalize(lx, ly, lz);
-
-            return;
+            r = clamp01f(in.r);
+            g = clamp01f(in.g);
+            b = clamp01f(in.b);
         }
-
-        lx = 0.0f;
-        ly = 0.0f;
-        lz = 1.0f;
     }
-    */
 }

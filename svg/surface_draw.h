@@ -102,6 +102,8 @@ namespace waavs
         return WG_SUCCESS;
     }
 
+    // Use the blend mode to figure out which blending function to use
+    // then call wg_hspan_blend_unchecked() to do the actual blending.
     static INLINE WGResult wg_hspan_blend_resolve_unchecked(
         uint32_t* dst,
         const uint32_t* backdrop,

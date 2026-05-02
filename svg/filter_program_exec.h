@@ -41,27 +41,7 @@ namespace waavs
             }
     }
 
-    static  INLINE void resolveColorInterpolationRGB(
-        const ColorSRGB& in,
-        FilterColorInterpolation interp,
-        float& r,
-        float& g,
-        float& b) noexcept
-    {
-        if (interp == FILTER_COLOR_INTERPOLATION_LINEAR_RGB)
-        {
-            const ColorLinear lin = coloring_srgb_to_linear(in);
-            r = clamp01f(lin.r);
-            g = clamp01f(lin.g);
-            b = clamp01f(lin.b);
-        }
-        else if (interp == FILTER_COLOR_INTERPOLATION_SRGB)
-        {
-            r = clamp01f(in.r);
-            g = clamp01f(in.g);
-            b = clamp01f(in.b);
-        }
-    }
+
 
     // -----------------------------------------
     // Small decode helpers
@@ -73,13 +53,13 @@ namespace waavs
     {
         static_assert(std::is_enum<EnumT>::value, "takeEnum requires enum type");
 
-        const uint32_t v = u32_from_u64(c.take());
+        const uint32_t v = conv_u64_to_u32(c.take());
         return static_cast<EnumT>(v);
     }
 
     static INLINE InternedKey take_key(FilterProgramCursor& c) noexcept { return key_from_u64(c.take()); }
     static INLINE float      take_f32(FilterProgramCursor& c) noexcept { return f32_from_u64(c.take()); }
-    static INLINE uint32_t   take_u32(FilterProgramCursor& c) noexcept { return u32_from_u64(c.take()); }
+    static INLINE uint32_t   take_u32(FilterProgramCursor& c) noexcept { return conv_u64_to_u32(c.take()); }
     static INLINE uint64_t   take_u64(FilterProgramCursor& c) noexcept { return c.take(); }
 
     INLINE ColorSRGB take_ColorSRGB(FilterProgramCursor& c)

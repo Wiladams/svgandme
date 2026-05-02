@@ -164,6 +164,10 @@ namespace waavs
             filterUnits = SpaceUnitsKind::SVG_SPACE_OBJECT;
             primitiveUnits = SpaceUnitsKind::SVG_SPACE_USER;
         }
+
+        bool empty() const { 
+            return ops.empty() && mem.empty(); 
+        }
     };
 
     struct FilterProgramCursor

@@ -1,6 +1,8 @@
 #pragma once
 
 #include "definitions.h"
+#include "bit_hacks.h"
+
 
 namespace waavs {
 

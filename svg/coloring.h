@@ -62,6 +62,7 @@ namespace waavs
     static INLINE float coloring_linear_luminance_diff(ColorLinear a, ColorLinear b);
     static INLINE ColorPRGBA coloring_prgba_lerp(const ColorPRGBA a, const ColorPRGBA b, float t);
     static INLINE ColorPRGBA coloring_prgba_over(const ColorPRGBA src, const ColorPRGBA dst);
+    static INLINE Pixel_ARGB32 coloring_prgba_to_ARGB32(const ColorPRGBA& p) noexcept;
 
     static INLINE constexpr ColorSRGB SRGB8(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
     static INLINE constexpr ColorSRGB SRGB8_ARGB(uint32_t argb);
@@ -104,16 +105,28 @@ namespace waavs
 		// need to dequantize the components from 0..255 to 0..1
 		// and unpremultiply the color components by the alpha
 		float a = dequantize0_255((px >> 24) & 0xFFu);
-		if (a <= 0.0f) { // treat near zero alpha as transparent
+        const float invA = (a > 1e-8f) ? (1.0f / a) : 0.0f;
+
+		if (invA  <= 0.0f) { // treat near zero alpha as transparent
 			return ColorSRGB{ 0.0f, 0.0f, 0.0f, 0.0f };
 		}
 		else {
-			float r = dequantize0_255((px >> 16) & 0xFFu) / a;
-			float g = dequantize0_255((px >> 8) & 0xFFu) / a;
-			float b = dequantize0_255((px >> 0) & 0xFFu) / a;
+			float r = clamp01f(dequantize0_255((px >> 16) & 0xFFu) *invA);
+			float g = clamp01f(dequantize0_255((px >> 8) & 0xFFu) * invA);
+			float b = clamp01f(dequantize0_255((px >> 0) & 0xFFu) * invA);
+
 			return ColorSRGB{ r, g, b, a };
 		}
 	}
+
+    static INLINE Pixel_ARGB32 argb32_pack_premultiplied_srgb(float a, float r, float g, float b)
+    {
+        return argb32_pack_u8(
+            quantize0_255(clamp01f(a)),
+            quantize0_255(clamp01f(r)),
+            quantize0_255(clamp01f(g)),
+            quantize0_255(clamp01f(b)));
+    }
 
     static INLINE Pixel_ARGB32 Pixel_ARGB32_from_ColorSRGB(const ColorSRGB& c) noexcept
     {
@@ -160,6 +173,17 @@ namespace waavs
             : (1.055f * powf(c, 1.0f / 2.4f) - 0.055f);
     }
 
+    static INLINE Pixel_ARGB32 argb32_from_premultiplied_linear(
+        float a, float pr, float pg, float pb) noexcept
+    {
+        ColorPRGBA p{};
+        p.a = clamp01f(a);
+        p.r = clamp01f(pr);
+        p.g = clamp01f(pg);
+        p.b = clamp01f(pb);
+
+        return coloring_prgba_to_ARGB32(p);
+    }
 
     // Relative luminance from linear RGB (Rec.709 primaries)
     static INLINE float coloring_relative_luminance_linear(const ColorLinear* c)
