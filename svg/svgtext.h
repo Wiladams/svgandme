@@ -55,7 +55,7 @@ namespace waavs
         // Abstracts that MUST have an implementation
         // For text runs, these are all no-ops because 
         // the container ('text' or 'tspan') is responsible for all of these things.
-        void draw(IRenderSVG*, IAmGroot*) override {}
+        void draw(IRenderSVG*, IAmGroot*, RenderFlags = RenderFeature::RF_All) override {}
         void bindToContext(IRenderSVG*, IAmGroot*) noexcept override {}
         void fixupStyleAttributes(IAmGroot*) override {}
 
@@ -783,13 +783,13 @@ namespace waavs
             fDimY.loadFromChunk(getAttribute(svgattr::y()));
 
 
-            getEnumValue(SVGTextAnchor, getAttributeByName("text-anchor"),
+            getEnumValue(SVGTextAnchor, getAttributeByName(svgattr::text_anchor()),
                 (uint32_t&)fTextHAlignment);
-            getEnumValue(SVGTextAlign, getAttributeByName("text-align"),
+            getEnumValue(SVGTextAlign, getAttributeByName(svgattr::text_align()),
                 (uint32_t&)fTextVAlignment);
-            getEnumValue(SVGDominantBaseline, getAttributeByName("dominant-baseline"),
+            getEnumValue(SVGDominantBaseline, getAttributeByName(svgattr::dominant_baseline()),
                 (uint32_t&)fDominantBaseline);
-            getEnumValue(SVGDominantBaseline, getAttributeByName("alignment-baseline"),
+            getEnumValue(SVGDominantBaseline, getAttributeByName(svgattr::alignment_baseline()),
                 (uint32_t&)fDominantBaseline);
         }
 

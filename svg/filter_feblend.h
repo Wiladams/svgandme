@@ -4,7 +4,7 @@
 
 #include "filter_types.h"
 #include "filter_program_exec.h"   // FilterProgramExecutor + IAmFroot<T>
-#include "pixeling_porterduff.h"
+#include "pixeling_composite.h"
 #include "pixeling_blend.h"
 
 namespace waavs

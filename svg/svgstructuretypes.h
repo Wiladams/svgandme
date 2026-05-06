@@ -27,6 +27,27 @@
 
 namespace waavs {
 
+    // RenderFeature
+    // 
+    // Gives the graphic that might be responding to a 
+    // draw() call some intention information
+    enum RenderFeature : uint32_t
+    {
+        RF_Content = 1u << 0,
+        RF_Filter = 1u << 1,
+        RF_Mask = 1u << 2,
+        RF_Clip = 1u << 3,
+        RF_Opacity = 1u << 4,
+
+        RF_All = RF_Content | RF_Filter | RF_Mask | RF_Clip | RF_Opacity
+    };
+
+    using RenderFlags = BitFlags<RenderFeature>;
+
+
+    // -----------------------------------------
+    //
+
     struct IViewable : public SVGObject, public IServePaint
     {
         bool fIsVisible{ true };
@@ -74,7 +95,8 @@ namespace waavs {
         virtual void fixupStyleAttributes(IAmGroot* groot) = 0;
 
         virtual void update(IAmGroot*) = 0;
-        virtual void draw(IRenderSVG*, IAmGroot*) = 0;
+        virtual void draw(IRenderSVG*, IAmGroot*, 
+            RenderFlags featureSet = RenderFeature::RF_All) = 0;
 
     };
 
@@ -162,8 +184,6 @@ namespace waavs
         
         virtual void applyToContext(IRenderSVG* ctx, IAmGroot* groot)
         {
-            //printf("SVGVisualProperty::draw == ");
-            //printChunk(fRawValue);
             if (needsBinding())
                 this->bindToContext(ctx, groot);
             

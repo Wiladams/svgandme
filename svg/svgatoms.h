@@ -78,11 +78,15 @@ namespace waavs::svgattr
     inline InternedKey stroke_linecap() { static InternedKey k = PSNameTable::INTERN("stroke-linecap"); return k; }
     inline InternedKey stroke_linecap_start() { static InternedKey k = PSNameTable::INTERN("stroke-linecap-start"); return k; }
     inline InternedKey stroke_linecap_end() { static InternedKey k = PSNameTable::INTERN("stroke-linecap-end"); return k; }
-
     inline InternedKey stroke_linejoin(){static InternedKey k = PSNameTable::INTERN("stroke-linejoin"); return k;}
     inline InternedKey stroke_miterlimit(){static InternedKey k = PSNameTable::INTERN("stroke-miterlimit"); return k;}
+
+    // Stroke dashing
     inline InternedKey stroke_dasharray(){static InternedKey k = PSNameTable::INTERN("stroke-dasharray"); return k;}
     inline InternedKey stroke_dashoffset(){static InternedKey k = PSNameTable::INTERN("stroke-dashoffset"); return k;}
+
+    // flowRoot
+    inline InternedKey line_height() { static InternedKey k = PSNameTable::INTERN("line-height"); return k; }
 
     // Text
     inline InternedKey font_family() { static InternedKey k = PSNameTable::INTERN("font-family");   return k; }
@@ -91,6 +95,7 @@ namespace waavs::svgattr
     inline InternedKey font_stretch() { static InternedKey k = PSNameTable::INTERN("font_stretch"); return k; }
     inline InternedKey font_style() { static InternedKey k = PSNameTable::INTERN("font-style");    return k; }
     inline InternedKey text_anchor() { static InternedKey k = PSNameTable::INTERN("text-anchor");   return k; }
+    inline InternedKey text_align() { static InternedKey k = PSNameTable::INTERN("text-align");   return k; }
     inline InternedKey dominant_baseline()
     {
         static InternedKey k = PSNameTable::INTERN("dominant-baseline"); return k;
@@ -106,6 +111,11 @@ namespace waavs::svgattr
 
     // Clipping / masking
     inline InternedKey clip_path() { static InternedKey k = PSNameTable::INTERN("clip-path");     return k; }
+
+    // Masking
+    INLINE InternedKey mask_units() { static InternedKey k = PSNameTable::INTERN("maskUnits");     return k; }
+    INLINE InternedKey mask_content_units() { static InternedKey k = PSNameTable::INTERN("maskContentUnits");     return k; }
+    INLINE InternedKey mask_type() { static InternedKey k = PSNameTable::INTERN("mask-type");     return k; }
     inline InternedKey mask() { static InternedKey k = PSNameTable::INTERN("mask");          return k; }
 
     // Filters / effects

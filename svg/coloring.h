@@ -8,6 +8,13 @@
 
 namespace waavs
 {
+    // Generic all-purpose color structure
+    // There is no presumption of color space or premultiplication; 
+    // this is just a convenient way to hold four float components together
+    struct Color4f
+    {
+        float r, g, b, a;
+    };
 
     // This structure should be used when you're parsing a value from SVG or CSS
     // It is in gamma-encoded sRGB space, with straight (unpremultiplied) alpha

@@ -65,8 +65,8 @@ namespace waavs {
         {
             // The id has already been grabbed separately
 
-            getEnumValue(SVGSpreadMethod, getAttributeByName("spreadMethod"), (uint32_t&)fSpreadMethod);
-            getEnumValue(SVGSpaceUnits, getAttributeByName("gradientUnits"), (uint32_t&)fGradientUnits);
+            getEnumValue(SVGSpreadMethod, getAttributeByName(svgattr::spreadMethod()), (uint32_t&)fSpreadMethod);
+            getEnumValue(SVGSpaceUnits, getAttributeByName(svgattr::gradientUnits()), (uint32_t&)fGradientUnits);
 
         }
 

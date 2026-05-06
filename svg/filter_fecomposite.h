@@ -5,7 +5,7 @@
 
 #include "filter_program_exec.h"   // FilterProgramExecutor + IAmFroot<T>
 #include "pixeling.h"
-#include "pixeling_porterduff.h" // Porter-Duff pixel ops
+#include "pixeling_composite.h" // Porter-Duff pixel ops
 
 namespace waavs
 {

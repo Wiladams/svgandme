@@ -65,17 +65,17 @@ namespace waavs {
 
             // Global paint attributes
             SVGPaintOrderAttribute::registerFactory();
-            SVGOpacity::registerFactory();
+            //SVGOpacity::registerFactory();
             SVGColorPaint::registerFactory();
 
             // Fill attributes
             SVGFillPaint::registerFactory();
-            //SVGFillOpacity::registerFactory();    // don't register as we handle alpha directly
+            //SVGFillOpacity::registerFactory();    // don't register as we handle opacity directly
             SVGFillRuleAttribute::registerFactory();
 
             // Stroke attributes
             SVGStrokePaint::registerFactory();
-            //SVGStrokeOpacity::registerFactory();  // don't register, as we handle alpha directly
+            //SVGStrokeOpacity::registerFactory();  // don't register, as we handle opacity directly
 
             SVGStrokeLineCap::registerFactory();
             SVGStrokeLineJoin::registerFactory();
@@ -104,6 +104,9 @@ namespace waavs {
             // Clipping
             //SVGClipPathAttribute::registerFactory();        // 'clip-path' attribute
             //SVGClipPathElement::registerFactory();        // 'clipPath' element
+
+            // Masking
+            SVGMaskElement::registerFactory();                  // 'mask' element
 
             //=============================================
             // Register SVG Node Types
@@ -146,7 +149,6 @@ namespace waavs {
             SVGRadialGradient::registerFactory();       // 'radialGradient'
 
             SVGMarkerElement::registerFactory();           // 'marker'
-            //SVGMaskElement::registerFactory();             // 'mask'
             SVGPatternElement::registerFactory();          // 'pattern'
 
 
@@ -213,8 +215,6 @@ namespace waavs {
                 printf("SVGFactory::CreateFromChunk() failed to load\n");
                 return nullptr;
             }
-
-
 
             return doc;
         }

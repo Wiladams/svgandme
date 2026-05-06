@@ -686,9 +686,9 @@ return true;
             SVGDimension fCy{};
             SVGDimension fR{};
             
-            fCx.loadFromChunk(getAttributeByName("cx"));
-            fCy.loadFromChunk(getAttributeByName("cy"));
-            fR.loadFromChunk(getAttributeByName("r"));
+            fCx.loadFromChunk(getAttributeByName(svgattr::cx()));
+            fCy.loadFromChunk(getAttributeByName(svgattr::cy()));
+            fR.loadFromChunk(getAttributeByName(svgattr::r()));
             
             geom.cx = fCx.calculatePixels(w, 0, dpi);
             geom.cy = fCy.calculatePixels(h, 0, dpi);
@@ -780,10 +780,10 @@ return true;
             SVGDimension fRx{};
             SVGDimension fRy{};
             
-            fCx.loadFromChunk(getAttributeByName("cx"));
-            fCy.loadFromChunk(getAttributeByName("cy"));
-            fRx.loadFromChunk(getAttributeByName("rx"));
-            fRy.loadFromChunk(getAttributeByName("ry"));
+            fCx.loadFromChunk(getAttributeByName(svgattr::cx()));
+            fCy.loadFromChunk(getAttributeByName(svgattr::cy()));
+            fRx.loadFromChunk(getAttributeByName(svgattr::rx()));
+            fRy.loadFromChunk(getAttributeByName(svgattr::ry()));
             
             
             geom.cx = fCx.calculatePixels(w, 0, dpi);

@@ -84,10 +84,10 @@ namespace waavs
 
         void fixupSelfStyleAttributes(IAmGroot* groot) override
         {
-            fX = parseLengthAttr(getAttributeByName("x"));
-            fY = parseLengthAttr(getAttributeByName("y"));
-            fW = parseLengthAttr(getAttributeByName("width"));
-            fH = parseLengthAttr(getAttributeByName("height"));
+            fX = parseLengthAttr(getAttributeByName(svgattr::x()));
+            fY = parseLengthAttr(getAttributeByName(svgattr::y()));
+            fW = parseLengthAttr(getAttributeByName(svgattr::width()));
+            fH = parseLengthAttr(getAttributeByName(svgattr::height()));
 
             ByteSpan href = getAttribute(svgattr::xlink_href());
             if (href.empty())

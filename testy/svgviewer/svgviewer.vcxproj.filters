@@ -359,7 +359,7 @@
     <ClInclude Include="..\..\svg\filter_fecomponenttransfer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\pixeling_porterduff.h">
+    <ClInclude Include="..\..\svg\pixeling_composite.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\maths_base.h">

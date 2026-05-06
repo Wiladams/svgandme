@@ -781,19 +781,6 @@ namespace waavs {
             BLRadialGradientValues values{};
 
             
-            // Before we go any further, get our current gradientUnits
-            // default is objectBoundingBox
-            //getEnumValue(SVGSpaceUnits, getAttributeByName("gradientUnits"), (uint32_t&)fGradientUnits);
-
-            //if (getEnumValue(SVGSpreadMethod, getAttributeByName("spreadMethod"), (uint32_t&)fSpreadMethod))
-            //{
-            //    fGradient.setExtendMode((BLExtendMode)fSpreadMethod);
-            //}
-
-            //fHasGradientTransform = parseTransform(getAttributeByName("gradientTransform"), fGradientTransform);
-
-            // If the gradientUnits are ObjectBoundingBox, then 
-            // the parameters are relative to the size of that box
             if (fGradientUnits == SVG_SPACE_OBJECT)
             {
                 WGRectD objFrame = ctx->getObjectFrame();

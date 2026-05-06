@@ -526,7 +526,7 @@ namespace waavs {
 
             // line-height
             {
-                ByteSpan lh = getAttributeByName("line-height");
+                ByteSpan lh = getAttributeByName(svgattr::line_height());
                 bool absPx = false;
                 double v = parseLineHeight(lh, absPx);
                 if (absPx) {
@@ -608,7 +608,7 @@ namespace waavs {
             enum Align { ALIGN_START, ALIGN_MIDDLE, ALIGN_END };
             Align align = ALIGN_START;
             {
-                ByteSpan ta = chunk_trim(getAttributeByName("text-align"), chrWspChars);
+                ByteSpan ta = chunk_trim(getAttributeByName(svgattr::text_align()), chrWspChars);
                 if (ta) {
                     InternedKey tak = PSNameTable::INTERN(ta);
 

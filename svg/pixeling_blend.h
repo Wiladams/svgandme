@@ -8,7 +8,7 @@
 #include "coloring.h"
 #include "surface_info.h"
 #include "surface.h"
-#include "pixeling_porterduff.h"
+#include "pixeling_composite.h"
 
 namespace waavs
 {
@@ -126,7 +126,67 @@ namespace waavs
     // and returns the blended linear RGB value. Duck typing is 
     // used to allow this to be a lambda or a function pointer or whatever.
     //
+    template <typename BlendFn>
+    static INLINE Color4f blend_separable_straight_rgba(
+        const Color4f& b,
+        const Color4f& s,
+        BlendFn blendFn) noexcept
+    {
+        const float ab = b.a;
+        const float as = s.a;
 
+        const float outA = as + ab * (1.0f - as);
+        if (!(outA > 0.0f))
+            return Color4f{ 0.0f, 0.0f, 0.0f, 0.0f };
+
+        const float br = blendFn(b.r, s.r);
+        const float bg = blendFn(b.g, s.g);
+        const float bb = blendFn(b.b, s.b);
+
+        const float oneMinusAs = 1.0f - as;
+        const float oneMinusAb = 1.0f - ab;
+        const float abAs = ab * as;
+
+        // return a pre-multiplied color
+        return Color4f{
+            oneMinusAs * ab * b.r + oneMinusAb * as * s.r + abAs * br,
+            oneMinusAs * ab * b.g + oneMinusAb * as * s.g + abAs * bg,
+            oneMinusAs * ab * b.b + oneMinusAb * as * s.b + abAs * bb,
+            outA
+        };
+    }
+
+
+    template <typename BlendFn>
+    static INLINE Pixel_ARGB32 blend_separable_linear_prgb32_pixel(
+        Pixel_ARGB32 backdrop,
+        Pixel_ARGB32 source,
+        BlendFn blendFn) noexcept
+    {
+        const uint32_t sa = (source >> 24) & 0xFFu;
+        const uint32_t ba = (backdrop >> 24) & 0xFFu;
+
+        if (sa == 0)
+            return backdrop;
+
+        if (ba == 0)
+            return source;
+
+        const ColorLinear b = coloring_linear_unpremultiply(
+            coloring_ARGB32_to_prgba(backdrop));
+
+        const ColorLinear s = coloring_linear_unpremultiply(
+            coloring_ARGB32_to_prgba(source));
+
+        const Color4f out = blend_separable_straight_rgba(
+            Color4f{ b.r, b.g, b.b, b.a },
+            Color4f{ s.r, s.g, s.b, s.a },
+            blendFn);
+
+        return argb32_from_premultiplied_linear(out.a, out.r, out.g, out.b);
+    }
+
+    /*
     template <typename BlendFn>
     static INLINE Pixel_ARGB32 blend_separable_linear_prgb32_pixel(
         Pixel_ARGB32 backdrop,
@@ -188,7 +248,7 @@ namespace waavs
 
         return argb32_from_premultiplied_linear(outA, outR_p, outG_p, outB_p);
     }
-
+    */
 
 
 
@@ -196,6 +256,33 @@ namespace waavs
     // Pixel Operations for sRGB blend modes
     // ------------------------------------------
 
+    template <typename BlendFn>
+    static INLINE Pixel_ARGB32 blend_separable_srgb_prgb32_pixel(
+        Pixel_ARGB32 backdrop,
+        Pixel_ARGB32 source,
+        BlendFn blendFn) noexcept
+    {
+        const uint32_t sa = (source >> 24) & 0xFFu;
+        const uint32_t ba = (backdrop >> 24) & 0xFFu;
+
+        if (sa == 0)
+            return backdrop;
+
+        if (ba == 0)
+            return source;
+
+        const ColorSRGB b = colorsrgb_from_premultiplied_Pixel_ARGB32(backdrop);
+        const ColorSRGB s = colorsrgb_from_premultiplied_Pixel_ARGB32(source);
+
+        const Color4f out = blend_separable_straight_rgba(
+            Color4f{ b.r, b.g, b.b, b.a },
+            Color4f{ s.r, s.g, s.b, s.a },
+            blendFn);
+
+        return argb32_pack_premultiplied_srgb(out.a, out.r, out.g, out.b);
+    }
+
+    /*
     template <typename BlendFn>
     static INLINE Pixel_ARGB32 blend_separable_srgb_prgb32_pixel(
         Pixel_ARGB32 backdrop,
@@ -256,7 +343,7 @@ namespace waavs
 
         return res;
     }
-
+    */
 
 
 
@@ -270,21 +357,8 @@ namespace waavs
         int w) noexcept;
 
     // ------------------------------------------
-    // Generic scalar row wrapper
+    // Generic Row Wrappers
     // -------------------------------------------
-/*
-    template <typename PixelOp>
-    static INLINE void blend_binary_prgb32_row_scalar(
-        uint32_t* dst,
-        const uint32_t* backdrop,
-        const uint32_t* source,
-        int w,
-        PixelOp op) noexcept
-    {
-        for (int x = 0; x < w; ++x)
-            dst[x] = op(backdrop[x], source[x]);
-    }
-    */
 
     template <auto BlendOp>
     static INLINE void blend_srgb_prgb32_row_scalar(
@@ -311,9 +385,6 @@ namespace waavs
     }
 
 
-
-    // Row helpers
-
     // ------------------------------------------------------------
     // LINEAR RGB row helpers
     // ------------------------------------------------------------
@@ -325,11 +396,9 @@ namespace waavs
         int w) noexcept
     {
 #if WAAVS_HAS_NEON
-        // normal blend is just source-over
-        //composite_over_prgb32_row_neon(dst, source, backdrop, w);
-        blend_linear_prgb32_row_scalar<blendop_normal>(dst, backdrop, source, w);
+        composite_over_prgb32_row(dst, source, backdrop, w);
 #else
-        blend_linear_prgb32_row_scalar<blendop_normal>(dst, backdrop, source, w);
+        composite_over_prgb32_row(dst, source, backdrop, w);
 #endif
     }
 
@@ -345,19 +414,12 @@ namespace waavs
         const uint32_t* source,
         int w) noexcept
     {
-        // normal is still source-over; only the interpretation of
-        // blend math changes, and normal has no separable blend math.
 #if WAAVS_HAS_NEON
-        blend_srgb_prgb32_row_scalar<blendop_normal>(dst, backdrop, source, w);
+        composite_over_prgb32_row(dst, source, backdrop, w);
 #else
-        blend_srgb_prgb32_row_scalar<blendop_normal>(dst, backdrop, source, w);
+        composite_over_prgb32_row(dst, source, backdrop, w);
 #endif
     }
-
-
-
-
-
 
 
     static INLINE BlendRowFn get_blend_row_fn( WGBlendMode mode,  WGFilterColorSpace cs) noexcept

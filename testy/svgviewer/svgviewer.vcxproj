@@ -304,7 +304,7 @@
     <ClInclude Include="..\..\svg\pixel_effects.h" />
     <ClInclude Include="..\..\svg\pixeling.h" />
     <ClInclude Include="..\..\svg\pixeling_blend.h" />
-    <ClInclude Include="..\..\svg\pixeling_porterduff.h" />
+    <ClInclude Include="..\..\svg\pixeling_composite.h" />
     <ClInclude Include="..\..\svg\pixeling_scale.h" />
     <ClInclude Include="..\..\svg\pubsub.h" />
     <ClInclude Include="..\..\svg\scanning.h" />

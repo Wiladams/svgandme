@@ -269,16 +269,47 @@ namespace waavs {
         Surface getInputImage(InternedKey inKey) noexcept
         {
             Surface in = getImage(inKey);
-            
+
+            if (!in.empty())
+                return in;
+
             // If we did not find the image, then try to get the 
             // last one.  This happens in some cases where the 
             // filter has been edited to remove an intermediary 
             // step, but the ids were not updated.
-            if (in.empty())
+
+            // If it's one of the built-in inputs, then we should
+            // be able to re-create it if it does not exist
+            // Most common is probably "SourceAlpha", which we can re-create from SourceGraphic
+            if (inKey == filter::SourceAlpha())
             {
-                inKey = lastKey();
-                in = getImage(lastKey());
+                auto srcKey = filter::SourceGraphic;
+                auto srcGraphic = getImage(inKey);
+                if (srcGraphic.empty())
+                    return {};
+
+                auto srcAlpha = makeSourceAlpha(srcGraphic);
+
+                if (srcAlpha.empty())
+                    return {};
+
+                if (!putImage(filter::SourceAlpha(), srcAlpha))
+                    return srcAlpha;
             }
+
+            // We could try to return BackgroundImage or BackgroundAlpha, 
+            // but, those require the graphics context and other information
+            // that we don't have in this simple call, so it's better left
+            // at a higher level.
+            
+            // Last chance, return the image related to last key
+            // this would actually be a bug, but, it shows up in some 
+            // ill formed filters due to their editing
+            // I'm sure the spec says to return a transparent black image
+            // in such situations.
+            inKey = lastKey();
+            in = getImage(lastKey());
+
             return in;
         }
 
@@ -587,14 +618,159 @@ namespace waavs {
         //   WGRectD objectBoundingBox() const noexcept;
         //   void draw(IRenderSVG*, IAmGroot*);
         // --------------------------------------------------------
+        
+        template<class SubtreeT>
+        Surface applyFilterToSurface(
+            IRenderSVG* ctx,
+            IAmGroot* groot,
+            SubtreeT* subtree,
+            const WGRectD& objectBBoxUS,
+            const WGRectD& filterRectUS,
+            const WGRectI& filterRectPX,
+            const FilterProgramStream& program,
+            RenderFlags rFlags = RenderFeature::RF_All) noexcept
+        {
+            if (!ctx || !groot || !subtree)
+                return Surface{};
 
+            if (!(objectBBoxUS.w > 0.0) || !(objectBBoxUS.h > 0.0))
+                return Surface{};
+
+            if (!(filterRectUS.w > 0.0) || !(filterRectUS.h > 0.0))
+                return Surface{};
+
+            if (filterRectPX.w <= 0 || filterRectPX.h <= 0)
+                return Surface{};
+
+            const WGMatrix3x3 ctm = ctx->getTransform();
+
+            // --------------------------------------------------
+            // Reset executor state
+            // --------------------------------------------------
+
+            clearSurfaces();
+            setLastKey({});
+
+            // --------------------------------------------------
+            // Setup run state
+            // --------------------------------------------------
+
+            fRunState.filterUnits = program.filterUnits;
+            fRunState.primitiveUnits = program.primitiveUnits;
+            fRunState.colorInterpolation = program.colorInterpolation;
+            fRunState.filterRectUS = filterRectUS;
+            fRunState.objectBBoxUS = objectBBoxUS;
+
+            // --------------------------------------------------
+            // Setup filter space
+            // --------------------------------------------------
+
+            fSpace = {};
+            fSpace.filterRectUS = filterRectUS;
+            fSpace.filterExtentUS = WGRectD{
+                0.0,
+                0.0,
+                filterRectUS.w,
+                filterRectUS.h
+            };
+
+            fSpace.filterRectPX = filterRectPX;
+            fSpace.ctm = ctm;
+            fSpace.invCtm = ctm;
+            (void)fSpace.invCtm.invert();
+
+            {
+                const double xvx = ctm.m00;
+                const double xvy = ctm.m01;
+                const double yvx = ctm.m10;
+                const double yvy = ctm.m11;
+
+                fSpace.sx = std::sqrt(xvx * xvx + xvy * xvy);
+                fSpace.sy = std::sqrt(yvx * yvx + yvy * yvy);
+
+                if (!(fSpace.sx > 0.0))
+                    fSpace.sx = 1.0;
+
+                if (!(fSpace.sy > 0.0))
+                    fSpace.sy = 1.0;
+            }
+
+            // --------------------------------------------------
+            // Setup resource resolver
+            // --------------------------------------------------
+
+            fResolver = std::make_unique<B2DFilterResourceResolver<Surface>>(
+                groot,
+                ctx,
+                this);
+
+            // --------------------------------------------------
+            // Render SourceGraphic into tile-local surface
+            // --------------------------------------------------
+
+            Surface srcGraphic{};
+
+            IsolatedSubtreeRequest req{};
+            req.userRect = filterRectUS;
+            req.pixelRect = filterRectPX;
+            req.ctm = ctm;
+            req.objectBBoxUS = objectBBoxUS;
+            req.renderMode = RF_Content;
+
+            renderSubtreeToSurface(ctx, groot, subtree, req, srcGraphic);
+
+            if (srcGraphic.empty())
+                return Surface{};
+
+            if (!putImage(filter::SourceGraphic(), srcGraphic))
+                return Surface{};
+
+            // --------------------------------------------------
+            // Register BackgroundImage, if available
+            // --------------------------------------------------
+
+            Surface backgroundLocal{};
+
+            if (!getBackgroundLocal(ctx, filterRectPX, backgroundLocal))
+                return Surface{};
+
+            if (!backgroundLocal.empty()) {
+                if (!putImage(filter::BackgroundImage(), backgroundLocal))
+                    return Surface{};
+            }
+
+            // --------------------------------------------------
+            // Execute filter program
+            // --------------------------------------------------
+
+            if (!FilterProgramExecutor::execute(program, *this))
+                return Surface{};
+
+            // --------------------------------------------------
+            // Resolve final output
+            // --------------------------------------------------
+
+            InternedKey outKey = lastKey();
+
+            if (!outKey)
+                outKey = filter::Filter_Last();
+
+            Surface outImg = getImage(outKey);
+
+            if (outImg.empty())
+                outImg = getImage(filter::SourceGraphic());
+
+            return outImg;
+        }
+
+        /*
         template<class SubtreeT>
         bool applyFilter(IRenderSVG* ctx,
             IAmGroot* groot,
             SubtreeT* subtree,
             const WGRectD& objectBBoxUS,
             const WGRectD& filterRectUS,
-            const FilterProgramStream& program) noexcept
+            const FilterProgramStream& program, RenderFlags rFlags=RenderFeature::RF_All) noexcept
         {
             if (!ctx || !subtree)
                 return false;
@@ -678,60 +854,36 @@ namespace waavs {
             // --------------------------------------------------
             // Render SourceGraphic into tile-local surface
             // --------------------------------------------------
-
-            auto srcGraphic = createSurfaceHandle(W, H);
+            Surface srcGraphic{};
+            IsolatedSubtreeRequest req{};
+            req.userRect = filterRectUS;
+            req.pixelRect = fSpace.filterRectPX;
+            req.ctm = ctm;
+            req.objectBBoxUS = objectBBoxUS;
+            req.renderMode = rFlags;
+            req.renderMode.remove(RenderFeature::RF_Filter);
+            renderSubtreeToSurface(ctx, groot, subtree, req, srcGraphic);
             if (srcGraphic.empty())
                 return false;
-
-            {
-                WGMatrix3x3 off = ctm;
-                off.postTranslate(-double(tileX), -double(tileY));
-
-                SVGB2DDriver tmp{};
-                tmp.attach(srcGraphic, 1);
-                tmp.renew();
-
-                // DEBUG
-                // draw a border to start
-                //tmp.background(BLRgba32(0xFFff0000));
-                //tmp.clearToBackground();
-                //tmp.clear();
-
-                // Establish correct device mapping
-                tmp.transform(off);
-
-                // Root object frame must match main rendering path
-                tmp.setObjectFrame(objectBBoxUS);
-
-                // Render subtree content only.  
-                // Don't just call 'draw()', or we'll end up
-                // in a loop trying to do the filtering again
-                subtree->drawContent(&tmp, groot);
-
-                tmp.detach();
-            }
+            
 
             // DEBUG
             // blit immediately to check drawing
             //ctx->push();
             //ctx->background(BLRgba32(0xFF00ff00));
             //ctx->clearToBackground();
-            //ctx->transform(BLMatrix2D::makeIdentity());
-            //ctx->image(*srcGraphic, 0, 0);
+            //ctx->transform(WGMatrix3x3::makeIdentity());
+            //ctx->image(srcGraphic, 0, 0);
             //ctx->pop();
 
             // Prime the pump by placing the image we just drew into 
             // the registry as the SourceGraphic.
             InternedKey srcGraphicKey = filter::SourceGraphic();
-            if (!putImage(srcGraphicKey, std::move(srcGraphic)))
+            if (!putImage(srcGraphicKey, srcGraphic))
             {
                 return false;
             }
 
-            // make the alpha channel available as SourceAlpha, for primitives that need it.
-            // BUGBUG - maybe this can be delayed and the filter primitives that need
-            // it can request it on demand.
-            auto srcGraphicPtr = getImage(srcGraphicKey);
 
             // Add background image as well, since some primitives need it (e.g. feBlend)
             InternedKey backgroundKey = filter::BackgroundImage();
@@ -741,18 +893,10 @@ namespace waavs {
 
             if (!backgroundLocal.empty())
             {
-                //if (!putImage(backgroundKey, backgroundLocal))
-                //    return false;
+                if (!putImage(backgroundKey, backgroundLocal))
+                    return false;
             }
 
-
-
-            auto srcAlpha = makeSourceAlpha(srcGraphicPtr);
-            if (srcAlpha.empty())
-                return false;
-
-            if (!putImage(filter::SourceAlpha(), std::move(srcAlpha)))
-                return false;
 
             // --------------------------------------------------
             // Execute filter primitives
@@ -789,7 +933,7 @@ namespace waavs {
 
             return true;
         }
-
+        */
 
         // --------------------------------------------------------
         // FilterProgramExecutor hooks
@@ -1047,7 +1191,7 @@ namespace waavs {
             if (out.empty())
                 return false;
 
-            out.clearAll();
+            //out.clearAll();
 
             WGRectI area = resolveSubregionPx(subr, in1);
             if (area.w <= 0 || area.h <= 0)
@@ -2990,12 +3134,17 @@ namespace waavs {
                     b = clamp01f(b);
                     a = clamp01f(a);
 
-
-                    drow[x] = argb32_pack_u8(
+                    drow[x] = argb32_pack_straight_to_premul_u8(
                         quantize0_255(a),
                         quantize0_255(r),
                         quantize0_255(g),
                         quantize0_255(b));
+
+                    //drow[x] = argb32_pack_u8(
+                    //    quantize0_255(a),
+                    //    quantize0_255(r),
+                    //    quantize0_255(g),
+                    //    quantize0_255(b));
                 }
             }
 

@@ -3,6 +3,183 @@
 #include "svgstructuretypes.h"
 #include "filter_program_exec_b2d.h"
 
+// subtree offscreen drawing
+namespace waavs
+{
+
+
+    struct IsolatedRenderPlan
+    {
+        WGRectD objectBBoxUS{};
+        WGRectD effectRectUS{};
+        WGRectD nominalRectPX{};
+        WGRectD allocRectPX{};
+        WGRectI pixelRect{};
+
+        WGMatrix3x3 ctm{};
+        WGMatrix3x3 invCtm{};
+
+        bool needsIsolation = false;
+        bool hasFilter = false;
+        bool hasMask = false;
+        bool hasClip = false;
+        bool hasOpacity = false;
+    };
+
+
+    struct IsolatedSubtreeRequest
+    {
+        WGRectD userRect;
+        WGRectI pixelRect;
+
+        WGMatrix3x3 ctm;
+        WGRectD objectBBoxUS;
+
+        RenderFlags renderMode = RenderFeature::RF_All;
+
+        bool clear = true;
+    };
+
+
+    template<class SubtreeT>
+    static bool resolveIsolatedRenderPlan(
+        IRenderSVG* ctx,
+        IAmGroot* groot,
+        SubtreeT* elem,
+        const WGRectD& objectBBoxUS,
+        RenderFlags rFlags,
+        IsolatedRenderPlan& plan) noexcept
+    {
+        if (!ctx || !groot || !elem)
+            return false;
+
+        plan = {};
+        plan.objectBBoxUS = objectBBoxUS;
+        plan.ctm = ctx->getTransform();
+        plan.invCtm = plan.ctm;
+        (void)plan.invCtm.invert();
+
+        plan.hasFilter =
+            rFlags.has(RF_Filter) &&
+            elem->hasFeature(svgattr::filter());
+
+        plan.hasMask =
+            rFlags.has(RF_Mask) &&
+            elem->hasFeature(svgattr::mask());
+
+        plan.hasClip =
+            rFlags.has(RF_Clip) &&
+            elem->hasFeature(svgattr::clip_path());
+
+        plan.hasOpacity =
+            rFlags.has(RF_Opacity) &&
+            elem->hasFeature(svgattr::opacity());
+
+        plan.needsIsolation =
+            plan.hasFilter ||
+            plan.hasMask ||
+            plan.hasClip ||
+            plan.hasOpacity;
+
+        if (!plan.needsIsolation)
+            return true;
+
+        WGRectD effectRectUS = objectBBoxUS;
+
+        if (plan.hasFilter) {
+            auto filterNode = elem->getReferencedFeatureNode(groot, svgattr::filter());
+            if (!filterNode)
+                plan.hasFilter = false;
+            else
+                effectRectUS = filterNode->resolveFilterRegion(ctx, groot, objectBBoxUS);
+        }
+
+        // check whether isolation is still needed if the filter
+        // doesn't actually exist.
+        plan.needsIsolation =
+            plan.hasFilter ||
+            plan.hasMask ||
+            plan.hasClip ||
+            plan.hasOpacity;
+
+        if (!plan.needsIsolation)
+            return true;
+
+        if (!(effectRectUS.w > 0.0) || !(effectRectUS.h > 0.0))
+            return false;
+
+        plan.effectRectUS = effectRectUS;
+        plan.nominalRectPX = mapRectAABB(plan.ctm, effectRectUS);
+
+        // Later this should intersect against viewport/device clip.
+        plan.allocRectPX = plan.nominalRectPX;
+
+        if (!(plan.allocRectPX.w > 0.0) || !(plan.allocRectPX.h > 0.0))
+            return false;
+
+        const int x0 = (int)std::floor(plan.allocRectPX.x);
+        const int y0 = (int)std::floor(plan.allocRectPX.y);
+        const int x1 = (int)std::ceil(plan.allocRectPX.x + plan.allocRectPX.w);
+        const int y1 = (int)std::ceil(plan.allocRectPX.y + plan.allocRectPX.h);
+
+        if (x1 <= x0 || y1 <= y0)
+            return false;
+
+        plan.pixelRect = WGRectI{ x0, y0, x1 - x0, y1 - y0 };
+        return true;
+    }
+
+
+    template<class SubtreeT>
+    bool renderSubtreeToSurface(
+        IRenderSVG* ctx,
+        IAmGroot* groot,
+        SubtreeT* subtree,
+        const IsolatedSubtreeRequest& req,
+        Surface& outSurface) noexcept
+    {
+        if (!ctx || !groot || !subtree)
+            return false;
+
+        if (req.pixelRect.w <= 0 || req.pixelRect.h <= 0)
+            return true;
+
+        // Resize the output surface if needed.
+        //
+        if (outSurface.width() != uint32_t(req.pixelRect.w) || outSurface.height() != uint32_t(req.pixelRect.h))
+        {
+            outSurface.reset(
+                uint32_t(req.pixelRect.w),
+                uint32_t(req.pixelRect.h));
+        }
+
+        if (outSurface.empty())
+            return false;
+
+        WGMatrix3x3 off = req.ctm;
+        off.postTranslate(-double(req.pixelRect.x), -double(req.pixelRect.y));
+
+        SVGB2DDriver tmp{};
+        tmp.attach(outSurface, 1);
+        tmp.renew();
+
+        if (req.clear)
+            tmp.clear();
+
+        tmp.transform(off);
+        tmp.setObjectFrame(req.objectBBoxUS);
+
+
+        if (req.renderMode.has(RenderFeature::RF_Content))
+        {
+            subtree->drawContent(&tmp, groot);
+        }
+
+        tmp.detach();
+
+        return true;
+    }
+}
 
 namespace waavs {
 
@@ -47,19 +224,48 @@ namespace waavs {
             return bbox;
         }
 
-
-        // Deal with filters
-        virtual bool hasFilter() const noexcept
+        // hasFeature
+        //
+        // Indicates whether the node has a particular feature
+        // based on the presence of a given attribute.
+        // Used to detect; filter, mask, clip, opacity
+        virtual bool hasFeature(InternedKey featureKey)
         {
-            ByteSpan filterRef{};
-            if (!getAttribute(svgattr::filter(), filterRef))
-            {
+            ByteSpan nodeRef{};
+            if (!getAttribute(featureKey, nodeRef))
                 return false;
-            }
 
-            return  !filterRef.empty();
+            return !nodeRef.empty();
         }
 
+        std::shared_ptr< SVGGraphicsElement> getReferencedFeatureNode(IAmGroot* groot, InternedKey featureKey) const noexcept
+        {
+            if (!groot)
+                return {};
+
+            // Get the filter reference from our 'filter' attribute
+            ByteSpan nodeRef{};
+            if (!getAttribute(featureKey, nodeRef))
+                return {};
+
+            // Look up the filter element by id reference
+            // (filterRef is expected to be in the form "url(#id)")
+            auto featureNode = groot->findNodeByUrl(nodeRef);
+            if (!featureNode)
+                return {};
+
+            // try to dynamic cast the feature 
+            auto featureElem = std::dynamic_pointer_cast<SVGGraphicsElement>(featureNode);
+            if (!featureElem)
+                return {};
+
+            return featureElem;
+        }
+
+        // Deal with masks
+
+
+        // Deal with filters
         // Retrieve a filter program stream for this element
         // Any SVGGraphicsElement can have a filter, but only SVGFilter elements 
         // will actually have a program stream to return.
@@ -68,32 +274,6 @@ namespace waavs {
             return nullptr;
         }
 
-        // If any element has a filter, it is represented through a 'filter' attribute
-        // which is a url reference to a SVGFilter element.  We need to retrieve that
-        // SVGFilter element, and get the actual filter program stream from it.
-        std::shared_ptr< SVGGraphicsElement> getReferencedFilterNode(IAmGroot *groot) const noexcept
-        {
-            if (!groot)
-                return nullptr;
-
-            // Get the filter reference from our 'filter' attribute
-            ByteSpan filterRef{};
-            if (!getAttribute(svgattr::filter(), filterRef))
-                return nullptr;
-    
-            // Look up the filter element by id reference
-            // (filterRef is expected to be in the form "url(#id)")
-            auto filterNode = groot->findNodeByUrl(filterRef);
-            if (!filterNode)
-                return nullptr;
-
-            // try to dynamic cast the filter 
-            auto filterElem = std::dynamic_pointer_cast<SVGGraphicsElement>(filterNode);
-            if (!filterElem)
-                return nullptr;
-
-            return filterElem;
-        }
 
 
 
@@ -750,65 +930,103 @@ namespace waavs {
             ctx->pop();
         }
 
-        bool drawWithEffects(IRenderSVG* ctx, IAmGroot* groot, const WGRectD& bbox)
-        {
-            if (!hasFilter())
-                return false;
-
-            auto filterNode = getReferencedFilterNode(groot);
-            if (!filterNode)
-                return false;
-
-            auto filterProgram = filterNode->getFilterProgramStream(groot);
-            if (!filterProgram)
-                return false;
-
-            const WGRectD objectBBoxUS = bbox;
-
-            // Need to get the authored filter region in user space, 
-            // which is defined by the 'x', 'y', 'width', and 'height' 
-            // attributes on the filter element, but are relative to 
-            // the current user space of the element that the filter is 
-            // applied to.  
-            // So we need to take those values, and convert them from 
-            // being relative to the object bounding box, into being 
-            // relative to the current user space.
-            WGRectD filterRectUS = filterNode->resolveFilterRegion(ctx, groot, objectBBoxUS);
-
-            if (filterRectUS.isEmpty())
-                return true;
-
-            //WGRectD visibleUserClipUS = ctx->getViewportUserSpace();
-            //WGRectD visibleFilterUS = intersection(filterRectUS, visibleUserClipUS);
-
-            // If the visible portion of the filter area is empty, 
-            // then we can exit early as there's nothing to be done.
-            // we return 'true' here, because we have effectively drawn the filter, 
-            // even though it didn't actually do anything.
-            //if (visibleFilterUS.isEmpty())
-            //    return true;
-
-            // Use B2DFilterExecutor to apply the filter program to the current context
-            B2DFilterExecutor filterExec;
-            return filterExec.applyFilter(ctx, groot, this, objectBBoxUS, filterRectUS, *filterProgram);
-        }
-
-        void draw(IRenderSVG* ctx, IAmGroot* groot) override
+        void draw(IRenderSVG* ctx, IAmGroot* groot, RenderFlags rFlags = RF_All) override
         {
             if (!ctx || !groot)
                 return;
 
             WGRectD bbox = drawBegin(ctx, groot);
 
-            if (drawWithEffects(ctx, groot, bbox))
-            {
+            IsolatedRenderPlan plan{};
+            if (!resolveIsolatedRenderPlan(ctx, groot, this, bbox, rFlags, plan)) {
                 drawEnd(ctx, groot);
                 return;
             }
 
-            // no drawing done using effects, so just draw the content directly
-            drawContent(ctx, groot);
+            if (!plan.needsIsolation) {
+                drawContent(ctx, groot);
+                drawEnd(ctx, groot);
+                return;
+            }
+
+            Surface result{};
+
+            if (plan.hasFilter) {
+                auto filterNode = getReferencedFeatureNode(groot, svgattr::filter());
+                auto program = filterNode ? filterNode->getFilterProgramStream(groot) : nullptr;
+
+                if (program) {
+                    RenderFlags sourceFlags = rFlags;
+                    sourceFlags.remove(RF_Filter);
+
+                    B2DFilterExecutor exec;
+                    result = exec.applyFilterToSurface(
+                        ctx,
+                        groot,
+                        this,
+                        plan.objectBBoxUS,
+                        plan.effectRectUS,
+                        plan.pixelRect,
+                        *program,
+                        sourceFlags);
+                }
+            }
+            else {
+                IsolatedSubtreeRequest req{};
+                req.userRect = plan.effectRectUS;
+                req.pixelRect = plan.pixelRect;
+                req.ctm = plan.ctm;
+                req.objectBBoxUS = plan.objectBBoxUS;
+                req.renderMode = RF_Content;
+
+                renderSubtreeToSurface(ctx, groot, this, req, result);
+            }
+
+            if (!result.empty()) {
+                if (plan.hasMask)
+                {
+                    printf("Applying mask to surface...\n");
+                    auto featureNode = getReferencedFeatureNode(groot, svgattr::mask());
+                    //auto maskSurface = featureNode ? featureNode->getMaskSurface(groot, plan.effectRectUS, plan.pixelRect) : Surface{};
+                    //applyMaskToSurface(ctx, groot, plan, result);
+                }
+
+                if (plan.hasClip)
+                {
+                    //applyClipToSurface(ctx, groot, plan, result);
+                }
+
+                if (plan.hasOpacity)
+                {
+                    //printf("Applying opacity to surface...\n");
+                    //applyOpacityToSurface(ctx, groot, plan, result);
+                    // This should be the easiest feature to support, just
+                    // set a global opacity before the final image render 
+                    // Assuming we've already turned the opacity value into a number
+                    ByteSpan opacityAttr{};
+                    if (getAttribute(svgattr::opacity(), opacityAttr))
+                    {
+                        SVGNumberOrPercent op{};
+                        if (readSVGNumberOrPercent(opacityAttr, op))
+                        {
+                            double opacityValue = op.calculatedValue();
+                            ctx->globalOpacity(opacityValue);
+                        }
+                    }
+                }
+
+                ctx->push();
+                ctx->transform(WGMatrix3x3::makeIdentity());
+                ctx->image(result, double(plan.pixelRect.x), double(plan.pixelRect.y));
+                ctx->flush();
+                ctx->pop();
+            }
+
             drawEnd(ctx, groot);
         }
+
+
+
     };
 }
+

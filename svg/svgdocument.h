@@ -54,7 +54,7 @@
 #include "svgsymbol.h"
 #include "svgtext.h"
 #include "svgpattern.h"
-#include "svgfont.h"
+//#include "svgfont.h"
 #include "svgfilter.h"
 #include "svghyperlink.h"
 
@@ -339,15 +339,8 @@ namespace waavs
             setNeedsBinding(false);
         }
 
-
-        //void drawSelf(IRenderSVG* ctx, IAmGroot*) override
-        //{
-            // draw horizontal blue line at 10,10 for 300
-            //ctx->strokeLine(10, 10, 300, 10, BLRgba32(0xff0000ff));
-            //ctx->strokeLine(10, 10, 10, 300, BLRgba32(0xffff0000));
-        //}
         
-        void draw(IRenderSVG* ctx, IAmGroot* groot) override
+        void draw(IRenderSVG* ctx, IAmGroot* groot, RenderFlags featureSet = RenderFeature::RF_All) override
         {        
             if (needsBinding())
                 this->bindToContext(ctx, groot);

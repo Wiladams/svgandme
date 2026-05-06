@@ -7,7 +7,7 @@
 #include "surface_area_resolver.h"
 
 #include "pixeling.h"
-#include "pixeling_porterduff.h"
+#include "pixeling_composite.h"
 #include "pixeling_blend.h"
 
 #include "membuff.h" // for memset_u32

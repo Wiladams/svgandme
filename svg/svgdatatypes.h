@@ -219,9 +219,9 @@ namespace waavs
         bool fIsSet{ false };
 
         SVGLengthValue() noexcept = default;
-        SVGLengthValue(double value, uint32_t unitType) noexcept : fValue(value), fUnitType(unitType) {}
-        SVGLengthValue(double value, uint32_t unitType, bool setIt) noexcept 
-            : fValue(value), fUnitType(unitType), fIsSet(setIt) {}
+        SVGLengthValue(double value, uint32_t uType) noexcept : fValue(value), fUnitType(uType) {}
+        SVGLengthValue(double value, uint32_t uType, bool setIt) noexcept 
+            : fValue(value), fUnitType(uType), fIsSet(setIt) {}
 
         double value() const noexcept { return fValue; }
         uint32_t unitType() const noexcept { return fUnitType; }
@@ -256,13 +256,13 @@ namespace waavs
     }
 
     // Resolve an SVGLengthValue into a used length in "user units" (px in your engine).
-//
-// Spec notes:
-// - Absolute units use 96px per inch (SVG2 / CSS pixels). :contentReference[oaicite:1]{index=1}
-// - Percentages resolve against a "reference length" chosen by the property. :contentReference[oaicite:2]{index=2}
-// - em/ex depend on font metrics; if ctx.font is null, you must choose a fallback
-//   (I recommend treating em/ex as unresolved -> return raw number, or use a default em).
-//
+    //
+    // Spec notes:
+    // - Absolute units use 96px per inch (SVG2 / CSS pixels). :contentReference[oaicite:1]{index=1}
+    // - Percentages resolve against a "reference length" chosen by the property. :contentReference[oaicite:2]{index=2}
+    // - em/ex depend on font metrics; if ctx.font is null, you must choose a fallback
+    //   Recommend: treat em/ex as unresolved -> return raw number, or use a default em.
+    //
     static double resolveLengthUserUnits(const SVGLengthValue& L, const LengthResolveCtx& ctx) noexcept
     {
         if (!L.isSet())

@@ -53,8 +53,8 @@ namespace waavs {
 			fHasDocVP = true;
 
 			// refX/refY (SVG2 adds these on <symbol>; if you’re using them)
-			fRefX = parseLengthAttr(getAttributeByName("refX"));
-			fRefY = parseLengthAttr(getAttributeByName("refY"));
+			fRefX = parseLengthAttr(getAttributeByName(svgattr::refX()));
+			fRefY = parseLengthAttr(getAttributeByName(svgattr::refY()));
 			fHasRefXY = fRefX.isSet() || fRefY.isSet();
 		}
 

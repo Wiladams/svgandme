@@ -266,6 +266,49 @@ namespace waavs {
 }
 
 
+namespace waavs
+{
+    INLINE void memset_u32(void* dstvoid, uint32_t pixel, size_t count) noexcept
+    {
+        if (count == 0)
+            return;
 
+        uint32_t* dst32 = static_cast<uint32_t*>(dstvoid);
+
+        // If all bytes of the uint32_t are the same, 
+        // we can use memset for a faster fill
+        // multiplying a single byte by the bit pattern 
+        // 0x01010101 replicates that byte across all four 
+        // bytes of the uint32_t
+        const uint8_t b = uint8_t(pixel & 0xFF);
+        if (pixel == repl_u8_u32(b)) {
+            std::memset(dst32, b, count * sizeof(uint32_t));
+            return;
+        }
+
+#if WAAS_HAS_NEON
+        size_t i = 0;
+        uint32x4_t v = vdupq_n_u32(pixel);
+
+        for (; i + 16 <= count; i += 16) {
+            vst1q_u32(dst32 + i + 0, v);
+            vst1q_u32(dst32 + i + 4, v);
+            vst1q_u32(dst32 + i + 8, v);
+            vst1q_u32(dst32 + i + 12, v);
+        }
+        for (; i + 4 <= count; i += 4) {
+            vst1q_u32(dst32 + i, v);
+        }
+        for (; i < count; ++i) {
+            dst32[i] = pixel;
+        }
+#else
+        // Fallback to scalar fill if there's any leftover
+        // or if SIMD is not available
+        for (size_t i = 0; i < count; ++i)
+            dst32[i] = pixel;
+#endif
+    }
+}
 
 #endif // PIXELING_H_INCLUDED
