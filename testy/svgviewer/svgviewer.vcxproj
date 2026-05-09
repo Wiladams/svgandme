@@ -301,11 +301,13 @@
     <ClInclude Include="..\..\svg\pathsegment.h" />
     <ClInclude Include="..\..\svg\pathsegment_normalizer.h" />
     <ClInclude Include="..\..\svg\pixelaccessor.h" />
+    <ClInclude Include="..\..\svg\pixeling_clip.h" />
+    <ClInclude Include="..\..\svg\pixeling_mask.h" />
     <ClInclude Include="..\..\svg\pixel_effects.h" />
     <ClInclude Include="..\..\svg\pixeling.h" />
     <ClInclude Include="..\..\svg\pixeling_blend.h" />
     <ClInclude Include="..\..\svg\pixeling_composite.h" />
-    <ClInclude Include="..\..\svg\pixeling_scale.h" />
+    <ClInclude Include="..\..\svg\pixeling_image.h" />
     <ClInclude Include="..\..\svg\pubsub.h" />
     <ClInclude Include="..\..\svg\scanning.h" />
     <ClInclude Include="..\..\svg\smildatatypes.h" />

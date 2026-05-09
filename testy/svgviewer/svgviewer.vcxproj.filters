@@ -392,7 +392,7 @@
     <ClInclude Include="..\..\svg\surface_traversal.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\pixeling_scale.h">
+    <ClInclude Include="..\..\svg\pixeling_image.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\surface_area_resolver.h">
@@ -420,6 +420,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\bit_reader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\pixeling_mask.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\pixeling_clip.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -1,16 +1,16 @@
 #pragma once
 
 
-
-
 #include <functional>
 #include <unordered_map>
 
 #include "svgb2ddriver.h"
 #include "svgattributes.h"
 #include "svggraphicselement.h"
+#include "pixeling_clip.h"
 
-namespace waavs {
+namespace waavs 
+{
 
     //============================================================
     // SVGClipPath
@@ -39,8 +39,8 @@ namespace waavs {
             
         }
 
-        Surface fSurface;		// Where we'll render the mask
-        BLImage fMask;		// The actual mask we use for clipping
+
+        SpaceUnitsKind fClipPathUnits{ SpaceUnitsKind::SVG_SPACE_USER };
 
         // Instance Constructor
         SVGClipPathElement(IAmGroot* )
@@ -49,51 +49,69 @@ namespace waavs {
             setIsVisible(false);
         }
 
-        // 
-        // BUGBUG - this needs to happen in resolvePaint, or bindToGroot()
-        //
-        const BLVar getVariant(IRenderSVG * ctx, IAmGroot *groot) noexcept override
+        void fixupSelfStyleAttributes(IAmGroot* groot) override
         {
-            if (!fVar.isNull())
-                return fVar;
-
-            // get our extent
-            const WGRectD extent = getObjectBoundingBox(ctx, groot);
-
-            // create a surface of that size
-            // if it's valid
-            if (extent.w > 0 && extent.h > 0)
+            ByteSpan clipUnitsAttr{};
+            fAttributes.getValue(svgattr::clipPathUnits(), clipUnitsAttr);
+            if (clipUnitsAttr)
             {
-                fSurface.reset((int)floor((float)extent.w + 0.5f), (int)floor((float)extent.h + 0.5f));
-                fMask = blImageFromSurface(fSurface);
+                InternedKey clipUnitsKey = PSNameTable::INTERN(clipUnitsAttr);
+                if (clipUnitsKey == svgval::userSpaceOnUse())
+                    fClipPathUnits = SpaceUnitsKind::SVG_SPACE_USER;
+                else if (clipUnitsKey == svgval::objectBoundingBox())
+                    fClipPathUnits = SpaceUnitsKind::SVG_SPACE_OBJECT;
+            }
+        }
 
-                // Draw our content into the image
-                {
-                    SVGB2DDriver rctx;
-                    rctx.attach(fSurface, 1);
+        bool renderClipSurface(IAmGroot* groot,
+            const IsolatedRenderPlan& plan,
+            Surface& outMask) noexcept
+        {
+            if (!groot)
+                return false;
 
-                    WGRectD bbox = drawBegin(&rctx, groot);
+            WGMatrix3x3 maskCtm = plan.ctm;
 
-                    rctx.blendMode(BL_COMP_OP_SRC_OVER);
-                    rctx.clear();
-                    rctx.fill(BLRgba32(0xffffffff));
-                    rctx.translate(-extent.x, -extent.y);
+            if (fClipPathUnits == SpaceUnitsKind::SVG_SPACE_OBJECT)
+            {
+                WGMatrix3x3 obb{};
+                obb.translate(plan.objectBBoxUS.x, plan.objectBBoxUS.y);
+                obb.scale(plan.objectBBoxUS.w, plan.objectBBoxUS.h);
 
-                    drawContent(&rctx, groot);
-                    drawEnd(&rctx, groot);
-
-                    rctx.flush();
-                    rctx.detach();
-                }
-
-                // bind our image to fVar for later retrieval
-                fVar = fMask;
-
+                maskCtm.postTransform(obb);
             }
 
-            return fVar;
+            IsolatedSubtreeRequest req{};
+            req.userRect = plan.effectRectUS;
+            req.pixelRect = plan.pixelRect;
+            req.ctm = maskCtm;
+            req.objectBBoxUS = plan.objectBBoxUS;
+            req.renderMode = RF_Content;
+            req.clear = true;
+
+            return renderSubtreeToSurface(groot, this, req, outMask);
         }
 
 
+        bool applyClipToSurface(
+            IAmGroot* groot,
+            const IsolatedRenderPlan& plan,
+            Surface& result) noexcept override
+        {
+            if (!groot || result.empty())
+                return false;
+
+            Surface clipSurface{};
+            if (!renderClipSurface(groot, plan, clipSurface)) {
+                //result.clear();
+                return false;
+            }
+
+            Surface_ARGB32 maskView = clipSurface.info();
+            Surface_ARGB32 resultView = result.info();
+            wg_surface_clip(resultView, maskView);
+
+            return true;
+        }
     };
 }

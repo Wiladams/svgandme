@@ -181,6 +181,7 @@ namespace waavs
         
         const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot) noexcept override
         {
+            bindSelfToContext(ctx, groot);
             return { fX, fY, fWidth, fHeight };
         }
 

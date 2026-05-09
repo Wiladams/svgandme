@@ -103,7 +103,7 @@ namespace waavs {
 
             // Clipping
             //SVGClipPathAttribute::registerFactory();        // 'clip-path' attribute
-            //SVGClipPathElement::registerFactory();        // 'clipPath' element
+            SVGClipPathElement::registerFactory();        // 'clipPath' element
 
             // Masking
             SVGMaskElement::registerFactory();                  // 'mask' element

@@ -1440,7 +1440,7 @@ namespace waavs
         SVGFeSpecularLightingElement()
             : SVGFilterPrimitiveElement(FOP_SPECULAR_LIGHTING)
         {
-            printf("feSpecularLighting\n");
+            //printf("feSpecularLighting\n");
         }
 
         bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override

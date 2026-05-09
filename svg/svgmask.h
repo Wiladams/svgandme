@@ -9,9 +9,10 @@
 
 #include "svgattributes.h"
 #include "svggraphicselement.h"
+#include "pixeling_mask.h"
 
-
-namespace waavs {
+namespace waavs 
+{
 
     //================================================
     // SVGMaskElement
@@ -20,11 +21,6 @@ namespace waavs {
     //================================================
     struct SVGMaskElement : public SVGGraphicsElement
     {
-        enum MaskType : uint32_t
-        {
-            MASKTYPE_LUMINANCE,
-            MASKTYPE_ALPHA
-        };
 
         static void registerSingularNode()
         {
@@ -51,12 +47,12 @@ namespace waavs {
         }
 
         // Attributes:
-        SVGLengthValue fX{ -10, SVG_LENGTHTYPE_PERCENTAGE, false };
-        SVGLengthValue fY{ -10, SVG_LENGTHTYPE_PERCENTAGE, false };
-        SVGLengthValue fWidth{ 120, SVG_LENGTHTYPE_PERCENTAGE, false };
-        SVGLengthValue fHeight{ 120, SVG_LENGTHTYPE_PERCENTAGE, false };
+        SVGLengthValue fX{ -10, SVG_LENGTHTYPE_PERCENTAGE, true };
+        SVGLengthValue fY{ -10, SVG_LENGTHTYPE_PERCENTAGE, true };
+        SVGLengthValue fWidth{ 120, SVG_LENGTHTYPE_PERCENTAGE, true };
+        SVGLengthValue fHeight{ 120, SVG_LENGTHTYPE_PERCENTAGE, true };
 
-        MaskType fMaskType{ MASKTYPE_LUMINANCE };
+        MaskTypeKind fMaskType{ MASKTYPE_LUMINANCE };
         SpaceUnitsKind fMaskUnits{ SpaceUnitsKind::SVG_SPACE_OBJECT };
         SpaceUnitsKind fMaskContentUnits{ SpaceUnitsKind::SVG_SPACE_USER };
 
@@ -67,6 +63,8 @@ namespace waavs {
         {
             setIsVisible(false);
         }
+
+        MaskTypeKind maskType() const noexcept { return fMaskType; }
 
         void fixupSelfStyleAttributes(IAmGroot* groot) override
         {
@@ -120,17 +118,113 @@ namespace waavs {
 
 
         }
-
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        /*
+        WGRectD resolveMaskRegionUS(
+            IRenderSVG*,
+            IAmGroot*,
+            const WGRectD& objectBBoxUS) noexcept
         {
-            //The parent graphic should be stuffed into a BLPattern
-            // and set as a fill style, then we can 
-            // do this fillMask
-            // parent->getVar()
-            // BLPattern* pattern = new BLPattern(parent->getVar());
-            // ctx->setFillStyle(pattern);
-            //ctx->fillMask(BLPoint(0, 0), fCachedImage);
+            if (fMaskUnits == SpaceUnitsKind::SVG_SPACE_OBJECT)
+            {
+                LengthResolveCtx xctx{};
+                xctx.ref = objectBBoxUS.w;
+                xctx.origin = objectBBoxUS.x;
+                xctx.space = SpaceUnitsKind::SVG_SPACE_OBJECT;
 
+                LengthResolveCtx yctx{};
+                yctx.ref = objectBBoxUS.h;
+                yctx.origin = objectBBoxUS.y;
+                yctx.space = SpaceUnitsKind::SVG_SPACE_OBJECT;
+
+                LengthResolveCtx wctx{};
+                wctx.ref = objectBBoxUS.w;
+                wctx.origin = 0.0;
+                wctx.space = SpaceUnitsKind::SVG_SPACE_OBJECT;
+
+                LengthResolveCtx hctx{};
+                hctx.ref = objectBBoxUS.h;
+                hctx.origin = 0.0;
+                hctx.space = SpaceUnitsKind::SVG_SPACE_OBJECT;
+
+                return WGRectD{
+                    resolveLengthUserUnits(fX, xctx),
+                    resolveLengthUserUnits(fY, yctx),
+                    resolveLengthUserUnits(fWidth, wctx),
+                    resolveLengthUserUnits(fHeight, hctx)
+                };
+            }
+
+            LengthResolveCtx xctx{};
+            xctx.ref = 1.0;
+            xctx.origin = 0.0;
+            xctx.space = SpaceUnitsKind::SVG_SPACE_USER;
+
+            LengthResolveCtx yctx = xctx;
+            LengthResolveCtx wctx = xctx;
+            LengthResolveCtx hctx = xctx;
+
+            return WGRectD{
+                resolveLengthUserUnits(fX, xctx),
+                resolveLengthUserUnits(fY, yctx),
+                resolveLengthUserUnits(fWidth, wctx),
+                resolveLengthUserUnits(fHeight, hctx)
+            };
         }
+        */
+
+        bool renderMaskSurface(
+            IAmGroot* groot,
+            const IsolatedRenderPlan& plan,
+            Surface& outMask) noexcept
+        {
+            if (!groot)
+                return false;
+
+            WGMatrix3x3 maskCtm = plan.ctm;
+
+            if (fMaskContentUnits == SpaceUnitsKind::SVG_SPACE_OBJECT)
+            {
+                WGMatrix3x3 obb = WGMatrix3x3::makeIdentity();
+                obb.translate(plan.objectBBoxUS.x, plan.objectBBoxUS.y);
+                obb.scale(plan.objectBBoxUS.w, plan.objectBBoxUS.h);
+
+                maskCtm.postTransform(obb);
+            }
+
+            IsolatedSubtreeRequest req{};
+            req.userRect = plan.effectRectUS;
+            req.pixelRect = plan.pixelRect;
+            req.ctm = maskCtm;
+            req.objectBBoxUS = plan.objectBBoxUS;
+            req.renderMode = RF_Content;
+            req.clear = true;
+
+            return renderSubtreeToSurface(groot, this, req, outMask);
+        }
+
+
+        bool applyMaskToSurface(
+            IAmGroot* groot,
+            const IsolatedRenderPlan& plan,
+            Surface& result) noexcept override
+        {
+            if (!groot || result.empty())
+                return false;
+
+            Surface maskSurface{};
+            if (!renderMaskSurface(groot, plan, maskSurface)) {
+                //result.clear();
+                return false;
+            }
+
+            Surface_ARGB32 maskView = maskSurface.info();
+            Surface_ARGB32 resultView = result.info();
+            wg_surface_mask(resultView, maskView, maskType());
+
+            return true;
+        }
+
     };
+
+
 }

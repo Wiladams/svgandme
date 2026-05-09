@@ -88,7 +88,9 @@
     ASSERT_POD_TYPE(WGRectI);
 //}
 
-
+// ---------------------------------------
+// WGRectD utilities
+//
 namespace waavs 
 {
     static INLINE bool wg_rectD_is_valid(const WGRectD& r) noexcept
@@ -117,31 +119,14 @@ namespace waavs
         return containsRect(a, pt.x, pt.y);
     }
 
-    // Inflate a rectangle by a given amount in each direction.  
-    // The dw and dh parameters specify how much to inflate 
-    // the rectangle on each edge in the horizontal and vertical directions, respectively.
-    // So, the final rectangle will be: width+2dw, height+2dh, 
-    // and the x and y will be moved by -dw and -dh respectively.
-    static INLINE WGRectI wg_rectI_inflate(const WGRectI& r, const int dw, const int dh) noexcept
-    {
-        return WGRectI{ r.x - dw, r.y - dh, r.w + 2 * dw, r.h + 2 * dh };
-    }
+
 
     static INLINE WGRectD wg_rectD_inflate(const WGRectD& r, const double dw, const double dh) noexcept
     {
         return WGRectD{ r.x - dw, r.y - dh, r.w + 2 * dw, r.h + 2 * dh };
     }
 
-    static INLINE WGRectI intersection(const WGRectI& a, const WGRectI& b) noexcept {
-        const int x0 = (a.x > b.x) ? a.x : b.x;
-        const int y0 = (a.y > b.y) ? a.y : b.y;
-        const int x1 = ((a.x + a.w) < (b.x + b.w)) ? (a.x + a.w) : (b.x + b.w);
-        const int y1 = ((a.y + a.h) < (b.y + b.h)) ? (a.y + a.h) : (b.y + b.h);
-        const int w = x1 - x0;
-        const int h = y1 - y0;
-        if (w <= 0 || h <= 0) return WGRectI{ 0,0,0,0 };
-        return WGRectI{ x0, y0, w, h };
-    }
+
     
     // return the intersection between two rectangles
     // if they don't intersect, then return an empty rect
@@ -238,6 +223,69 @@ namespace waavs
         double num = std::abs(dy * pt.x - dx * pt.y + b.x * a.y - b.y * a.x);
         double den = std::sqrt(dx * dx + dy * dy);
         return den > 0 ? num / den : 0.0;
+    }
+}
+
+namespace waavs
+{
+    static INLINE bool wg_rectI_is_valid(const WGRectI& r) noexcept
+    {
+        return r.w > 0 && r.h > 0;
+    }
+
+    static INLINE int wg_rectI_max_x(const WGRectI& r) noexcept
+    {
+        return r.x + r.w - 1;
+    }
+
+    static INLINE int wg_rectI_max_y(const WGRectI& r) noexcept
+    {
+        return r.y + r.h - 1;
+    }
+
+    static INLINE bool wg_rectI_contains_point(const WGRectI& r, int x, int y) noexcept
+    {
+        return x >= r.x && y >= r.y &&
+            x < r.x + r.w &&
+            y < r.y + r.h;
+    }
+
+    static INLINE bool wg_rectI_contains_sample(const WGRectI& r, double x, double y) noexcept
+    {
+        return x >= double(r.x) &&
+            y >= double(r.y) &&
+            x <= double(r.x + r.w - 1) &&
+            y <= double(r.y + r.h - 1);
+    }
+
+    static INLINE bool wg_rectI_contains(const WGRectI& r, const WGRectI& bounds) noexcept
+    {
+        return r.x >= bounds.x &&
+            r.y >= bounds.y &&
+            r.x + r.w <= bounds.x + bounds.w &&
+            r.y + r.h <= bounds.y + bounds.h;
+    }
+
+
+    // Inflate a rectangle by a given amount in each direction.  
+// The dw and dh parameters specify how much to inflate 
+// the rectangle on each edge in the horizontal and vertical directions, respectively.
+// So, the final rectangle will be: width+2dw, height+2dh, 
+// and the x and y will be moved by -dw and -dh respectively.
+    static INLINE WGRectI wg_rectI_inflate(const WGRectI& r, const int dw, const int dh) noexcept
+    {
+        return WGRectI{ r.x - dw, r.y - dh, r.w + 2 * dw, r.h + 2 * dh };
+    }
+
+    static INLINE WGRectI intersection(const WGRectI& a, const WGRectI& b) noexcept {
+        const int x0 = (a.x > b.x) ? a.x : b.x;
+        const int y0 = (a.y > b.y) ? a.y : b.y;
+        const int x1 = ((a.x + a.w) < (b.x + b.w)) ? (a.x + a.w) : (b.x + b.w);
+        const int y1 = ((a.y + a.h) < (b.y + b.h)) ? (a.y + a.h) : (b.y + b.h);
+        const int w = x1 - x0;
+        const int h = y1 - y0;
+        if (w <= 0 || h <= 0) return WGRectI{ 0,0,0,0 };
+        return WGRectI{ x0, y0, w, h };
     }
 }
 
@@ -361,7 +409,13 @@ namespace waavs {
         // Construction
         // ------------------------------------------------------------------------
 
-        INLINE WGMatrix3x3() noexcept = default;
+        INLINE WGMatrix3x3() noexcept
+        {
+            // startoff with identity matrix
+            m00 = 1.0; m01 = 0.0; m02 = 0.0;
+            m10 = 0.0; m11 = 1.0; m12 = 0.0;
+            m20 = 0.0; m21 = 0.0; m22 = 1.0;
+        }
 
         INLINE constexpr WGMatrix3x3(const WGMatrix3x3&) noexcept = default;
         INLINE WGMatrix3x3& operator=(const WGMatrix3x3&) noexcept = default;

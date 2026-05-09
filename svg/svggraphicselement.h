@@ -132,13 +132,12 @@ namespace waavs
 
     template<class SubtreeT>
     bool renderSubtreeToSurface(
-        IRenderSVG* ctx,
         IAmGroot* groot,
         SubtreeT* subtree,
         const IsolatedSubtreeRequest& req,
         Surface& outSurface) noexcept
     {
-        if (!ctx || !groot || !subtree)
+        if (!groot || !subtree)
             return false;
 
         if (req.pixelRect.w <= 0 || req.pixelRect.h <= 0)
@@ -159,6 +158,7 @@ namespace waavs
         WGMatrix3x3 off = req.ctm;
         off.postTranslate(-double(req.pixelRect.x), -double(req.pixelRect.y));
 
+        // BUGBUG - Should set the viewport
         SVGB2DDriver tmp{};
         tmp.attach(outSurface, 1);
         tmp.renew();
@@ -168,7 +168,7 @@ namespace waavs
 
         tmp.transform(off);
         tmp.setObjectFrame(req.objectBBoxUS);
-
+        tmp.setViewport(req.objectBBoxUS);
 
         if (req.renderMode.has(RenderFeature::RF_Content))
         {
@@ -179,6 +179,8 @@ namespace waavs
 
         return true;
     }
+
+
 }
 
 namespace waavs {
@@ -274,6 +276,22 @@ namespace waavs {
             return nullptr;
         }
 
+        // deal with masks
+        virtual bool applyMaskToSurface(IAmGroot* groot,
+            const IsolatedRenderPlan& plan,
+            Surface& result) noexcept
+        {
+            return true;
+        }
+
+        // Deal with clipping
+        virtual bool applyClipToSurface(
+            IAmGroot* groot,
+            const IsolatedRenderPlan& plan,
+            Surface& result) noexcept
+        {
+            return true;
+        }
 
 
 
@@ -943,6 +961,11 @@ namespace waavs {
                 return;
             }
 
+            // BUGBUG - just for debugging
+            //plan.needsIsolation = false;
+
+            // If we don't need any isolation, then just draw the content
+            // as per usual
             if (!plan.needsIsolation) {
                 drawContent(ctx, groot);
                 drawEnd(ctx, groot);
@@ -960,7 +983,7 @@ namespace waavs {
                     sourceFlags.remove(RF_Filter);
 
                     B2DFilterExecutor exec;
-                    result = exec.applyFilterToSurface(
+                    WGResult err = exec.applyFilterToSurface(
                         ctx,
                         groot,
                         this,
@@ -968,6 +991,7 @@ namespace waavs {
                         plan.effectRectUS,
                         plan.pixelRect,
                         *program,
+                        result,
                         sourceFlags);
                 }
             }
@@ -979,30 +1003,28 @@ namespace waavs {
                 req.objectBBoxUS = plan.objectBBoxUS;
                 req.renderMode = RF_Content;
 
-                renderSubtreeToSurface(ctx, groot, this, req, result);
+                renderSubtreeToSurface(groot, this, req, result);
             }
 
             if (!result.empty()) {
                 if (plan.hasMask)
                 {
-                    printf("Applying mask to surface...\n");
+                    //printf("Applying mask to surface...\n");
                     auto featureNode = getReferencedFeatureNode(groot, svgattr::mask());
-                    //auto maskSurface = featureNode ? featureNode->getMaskSurface(groot, plan.effectRectUS, plan.pixelRect) : Surface{};
-                    //applyMaskToSurface(ctx, groot, plan, result);
+                    if (featureNode)
+                        featureNode->applyMaskToSurface(groot, plan, result);
                 }
 
                 if (plan.hasClip)
                 {
-                    //applyClipToSurface(ctx, groot, plan, result);
+                    auto featureNode = getReferencedFeatureNode(groot, svgattr::clip_path());
+                    if (featureNode)
+                        featureNode->applyClipToSurface(groot, plan, result);
                 }
 
                 if (plan.hasOpacity)
                 {
                     //printf("Applying opacity to surface...\n");
-                    //applyOpacityToSurface(ctx, groot, plan, result);
-                    // This should be the easiest feature to support, just
-                    // set a global opacity before the final image render 
-                    // Assuming we've already turned the opacity value into a number
                     ByteSpan opacityAttr{};
                     if (getAttribute(svgattr::opacity(), opacityAttr))
                     {

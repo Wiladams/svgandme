@@ -620,7 +620,7 @@ namespace waavs {
         // --------------------------------------------------------
         
         template<class SubtreeT>
-        Surface applyFilterToSurface(
+        WGResult applyFilterToSurface(
             IRenderSVG* ctx,
             IAmGroot* groot,
             SubtreeT* subtree,
@@ -628,19 +628,20 @@ namespace waavs {
             const WGRectD& filterRectUS,
             const WGRectI& filterRectPX,
             const FilterProgramStream& program,
+            Surface & srcGraphic,
             RenderFlags rFlags = RenderFeature::RF_All) noexcept
         {
             if (!ctx || !groot || !subtree)
-                return Surface{};
+                return WGErrorCode::WG_ERROR_Invalid_Argument;
 
             if (!(objectBBoxUS.w > 0.0) || !(objectBBoxUS.h > 0.0))
-                return Surface{};
+                return WGErrorCode::WG_ERROR_Invalid_Argument;
 
             if (!(filterRectUS.w > 0.0) || !(filterRectUS.h > 0.0))
-                return Surface{};
+                return WGErrorCode::WG_ERROR_Invalid_Argument;
 
             if (filterRectPX.w <= 0 || filterRectPX.h <= 0)
-                return Surface{};
+                return WGErrorCode::WG_ERROR_Invalid_Argument;
 
             const WGMatrix3x3 ctm = ctx->getTransform();
 
@@ -708,7 +709,7 @@ namespace waavs {
             // Render SourceGraphic into tile-local surface
             // --------------------------------------------------
 
-            Surface srcGraphic{};
+            //Surface srcGraphic{};
 
             IsolatedSubtreeRequest req{};
             req.userRect = filterRectUS;
@@ -717,13 +718,13 @@ namespace waavs {
             req.objectBBoxUS = objectBBoxUS;
             req.renderMode = RF_Content;
 
-            renderSubtreeToSurface(ctx, groot, subtree, req, srcGraphic);
+            renderSubtreeToSurface(groot, subtree, req, srcGraphic);
 
             if (srcGraphic.empty())
-                return Surface{};
+                return WGErrorCode::WG_ERROR_Invalid_Argument;
 
             if (!putImage(filter::SourceGraphic(), srcGraphic))
-                return Surface{};
+                return WGErrorCode::WG_ERROR_Invalid_Argument;
 
             // --------------------------------------------------
             // Register BackgroundImage, if available
@@ -732,11 +733,11 @@ namespace waavs {
             Surface backgroundLocal{};
 
             if (!getBackgroundLocal(ctx, filterRectPX, backgroundLocal))
-                return Surface{};
+                return WGErrorCode::WG_ERROR_Invalid_Argument;
 
             if (!backgroundLocal.empty()) {
                 if (!putImage(filter::BackgroundImage(), backgroundLocal))
-                    return Surface{};
+                    return WGErrorCode::WG_ERROR_Invalid_Argument;
             }
 
             // --------------------------------------------------
@@ -744,7 +745,7 @@ namespace waavs {
             // --------------------------------------------------
 
             if (!FilterProgramExecutor::execute(program, *this))
-                return Surface{};
+                return WGErrorCode::WG_ERROR_Invalid_Argument;
 
             // --------------------------------------------------
             // Resolve final output
@@ -755,185 +756,15 @@ namespace waavs {
             if (!outKey)
                 outKey = filter::Filter_Last();
 
-            Surface outImg = getImage(outKey);
+            srcGraphic = getImage(outKey);
 
-            if (outImg.empty())
-                outImg = getImage(filter::SourceGraphic());
-
-            return outImg;
-        }
-
-        /*
-        template<class SubtreeT>
-        bool applyFilter(IRenderSVG* ctx,
-            IAmGroot* groot,
-            SubtreeT* subtree,
-            const WGRectD& objectBBoxUS,
-            const WGRectD& filterRectUS,
-            const FilterProgramStream& program, RenderFlags rFlags=RenderFeature::RF_All) noexcept
-        {
-            if (!ctx || !subtree)
-                return false;
-
-            // bail if the visible bounding box of the subtree
-            // is empty, since the filter result won't be visible anyway.
-            if (!(objectBBoxUS.w > 0.0) || !(objectBBoxUS.h > 0.0))
-                return true;
-
-            if (!(filterRectUS.w > 0.0) || !(filterRectUS.h > 0.0))
-                return true;
-
-
-            // Setup runstate as soon as possible
-            fRunState.filterUnits = program.filterUnits;
-            fRunState.primitiveUnits = program.primitiveUnits;
-            fRunState.colorInterpolation = program.colorInterpolation;
-            fRunState.filterRectUS = filterRectUS;
-            fRunState.objectBBoxUS = objectBBoxUS;
-
-            // get the current CTM from the context, 
-            // which we will need for mapping the filter region 
-            // to pixel space, and for providing space conversion 
-            // to primitives that need it.
-            const WGMatrix3x3 ctm = ctx->getTransform();
-
-            // Map the full authored filter region to device space.
-            const WGRectD nominalFilterRectPX = mapRectAABB(ctm, filterRectUS);
-
-            // Clip the mapped filter region to the currently visible viewport.
-            // This is the key step that prevents pathological allocations for
-            // huge background geometry.
-            //const WGRectD visibleUserClipUS = ctx->getViewportUserSpace();
-            //const WGRectD visibleClipPX = mapRectAABB(ctm, visibleUserClipUS);
-            //const WGRectD allocRectPX = intersection(nominalFilterRectPX, visibleClipPX);
-            const WGRectD allocRectPX = nominalFilterRectPX;
-
-            if (!(allocRectPX.w > 0.0) || !(allocRectPX.h > 0.0))
-                return true;
-
-            const int tileX = (int)std::floor(allocRectPX.x);
-            const int tileY = (int)std::floor(allocRectPX.y);
-            const int tileW = (int)std::ceil(allocRectPX.x + allocRectPX.w) - tileX;
-            const int tileH = (int)std::ceil(allocRectPX.y + allocRectPX.h) - tileY;
-
-            if (tileW <= 0 || tileH <= 0)
-                return true;
-
-            const uint32_t W = (uint32_t)tileW;
-            const uint32_t H = (uint32_t)tileH;
-
-            // Reset executor state
-            clearSurfaces();
-            setLastKey({});
-
-            fSpace = {};
-            fSpace.filterRectUS = filterRectUS;
-            fSpace.filterExtentUS = WGRectD{ 0.0, 0.0, filterRectUS.w, filterRectUS.h };
-            fSpace.filterRectPX = WGRectI{ tileX, tileY, tileW, tileH };
-            fSpace.ctm = ctm;
-            fSpace.invCtm = ctm;
-            (void)fSpace.invCtm.invert();
-
-            // Extract CTM scale magnitudes (user->pixel scale)
-            {
-                const double xvx = ctm.m00;
-                const double xvy = ctm.m01;
-                const double yvx = ctm.m10;
-                const double yvy = ctm.m11;
-
-                fSpace.sx = std::sqrt(xvx * xvx + xvy * xvy);
-                fSpace.sy = std::sqrt(yvx * yvx + yvy * yvy);
-
-                if (!(fSpace.sx > 0.0)) fSpace.sx = 1.0;
-                if (!(fSpace.sy > 0.0)) fSpace.sy = 1.0;
-            }
-
-            // Setup resolver
-            fResolver = std::make_unique<B2DFilterResourceResolver<Surface>>(groot, ctx, this);
-
-            // --------------------------------------------------
-            // Render SourceGraphic into tile-local surface
-            // --------------------------------------------------
-            Surface srcGraphic{};
-            IsolatedSubtreeRequest req{};
-            req.userRect = filterRectUS;
-            req.pixelRect = fSpace.filterRectPX;
-            req.ctm = ctm;
-            req.objectBBoxUS = objectBBoxUS;
-            req.renderMode = rFlags;
-            req.renderMode.remove(RenderFeature::RF_Filter);
-            renderSubtreeToSurface(ctx, groot, subtree, req, srcGraphic);
             if (srcGraphic.empty())
-                return false;
-            
+                srcGraphic = getImage(filter::SourceGraphic());
 
-            // DEBUG
-            // blit immediately to check drawing
-            //ctx->push();
-            //ctx->background(BLRgba32(0xFF00ff00));
-            //ctx->clearToBackground();
-            //ctx->transform(WGMatrix3x3::makeIdentity());
-            //ctx->image(srcGraphic, 0, 0);
-            //ctx->pop();
-
-            // Prime the pump by placing the image we just drew into 
-            // the registry as the SourceGraphic.
-            InternedKey srcGraphicKey = filter::SourceGraphic();
-            if (!putImage(srcGraphicKey, srcGraphic))
-            {
-                return false;
-            }
-
-
-            // Add background image as well, since some primitives need it (e.g. feBlend)
-            InternedKey backgroundKey = filter::BackgroundImage();
-            Surface backgroundLocal;
-            if (!getBackgroundLocal(ctx, fSpace.filterRectPX, backgroundLocal))
-                return false;
-
-            if (!backgroundLocal.empty())
-            {
-                if (!putImage(backgroundKey, backgroundLocal))
-                    return false;
-            }
-
-
-            // --------------------------------------------------
-            // Execute filter primitives
-            // --------------------------------------------------
-
-            if (!FilterProgramExecutor::execute(program, *this))
-                return false;
-
-            // Resolve final output surface
-            InternedKey outKey = lastKey();
-            if (!outKey)
-                outKey = filter::Filter_Last();
-
-            Surface outImg = getImage(outKey);
-            if (outImg.empty())
-                outImg = getImage(filter::SourceGraphic());
-            if (outImg.empty())
-                return false;
-
-            // --------------------------------------------------
-            // Composite result back to main context
-            // --------------------------------------------------
-
-
-            ctx->push();
-            
-            // Reset transform so tile is drawn in device space
-            ctx->transform(WGMatrix3x3::makeIdentity());
-
-            ctx->image(outImg, double(tileX), double(tileY));
-            ctx->flush();
-
-            ctx->pop();
-
-            return true;
+            return WG_SUCCESS;
         }
-        */
+
+
 
         // --------------------------------------------------------
         // FilterProgramExecutor hooks

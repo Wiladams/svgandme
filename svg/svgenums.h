@@ -28,6 +28,12 @@
 
 
 namespace waavs {
+    enum MaskTypeKind : uint32_t
+    {
+        MASKTYPE_LUMINANCE,
+        MASKTYPE_ALPHA
+    };
+
     enum SpaceUnitsKind : uint32_t {
         SVG_SPACE_USER = 0,
         SVG_SPACE_OBJECT = 1,

@@ -111,6 +111,7 @@ namespace waavs::svgattr
 
     // Clipping / masking
     inline InternedKey clip_path() { static InternedKey k = PSNameTable::INTERN("clip-path");     return k; }
+    inline InternedKey clipPathUnits() { static InternedKey k = PSNameTable::INTERN("clipPathUnits");     return k; }
 
     // Masking
     INLINE InternedKey mask_units() { static InternedKey k = PSNameTable::INTERN("maskUnits");     return k; }

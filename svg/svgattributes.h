@@ -1313,14 +1313,16 @@ namespace waavs {
 
         double fWidth{ 1.0 };
 
-        SVGStrokeWidth(IAmGroot* iMap) : SVGVisualProperty(iMap) { setName(svgattr::stroke_width()); }
+        SVGStrokeWidth(IAmGroot* iMap) 
+            : SVGVisualProperty(iMap) 
+        { 
+            setName(svgattr::stroke_width()); 
+        }
 
         SVGStrokeWidth(const SVGStrokeWidth& other) = delete;
         SVGStrokeWidth& operator=(const SVGStrokeWidth& rhs) = delete;
 
         
-
-
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {   
             ByteSpan s = inChunk;
@@ -1334,6 +1336,8 @@ namespace waavs {
 
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
+            (void)groot;
+
             ctx->strokeWidth(fWidth);
         }
     };
