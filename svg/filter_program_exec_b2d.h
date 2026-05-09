@@ -11,6 +11,7 @@
 #include "svgb2ddriver.h"
 
 #include "svgstructuretypes.h"
+
 #include "filter_types.h"
 #include "filter_program_exec.h"   
 #include "filter_noise.h"
@@ -157,7 +158,7 @@ namespace waavs
             if (!node)
                 return {};
 
-            auto elem = std::dynamic_pointer_cast<SVGGraphicsElement>(node);
+            auto elem = std::dynamic_pointer_cast<IViewable>(node);
             if (!elem)
                 return {};
 

@@ -737,7 +737,7 @@ namespace waavs
         }
 
         bool executeTyped(FilterExecContext& ctx,
-            FilterResolvedIO& rio,
+            const FilterResolvedIO& rio,
             const ColorMatrixPayload& p) const noexcept
         {
             if (rio.in1.empty() || rio.out.empty())
@@ -769,7 +769,7 @@ namespace waavs
             if (r != WG_SUCCESS)
                 return false;
 
-            return ctx.putImage(rio.outKey, std::move(rio.out));
+            return ctx.putImage(rio.outKey, rio.out);
         }
     };
 }

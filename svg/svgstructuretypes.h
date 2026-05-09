@@ -44,6 +44,37 @@ namespace waavs {
 
     using RenderFlags = BitFlags<RenderFeature>;
 
+    struct IsolatedRenderPlan
+    {
+        WGRectD objectBBoxUS{};
+        WGRectD effectRectUS{};
+        WGRectD nominalRectPX{};
+        WGRectD allocRectPX{};
+        WGRectI pixelRect{};
+
+        WGMatrix3x3 ctm{};
+        WGMatrix3x3 invCtm{};
+
+        bool needsIsolation = false;
+        bool hasFilter = false;
+        bool hasMask = false;
+        bool hasClip = false;
+        bool hasOpacity = false;
+    };
+
+
+    struct IsolatedSubtreeRequest
+    {
+        WGRectD userRect;
+        WGRectI pixelRect;
+
+        WGMatrix3x3 ctm;
+        WGRectD objectBBoxUS;
+
+        RenderFlags renderMode = RenderFeature::RF_All;
+
+        bool clear = true;
+    };
 
     // -----------------------------------------
     //

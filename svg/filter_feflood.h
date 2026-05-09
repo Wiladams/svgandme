@@ -39,7 +39,7 @@ namespace waavs
             const FilterResolvedIO& rio,
             const FloodPayload& p) const noexcept
         {
-            if (!rio.out)
+            if (rio.out.empty())
                 return false;
 
             if (rio.writeAreaPx.w <= 0 || rio.writeAreaPx.h <= 0)

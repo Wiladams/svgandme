@@ -127,7 +127,7 @@ static void renderImage(SVGDocumentHandle gDoc, const char* outfilename)
 	// This will essentially do a 'scale to fit'
 	// You don't have to go this route.  You can simply calculate the scaling
 	// and apply that to the context.
-    BLMatrix2D tform = BLMatrix2D::makeIdentity();
+	WGMatrix3x3 tform{};
     PreserveAspectRatio par{};	// default is 'meet' and 'xMidYMid', which is what we want
 	computeViewBoxToViewport(surfaceFrame,sceneFrame,par,tform);
 
