@@ -224,7 +224,7 @@ namespace waavs {
 
     struct B2DFilterExecutor final : FilterProgramExecutor, IAmFroot<Surface>
     {
-        std::unique_ptr<B2DFilterResourceResolver<Surface> > fResolver{nullptr};
+        std::unique_ptr<B2DFilterResourceResolver<Surface> > fResolver{ nullptr };
 
         // --------------------------------------------------------
         // Registry storage
@@ -251,7 +251,8 @@ namespace waavs {
             return fImages.find(key) != fImages.end();
         }
 
-        Surface getImage(InternedKey key) noexcept override
+
+        Surface getStoredImage(InternedKey key) const noexcept
         {
             auto it = fImages.find(key);
             if (it == fImages.end())
@@ -259,60 +260,59 @@ namespace waavs {
             return it->second;
         }
 
-        const Surface getImage(InternedKey key) const noexcept override
+        //virtual ImageT getImage(InternedKey key) noexcept = 0;
+        //virtual const ImageT getImage(InternedKey key) const noexcept = 0;
+        Surface getOrCreateAlphaImage(InternedKey alphaKey, InternedKey graphicKey) noexcept
         {
-            auto it = fImages.find(key);
-            if (it == fImages.end())
-                return Surface{};
-            return it->second;
+            // Try to get the stored image.  If it exists,
+            // return it, we're done
+            Surface srcGraphic = getStoredImage(graphicKey);
+            if (srcGraphic.empty())
+                return {};
+
+            Surface srcAlpha = makeSourceAlpha(srcGraphic);
+            if (srcAlpha.empty())
+                return {};
+
+            putImage(alphaKey, srcAlpha);
+            return srcAlpha;
         }
 
-        Surface getInputImage(InternedKey inKey) noexcept
-        {
-            Surface in = getImage(inKey);
 
+        Surface getImage(InternedKey inKey) noexcept override
+        {
+            // If the key is empty, resolve as lastKey()
+            // This does not handle the case where the key specified
+            // does not exist.  We handle that later
+            if (!inKey)
+                inKey = lastKey();
+
+            // Try to get the stored image.  If it exists,
+            // return it, we're done
+            Surface in = getStoredImage(inKey);
             if (!in.empty())
                 return in;
 
-            // If we did not find the image, then try to get the 
-            // last one.  This happens in some cases where the 
-            // filter has been edited to remove an intermediary 
-            // step, but the ids were not updated.
+            // We haven't found it yet, so, see if the key is one of
+            // our specially named items
+            if (inKey == filter::SourceGraphic())
+                return getOrCreateAlphaImage(filter::SourceAlpha(), filter::SourceGraphic());
 
-            // If it's one of the built-in inputs, then we should
-            // be able to re-create it if it does not exist
-            // Most common is probably "SourceAlpha", which we can re-create from SourceGraphic
-            if (inKey == filter::SourceAlpha())
-            {
-                auto srcKey = filter::SourceGraphic;
-                auto srcGraphic = getImage(inKey);
-                if (srcGraphic.empty())
-                    return {};
+            if (inKey == filter::BackgroundAlpha())
+                return getOrCreateAlphaImage(filter::BackgroundAlpha(), filter::BackgroundImage());
 
-                auto srcAlpha = makeSourceAlpha(srcGraphic);
-
-                if (srcAlpha.empty())
-                    return {};
-
-                if (!putImage(filter::SourceAlpha(), srcAlpha))
-                    return srcAlpha;
-            }
-
-            // We could try to return BackgroundImage or BackgroundAlpha, 
-            // but, those require the graphics context and other information
-            // that we don't have in this simple call, so it's better left
-            // at a higher level.
-            
             // Last chance, return the image related to last key
-            // this would actually be a bug, but, it shows up in some 
-            // ill formed filters due to their editing
-            // I'm sure the spec says to return a transparent black image
-            // in such situations.
-            inKey = lastKey();
-            in = getImage(lastKey());
+            return getImage(lastKey());
 
-            return in;
         }
+
+        const Surface getImage(InternedKey inKey) const noexcept override
+        {
+            return getImage(inKey);
+        }
+
+
+
 
         bool putImage(InternedKey key, Surface img) noexcept override
         {
@@ -791,8 +791,8 @@ namespace waavs {
             InternedKey in2Key = resolveBinaryInput2Key(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
-            Surface in1 = getInputImage(in1Key);
-            Surface in2 = getInputImage(in2Key);
+            Surface in1 = getImage(in1Key);
+            Surface in2 = getImage(in2Key);
             if (in1.empty() || in2.empty())
                 return false;
 
@@ -859,7 +859,7 @@ namespace waavs {
             InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
-            Surface in = getInputImage(inKey);
+            Surface in = getImage(inKey);
             if (in.empty())
                 return false;
 
@@ -924,7 +924,7 @@ namespace waavs {
             InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
-            Surface in = getInputImage(inKey);
+            Surface in = getImage(inKey);
             if (in.empty())
                 return false;
 
@@ -1009,8 +1009,8 @@ namespace waavs {
             InternedKey in1Key = resolveBinaryInput1Key(io);
             InternedKey in2Key = resolveBinaryInput2Key(io);
 
-            Surface in1 = getInputImage(in1Key);
-            Surface in2 = getInputImage(in2Key);
+            Surface in1 = getImage(in1Key);
+            Surface in2 = getImage(in2Key);
 
             InternedKey outKey = resolveOutKeyStrict(io);
             if (!outKey)
@@ -1188,7 +1188,7 @@ namespace waavs {
             InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
-            Surface in = getInputImage(inKey);
+            Surface in = getImage(inKey);
             if (in.empty())
                 return false;
 
@@ -1364,7 +1364,7 @@ namespace waavs {
             if (res != WG_SUCCESS)
                 return false;
 
-            if (!putImage(outKey, std::move(out)))
+            if (!putImage(outKey, out))
                 return false;
 
             setLastKey(outKey);
@@ -1397,7 +1397,7 @@ namespace waavs {
             // DEBUG - check input and output
             //printf("feDiffuseLighting inKey=%s outKey=%s\n", inKey, outKey);
 
-            Surface in = getInputImage(inKey);
+            Surface in = getImage(inKey);
             if (in.empty())
                 return false;
 
@@ -1413,7 +1413,7 @@ namespace waavs {
             WGRectI area = resolveSubregionPx(subr, in);
             if (area.w <= 0 || area.h <= 0)
             {
-                if (!putImage(outKey, std::move(out)))
+                if (!putImage(outKey, out))
                     return false;
 
                 setLastKey(outKey);
@@ -1631,8 +1631,8 @@ namespace waavs {
             InternedKey in2Key = resolveBinaryInput2Key(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
-            Surface in1 = getInputImage(in1Key);
-            Surface in2 = getInputImage(in2Key);
+            Surface in1 = getImage(in1Key);
+            Surface in2 = getImage(in2Key);
             if (in1.empty() || in2.empty())
                 return false;
 
@@ -1756,7 +1756,7 @@ namespace waavs {
             InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
-            Surface in = getInputImage(inKey);
+            Surface in = getImage(inKey);
             if (in.empty())
                 return false;
 
@@ -1947,7 +1947,7 @@ namespace waavs {
                 bctx.detach();
             }
 
-            if (!putImage(outKey, std::move(out)))
+            if (!putImage(outKey, out))
                 return false;
 
             setLastKey(outKey);
@@ -1968,7 +1968,7 @@ namespace waavs {
         {
             InternedKey outKey = resolveOutKeyStrict(io);
 
-            Surface like = getInputImage(lastKey());
+            Surface like = getImage(lastKey());
             if (like.empty())
                 return false;
 
@@ -2003,7 +2003,7 @@ namespace waavs {
                 if (wg_surface_fill(outInfo, px) != WG_SUCCESS)
                     return false;
 
-                if (!putImage(outKey, std::move(out)))
+                if (!putImage(outKey, out))
                     return false;
 
                 setLastKey(outKey);
@@ -2050,7 +2050,7 @@ namespace waavs {
             float sy) noexcept override
         {
             InternedKey inKey = resolveUnaryInputKey(io);
-            Surface in = getInputImage(inKey);
+            Surface in = getImage(inKey);
             if (in.empty())
                 return false;
 
@@ -2096,7 +2096,7 @@ namespace waavs {
 
             if (writeArea.w <= 0 || writeArea.h <= 0)
             {
-                if (!putImage(outKey, std::move(out)))
+                if (!putImage(outKey, out))
                     return false;
 
                 setLastKey(outKey);
@@ -2371,7 +2371,7 @@ namespace waavs {
             InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
-            Surface in = getInputImage(inKey);
+            Surface in = getImage(inKey);
             if (in.empty())
                 return false;
 
@@ -2497,7 +2497,130 @@ namespace waavs {
             InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
-            Surface in = getInputImage(inKey);
+            Surface in = getImage(inKey);
+            if (in.empty())
+                return false;
+
+            if (!outKey)
+                outKey = filter::Filter_Last();
+
+            Surface out = createLikeSurfaceHandle(in);
+            if (out.empty())
+                return false;
+
+            out.clearAll();
+
+            const WGRectI outBounds{ 0, 0, int(out.width()), int(out.height()) };
+            const WGRectI inBounds{ 0, 0, int(in.width()), int(in.height()) };
+
+            WGRectI area = resolveSubregionPx(subr, in);
+            area = intersection(area, outBounds);
+
+            if (area.w <= 0 || area.h <= 0)
+            {
+                if (!putImage(outKey, out))
+                    return false;
+
+                setLastKey(outKey);
+                return true;
+            }
+
+            double dxUS = double(dx);
+            double dyUS = double(dy);
+
+            switch (fRunState.primitiveUnits)
+            {
+            default:
+            case SpaceUnitsKind::SVG_SPACE_USER:
+                break;
+
+            case SpaceUnitsKind::SVG_SPACE_OBJECT:
+                dxUS *= double(fRunState.objectBBoxUS.w);
+                dyUS *= double(fRunState.objectBBoxUS.h);
+                break;
+
+            case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
+                break;
+            }
+
+            const WGMatrix3x3& m = fSpace.ctm;
+
+            const int offX = int(std::lround(dxUS * m.m00 + dyUS * m.m10));
+            const int offY = int(std::lround(dxUS * m.m01 + dyUS * m.m11));
+
+            // feOffset means:
+            //
+            //   dst(x + offX, y + offY) = src(x, y)
+            //
+            // Equivalently, for a destination pixel:
+            //
+            //   dst(x, y) = src(x - offX, y - offY)
+            //
+            // The primitive subregion is in destination/output coordinates.
+            WGRectI srcRect{
+                area.x - offX,
+                area.y - offY,
+                area.w,
+                area.h
+            };
+
+            srcRect = intersection(srcRect, inBounds);
+
+            if (srcRect.w > 0 && srcRect.h > 0)
+            {
+                WGRectI dstRect{
+                    srcRect.x + offX,
+                    srcRect.y + offY,
+                    srcRect.w,
+                    srcRect.h
+                };
+
+                dstRect = intersection(dstRect, area);
+
+                if (dstRect.w > 0 && dstRect.h > 0)
+                {
+                    srcRect = WGRectI{
+                        dstRect.x - offX,
+                        dstRect.y - offY,
+                        dstRect.w,
+                        dstRect.h
+                    };
+
+                    Surface_ARGB32 inInfo = in.info();
+                    Surface_ARGB32 outInfo = out.info();
+
+                    Surface_ARGB32 srcArea{};
+                    Surface_ARGB32 dstArea{};
+
+                    if (Surface_ARGB32_get_subarea(inInfo, srcRect, srcArea) != WG_SUCCESS)
+                        return false;
+
+                    if (Surface_ARGB32_get_subarea(outInfo, dstRect, dstArea) != WG_SUCCESS)
+                        return false;
+
+                    if (wg_blit_copy(dstArea, srcArea, 0, 0) != WG_SUCCESS)
+                        return false;
+                }
+            }
+
+            if (!putImage(outKey, out))
+                return false;
+
+            setLastKey(outKey);
+            return true;
+        }
+
+        /*
+        bool onOffset(
+            const FilterIO& io,
+            const FilterPrimitiveSubregion& subr,
+            float dx,
+            float dy) noexcept override
+        {
+            InternedKey inKey = resolveUnaryInputKey(io);
+            InternedKey outKey = resolveOutKeyStrict(io);
+
+            Surface in = getImage(inKey);
             if (in.empty())
                 return false;
 
@@ -2563,13 +2686,13 @@ namespace waavs {
                 return false;
             }
 
-            if (!putImage(outKey, std::move(out)))
+            if (!putImage(outKey, out))
                 return false;
 
             setLastKey(outKey);
             return true;
         }
-
+        */
 
 
 
@@ -2587,7 +2710,7 @@ namespace waavs {
             InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
-            Surface in = getInputImage(inKey);
+            Surface in = getImage(inKey);
             if (in.empty())
                 return false;
 
@@ -2708,7 +2831,7 @@ namespace waavs {
                 }
             }
 
-            if (!putImage(outKey, std::move(out)))
+            if (!putImage(outKey, out))
                 return false;
 
             setLastKey(outKey);
@@ -2734,7 +2857,7 @@ namespace waavs {
             InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
-            Surface in = getInputImage(inKey);
+            Surface in = getImage(inKey);
             if (in.empty())
                 return false;
 

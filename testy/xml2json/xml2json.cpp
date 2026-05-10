@@ -1,4 +1,6 @@
-
+//
+// convert an XML file to JSON and print it to stdout
+//
 
 #include "appmodule.h"
 #include "mappedfile.h"

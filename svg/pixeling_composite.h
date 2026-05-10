@@ -3,6 +3,8 @@
 
 #include "pixeling.h"
 
+#include <cstring>
+
 namespace waavs
 {
     // Porter-Duff compositing operators 
@@ -17,11 +19,11 @@ namespace waavs
         WG_COMP_SRC_ATOP,
         WG_COMP_SRC_XOR,
 
-        // Note supported yet
-        WG_COMP_DST_OVER,
-        WG_COMP_DST_IN,
-        WG_COMP_DST_OUT,
-        WG_COMP_DST_ATOP,
+        // Not supported yet
+        //WG_COMP_DST_OVER,
+        //WG_COMP_DST_IN,
+        //WG_COMP_DST_OUT,
+        //WG_COMP_DST_ATOP,
 
     };
 
@@ -114,6 +116,7 @@ namespace waavs
         uint32_t da, dr, dg, db;
         argb32_unpack_u32(p2, da, dr, dg, db);
 
+        // Some fast path shortcuts
         if (da == 0)
             return 0u;
 
@@ -125,6 +128,10 @@ namespace waavs
             const uint32_t ob = mul255_round_u8(sb, da);
             return argb32_pack_u32(oa, orr, og, ob);
         }
+
+        if (sa == 0)
+            return p2;
+
 
         const uint32_t isa = 255 - sa;
 
@@ -197,8 +204,8 @@ namespace waavs {
             const uint16x8_t outLo = neon_mul255_u16(srcLo, aLo);
             const uint16x8_t outHi = neon_mul255_u16(srcHi, aHi);
 
-            const uint8x8_t outLo8 = vmovn_u16(outLo);
-            const uint8x8_t outHi8 = vmovn_u16(outHi);
+            const uint8x8_t outLo8 = vqmovn_u16(outLo);
+            const uint8x8_t outHi8 = vqmovn_u16(outHi);
             const uint8x16_t out8 = vcombine_u8(outLo8, outHi8);
 
             vst1q_u8((uint8_t*)(d + x), out8);
@@ -232,8 +239,8 @@ namespace waavs {
             const uint16x8_t outLo = neon_mul255_u16(srcLo, aLo);
             const uint16x8_t outHi = neon_mul255_u16(srcHi, aHi);
 
-            const uint8x8_t outLo8 = vmovn_u16(outLo);
-            const uint8x8_t outHi8 = vmovn_u16(outHi);
+            const uint8x8_t outLo8 = vqmovn_u16(outLo);
+            const uint8x8_t outHi8 = vqmovn_u16(outHi);
             const uint8x16_t out8 = vcombine_u8(outLo8, outHi8);
 
             vst1q_u8((uint8_t*)(d + x), out8);
@@ -272,8 +279,8 @@ namespace waavs {
             const uint16x8_t outLo = vaddq_u16(srcLo, dstScaledLo);
             const uint16x8_t outHi = vaddq_u16(srcHi, dstScaledHi);
 
-            const uint8x8_t outLo8 = vmovn_u16(outLo);
-            const uint8x8_t outHi8 = vmovn_u16(outHi);
+            const uint8x8_t outLo8 = vqmovn_u16(outLo);
+            const uint8x8_t outHi8 = vqmovn_u16(outHi);
             const uint8x16_t out8 = vcombine_u8(outLo8, outHi8);
 
             vst1q_u8((uint8_t*)(d + x), out8);

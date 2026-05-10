@@ -1,4 +1,8 @@
-
+//
+// This is a junk file used to try out various things.
+// Typically just things that don't require any UI
+// tear down and rebuild as needed.
+// 
 #include "blend2d.h"
 #include "blend2d/imagedecoder.h"
 

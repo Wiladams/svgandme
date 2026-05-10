@@ -373,6 +373,7 @@ namespace waavs
     }
     */
 
+
     // wg_scale_blit_full_PRGB32
     // 
     // scale the entirety of the src into the box indicated
@@ -385,7 +386,7 @@ namespace waavs
         WGScaleFilter filter = WG_BLIT_SCALE_Bilinear) noexcept
     {
         const WGRectI srcRect{ 0, 0, int(src.width), int(src.height) };
-        return wg_scale_blit_PRGB32(dst, dstRect, src, srcRect, filter);
+        return wg_scale_blit(dst, dstRect, src, srcRect, filter);
     }
 
 
