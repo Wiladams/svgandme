@@ -267,7 +267,7 @@ namespace waavs {
             // traverse down our fNodes, until we find
             // something that reports other than null
             // and return that.
-            if (fVar.isNull())
+            if (fVar.is_null())
             {
                 for (auto& node : fNodes)
                 {
@@ -277,7 +277,7 @@ namespace waavs {
                     //    continue;
 
                     BLVar tmpVar = node->getVariant(ctx, groot);
-                    if (!tmpVar.isNull())
+                    if (!tmpVar.is_null())
                     {
                         return tmpVar;
                     }

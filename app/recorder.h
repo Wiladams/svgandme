@@ -42,9 +42,9 @@ namespace waavs {
             , fMaxFrames(maxFrames)
         {
             if (surf != nullptr)
-                fImage.createFromData((int)surf->width(), (int)surf->height(), BL_FORMAT_PRGB32, surf->data(), surf->stride());
+                fImage.create_from_data((int)surf->width(), (int)surf->height(), BL_FORMAT_PRGB32, surf->data(), surf->stride());
             
-            fCodec.findByName("QOI");
+            fCodec.find_by_name("QOI");
         }
 
         void reset(Surface* surf, const char* basename = "frame", int fps = 30, int maxFrames = 0)
@@ -53,7 +53,7 @@ namespace waavs {
 
             if (surf != nullptr)
             {
-                fImage.createFromData((int)surf->width(), (int)surf->height(), BL_FORMAT_PRGB32, surf->data(), surf->stride());
+                fImage.create_from_data((int)surf->width(), (int)surf->height(), BL_FORMAT_PRGB32, surf->data(), surf->stride());
             }
 
             fBasename = basename;
@@ -88,7 +88,7 @@ namespace waavs {
             sprintf_s(frameName, 255, "%s%06d.qoi", fBasename.c_str(), fCurrentFrame);
             //BLImageCodec codec;
             //codec.findByName("QOI");
-            fImage.writeToFile(frameName, fCodec);
+            fImage.write_to_file(frameName, fCodec);
 
             fCurrentFrame = fCurrentFrame + 1;
         }

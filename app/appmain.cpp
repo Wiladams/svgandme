@@ -1534,7 +1534,7 @@ waavs::User32Window * getAppWindow()
     return gAppWindow.get();
 }
 
-static int getSystemThreadCount()
+/*static*/ int getSystemThreadCount()
 {
     return std::thread::hardware_concurrency();
 }

@@ -66,7 +66,7 @@ namespace waavs {
             
             // See if it's a format that blend2d can deal with using its
             // own codecs
-            BLResult res = img.readFromData(outBuff.data(), decodedSize);
+            BLResult res = img.read_from_data(outBuff.data(), decodedSize);
 
             success = (res == BL_SUCCESS);
             
@@ -187,7 +187,7 @@ namespace waavs
 
         const BLVar getVariant(IRenderSVG *ctx, IAmGroot *groot) noexcept override
         {
-            if (fImageVar.isNull())
+            if (fImageVar.is_null())
             {
                 bindSelfToContext(ctx, groot);
             }
@@ -226,7 +226,7 @@ namespace waavs
                     auto filepath = toString(fDocState.href);
                     if (filepath.size() > 0)
                     {
-                        if (fImage.readFromFile(filepath.c_str()) == BL_SUCCESS)
+                        if (fImage.read_from_file(filepath.c_str()) == BL_SUCCESS)
                         {
                             fSurface = surfaceFromBLImage(fImage);
                             fImageVar = fImage;
@@ -265,7 +265,7 @@ namespace waavs
 
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            if (fImage.empty())
+            if (fImage.is_empty())
                 return;
             
             if (fWidth <= 0 || fHeight <= 0)

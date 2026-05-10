@@ -190,11 +190,11 @@ namespace waavs {
 
         BLTextMetrics tm;
         BLGlyphBuffer gb;
-        gb.setUtf8Text((const char*)utf8.fStart, utf8.size());
+        gb.set_utf8_text((const char*)utf8.fStart, utf8.size());
         font.shape(gb);
-        font.getTextMetrics(gb, tm);
+        font.get_text_metrics(gb, tm);
 
-        return double(tm.boundingBox.x1 - tm.boundingBox.x0);
+        return double(tm.bounding_box.x1 - tm.bounding_box.x0);
     }
 
     //============================================================

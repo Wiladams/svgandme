@@ -79,7 +79,7 @@ namespace waavs
 
             // We have successfully mapped the file into memory.
             // Now we try to use codec API to decode it.
-            BLResult res = fCodec.findByData(fMappedFile->data(), fMappedFile->size());
+            BLResult res = fCodec.find_by_data(fMappedFile->data(), fMappedFile->size());
             //printf("Codec: %d\n", res);
 
             if (res != BL_SUCCESS)
@@ -87,7 +87,7 @@ namespace waavs
 
             // Get a decoder from the codec.
             
-            res = fCodec.createDecoder(&fDecoder);
+            res = fCodec.create_decoder(&fDecoder);
             //printf("Decoder: %d\n", res);
 
             if (res != BL_SUCCESS)
@@ -95,12 +95,12 @@ namespace waavs
 
             // Try to get the image info so we can see the size and frame count
             fImageInfo.reset();
-            res = fDecoder.readInfo(fImageInfo, (const uint8_t*)fMappedFile->data(), fMappedFile->size());
+            res = fDecoder.read_info(fImageInfo, (const uint8_t*)fMappedFile->data(), fMappedFile->size());
             if (res != BL_SUCCESS)
                 return false;
 
             // hold onto the frame count
-            fFrameCount = fImageInfo.frameCount;
+            fFrameCount = fImageInfo.frame_count;
             //fCaptureWidth = fImageInfo.size.w;
             //fCaptureHeight = fImageInfo.size.h;
 
@@ -155,13 +155,13 @@ namespace waavs
                 return false;
 
             // Get the next frame in sequence
-            fCurrentFrame = fDecoder.frameIndex();
-            BLResult res = fDecoder.readFrame(fCaptureImage, (const uint8_t*)fMappedFile->data(), fMappedFile->size());
+            fCurrentFrame = fDecoder.frame_index();
+            BLResult res = fDecoder.read_frame(fCaptureImage, (const uint8_t*)fMappedFile->data(), fMappedFile->size());
             BLImageData imgData{};
-            res = fCaptureImage.getData(&imgData);
+            res = fCaptureImage.get_data(&imgData);
             fPixels.createFromData((size_t)fCropWidth, (size_t)fCropHeight, 
                 (size_t)imgData.stride, 
-                (uint8_t *)imgData.pixelData);
+                (uint8_t *)imgData.pixel_data);
 
             // make not of current time as last capture time
             fLastCaptureTime = fTimer.seconds();

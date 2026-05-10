@@ -5,6 +5,8 @@
 #include <vector>
 
 #include "definitions.h"
+#include "filter_types.h"
+#include "svgenums.h"
 
 
 // Here we have only the FilterProgramStream, 

@@ -296,28 +296,28 @@ namespace waavs {
             markModified();
         }
 
-        uint8_t startStrokeCap() const { return fDrawingState->fStrokeOptions.startCap; }
+        uint8_t startStrokeCap() const { return fDrawingState->fStrokeOptions.start_cap; }
         void setStrokeStartCap(uint8_t kind) {
-            fDrawingState->fStrokeOptions.startCap = kind;
+            fDrawingState->fStrokeOptions.start_cap = kind;
             markModified();
         }
 
-        uint8_t getEndStrokeCap() const { return fDrawingState->fStrokeOptions.endCap; }
+        uint8_t getEndStrokeCap() const { return fDrawingState->fStrokeOptions.end_cap; }
         void setStrokeEndCap(uint8_t kind)
         {
-            fDrawingState->fStrokeOptions.endCap = kind;
+            fDrawingState->fStrokeOptions.end_cap = kind;
             markModified();
         }
 
         void setStrokeCaps(BLStrokeCap caps)
         {
-            fDrawingState->fStrokeOptions.setCaps(caps);
+            fDrawingState->fStrokeOptions.set_caps(caps);
             markModified();
         }
 
-        double getStrokeMiterLimit() const { return fDrawingState->fStrokeOptions.miterLimit; }
+        double getStrokeMiterLimit() const { return fDrawingState->fStrokeOptions.miter_limit; }
         void setStrokeMiterLimit(double limit) {
-            fDrawingState->fStrokeOptions.miterLimit = limit;
+            fDrawingState->fStrokeOptions.miter_limit = limit;
             markModified();
         }
 
@@ -468,30 +468,30 @@ namespace waavs {
         virtual bool applyToContext(BLContext* ctx)
         {
             // clear the clipping state
-            ctx->restoreClipping();
+            ctx->restore_clipping();
             WGRectD cRect = getClipRect();
             if ((cRect.w > 0) && (cRect.h > 0))
             {
                 BLRect blr{ cRect.x, cRect.y, cRect.w, cRect.h };
-                ctx->clipToRect(blr);
+                ctx->clip_to_rect(blr);
             }
 
-            ctx->setCompOp((BLCompOp)getCompositeMode());
-            ctx->setFillRule((BLFillRule)getFillRule());
+            ctx->set_comp_op((BLCompOp)getCompositeMode());
+            ctx->set_fill_rule((BLFillRule)getFillRule());
 
             // Set the transform
             BLMatrix2D t = blMatrix_from_WGMatrix3x3(getTransform());
-            ctx->setTransform(t);
+            ctx->set_transform(t);
 
             // Stroke Options
-            ctx->setStrokeOptions(fDrawingState->fStrokeOptions);
+            ctx->set_stroke_options(fDrawingState->fStrokeOptions);
 
             // Paints
-            ctx->setStrokeStyle(getStrokePaint());
-            ctx->setFillStyle(getFillPaint());
-            ctx->setGlobalAlpha(getGlobalOpacity());
-            ctx->setStrokeAlpha(getStrokeOpacity());
-            ctx->setFillAlpha(getFillOpacity());
+            ctx->set_stroke_style(getStrokePaint());
+            ctx->set_fill_style(getFillPaint());
+            ctx->set_global_alpha(getGlobalOpacity());
+            ctx->set_stroke_alpha(getStrokeOpacity());
+            ctx->set_fill_alpha(getFillOpacity());
 
 
             return true;

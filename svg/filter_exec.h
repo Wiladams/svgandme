@@ -298,10 +298,32 @@ namespace waavs
             return true;
         }
 
-        InternedKey resolveInputKey(const FilterIO& io, uint32_t index) noexcept;
-        InternedKey resolveOutputKey(const FilterIO& io) noexcept;
+        // These implementations were not provided by default
+        // I hope the following are the intended implementations
 
-        WGRectI resolvePrimitiveSubregionPx(const FilterIO& io, const WGRectD* subr) noexcept;
+        InternedKey resolveInputKey(const FilterIO& io, uint32_t index) noexcept
+        {
+            if (index == 0)
+                return io.in1;
+            else if (index == 1)
+                return io.in2;
+            else
+                return nullptr;
+        }
+
+        InternedKey resolveOutputKey(const FilterIO& io) noexcept
+        {
+            if (io.hasOut)
+                return io.out;
+            else
+                return nullptr;
+        }
+
+        WGRectI resolvePrimitiveSubregionPx(const FilterIO& io, const WGRectD* subr) noexcept
+        {
+            WGRectI rc = {(int)(subr->x), (int)(subr->y), (int)(subr->w), (int)(subr->h)};
+            return rc;
+        }
 
         FilterColorInterpolation resolveColorSpace(const FilterIO& io) noexcept
         {

@@ -20,7 +20,7 @@ using namespace waavs;
 // HD size?
 //static constexpr int canvasWidth = 1920, canvasHeight = 1024;
 // One quarter of a apple studio display is 2560 x 1440
-static constexpr int canvasWidth = 2560, canvasHeight = 1440;
+static constexpr int canvasWidth = 1280, canvasHeight = 720;
 // 3380x1900 - two thirds
 //static constexpr int canvasWidth = 2560, canvasHeight = 2300;
 static constexpr float kFrameRate = 30.0f;
@@ -305,10 +305,10 @@ static void onKeyboardEvent(const KeyboardEvent& ke)
 
 static void setupFonts()
 {
-    //loadDefaultFonts();
+    loadDefaultFonts();
     
-    loadFontDirectory("c:\\windows\\fonts");
-    loadFontDirectory("x:\\Fonts\\commonfonts");
+    //loadFontDirectory("c:\\windows\\fonts");
+    //loadFontDirectory("x:\\Fonts\\commonfonts");
     //loadFontDirectory("x:\\Fonts\\Fonts");
 
 

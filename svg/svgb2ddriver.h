@@ -33,14 +33,14 @@ namespace waavs
 
         BLImage* currentTarget() const noexcept override
         {
-            return fDrawingContext->targetImage();
+            return fDrawingContext->target_image();
         }
 
         void onAttach(Surface& surf, int threadCount) override
         {
             BLContextCreateInfo ctxInfo{};
-            ctxInfo.threadCount = threadCount;
-            fTargetImage.createFromData((int)surf.info().width, (int)surf.info().height, BL_FORMAT_PRGB32, surf.info().data, surf.info().stride);
+            ctxInfo.thread_count = threadCount;
+            fTargetImage.create_from_data((int)surf.info().width, (int)surf.info().height, BL_FORMAT_PRGB32, surf.info().data, surf.info().stride);
 
             BLResult res = fDrawingContext->begin(fTargetImage, ctxInfo);
             applyToContext(fDrawingContext.get());
@@ -97,7 +97,7 @@ namespace waavs
         // Clear the canvas to be fully transparent
         void onClear() override
         {
-            fDrawingContext->clearAll();
+            fDrawingContext->clear_all();
         }
 
         // Clear the canvas to the background style specified
@@ -105,13 +105,13 @@ namespace waavs
         void onClearToBackground() override
         {
             const BLVar &bgpaint = getBackgroundPaint();
-            if (!bgpaint.isNull())
+            if (!bgpaint.is_null())
             {
-            	fDrawingContext->fillAll(bgpaint);
+            	fDrawingContext->fill_all(bgpaint);
             }
             else
             {
-            	fDrawingContext->clearAll();
+            	fDrawingContext->clear_all();
             }
         }
 
@@ -120,8 +120,8 @@ namespace waavs
         void onTransform(const WGMatrix3x3& value) override
         {
             BLMatrix2D m = blMatrix_from_WGMatrix3x3(value);
-            fDrawingContext->setTransform(m);
-            WGMatrix3x3 wgM = wgMatrix_from_BLMatrix2D(fDrawingContext->userTransform());
+            fDrawingContext->set_transform(m);
+            WGMatrix3x3 wgM = wgMatrix_from_BLMatrix2D(fDrawingContext->user_transform());
             setTransform(wgM);
         }
 
@@ -129,8 +129,8 @@ namespace waavs
         {
             BLMatrix2D m = blMatrix_from_WGMatrix3x3(value);
 
-            fDrawingContext->applyTransform(m);
-            WGMatrix3x3 wgM = wgMatrix_from_BLMatrix2D(fDrawingContext->userTransform());
+            fDrawingContext->apply_transform(m);
+            WGMatrix3x3 wgM = wgMatrix_from_BLMatrix2D(fDrawingContext->user_transform());
 
             setTransform(wgM);
         }
@@ -138,7 +138,7 @@ namespace waavs
         void onScale(double x, double y) override
         {
             fDrawingContext->scale(x, y);
-            WGMatrix3x3 wgM = wgMatrix_from_BLMatrix2D(fDrawingContext->userTransform());
+            WGMatrix3x3 wgM = wgMatrix_from_BLMatrix2D(fDrawingContext->user_transform());
 
             setTransform(wgM);
         }
@@ -146,7 +146,7 @@ namespace waavs
         void onTranslate(double x, double y) override
         {
             fDrawingContext->translate(x, y);
-            WGMatrix3x3 wgM = wgMatrix_from_BLMatrix2D(fDrawingContext->userTransform());
+            WGMatrix3x3 wgM = wgMatrix_from_BLMatrix2D(fDrawingContext->user_transform());
 
             setTransform(wgM);
         }
@@ -155,7 +155,7 @@ namespace waavs
         void onRotate(double angle, double cx, double cy) override
         {
             fDrawingContext->rotate(angle);
-            WGMatrix3x3 wgM = wgMatrix_from_BLMatrix2D(fDrawingContext->userTransform());
+            WGMatrix3x3 wgM = wgMatrix_from_BLMatrix2D(fDrawingContext->user_transform());
 
             setTransform(wgM);
         }
@@ -163,18 +163,18 @@ namespace waavs
         // Drawing attributes
         void onStrokeBeforeTransform() override
         {
-            fDrawingContext->setStrokeTransformOrder(getStrokeBeforeTransform() ? BL_STROKE_TRANSFORM_ORDER_BEFORE : BL_STROKE_TRANSFORM_ORDER_AFTER);
+            fDrawingContext->set_stroke_transform_order(getStrokeBeforeTransform() ? BL_STROKE_TRANSFORM_ORDER_BEFORE : BL_STROKE_TRANSFORM_ORDER_AFTER);
         }
 
         void onBlendMode(int mode) override
         {
             BLCompOp compOp = (BLCompOp)mode;
-            fDrawingContext->setCompOp(compOp);
+            fDrawingContext->set_comp_op(compOp);
         }
 
         void onGlobalOpacity() override
         {
-            fDrawingContext->setGlobalAlpha(getGlobalOpacity());
+            fDrawingContext->set_global_alpha(getGlobalOpacity());
         }
 
         /*
@@ -195,22 +195,22 @@ namespace waavs
 
         void onStrokeCaps(BLStrokeCap caps) override
         {
-            fDrawingContext->setStrokeCaps((BLStrokeCap)caps);
+            fDrawingContext->set_stroke_caps((BLStrokeCap)caps);
         }
 
         void onStrokeWidth() override
         {
-            fDrawingContext->setStrokeWidth(getStrokeWidth());
+            fDrawingContext->set_stroke_width(getStrokeWidth());
         }
 
         void onLineJoin() override
         {
-            fDrawingContext->setStrokeJoin((BLStrokeJoin)getLineJoin());
+            fDrawingContext->set_stroke_join((BLStrokeJoin)getLineJoin());
         }
 
         void onStrokeMiterLimit() override
         {
-            fDrawingContext->setStrokeMiterLimit(getStrokeMiterLimit());
+            fDrawingContext->set_stroke_miter_limit(getStrokeMiterLimit());
         }
 
 
@@ -222,31 +222,31 @@ namespace waavs
                 return;
 
             BLVar paint = getFillPaint();
-            if (paint.isNull()) {
-                fDrawingContext->disableFillStyle();
+            if (paint.is_null()) {
+                fDrawingContext->disable_fill_style();
                 return;
             }
 
-            fDrawingContext->setFillStyle(paint);
+            fDrawingContext->set_fill_style(paint);
         }
 
 
         void onNoFill() override
         {
-            fDrawingContext->disableFillStyle();
+            fDrawingContext->disable_fill_style();
         }
 
 
         void onFillOpacity() override
         {
             double opa = getFillOpacity();
-            fDrawingContext->setFillAlpha(opa);
+            fDrawingContext->set_fill_alpha(opa);
         }
 
         // Geometry
         void onFillRule() override
         {
-            fDrawingContext->setFillRule((BLFillRule)getFillRule());
+            fDrawingContext->set_fill_rule((BLFillRule)getFillRule());
         }
 
 
@@ -255,25 +255,25 @@ namespace waavs
         {
             BLVar paint = getStrokePaint();
 
-            if (paint.isNull()) {
-                fDrawingContext->disableStrokeStyle();
+            if (paint.is_null()) {
+                fDrawingContext->disable_stroke_style();
                 return;
             }
 
-            fDrawingContext->setStrokeStyle(paint);
+            fDrawingContext->set_stroke_style(paint);
 
         }
 
 
         void onNoStroke() override
         {
-            fDrawingContext->disableStrokeStyle();
+            fDrawingContext->disable_stroke_style();
         }
 
 
         void onStrokeOpacity() override
         {
-            fDrawingContext->setStrokeAlpha(getStrokeOpacity());
+            fDrawingContext->set_stroke_alpha(getStrokeOpacity());
         }
 
 
@@ -309,12 +309,12 @@ namespace waavs
         {
             WGRectD cRect = getClipRect();
             BLRect blr{ cRect.x, cRect.y, cRect.w, cRect.h };
-            fDrawingContext->clipToRect(blr);
+            fDrawingContext->clip_to_rect(blr);
         }
 
         void onNoClip() override
         {
-            fDrawingContext->restoreClipping();
+            fDrawingContext->restore_clipping();
         }
 
         void onBeginDrawShape(const BLPath& apath) override
@@ -327,12 +327,12 @@ namespace waavs
 
         void onStrokeShape(const BLPath &apath) override
         {
-			fDrawingContext->strokePath(apath);
+			fDrawingContext->stroke_path(apath);
         }
 		
         void onFillShape(const BLPath& apath) override
 		{
-			fDrawingContext->fillPath(apath);
+			fDrawingContext->fill_path(apath);
 		}
 
         // Drawing Shapes
@@ -351,11 +351,11 @@ namespace waavs
                 switch (ins)
                 {
                 case PaintOrderKind::SVG_PAINT_ORDER_FILL:
-                    fDrawingContext->fillPath(aPath, getFillPaint());
+                    fDrawingContext->fill_path(aPath, getFillPaint());
                     break;
 
                 case PaintOrderKind::SVG_PAINT_ORDER_STROKE:
-                    fDrawingContext->strokePath(aPath, getStrokePaint());
+                    fDrawingContext->stroke_path(aPath, getStrokePaint());
                     break;
 
                 case PaintOrderKind::SVG_PAINT_ORDER_MARKERS:
@@ -380,7 +380,7 @@ namespace waavs
                 return;
 
             BLImage blImg = blImageFromSurface(surf);
-            fDrawingContext->blitImage(BLPoint(x, y), blImg);
+            fDrawingContext->blit_image(BLPoint(x, y), blImg);
         }
 
         void onScaleImage(const Surface& surf,
@@ -392,29 +392,29 @@ namespace waavs
             BLRect dst{ dstX,dstY,dstWidth,dstHeight };
             BLRectI srcArea{ srcX,srcY,srcWidth,srcHeight };
 
-            fDrawingContext->blitImage(dst, blImg, srcArea);
+            fDrawingContext->blit_image(dst, blImg, srcArea);
         }
 
         // example in your concrete BLContext-backed renderer:
         void onFillGlyphRun(const BLFont& font, const BLGlyphRun& run, double x, double y) override
         {
-            fDrawingContext->fillGlyphRun(BLPoint(x, y), font, run);
+            fDrawingContext->fill_glyph_run(BLPoint(x, y), font, run);
         }
 
         void onStrokeGlyphRun(const BLFont& font, const BLGlyphRun& run, double x, double y) override
         {
-            fDrawingContext->strokeGlyphRun(BLPoint(x, y), font, run);
+            fDrawingContext->stroke_glyph_run(BLPoint(x, y), font, run);
         }
 
         // Text Drawing
         void onStrokeText(const ByteSpan& txt, double x, double y) override
         {
-            fDrawingContext->strokeUtf8Text(BLPoint(x, y), getFont(), (char*)txt.data(), txt.size());
+            fDrawingContext->stroke_utf8_text(BLPoint(x, y), getFont(), (char*)txt.data(), txt.size());
         }
 
         void onFillText(const ByteSpan& txt, double x, double y) override
         {
-            fDrawingContext->fillUtf8Text(BLPoint(x, y), getFont(), (char*)txt.data(), txt.size());
+            fDrawingContext->fill_utf8_text(BLPoint(x, y), getFont(), (char*)txt.data(), txt.size());
         }
 
         void onDrawText(const ByteSpan& txt, double x, double y) override

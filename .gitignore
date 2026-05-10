@@ -51,3 +51,6 @@
 testy/graphicshape/ARM64/Debug/graphicshape.vcxproj.FileListAbsolute.txt
 /3rdparty
 /testy/quickview/ARM64
+testy/build
+testy/.cache
+testy/CMakeLists.txt
