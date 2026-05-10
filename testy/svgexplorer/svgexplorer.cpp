@@ -19,8 +19,8 @@
 using namespace waavs;
 
 
-constexpr int APP_WIDTH = 2560;
-constexpr int APP_HEIGHT = 1440;
+constexpr int APP_WIDTH = 1280;
+constexpr int APP_HEIGHT = 720;
 constexpr int APP_HMARGIN = 10;
 constexpr int APP_VMARGIN = 10;
 constexpr int APP_TOOL_MARGIN = 64;
@@ -235,7 +235,7 @@ static void setupFonts()
 
 
 // called once before main loop is running
-static void setup()
+void setup()
 {
 	//printf("setup()\n");
 
