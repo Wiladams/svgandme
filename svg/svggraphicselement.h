@@ -3,7 +3,6 @@
 #include "svgstructuretypes.h"
 #include "filter_program_exec_b2d.h"
 
-// subtree offscreen drawing
 namespace waavs
 {
 
@@ -124,10 +123,14 @@ namespace waavs
         WGMatrix3x3 off = req.ctm;
         off.postTranslate(-double(req.pixelRect.x), -double(req.pixelRect.y));
 
-        // BUGBUG - Should set the viewport
         SVGB2DDriver tmp{};
         tmp.attach(outSurface, 1);
         tmp.renew();
+
+        // We have to pass along the drawing state
+        // as the item in question will need context
+        tmp.copyDrawingState(req.drawingState);
+
 
         if (req.clear)
             tmp.clear();
@@ -252,6 +255,7 @@ namespace waavs {
 
         // Deal with clipping
         virtual bool applyClipToSurface(
+            IRenderSVG *ctx,
             IAmGroot* groot,
             const IsolatedRenderPlan& plan,
             Surface& result) noexcept
@@ -963,6 +967,9 @@ namespace waavs {
             }
             else {
                 IsolatedSubtreeRequest req{};
+                SVGDrawingState* ds = ctx->getDrawingState();
+                if (ds)
+                    req.drawingState = *ds;
                 req.userRect = plan.effectRectUS;
                 req.pixelRect = plan.pixelRect;
                 req.ctm = plan.ctm;
@@ -985,7 +992,7 @@ namespace waavs {
                 {
                     auto featureNode = getReferencedFeatureNode(groot, svgattr::clip_path());
                     if (featureNode)
-                        featureNode->applyClipToSurface(groot, plan, result);
+                        featureNode->applyClipToSurface(ctx,groot, plan, result);
                 }
 
                 if (plan.hasOpacity)

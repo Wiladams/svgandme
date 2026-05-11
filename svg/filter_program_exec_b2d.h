@@ -713,6 +713,9 @@ namespace waavs {
             //Surface srcGraphic{};
 
             IsolatedSubtreeRequest req{};
+            SVGDrawingState* ds = ctx->getDrawingState();
+            if (ds)
+                req.drawingState = *ds;
             req.userRect = filterRectUS;
             req.pixelRect = filterRectPX;
             req.ctm = ctm;
@@ -875,7 +878,7 @@ namespace waavs {
 
             // Preserve behavior: copy full input first
             //if (wg_blit_copy(outInfo, inInfo, 0, 0) != WG_SUCCESS)
-            //    return false;
+            //  return false;
             out.clearAll();
 
             const WGRectI area = resolveSubregionPx(subr, in);

@@ -46,7 +46,13 @@ namespace waavs
             applyToContext(fDrawingContext.get());
         }
 
+        void onCopyDrawingState(const SVGDrawingState& state) override
+        {
+            IAccessSVGState stateAccessor{ const_cast<SVGDrawingState*>(&state) };
+            stateAccessor.applyToContext(fDrawingContext.get());
 
+            //applyToContext(fDrawingContext.get());
+        }
 
         void onDetach() override
         {

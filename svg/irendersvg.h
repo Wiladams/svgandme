@@ -241,8 +241,16 @@ namespace waavs
 
 
 
-
-
+        virtual void onCopyDrawingState(const SVGDrawingState& state) {}
+        void copyDrawingState(const SVGDrawingState& state) 
+        {
+            //setDrawingState(fStateStack.currentState());
+            if (fCurrentDrawingState)
+            {
+                *fCurrentDrawingState = state;
+            }
+            onCopyDrawingState(state);
+        }
 
         virtual void onPush() {}
         void push()  

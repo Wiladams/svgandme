@@ -31,10 +31,10 @@ namespace waavs {
         // PaintState
         uint32_t fPaintOrder{ PaintOrderKind::SVG_PAINT_ORDER_NORMAL };
         
-        SVGObject *fStrokeServer{};
+        IServePaint*fStrokePaintServer{};
         BLVar fStrokePaint{};
         
-        SVGObject *fFillingPaint{};
+        IServePaint*fFillPaintServer{};
         BLVar fFillPaint{};
 
         BLVar fDefaultColor{};
@@ -93,10 +93,14 @@ namespace waavs {
 
             // Fill Options
             fFillRule = other.fFillRule;
-            
+
             // Stroke Options
             fStrokeOptions = other.fStrokeOptions;
             fDash = other.fDash;
+
+            // Paint Servers
+            fFillPaintServer = other.fFillPaintServer;
+            fStrokePaintServer = other.fStrokePaintServer;
 
             // Paints
             fStrokePaint.assign(other.fStrokePaint);
@@ -156,7 +160,7 @@ namespace waavs {
 		{
 			fDrawingState = state;
 		}
-
+        SVGDrawingState* getDrawingState() const { return fDrawingState; }
 
 
         void markModified() 
@@ -286,8 +290,8 @@ namespace waavs {
             markModified();
         }
         
-        SVGObject* getStrokeServer() const {return fDrawingState->fStrokeServer;}
-        void setStrokeServer(SVGObject* obj) { fDrawingState->fStrokeServer = obj; }
+        IServePaint* getStrokeServer() const {return fDrawingState->fStrokePaintServer;}
+        void setStrokeServer(IServePaint* obj) { fDrawingState->fStrokePaintServer = obj; }
 
         double getStrokeOpacity() const { return fDrawingState->fStrokeOpacity; }
         void setStrokeOpacity(double opacity)
@@ -373,6 +377,10 @@ namespace waavs {
 
             markModified();
         }
+
+        // Fill Paint Server
+        IServePaint* getFillPaintServer() const { return fDrawingState->fFillPaintServer; }
+        void setFillPaintServer(IServePaint* obj) { fDrawingState->fFillPaintServer = obj; }
 
         // Fill Attributes
         BLVar getFillPaint() const { return fDrawingState->fFillPaint; }
@@ -463,8 +471,6 @@ namespace waavs {
             markModified();
         }
 
-        // Apply those attributes that need to be on 
-        // the BLContext
         virtual bool applyToContext(BLContext* ctx)
         {
             // clear the clipping state

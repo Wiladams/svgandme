@@ -193,10 +193,7 @@ namespace waavs {
         double fValue{1};
         BLVar fOpacityVar;
         
-        SVGOpacity(IAmGroot* groot) :SVGVisualProperty(groot) { setName(svgattr::opacity()); }
-
-        //const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override { return fOpacityVar; }
-        
+        SVGOpacity(IAmGroot* groot) :SVGVisualProperty(groot) { setName(svgattr::opacity()); }        
         
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
@@ -1291,7 +1288,10 @@ namespace waavs {
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
             BLVar aVar = getVariant(ctx, groot);
-            ctx->stroke(aVar);
+            if (aVar.isNull())
+                ctx->noStroke();
+            else
+                ctx->stroke(aVar);
         }
 
     };

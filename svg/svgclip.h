@@ -63,7 +63,7 @@ namespace waavs
             }
         }
 
-        bool renderClipSurface(IAmGroot* groot,
+        bool renderClipSurface(IRenderSVG *ctx, IAmGroot* groot,
             const IsolatedRenderPlan& plan,
             Surface& outMask) noexcept
         {
@@ -94,6 +94,7 @@ namespace waavs
 
 
         bool applyClipToSurface(
+            IRenderSVG *ctx,
             IAmGroot* groot,
             const IsolatedRenderPlan& plan,
             Surface& result) noexcept override
@@ -102,7 +103,7 @@ namespace waavs
                 return false;
 
             Surface clipSurface{};
-            if (!renderClipSurface(groot, plan, clipSurface)) {
+            if (!renderClipSurface(ctx, groot, plan, clipSurface)) {
                 //result.clear();
                 return false;
             }
