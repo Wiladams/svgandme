@@ -124,8 +124,8 @@ namespace waavs
         off.postTranslate(-double(req.pixelRect.x), -double(req.pixelRect.y));
 
         SVGB2DDriver tmp{};
-        tmp.attach(outSurface, 1);
-        tmp.renew();
+        tmp.attach(outSurface, 1, &req.drawingState);
+        //tmp.renew();
 
         // We have to pass along the drawing state
         // as the item in question will need context

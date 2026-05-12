@@ -31,10 +31,10 @@ namespace waavs {
         // PaintState
         uint32_t fPaintOrder{ PaintOrderKind::SVG_PAINT_ORDER_NORMAL };
         
-        IServePaint*fStrokePaintServer{};
+        IServePaint*fStrokePaintServer{nullptr};
         BLVar fStrokePaint{};
         
-        IServePaint*fFillPaintServer{};
+        IServePaint*fFillPaintServer{nullptr};
         BLVar fFillPaint{};
 
         BLVar fDefaultColor{};

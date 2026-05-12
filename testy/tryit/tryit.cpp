@@ -41,8 +41,14 @@ using namespace waavs;
 # pragma message("__ARM_NEON defined")
 #endif
 
+#if WAAVS_HAS_NEON
+#pragma message("WAAVS_HAS_NEON")
+#endif
+
 int main(int argc, char** argv)
 {
+    printf("MAIN\n");
+
     // Get a chunk of memory that has the file in it
     //     
     const char* filename = "X:\\svgarchive\\lottie\\bouncing_beach_ball.png";

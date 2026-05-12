@@ -108,6 +108,8 @@ namespace waavs {
             // Masking
             SVGMaskElement::registerFactory();                  // 'mask' element
 
+            SVGFilterElement::registerFactory();                // <filter>
+
             //=============================================
             // Register SVG Node Types
             //=============================================

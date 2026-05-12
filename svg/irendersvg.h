@@ -114,12 +114,12 @@ namespace waavs
             resetFont();
         }
         
-        virtual void onAttach(Surface& surf, int threadCount)
+        virtual void onAttach(Surface& surf, int threadCount, const SVGDrawingState* state)
         {}
 
-        void attach(Surface& surf, int threadCount) noexcept
+        void attach(Surface& surf, int threadCount, const SVGDrawingState *state = nullptr) noexcept
         {
-            onAttach(surf, threadCount);
+            onAttach(surf, threadCount, state);
         }
         
         virtual void onDetach() {}

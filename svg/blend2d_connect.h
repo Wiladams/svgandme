@@ -9,7 +9,7 @@
 #include "surface.h"
 #include "coloring.h"
 
-#include "pathprogramexec.h"
+#include "pathprogram_exec.h"
 
 namespace waavs
 {

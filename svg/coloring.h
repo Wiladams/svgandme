@@ -172,6 +172,23 @@ namespace waavs
             : powf((c + 0.055f) / 1.055f, 2.4f);
     }
 
+#if WAAVS_HAS_NEON
+    static INLINE float32x4_t coloring_srgb_component_to_linear(float32x4_t c) noexcept
+    {
+        c = clamp01q_f32(c);
+
+        alignas(16) float v[4];
+        vst1q_f32(v, c);
+
+        for (int i = 0; i < 4; ++i)
+        {
+            v[i] = coloring_srgb_component_to_linear(v[i]);
+        }
+
+        return vld1q_f32(v);
+    }
+#endif
+
     // convert a single component
     static INLINE float coloring_linear_component_to_srgb(float c)
     {
@@ -180,6 +197,25 @@ namespace waavs
             : (1.055f * powf(c, 1.0f / 2.4f) - 0.055f);
     }
 
+#if WAAVS_HAS_NEON
+    static INLINE float32x4_t coloring_linear_component_to_srgb(float32x4_t c) noexcept
+    {
+        c = clamp01q_f32(c);
+
+        alignas(16) float v[4];
+        vst1q_f32(v, c);
+
+        for (int i = 0; i < 4; ++i)
+        {
+            v[i] = coloring_linear_component_to_srgb(v[i]);
+        }
+
+        return vld1q_f32(v);
+    }
+#endif
+
+    // -----------------------------------------------
+    //
     static INLINE Pixel_ARGB32 argb32_from_premultiplied_linear(
         float a, float pr, float pg, float pb) noexcept
     {
