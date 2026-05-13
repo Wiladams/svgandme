@@ -14,8 +14,8 @@ At this point, May 13 2026, the work is to continue stabilization, while adding 
 All that is required is to include svg.h into your application.  The svgimage demo app shows how this can be done.  svgviewer shows how to connect to a UI based app and do more advanced navigation of images.
 
 # Specifications References
-<a href=https://www.w3.org/TR/SVGMobile/>SVG Tiny 1.2</a>
-<a href=https://www.w3.org/TR/SVG/>SVG Full 2.0</a>
+<a href=https://www.w3.org/TR/SVGMobile/>SVG Tiny 1.2</a><br>
+<a href=https://www.w3.org/TR/SVG/>SVG Full 2.0</a><br>
 
 # Supported Elements and Attributes
 
