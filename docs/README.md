@@ -15,6 +15,7 @@ All that is required is to include svg.h into your application.  The svgimage de
 
 # Specifications References
 <a href=https://www.w3.org/TR/SVGMobile/>SVG Tiny 1.2</a><br>
+<a href=https://www.w3.org/Graphics/SVG/1.1/>SVG 1.1</a><br>
 <a href=https://www.w3.org/TR/SVG/>SVG Full 2.0</a><br>
 
 # Supported Elements and Attributes
