@@ -6,6 +6,7 @@ In many cases, there is support for things beyond the profile for the purpose of
 
 # Specifications References
 <a href=https://www.w3.org/TR/SVGMobile/>SVG Tiny 1.2</a>
+<a href=https://www.w3.org/TR/SVG/>SVG 2.0</a>
 
 # Supported Elements and Attributes
 
