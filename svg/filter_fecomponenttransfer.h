@@ -6,6 +6,34 @@
 
 namespace waavs
 {
+    // ---------------------------------
+    // ComponentTransferProgram
+    // 
+    // Encapsulates the details of a feComponentTransfer filter program, 
+    // including the transfer functions for each channel and the color 
+    // space in which to apply them.
+    struct ComponentTransferProgram
+    {
+        ComponentFunc r;
+        ComponentFunc g;
+        ComponentFunc b;
+        ComponentFunc a;
+
+        WGFilterColorSpace colorSpace;
+        bool allIdentity{ false };
+        bool hasU8Lut{ false };
+
+        uint8_t rLut[256];
+        uint8_t gLut[256];
+        uint8_t bLut[256];
+        uint8_t aLut[256];
+    };
+
+    static INLINE bool component_func_is_identity(const ComponentFunc& f) noexcept
+    {
+        return f.type == FILTER_TRANSFER_IDENTITY;
+    }
+
     static float applyTransferFunc(const ComponentFunc& f, float x) noexcept
     {
         x = clamp01f(x);
@@ -61,125 +89,251 @@ namespace waavs
         }
     }
 
-
-    static INLINE void componenttransfer_srgb_row_scalar(
-        uint32_t* dst,
-        const uint32_t* src,
-        int x0, int x1,
-        const ComponentFunc& rF,
-        const ComponentFunc& gF,
-        const ComponentFunc& bF,
-        const ComponentFunc& aF) noexcept
+    // --------------------------------------
+    //
+    static INLINE void build_component_lut_u8(uint8_t lut[256], const ComponentFunc& f) noexcept
     {
-        for (int x = x0; x < x1; ++x)
+        for (uint32_t i = 0; i < 256; ++i)
         {
-            const uint32_t px = src[x];
+            const float x = dequantize0_255(i);
+            const float y = applyTransferFunc(f, x);
+            lut[i] = quantize0_255(y);
+        }
+    }
 
-            const float a_p = dequantize0_255((px >> 24) & 0xFFu);
-            const float r_p = dequantize0_255((px >> 16) & 0xFFu);
-            const float g_p = dequantize0_255((px >> 8) & 0xFFu);
-            const float b_p = dequantize0_255((px >> 0) & 0xFFu);
+    static INLINE void build_component_lut_linearRGB_u8(
+        uint8_t lut[256],
+        const ComponentFunc& f) noexcept
+    {
+        for (uint32_t i = 0; i < 256; ++i)
+        {
+            const float srgbIn = dequantize0_255(i);
+            const float linIn = coloring_srgb_component_to_linear(srgbIn);
+            const float linOut = applyTransferFunc(f, linIn);
+            const float srgbOut = coloring_linear_component_to_srgb(linOut);
 
-            float a = a_p;
-            float r = 0.0f;
-            float g = 0.0f;
-            float b = 0.0f;
+            lut[i] = quantize0_255(srgbOut);
+        }
+    }
 
-            if (a_p > 0.0f)
-            {
-                const float invA = 1.0f / a_p;
-                r = clamp01f(r_p * invA);
-                g = clamp01f(g_p * invA);
-                b = clamp01f(b_p * invA);
-            }
-
-            float rr = applyTransferFunc(rF, r);
-            float gg = applyTransferFunc(gF, g);
-            float bb = applyTransferFunc(bF, b);
-            float aa = applyTransferFunc(aF, a);
-
-            rr = clamp01f(rr);
-            gg = clamp01f(gg);
-            bb = clamp01f(bb);
-            aa = clamp01f(aa);
-
-            rr *= aa;
-            gg *= aa;
-            bb *= aa;
-
-            dst[x] = argb32_pack_u8(
-                quantize0_255(aa),
-                quantize0_255(rr),
-                quantize0_255(gg),
-                quantize0_255(bb));
+    static INLINE void build_component_lut_alpha_u8(
+        uint8_t lut[256],
+        const ComponentFunc& f) noexcept
+    {
+        for (uint32_t i = 0; i < 256; ++i)
+        {
+            lut[i] = quantize0_255(applyTransferFunc(f, dequantize0_255(i)));
         }
     }
 
 
-    static INLINE void componenttransfer_linearRGB_row_scalar(
-        uint32_t* dst,
-        const uint32_t* src,
-        int x0, int x1,
+    // --------------------------------------
+    //
+    static INLINE ComponentTransferProgram prepare_componenttransfer_program(
         const ComponentFunc& rF,
         const ComponentFunc& gF,
         const ComponentFunc& bF,
-        const ComponentFunc& aF) noexcept
+        const ComponentFunc& aF,
+        WGFilterColorSpace cs) noexcept
     {
-        for (int x = x0; x < x1; ++x)
+        ComponentTransferProgram p{};
+        p.r = rF;
+        p.g = gF;
+        p.b = bF;
+        p.a = aF;
+        p.colorSpace = cs;
+        p.hasU8Lut = false;
+
+        p.allIdentity =
+            component_func_is_identity(rF) &&
+            component_func_is_identity(gF) &&
+            component_func_is_identity(bF) &&
+            component_func_is_identity(aF);
+
+        // build LUT
+        if (!p.allIdentity)
         {
-            const uint32_t px = src[x];
-
-            const float a_p = dequantize0_255((px >> 24) & 0xFFu);
-            const float r_p = dequantize0_255((px >> 16) & 0xFFu);
-            const float g_p = dequantize0_255((px >> 8) & 0xFFu);
-            const float b_p = dequantize0_255((px >> 0) & 0xFFu);
-
-            float a = a_p;
-            float r = 0.0f;
-            float g = 0.0f;
-            float b = 0.0f;
-
-            if (a_p > 0.0f)
+            if (cs == WG_FILTER_COLORSPACE_LINEAR_RGB)
             {
-                const float invA = 1.0f / a_p;
-                r = clamp01f(r_p * invA);
-                g = clamp01f(g_p * invA);
-                b = clamp01f(b_p * invA);
+                build_component_lut_linearRGB_u8(p.rLut, rF);
+                build_component_lut_linearRGB_u8(p.gLut, gF);
+                build_component_lut_linearRGB_u8(p.bLut, bF);
+                build_component_lut_alpha_u8(p.aLut, aF);
+            }
+            else 
+            {
+                build_component_lut_u8(p.rLut, rF);
+                build_component_lut_u8(p.gLut, gF);
+                build_component_lut_u8(p.bLut, bF);
+                build_component_lut_u8(p.aLut, aF);
+            }
+            p.hasU8Lut = true;
+
+        }
+
+        return p;
+    }
+}
+
+
+namespace waavs
+{
+#if WAAVS_HAS_NEON
+    static INLINE void componenttransfer_row_u8_lut_neon(
+        uint32_t* dst,
+        const uint32_t* src,
+        int w,
+        const ComponentTransferProgram& p) noexcept
+    {
+        int x = 0;
+
+        alignas(16) uint8_t aBuf[8];
+        alignas(16) uint8_t rBuf[8];
+        alignas(16) uint8_t gBuf[8];
+        alignas(16) uint8_t bBuf[8];
+
+        for (; x + 8 <= w; x += 8)
+        {
+            for (int i = 0; i < 8; ++i)
+            {
+                uint8_t A;
+                uint8_t R;
+                uint8_t G;
+                uint8_t B;
+
+                argb32_unpack_unpremul_u8(src[x + i], A, R, G, B);
+
+                aBuf[i] = p.aLut[A];
+                rBuf[i] = p.rLut[R];
+                gBuf[i] = p.gLut[G];
+                bBuf[i] = p.bLut[B];
             }
 
-            // Convert to linearRGB
-            r = clamp01f(coloring_srgb_component_to_linear(r));
-            g = clamp01f(coloring_srgb_component_to_linear(g));
-            b = clamp01f(coloring_srgb_component_to_linear(b));
+            const uint8x8_t A8 = vld1_u8(aBuf);
+            const uint8x8_t R8 = vld1_u8(rBuf);
+            const uint8x8_t G8 = vld1_u8(gBuf);
+            const uint8x8_t B8 = vld1_u8(bBuf);
 
-            float rr = applyTransferFunc(rF, r);
-            float gg = applyTransferFunc(gF, g);
-            float bb = applyTransferFunc(bF, b);
-            float aa = applyTransferFunc(aF, a);
+            const uint16x8_t A16 = vmovl_u8(A8);
+            const uint16x8_t R16 = vmovl_u8(R8);
+            const uint16x8_t G16 = vmovl_u8(G8);
+            const uint16x8_t B16 = vmovl_u8(B8);
 
-            rr = clamp01f(rr);
-            gg = clamp01f(gg);
-            bb = clamp01f(bb);
-            aa = clamp01f(aa);
+            const uint16x8_t Rp16 = neon_mul255_u16(R16, A16);
+            const uint16x8_t Gp16 = neon_mul255_u16(G16, A16);
+            const uint16x8_t Bp16 = neon_mul255_u16(B16, A16);
 
-            // Convert back to sRGB for storage
-            rr = clamp01f(coloring_linear_component_to_srgb(rr));
-            gg = clamp01f(coloring_linear_component_to_srgb(gg));
-            bb = clamp01f(coloring_linear_component_to_srgb(bb));
+            const uint8x8_t Rp8 = vmovn_u16(Rp16);
+            const uint8x8_t Gp8 = vmovn_u16(Gp16);
+            const uint8x8_t Bp8 = vmovn_u16(Bp16);
 
-            rr *= aa;
-            gg *= aa;
-            bb *= aa;
+            uint8x8x4_t bgra;
+            bgra.val[0] = Bp8;
+            bgra.val[1] = Gp8;
+            bgra.val[2] = Rp8;
+            bgra.val[3] = A8;
 
-            dst[x] = argb32_pack_u8(
-                quantize0_255(aa),
-                quantize0_255(rr),
-                quantize0_255(gg),
-                quantize0_255(bb));
+            vst4_u8(reinterpret_cast<uint8_t*>(dst + x), bgra);
+ /*
+            alignas(16) uint8_t outA[8];
+            alignas(16) uint8_t outR[8];
+            alignas(16) uint8_t outG[8];
+            alignas(16) uint8_t outB[8];
+
+            vst1_u8(outA, A8);
+            vst1_u8(outR, Rp8);
+            vst1_u8(outG, Gp8);
+            vst1_u8(outB, Bp8);
+
+            for (int i = 0; i < 8; ++i)
+            {
+                dst[x + i] = argb32_pack_u8(
+                    outA[i],
+                    outR[i],
+                    outG[i],
+                    outB[i]);
+            }
+*/
+        }
+
+        for (; x < w; ++x)
+        {
+            uint8_t A;
+            uint8_t R;
+            uint8_t G;
+            uint8_t B;
+
+            argb32_unpack_unpremul_u8(src[x], A, R, G, B);
+
+            const uint8_t outA = p.aLut[A];
+
+            dst[x] = argb32_pack_straight_to_premul_u8(
+                outA,
+                p.rLut[R],
+                p.gLut[G],
+                p.bLut[B]);
+        }
+    }
+#endif
+
+    // ----------------------------------------
+    // componenttransfer_row_u8_scalar_lut
+    // Applies the component transfer functions to a single 
+    // row of pixels using precomputed 8-bit LUTs for each channel.
+    //
+    static INLINE void componenttransfer_row_u8_lut_scalar(
+        uint32_t* dst,
+        const uint32_t* src,
+        int w,
+        const ComponentTransferProgram& p) noexcept
+    {
+        for (int x = 0; x < w; ++x)
+        {
+            uint8_t A;
+            uint8_t R;
+            uint8_t G;
+            uint8_t B;
+
+            argb32_unpack_unpremul_u8(src[x], A, R, G, B);
+
+            const uint8_t outA = p.aLut[A];
+
+            if (outA == 0)
+            {
+                dst[x] = 0;
+                continue;
+            }
+
+            dst[x] = argb32_pack_straight_to_premul_u8(
+                outA,
+                p.rLut[R],
+                p.gLut[G],
+                p.bLut[B]);
         }
     }
 
-    INLINE WGResult wg_rect_componenttransfer(
+    // ------------------------------------------
+    //
+
+    static void componenttransfer_row_scalar(
+        uint32_t* dst,
+        const uint32_t* src,
+        int w,
+        const ComponentTransferProgram& p) noexcept
+    {
+        if (p.hasU8Lut)
+        {
+#if WAAVS_HAS_NEON
+            componenttransfer_row_u8_lut_neon(dst, src, w, p);
+#else
+            componenttransfer_row_u8_lut_scalar(dst, src, w, p);
+#endif
+            return;
+        }
+    }
+
+
+    static  WGResult wg_rect_componenttransfer(
         Surface dst,
         const Surface src,
         const WGRectI& area,
@@ -189,6 +343,9 @@ namespace waavs
         const ComponentFunc& aF,
         WGFilterColorSpace cs) noexcept
     {
+        const ComponentTransferProgram program = 
+            prepare_componenttransfer_program(rF, gF, bF, aF, cs);
+       
         Surface_ARGB32 dstInfo = dst.info();
         Surface_ARGB32 srcInfo = src.info();
 
@@ -207,76 +364,21 @@ namespace waavs
         if (Surface_ARGB32_get_subarea(srcInfo, clipped, srcView) != WG_SUCCESS)
             return WG_ERROR_Invalid_Argument;
 
-        const bool useLinear =
-            (cs == WG_FILTER_COLORSPACE_LINEAR_RGB);
-
-        if (useLinear)
+        // If all transfer functions are identity, we can just copy the pixels.
+        if (program.allIdentity)
         {
-            return wg_surface_rows_apply_unary_unchecked(
-                dstView,
-                srcView,
-                [&](uint32_t* d, const uint32_t* s, int w) noexcept
-                {
-                    componenttransfer_linearRGB_row_scalar(
-                        d, s, 0, w, rF, gF, bF, aF);
-                });
+            return wg_blit_copy_unchecked(dstView, srcView);
         }
-        else
-        {
-            return wg_surface_rows_apply_unary_unchecked(
-                dstView,
-                srcView,
-                [&](uint32_t* d, const uint32_t* s, int w) noexcept
-                {
-                    componenttransfer_srgb_row_scalar(
-                        d, s, 0, w, rF, gF, bF, aF);
-                });
-        }
-    }
 
-    /*
-    INLINE WGResult wg_rect_componenttransfer(
-        Surface dst,
-        const Surface src,
-        const WGRectI& area,
-        const ComponentFunc& rF,
-        const ComponentFunc& gF,
-        const ComponentFunc& bF,
-        const ComponentFunc& aF,
-        WGFilterColorSpace cs) noexcept
-    {
-        const int W = (int)src.width();
-        const int H = (int)src.height();
-
-        const int x0 = max(area.x, 0);
-        const int y0 = max(area.y, 0);
-        const int x1 = min(area.x + area.w, W);
-        const int y1 = min(area.y + area.h, H);
-
-        if (x0 >= x1 || y0 >= y1)
-            return WG_SUCCESS;
-
-        const bool useLinear = (cs == WG_FILTER_COLORSPACE_LINEAR_RGB);
-
-        for (int y = y0; y < y1; ++y)
-        {
-            const uint32_t* srow = src.rowPointer(y); // (const uint32_t*)src.rowPointer((size_t)y);
-            uint32_t* drow = dst.rowPointer(y); // (uint32_t*)dst.rowPointer((size_t)y);
-
-            if (useLinear)
+        // apply the row kernel to each row of the surface views
+        return wg_surface_rows_apply_unary_unchecked(
+            dstView,
+            srcView,
+            [&](uint32_t* d, const uint32_t* s, int w) noexcept
             {
-                componenttransfer_linearRGB_row_scalar(
-                    drow, srow, x0, x1, rF, gF, bF, aF);
-            }
-            else
-            {
-                componenttransfer_srgb_row_scalar(
-                    drow, srow, x0, x1, rF, gF, bF, aF);
-            }
-        }
+                componenttransfer_row_scalar(d, s, w, program);
+            });
 
-        return WG_SUCCESS;
     }
-    */
 
 }

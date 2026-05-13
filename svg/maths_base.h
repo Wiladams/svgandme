@@ -281,14 +281,14 @@ namespace waavs
 
     // a fast multiply of two 8-bit values, 
     // returning an 8-bit result, with rounding
-    static INLINE uint32_t mul255_round_u8(uint32_t x, uint32_t a) noexcept
+    static INLINE uint32_t mul255_round_u8(const uint32_t x, const uint32_t a) noexcept
     {
         uint32_t t = x * a + 128u;
         return (t + (t >> 8)) >> 8;
     }
 
 
-    static INLINE uint8_t unmul255_round_u8(uint32_t x, uint32_t divisor) noexcept
+    static INLINE uint8_t unmul255_round_u8(const uint32_t x, const uint32_t divisor) noexcept
     {
         if (divisor == 0)
             return 0;
@@ -296,7 +296,7 @@ namespace waavs
         return clamp0_255_i32((int32_t)((x * 255u + (divisor >> 1)) / divisor));
     }
 
-    static INLINE uint32_t div0_255_rounded_u32(uint32_t x) noexcept
+    static INLINE uint32_t div0_255_rounded_u32(const uint32_t x) noexcept
     {
         return (x + 128u + ((x + 128u) >> 8)) >> 8;
     }
