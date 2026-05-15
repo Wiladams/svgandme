@@ -1288,7 +1288,7 @@ namespace waavs {
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
             BLVar aVar = getVariant(ctx, groot);
-            if (aVar.isNull())
+            if (aVar.is_null())
                 ctx->noStroke();
             else
                 ctx->stroke(aVar);
