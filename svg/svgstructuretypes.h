@@ -65,6 +65,7 @@ namespace waavs {
 
     struct IsolatedSubtreeRequest
     {
+        SVGDrawingState drawingState;
         WGRectD userRect;
         WGRectI pixelRect;
 

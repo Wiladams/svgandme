@@ -227,7 +227,7 @@
     <ClInclude Include="..\..\svg\twobitpu.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\pathprogramexec.h">
+    <ClInclude Include="..\..\svg\pathprogram_exec.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\svgcamera.h">

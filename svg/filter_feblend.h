@@ -186,16 +186,6 @@ namespace waavs
 
     //----------------------------------------------------
 
-    static INLINE void feBlendPRGB32_normal_row(
-        uint32_t* dst,
-        const uint32_t* in1,
-        const uint32_t* in2,
-        int count) noexcept
-    {
-        for (int i = 0; i < count; ++i)
-            dst[i] = composite_over_prgb32_pixel(in1[i], in2[i]);
-    }
-
     static INLINE uint32_t feBlendPRGB32_pixel(FilterBlendMode mode, Pixel_ARGB32 backdrop, Pixel_ARGB32 source) noexcept
     {
         const ColorPRGBA bp = coloring_ARGB32_to_prgba(backdrop);
@@ -209,7 +199,15 @@ namespace waavs
         return coloring_prgba_to_ARGB32(coloring_linear_premultiply(o));
     }
 
-
+    static INLINE void feBlendPRGB32_normal_row(
+        uint32_t* dst,
+        const uint32_t* backdrop,
+        const uint32_t* source,
+        int count) noexcept
+    {
+        for (int i = 0; i < count; ++i)
+            dst[i] = composite_over_prgb32_pixel(source[i], backdrop[i]);
+    }
 }
 
 #if WAAVS_HAS_NEON

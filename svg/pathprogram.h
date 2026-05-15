@@ -160,3 +160,108 @@ namespace waavs
     }
 }
 
+namespace waavs
+{
+    // Only accepts a normalized, flattened PathProgram.
+    // Expected ops:
+    //   OP_MOVETO
+    //   OP_LINETO
+    //   OP_CLOSE
+    //   OP_END
+    //
+    // Curves and arcs should be flattened before calling this.
+    static INLINE bool pathprogram_get_flat_length(
+        const PathProgram& prog,
+        double& outLength) noexcept
+    {
+        outLength = 0.0;
+
+        if (prog.ops.empty())
+            return false;
+
+        double cx = 0.0;
+        double cy = 0.0;
+        double sx = 0.0;
+        double sy = 0.0;
+
+        bool hasCurrentPoint = false;
+        bool hasLength = false;
+
+        size_t ip = 0;
+        size_t ap = 0;
+
+        while (ip < prog.ops.size())
+        {
+            const uint8_t op = prog.ops[ip++];
+
+            if (op == OP_END)
+                break;
+
+            if (op > OP_CLOSE)
+                return false;
+
+            const uint8_t arity = kPathOpArity[op];
+
+            if (ap + arity > prog.args.size())
+                return false;
+
+            const float* a = prog.args.data() + ap;
+            ap += arity;
+
+            switch (op)
+            {
+            case OP_MOVETO:
+                cx = a[0];
+                cy = a[1];
+                sx = cx;
+                sy = cy;
+                hasCurrentPoint = true;
+                break;
+
+            case OP_LINETO:
+            {
+                if (!hasCurrentPoint)
+                    return false;
+
+                const double x = a[0];
+                const double y = a[1];
+
+                const double dx = x - cx;
+                const double dy = y - cy;
+
+                outLength += std::sqrt(dx * dx + dy * dy);
+
+                cx = x;
+                cy = y;
+                hasLength = true;
+            } break;
+
+            case OP_CLOSE:
+            {
+                if (!hasCurrentPoint)
+                    return false;
+
+                const double dx = sx - cx;
+                const double dy = sy - cy;
+
+                outLength += std::sqrt(dx * dx + dy * dy);
+
+                cx = sx;
+                cy = sy;
+                hasLength = true;
+            } break;
+
+            case OP_QUADTO:
+            case OP_CUBICTO:
+            case OP_ARCTO:
+                // This routine intentionally only accepts flattened paths.
+                return false;
+
+            default:
+                return false;
+            }
+        }
+
+        return hasLength;
+    }
+}

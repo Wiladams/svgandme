@@ -192,6 +192,9 @@ namespace waavs
             }
 
             IsolatedSubtreeRequest req{};
+            //SVGDrawigState* ds = ctx->getDrawingState();
+            //if (ds)
+            //    req.drawingState = *ds;
             req.userRect = plan.effectRectUS;
             req.pixelRect = plan.pixelRect;
             req.ctm = maskCtm;

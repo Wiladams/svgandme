@@ -17,6 +17,9 @@ namespace waavs
         BLImage fTargetImage;  // the image we are currently drawing to.
 
     public:
+
+
+
         SVGB2DDriver()
         {
             // Create a context by default, so we have 
@@ -36,14 +39,24 @@ namespace waavs
             return fDrawingContext->target_image();
         }
 
-        void onAttach(Surface& surf, int threadCount) override
+        void onCopyDrawingState(const SVGDrawingState& state) override
+        {
+            IAccessSVGState stateAccessor{ const_cast<SVGDrawingState*>(&state) };
+            stateAccessor.applyToContext(fDrawingContext.get());
+        }
+
+        void onAttach(Surface& surf, int threadCount, const SVGDrawingState *state) override
         {
             BLContextCreateInfo ctxInfo{};
             ctxInfo.thread_count = threadCount;
             fTargetImage.create_from_data((int)surf.info().width, (int)surf.info().height, BL_FORMAT_PRGB32, surf.info().data, surf.info().stride);
 
             BLResult res = fDrawingContext->begin(fTargetImage, ctxInfo);
-            applyToContext(fDrawingContext.get());
+
+            if (state)
+                copyDrawingState(*state);
+            else
+                applyToContext(fDrawingContext.get());
         }
 
 

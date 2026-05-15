@@ -56,14 +56,14 @@ namespace waavs
 
 namespace waavs
 {
-    INLINE int min(const int a, const int b) noexcept { return (a < b) ? a : b; }
-    INLINE int max(const int a, const int b) noexcept { return (a > b) ? a : b; }
-    INLINE int clamp(const int a, const int min_, const int max_) noexcept { return min(max(a, min_), max_); }
+    static constexpr INLINE int min(const int a, const int b) noexcept { return (a < b) ? a : b; }
+    static constexpr INLINE int max(const int a, const int b) noexcept { return (a > b) ? a : b; }
+    static constexpr INLINE int clamp(const int a, const int min_, const int max_) noexcept { return min(max(a, min_), max_); }
 
-    static INLINE int abs(int a) noexcept { return a < 0 ? -a : a; }
-    static INLINE int sign(int a) noexcept { return a < 0 ? -1 : 1; }
-    static INLINE int pow2(int a) noexcept { return 1 << a; }
-    static INLINE void swap(int& a, int& b) noexcept { return std::swap(a, b); };
+    static constexpr INLINE int abs(int a) noexcept { return a < 0 ? -a : a; }
+    static constexpr INLINE int sign(int a) noexcept { return a < 0 ? -1 : 1; }
+    static constexpr INLINE int pow2(int a) noexcept { return 1 << a; }
+    static constexpr INLINE void swap(int& a, int& b) noexcept { return std::swap(a, b); };
 
 }
 
@@ -73,8 +73,8 @@ namespace waavs
 namespace waavs
 {
 
-    INLINE size_t min(const size_t a, const size_t b) noexcept { return (a < b) ? a : b; }
-    INLINE size_t max(const size_t a, const size_t b) noexcept { return (a > b) ? a : b; }
+    static constexpr INLINE size_t min(const size_t a, const size_t b) noexcept { return (a < b) ? a : b; }
+    static constexpr INLINE size_t max(const size_t a, const size_t b) noexcept { return (a > b) ? a : b; }
 }
 
 //=================================
@@ -82,52 +82,49 @@ namespace waavs
 //=================================
 namespace waavs
 {
-    INLINE float max(const float a, const float b) noexcept { return (a > b) ? a : b; }
-    INLINE float min(const float a, const float b) noexcept { return (a < b) ? a : b; }
-    INLINE float clamp(const float a, const float min_, const float max_) noexcept { return min(max(a, min_), max_); }
-    INLINE float abs(float a) noexcept { return a < 0 ? -a : a; }
-    INLINE float sign(const float a) noexcept { return a < 0 ? -1.0f : 1.0f; }
+    static constexpr INLINE float max(const float a, const float b) noexcept { return (a > b) ? a : b; }
+    static constexpr INLINE float min(const float a, const float b) noexcept { return (a < b) ? a : b; }
+    static constexpr INLINE float clamp(const float a, const float min_, const float max_) noexcept { return min(max(a, min_), max_); }
+    static constexpr INLINE float abs(float a) noexcept { return a < 0 ? -a : a; }
+    static constexpr INLINE float sign(const float a) noexcept { return a < 0 ? -1.0f : 1.0f; }
 
 
+    static constexpr INLINE bool isfinite(float a)  noexcept { return std::isfinite(a); }
+    static constexpr INLINE float radiansf(float a)  noexcept { return float(a * 0.017453292519943295); }
+    static constexpr INLINE float degreesf(float a)  noexcept { return float(a * 57.29577951308232); }
+    static constexpr INLINE float lerp(float a, float b, float u) noexcept { return fmaf((b - a), u, a); }
 
-
-
-    INLINE bool isfinite(float a) { return std::isfinite(a); }
-    INLINE constexpr float radiansf(float a) { return float(a * 0.017453292519943295); }
-    INLINE constexpr float degreesf(float a) { return float(a * 57.29577951308232); }
-    INLINE constexpr float lerp(float a, float b, float u) noexcept { return fmaf((b - a), u, a); }
-
-    INLINE  void swap(float& a, float& b) { return std::swap(a, b); }
-    INLINE float smoothStep(float a, float b, float u) {
+    static constexpr INLINE  void swap(float& a, float& b)  noexcept { return std::swap(a, b); }
+    static constexpr INLINE float smoothStep(float a, float b, float u)  noexcept {
         auto t = clamp((u - a) / (b - a), 0.0f, 1.0f);
         return t * t * (3 - 2 * t);
     }
-    INLINE float bias(float a, float bias) {
+    static constexpr INLINE float bias(float a, float bias)  noexcept {
         return a / ((1.0f / bias - 2) * (1.0f - a) + 1);
     }
-    INLINE float gain(float a, float gain)
+    static constexpr INLINE float gain(float a, float gain) noexcept
     {
         return (a < 0.5f) ? bias(a * 2.0f, gain) / 2.0f
             : bias(a * 2.0f - 1, 1.0f - gain) / 2.0f + 0.5f;
     }
 
-    INLINE float map(float x, float olow, float ohigh, float rlow, float rhigh)
+    static constexpr INLINE float map(float x, float olow, float ohigh, float rlow, float rhigh) noexcept
     {
         return rlow + (x - olow) * ((rhigh - rlow) / (ohigh - olow));
     }
 
-    INLINE int iroundf_fast(float v) noexcept
+    static constexpr INLINE int iroundf_fast(float v) noexcept
     {
         return int(v + (v >= 0.0f ? 0.5f : -0.5f));
     }
-    INLINE float floor(float a) { return std::floor(a); }
-    INLINE int floorI(float x) noexcept
+    static constexpr INLINE float floor(float a) noexcept { return std::floor(a); }
+    static constexpr INLINE int floorI(float x) noexcept
     {
         int i = (int)x;
         return (x < (float)i) ? (i - 1) : i;
     }
-    INLINE float ceil(float a) { return std::ceil(a); }
-    INLINE bool isNaN(const float a) { return std::isnan(a); }
+    static constexpr INLINE float ceil(float a) noexcept { return std::ceil(a); }
+    static constexpr INLINE bool isNaN(const float a) noexcept { return std::isnan(a); }
 
 }
 
@@ -136,40 +133,46 @@ namespace waavs
 //=================================
 namespace waavs
 {
-    INLINE double min(const double  a, const double b) noexcept { return a < b ? a : b; }
-    INLINE double max(const double a, const double b) noexcept { return a > b ? a : b; }
-    INLINE double clamp(const double a, const double minValue, const double maxValue) noexcept { return min(max(a, minValue), maxValue); }
-    INLINE double abs(const double a) noexcept { return a < 0 ? -a : a; }
+    static constexpr INLINE double min(const double  a, const double b) noexcept { return a < b ? a : b; }
+    static constexpr INLINE double max(const double a, const double b) noexcept { return a > b ? a : b; }
+    static constexpr INLINE double clamp(const double a, const double minValue, const double maxValue) noexcept { return min(max(a, minValue), maxValue); }
+    static constexpr INLINE double abs(const double a) noexcept { return a < 0 ? -a : a; }
 
-    INLINE double atan(double a) noexcept { return std::atan(a); }
-    INLINE double atan2(double y, double x) noexcept { return std::atan2(y, x); }
+    static constexpr INLINE double atan(double a) noexcept { return std::atan(a); }
+    static constexpr INLINE double atan2(double y, double x) noexcept { return std::atan2(y, x); }
 
-    INLINE double radians(double a) noexcept { return (a * 0.017453292519943295); }
-    INLINE double degrees(double a) noexcept { return (a * 57.29577951308232); }
+    static constexpr INLINE double degrees(double a) noexcept { return (a * 57.29577951308232); }
+    static constexpr INLINE double radians(double a) noexcept { return (a * 0.017453292519943295); }
+    // radians_normalize()
+    // Normalize a radian value to keep it in the range of 0 to 2pi
+    static INLINE double radians_normalize(double rad) noexcept
+    {
+        double v = std::fmod(rad, Pi2);
+        if (v < 0.0)
+        {
+            return v + Pi2;
+        }
+        return v;
+    }
 
-
-    INLINE bool dbl_eq(double a, double b) noexcept {
+    // dbl_eq
+    // Are two double values 'close enough' to each other to call 
+    // them 'equal'
+    static INLINE bool dbl_eq(double a, double b) noexcept {
         const double diff = std::fabs(a - b);
         const double scale = std::max({ 1.0, std::fabs(a), std::fabs(b) });
         return diff <= dbl_eps_scaled * scale;
     }
 
-    INLINE bool almost_zero(double x) noexcept {
+    // almost_zero
+    // Is a double value 'close enough' to zero that it
+    // should just be considered to be zero?
+    static INLINE bool almost_zero(double x) noexcept {
         const double scale = std::max(1.0, std::fabs(x));
         return std::fabs(x) <= dbl_eps * 64.0 * scale;
     }
 
-    // radians_normalize()
-    // Normalize a radian value to keep it in the range of 0 to 2pi
-    static INLINE double radians_normalize(double rad) noexcept
-    {
-        double v = std::fmod(rad, (2.0 * kPi));
-        if (v < 0.0)
-        {
-            return v + (2.0 * kPi);
-        }
-        return v;
-    }
+
 
     // vector_angle()
     // 
@@ -192,7 +195,12 @@ namespace waavs
 
 namespace waavs
 {
-
+#if WAAVS_HAS_NEON
+    static INLINE float32x4_t clamp01q_f32(float32x4_t v) noexcept
+    {
+        return vminq_f32(vmaxq_f32(v, vdupq_n_f32(0.0f)), vdupq_n_f32(1.0f));
+    }
+#endif
 
     static INLINE float clamp01f(const float v) noexcept { return clamp(v, 0.0f, 1.0f); }
     static INLINE double clamp01(double v) noexcept { return clamp(v, 0.0, 1.0); }
@@ -213,6 +221,29 @@ namespace waavs
         return (uint8_t)v;
     }
 
+    // -------------------------------------------
+    // Quantize and Dequantize
+    
+#if WAAVS_HAS_NEON
+    static INLINE uint8x8_t quantize0_255q_u8(float32x4_t lo, float32x4_t hi) noexcept
+    {
+        const float32x4_t scale = vdupq_n_f32(255.0f);
+        const float32x4_t half = vdupq_n_f32(0.5f);
+
+        lo = vaddq_f32(vmulq_f32(clamp01q_f32(lo), scale), half);
+        hi = vaddq_f32(vmulq_f32(clamp01q_f32(hi), scale), half);
+
+        const uint32x4_t ulo = vcvtq_u32_f32(lo);
+        const uint32x4_t uhi = vcvtq_u32_f32(hi);
+
+        const uint16x4_t nlo = vmovn_u32(ulo);
+        const uint16x4_t nhi = vmovn_u32(uhi);
+        const uint16x8_t u16 = vcombine_u16(nlo, nhi);
+
+        return vmovn_u16(u16);
+    }
+#endif
+
     // take value in range [0,1] and convert to uint8_t in range [0,255]
     static INLINE uint8_t quantize0_255(float v) noexcept
     {
@@ -227,12 +258,12 @@ namespace waavs
     }
 
     // Turn a value into a normalized [0..1] float
-    INLINE float dequantize0_255(uint8_t v) noexcept
+    static INLINE float dequantize0_255(uint8_t v) noexcept
     {
         return float(v) * kInv255f;
     }
 
-    INLINE float dequantize0_255(uint32_t v) noexcept
+    static INLINE float dequantize0_255(uint32_t v) noexcept
     {
         return dequantize0_255(uint8_t(v & 0xFFu));
     }

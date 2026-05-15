@@ -1,3 +1,9 @@
+//
+// Test parsing of svg clock values for SMIL animation timing. 
+// This is a standalone test that exercises the parseClockDuration 
+// function with a variety of valid and invalid inputs to ensure 
+// it behaves correctly.
+//
 
 #include "svguiapp.h"
 #include "svganimation.h"

@@ -295,7 +295,7 @@
     <ClInclude Include="..\..\svg\pathattribute_parser.h" />
     <ClInclude Include="..\..\svg\pathprogram.h" />
     <ClInclude Include="..\..\svg\pathprogram_builder.h" />
-    <ClInclude Include="..\..\svg\pathprogramexec.h" />
+    <ClInclude Include="..\..\svg\pathprogram_exec.h" />
     <ClInclude Include="..\..\svg\pathprogram_dasher.h" />
     <ClInclude Include="..\..\svg\pathprogram_flattener.h" />
     <ClInclude Include="..\..\svg\pathsegment.h" />

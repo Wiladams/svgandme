@@ -49,6 +49,7 @@ namespace waavs
     }
 
     // Going from others to u64
+    constexpr uint64_t conv_u8_to_u64(uint8_t v) noexcept { return (uint64_t)v; }
     constexpr uint64_t conv_u16_to_u64(uint16_t v) noexcept { return (uint64_t)v; }
     constexpr uint64_t conv_u32_to_u64(uint32_t v) noexcept { return (uint64_t)v; }
     static INLINE uint64_t conv_f32_to_u64(float f) noexcept

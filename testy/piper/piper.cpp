@@ -1,6 +1,7 @@
 
 #include "morse.h"
 #include "generator.h"
+#include "wggeometry.h"
 
 using namespace waavs;
 
