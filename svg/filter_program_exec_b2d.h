@@ -23,6 +23,7 @@
 #include "filter_fecomponenttransfer.h"
 #include "filter_fecomposite.h"
 #include "filter_fediffuselight.h"
+#include "filter_fedisplacement.h"
 #include "filter_fegaussian.h"
 #include "filter_femorphology.h"
 #include "filter_fespecularlight.h"
@@ -1521,107 +1522,6 @@ namespace waavs {
         // onDisplacementMap
         // Type: binary
         // -------------------------------------------
-        struct DisplacementMapRowParams
-        {
-            const Surface_ARGB32* srcImage;
-            int srcW;
-            int srcH;
-
-            int x0Global;
-            int yGlobal;
-
-            float scaleX;
-            float scaleY;
-            float biasX;
-            float biasY;
-
-            FilterChannelSelector xChannel;
-            FilterChannelSelector yChannel;
-        };
-
-        static INLINE void displacementmap_prgb32_row_scalar(
-            uint32_t* dst,
-            const uint32_t* map,
-            int count,
-            const DisplacementMapRowParams& p) noexcept
-        {
-            for (int i = 0; i < count; ++i)
-            {
-                const int x = p.x0Global + i;
-                const uint32_t mp = map[i];
-
-                float mxv;
-                float myv;
-
-                argb32_premul_unpack_channels_to_straight(
-                    mp,
-                    p.xChannel,
-                    p.yChannel,
-                    mxv,
-                    myv);
-
-                const float fx = float(x) + p.biasX + mxv * p.scaleX;
-                const float fy = float(p.yGlobal) + p.biasY + myv * p.scaleY;
-
-                const int sx = iroundf_fast(fx);
-                const int sy = iroundf_fast(fy);
-
-                if ((unsigned)sx < (unsigned)p.srcW &&
-                    (unsigned)sy < (unsigned)p.srcH)
-                {
-                    const uint32_t* srcRow =
-                        Surface_ARGB32_row_pointer_const(p.srcImage, sy);
-
-                    dst[i] = srcRow[sx];
-                }
-            }
-        }
-
-
-        static INLINE void argb32_premul_unpack_channels_to_straight(
-            uint32_t px,
-            FilterChannelSelector xChannel,
-            FilterChannelSelector yChannel,
-            float& mxv,
-            float& myv) noexcept
-        {
-            // Get the alpha channel as a straight value in [0, 1]
-            const float a = dequantize0_255((px >> 24) & 0xFFu);
-
-            auto decodeOne = [&](FilterChannelSelector ch) noexcept -> float
-                {
-                    switch (ch)
-                    {
-                    default:
-                    case FILTER_CHANNEL_A:
-                        return a;
-
-                    case FILTER_CHANNEL_R:
-                        if (a <= 0.0f)
-                            return 0.0f;
-                        return clamp01f((dequantize0_255((px >> 16) & 0xFFu)) / a);
-
-                    case FILTER_CHANNEL_G:
-                        if (a <= 0.0f)
-                            return 0.0f;
-                        return clamp01((dequantize0_255((px >> 8) & 0xFFu)) / a);
-
-                    case FILTER_CHANNEL_B:
-                        if (a <= 0.0f)
-                            return 0.0f;
-                        return clamp01((dequantize0_255((px >> 0) & 0xFFu)) / a);
-                    }
-                };
-
-            if (xChannel == yChannel)
-            {
-                mxv = myv = decodeOne(xChannel);
-                return;
-            }
-
-            mxv = decodeOne(xChannel);
-            myv = decodeOne(yChannel);
-        }
 
         bool onDisplacementMap(
             const FilterIO& io,
@@ -1636,13 +1536,14 @@ namespace waavs {
 
             Surface in1 = getImage(in1Key);
             Surface in2 = getImage(in2Key);
+
             if (in1.empty() || in2.empty())
                 return false;
 
             if (!outKey)
                 outKey = filter::Filter_Last();
 
-            auto out = createLikeSurfaceHandle(in1);
+            Surface out = createLikeSurfaceHandle(in1);
             if (out.empty())
                 return false;
 
@@ -1667,73 +1568,52 @@ namespace waavs {
             const float scaleX = float(scaleUS * fSpace.sx);
             const float scaleY = float(scaleUS * fSpace.sy);
 
-            const WGRectI area = resolveSubregionPx(subr, in1);
-            if (area.w <= 0 || area.h <= 0)
-            {
-                if (!putImage(outKey, out))
-                    return false;
-
-                setLastKey(outKey);
-                return true;
-            }
-
-            Surface_ARGB32 outInfo = out.info();
-            Surface_ARGB32 mapInfo = in2.info();
             Surface_ARGB32 srcInfo = in1.info();
+            Surface_ARGB32 mapInfo = in2.info();
+            Surface_ARGB32 outInfo = out.info();
 
-            WGRectI clipped = intersection(area, Surface_ARGB32_bounds(&outInfo));
-            clipped = intersection(clipped, Surface_ARGB32_bounds(&mapInfo));
+            WGRectI area = resolveSubregionPx(subr, in1);
+            area = intersection(area, Surface_ARGB32_bounds(&outInfo));
+            area = intersection(area, Surface_ARGB32_bounds(&mapInfo));
 
-            if (clipped.w <= 0 || clipped.h <= 0)
+            if (area.w > 0 && area.h > 0)
             {
-                if (!putImage(outKey, out))
+                Surface_ARGB32 outView{};
+                Surface_ARGB32 mapView{};
+
+                if (Surface_ARGB32_get_subarea(outInfo, area, outView) != WG_SUCCESS)
                     return false;
 
-                setLastKey(outKey);
-                return true;
-            }
+                if (Surface_ARGB32_get_subarea(mapInfo, area, mapView) != WG_SUCCESS)
+                    return false;
 
-            Surface_ARGB32 outView{};
-            Surface_ARGB32 mapView{};
+                DisplacementMapProgram prog{};
+                prog.src = &srcInfo;
+                prog.srcW = srcInfo.width;
+                prog.srcH = srcInfo.height;
+                prog.x0 = area.x;
+                prog.y0 = area.y;
+                prog.scaleX = scaleX;
+                prog.scaleY = scaleY;
+                prog.xChannel = xChannel;
+                prog.yChannel = yChannel;
 
-            if (Surface_ARGB32_get_subarea(outInfo, clipped, outView) != WG_SUCCESS)
-                return false;
-
-            if (Surface_ARGB32_get_subarea(mapInfo, clipped, mapView) != WG_SUCCESS)
-                return false;
-
-            const float biasX = -0.5f * scaleX;
-            const float biasY = -0.5f * scaleY;
-
-            WGResult res = wg_surface_rows_apply_unary_unchecked(
-                outView,
-                mapView,
-                [&](uint32_t* d, const uint32_t* mapRow, int w) noexcept
+                for (int row = 0; row < area.h; ++row)
                 {
-                    const ptrdiff_t rowOffsetBytes =
-                        reinterpret_cast<const uint8_t*>(mapRow) - mapView.data;
+                    uint32_t* dstRow =
+                        Surface_ARGB32_row_pointer(&outView, row);
 
-                    const int localY =
-                        int(rowOffsetBytes / mapView.stride);
+                    const uint32_t* mapRow =
+                        Surface_ARGB32_row_pointer_const(&mapView, row);
 
-                    DisplacementMapRowParams p{};
-                    p.srcImage = &srcInfo;
-                    p.srcW = srcInfo.width;
-                    p.srcH = srcInfo.height;
-                    p.x0Global = clipped.x;
-                    p.yGlobal = clipped.y + localY;
-                    p.scaleX = scaleX;
-                    p.scaleY = scaleY;
-                    p.biasX = biasX;
-                    p.biasY = biasY;
-                    p.xChannel = xChannel;
-                    p.yChannel = yChannel;
-
-                    displacementmap_prgb32_row_scalar(d, mapRow, w, p);
-                });
-
-            if (res != WG_SUCCESS)
-                return false;
+                    displacementmap_prgb32_row_scalar(
+                        dstRow,
+                        mapRow,
+                        area.w,
+                        prog,
+                        area.y + row);
+                }
+            }
 
             if (!putImage(outKey, out))
                 return false;
@@ -1741,7 +1621,6 @@ namespace waavs {
             setLastKey(outKey);
             return true;
         }
-
 
 
 

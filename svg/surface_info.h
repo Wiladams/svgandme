@@ -94,5 +94,33 @@ namespace waavs
         return WG_SUCCESS;
     }
 
+    // Surface_ARGB32_nearest_pixel()
+    // 
+    // Given float coordinates, find the nearest pixel to
+    // the given coordinates
+    static INLINE uint32_t Surface_ARGB32_nearest_pixel(const Surface_ARGB32* src, float fx, float fy) noexcept
+    {
+        const int sx = iroundf_fast(fx);
+        const int sy = iroundf_fast(fy);
 
+        if ((unsigned)sx >= (unsigned)src->width ||
+            (unsigned)sy >= (unsigned)src->height)
+        {
+            return 0;
+        }
+
+        const uint32_t* row = Surface_ARGB32_row_pointer_const(src, sy);
+        return row[sx];
+    }
+
+    // Surface_ARGB32_sample()
+    // Sample the surface at the given normalized coordinates (u, v), where
+    // u and v are in the range [0, 1].  This function will perform
+    static INLINE uint32_t Surface_ARGB32_sample(const Surface_ARGB32* src, float u, float v, uint32_t mode) noexcept
+    {
+        // For now, just do nearest sampling.  TODO: add bilinear or other filtering modes.
+        const float fx = u * float(src->width);
+        const float fy = v * float(src->height);
+        return Surface_ARGB32_nearest_pixel(src, fx, fy);
+    }
 }

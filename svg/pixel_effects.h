@@ -5,9 +5,15 @@
 #include "blend2d_connect.h"
 #include "svgb2ddriver.h"
 
-
+//
+// A standalone single function application of SVG filtering
+//
 namespace waavs
 {
+    static WGResult applyPixelEffects(const ByteSpan& pspan,
+        BLImage& srcBitmap, 
+        BLImage& dstBitmap) noexcept;
+
     static std::shared_ptr<FilterProgramStream> createPixelEffects(ByteSpan pspan) noexcept
     {
         // Create an XmlPull from the span,

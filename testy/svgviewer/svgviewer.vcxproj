@@ -255,6 +255,7 @@
     <ClInclude Include="..\..\svg\filter_exec.h" />
     <ClInclude Include="..\..\svg\filter_fecomponenttransfer.h" />
     <ClInclude Include="..\..\svg\filter_fediffuselight.h" />
+    <ClInclude Include="..\..\svg\filter_fedisplacement.h" />
     <ClInclude Include="..\..\svg\filter_feflood.h" />
     <ClInclude Include="..\..\svg\filter_fespecularlight.h" />
     <ClInclude Include="..\..\svg\filter_primitive_fevoronoi.h" />
@@ -308,6 +309,7 @@
     <ClInclude Include="..\..\svg\pixeling_blend.h" />
     <ClInclude Include="..\..\svg\pixeling_composite.h" />
     <ClInclude Include="..\..\svg\pixeling_image.h" />
+    <ClInclude Include="..\..\svg\pixel_program.h" />
     <ClInclude Include="..\..\svg\pubsub.h" />
     <ClInclude Include="..\..\svg\scanning.h" />
     <ClInclude Include="..\..\svg\smildatatypes.h" />

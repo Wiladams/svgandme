@@ -8,7 +8,6 @@
 namespace waavs
 {
 
-
     struct ColorMatrixPrepared
     {
         WGFilterColorSpace colorSpace;
@@ -17,12 +16,7 @@ namespace waavs
         bool isIdentity;
     };
 
-    /*
-    static INLINE bool colorMatrixTypeHasMatrix(FilterColorMatrixType t) noexcept
-    {
-        return t == FILTER_COLOR_MATRIX_MATRIX;
-    }
-    */
+
 
     // ------------------------------------------------------------
     // LinearRGB path: convert to linear, apply matrix in float, convert back to sRGB
