@@ -88,7 +88,7 @@ namespace waavs
             setIsStructural(true);
             setIsVisible(false); // never directly visible; only via paint server
 
-            fPattern.setExtendMode(BL_EXTEND_MODE_REPEAT);
+            fPattern.set_extend_mode(BL_EXTEND_MODE_REPEAT);
         }
 
 

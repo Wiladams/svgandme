@@ -3,7 +3,7 @@
 #include "definitions.h"
 
 #include "pixeling.h"
-#include "blend2d.h"
+#include <blend2d/blend2d.h>
 
 
 namespace waavs
@@ -105,11 +105,11 @@ namespace waavs
                 return false;
 
             BLImageData data;
-            br = fImage.getData(& data);
+            br = fImage.get_data(& data);
             if (br != BLResultCode::BL_SUCCESS)
                 return false;
 
-            fData = (uint8_t*)data.pixelData;
+            fData = (uint8_t*)data.pixel_data;
             fStride = data.stride;
 
             return true;
@@ -125,7 +125,7 @@ namespace waavs
             fOrientation = o;
 
             // Create blend2d image
-            BLResult br = fImage.createFromData(static_cast<int>(w), static_cast<int>(h), BL_FORMAT_PRGB32, fData, fStride);
+            BLResult br = fImage.create_from_data(static_cast<int>(w), static_cast<int>(h), BL_FORMAT_PRGB32, fData, fStride);
 
             //printf("Result createfromData(): %d\n", br);
 

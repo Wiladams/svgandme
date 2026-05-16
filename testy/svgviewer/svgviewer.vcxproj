@@ -103,7 +103,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\;..\..\;..\..\blend2d;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\;..\..\;..\..\3rdparty/blend2d;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -125,7 +125,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\;..\..\;..\..\blend2d;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\;..\..\;..\..\3rdparty/blend2d;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -147,7 +147,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\;..\..\;..\..\blend2d;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\;..\..\;..\..\3rdparty/blend2d;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -167,7 +167,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\;..\..\;..\..\blend2d;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\;..\..\3rdparty;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -177,7 +177,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\lib\ARM64\Debug;..\..\3rdparty\ffmpeg\lib\Debug;</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\3rdpartty\blend2d\lib\ARM64\Debug;..\..\3rdparty\ffmpeg\lib\Debug;</AdditionalLibraryDirectories>
       <Profile>false</Profile>
     </Link>
   </ItemDefinitionGroup>
@@ -189,7 +189,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\;..\..\;..\..\blend2d;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\;..\..\;..\..\3rdparty/blend2d;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -213,7 +213,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\;..\..\;..\..\blend2d;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\;..\..\;..\..\3rdparty;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -225,7 +225,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\lib\ARM64\Release;..\..\3rdparty\ffmpeg\lib\Release;</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\3rdparty\blend2d\lib\ARM64\Release;..\..\3rdparty\ffmpeg\lib\Release;</AdditionalLibraryDirectories>
       <Profile>false</Profile>
     </Link>
   </ItemDefinitionGroup>

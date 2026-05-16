@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <string>
 
-#include "blend2d.h"
+#include <blend2d/blend2d.h>
 #include "bspan.h"
 #include "coloring.h"
 

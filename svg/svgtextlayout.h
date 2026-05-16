@@ -22,9 +22,9 @@ namespace waavs
             BLGlyphBuffer gb;
             BLFontMetrics fm = font.metrics();
 
-            gb.setUtf8Text(txt.data(), txt.size());
+            gb.set_utf8_text(txt.data(), txt.size());
             font.shape(gb);
-            font.getTextMetrics(gb, tm);
+            font.get_text_metrics(gb, tm);
 
 
             // if we're hit testing, use the following

@@ -11,7 +11,7 @@
 #include <string>
 
 
-#include "blend2d.h"
+#include <blend2d/blend2d.h>
 #include "maths.h"
 #include "bspan.h"
 
@@ -86,14 +86,14 @@ namespace waavs {
             //printf("FontHandler.loadFontFace(%-40s) \n", filename);
 
             //BLResult err = ff.createFromFile(filename, BL_FILE_READ_MMAP_AVOID_SMALL);
-            BLResult err = ff.createFromFile(filename, BL_FILE_READ_MMAP_ENABLED);
+            BLResult err = ff.create_from_file(filename, BL_FILE_READ_MMAP_ENABLED);
 
             if (err == BL_SUCCESS)
             {
                 //printf("adding: '%-25s'  LastResort: %d\n", ff.familyName().data(), ff.isLastResortFont());
 
-                fFontManager.addFace(ff);
-                std::string familyName = std::string(ff.familyName().data());
+                fFontManager.add_face(ff);
+                std::string familyName = std::string(ff.family_name().data());
                 fFamilyNames.push_back(familyName);
 
                 return BL_SUCCESS;
@@ -178,20 +178,20 @@ namespace waavs {
                     (name == "Helvetica") ||
                     (name == "sans-serif")) 
                 {
-                    success = (BL_SUCCESS == fFontManager.queryFace("Arial", qprops, face));
+                    success = (BL_SUCCESS == fFontManager.query_face("Arial", qprops, face));
                 }
 				else if ((name == "Serif") ||
 					(name == "serif")) {
-					success = (BL_SUCCESS == fFontManager.queryFace("Georgia", qprops, face));  // Times New Roman, Garamond, Georgia
+					success = (BL_SUCCESS == fFontManager.query_face("Georgia", qprops, face));  // Times New Roman, Garamond, Georgia
 				}
 				else if ((name == "Mono") ||
 					(name == "mono") ||
 					(name == "monospace")) {
-					success = (BL_SUCCESS == fFontManager.queryFace("Consolas", qprops, face));
+					success = (BL_SUCCESS == fFontManager.query_face("Consolas", qprops, face));
 				}
                 else {
                     familyNameView.reset((char*)name.fStart, name.size());
-                    success = (BL_SUCCESS == fFontManager.queryFace(familyNameView, qprops, face));
+                    success = (BL_SUCCESS == fFontManager.query_face(familyNameView, qprops, face));
                 }
 
 				if (success)
@@ -203,7 +203,7 @@ namespace waavs {
             }
 
             // last chance, nothing else worked, so try loading our default, Arial
-            bool success = (BL_SUCCESS == fFontManager.queryFace("Arial", qprops, face));
+            bool success = (BL_SUCCESS == fFontManager.query_face("Arial", qprops, face));
             
 			return success;
 		}
@@ -232,9 +232,9 @@ namespace waavs {
             // Now that we've gotten a face, we need to fill in the font
             // object to be the size we want
             float fsize = getAdjustedFontSize(sz);
-			blFontReset(&font);
+			bl_font_reset(&font);
             
-            success = (BL_SUCCESS == blFontCreateFromFace(&font, &face, fsize));
+            success = (BL_SUCCESS == bl_font_create_from_face(&font, &face, fsize));
             
 			return success;
         }
@@ -253,11 +253,11 @@ namespace waavs {
             
             BLTextMetrics tm{};
             BLGlyphBuffer gb;
-            gb.setUtf8Text(txt.fStart, txt.size());
+            gb.set_utf8_text(txt.fStart, txt.size());
             afont.shape(gb);
-            afont.getTextMetrics(gb, tm);
+            afont.get_text_metrics(gb, tm);
 
-            float cx = (float)(tm.boundingBox.x1 - tm.boundingBox.x0);
+            float cx = (float)(tm.bounding_box.x1 - tm.bounding_box.x0);
             float cy = afont.size();
 
             return BLPoint( cx, cy );
@@ -298,7 +298,7 @@ namespace waavs {
 
         static double capHeight(const BLFont& font) noexcept
         {
-            return font.metrics().capHeight;
+            return font.metrics().cap_height;
         }
 
         static double emHeight(const BLFont& font) noexcept
@@ -309,7 +309,7 @@ namespace waavs {
 
         static double exHeight(const BLFont& font) noexcept
         {
-            return font.metrics().xHeight;
+            return font.metrics().x_height;
         }
     };
 

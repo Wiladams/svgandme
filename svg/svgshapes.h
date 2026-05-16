@@ -219,7 +219,7 @@ namespace waavs
            auto& path = getFillPath();
 
            BLBox pathBox{};
-           path.getBoundingBox(&pathBox);
+           path.get_bounding_box(&pathBox);
 
            WGRectD bbox = { pathBox.x0, pathBox.y0, pathBox.x1 - pathBox.x0, pathBox.y1 - pathBox.y0 };
 
@@ -233,7 +233,7 @@ namespace waavs
             auto& path = getFillPath();
 
             BLBox pathBox{};
-            path.getBoundingBox(&pathBox);
+            path.get_bounding_box(&pathBox);
 
             WGRectD bbox = { pathBox.x0, pathBox.y0, pathBox.x1 - pathBox.x0, pathBox.y1 - pathBox.y0 };
 
@@ -249,7 +249,7 @@ namespace waavs
             // BUGBUG - should use actual fill rule
             auto& path = getFillPath();
 
-            BLHitTest ahit = path.hitTest(localPoint, BLFillRule::BL_FILL_RULE_EVEN_ODD);
+            BLHitTest ahit = path.hit_test(localPoint, BLFillRule::BL_FILL_RULE_EVEN_ODD);
             
             return (ahit == BLHitTest::BL_HIT_TEST_IN);
         }

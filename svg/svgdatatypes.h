@@ -5,7 +5,7 @@
 #include <cstddef>		// nullptr_t, ptrdiff_t, size_t
 
 
-#include "blend2d.h"
+#include <blend2d/blend2d.h>
 
 #include "bspan.h"
 #include "membuff.h"
@@ -316,7 +316,7 @@ namespace waavs
         {
             if (!ctx.font) return ctx.origin + v; // fallback policy
             const auto& fm = ctx.font->metrics();
-            const double ex = fm.xHeight;         // best available approximation
+            const double ex = fm.x_height;         // best available approximation
             return ctx.origin + (v * ex);
         }
         }
@@ -501,7 +501,7 @@ namespace waavs
             if (font != nullptr)
             {
                 const auto& fm = font->metrics();
-                tmp.fValue = inVal.value() * fm.xHeight;
+                tmp.fValue = inVal.value() * fm.x_height;
                 tmp.fIsPercent = false;
                 break;
             }
@@ -1120,7 +1120,7 @@ namespace waavs
                         case SVG_LENGTHTYPE_CM:			return ((fValue / 2.54f) * dpi);
                         case SVG_LENGTHTYPE_IN:			return (fValue * dpi);
                         case SVG_LENGTHTYPE_EMS:		return (fValue * emHeight);                 // length should represent 'em' height of font                 
-                        case SVG_LENGTHTYPE_EXS:		return (fValue * fm.xHeight);          // x-height, fontHeight * 0.52., assuming length is font height
+                        case SVG_LENGTHTYPE_EXS:		return (fValue * fm.x_height);          // x-height, fontHeight * 0.52., assuming length is font height
                         case SVG_LENGTHTYPE_PERCENTAGE:
                             return orig + ((fValue / 100.0f) * length);
                             break;

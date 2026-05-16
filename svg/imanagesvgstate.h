@@ -4,7 +4,7 @@
 #include <memory>
 #include <vector>
 
-#include "blend2d.h"
+#include <blend2d/blend2d.h>
 #include "fonthandler.h"
 #include "svgenums.h"
 #include "svgdrawingstate.h"

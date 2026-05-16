@@ -153,7 +153,7 @@ namespace waavs {
                 copy.bits[i] = copy.bits[i] ? 0 : 1;
             }
 
-            return std::move(copy);
+            return copy;
         }
 
         charset& invert() noexcept

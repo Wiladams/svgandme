@@ -145,7 +145,7 @@ namespace waavs {
         SVGGradient(IAmGroot* )
             :SVGGraphicsElement()
         {
-            fGradient.setExtendMode(BL_EXTEND_MODE_PAD);
+            fGradient.set_extend_mode(BL_EXTEND_MODE_PAD);
             setIsStructural(true);
             setIsVisible(false);
             setNeedsBinding(true);
@@ -217,10 +217,10 @@ namespace waavs {
             // we don't have any stops already.
             if (fGradient.size() == 0)
             {
-                auto stopsView = elem->fGradient.stopsView();
+                auto stopsView = elem->fGradient.stops_view();
                 if (stopsView.size > 0)
                 {
-                    fGradient.assignStops(stopsView.data, stopsView.size);
+                    fGradient.assign_stops(stopsView.data, stopsView.size);
                 }
             }
 
@@ -310,7 +310,7 @@ namespace waavs {
             auto offset = stopnode.offset();
             auto acolor = stopnode.color();
 
-            fGradient.addStop(offset, acolor);
+            fGradient.add_stop(offset, acolor);
 
         }
 
@@ -318,7 +318,7 @@ namespace waavs {
         {
             // spreadMethod / gradientUnits / gradientTransform
             if (getEnumValue(SVGSpreadMethod, getAttribute(svgattr::spreadMethod()), (uint32_t&)fSpreadMethod))
-                fGradient.setExtendMode((BLExtendMode)fSpreadMethod);
+                fGradient.set_extend_mode((BLExtendMode)fSpreadMethod);
 
             getEnumValue(SVGSpaceUnits, getAttribute(svgattr::gradientUnits()), (uint32_t&)fGradientUnits);
 
@@ -358,7 +358,7 @@ namespace waavs {
 
         SVGLinearGradient(IAmGroot* aroot) :SVGGradient(aroot)
         {
-            fGradient.setType(BL_GRADIENT_TYPE_LINEAR);
+            fGradient.set_type(BL_GRADIENT_TYPE_LINEAR);
         }
 
         // getVariant()
@@ -438,12 +438,12 @@ namespace waavs {
                 xform = composeGradientTransformBBox(objFrame, fHasGradientTransform, fGradientTransform);
             }
 
-            grad.setType(BL_GRADIENT_TYPE_LINEAR);
-            grad.setExtendMode(fGradient.extendMode());
-            grad.setValues(values);
-            grad.setTransform(blMatrix_from_WGMatrix3x3(xform));
-            grad.resetStops();
-            grad.assignStops(fGradient.stopsView());
+            grad.set_type(BL_GRADIENT_TYPE_LINEAR);
+            grad.set_extend_mode(fGradient.extend_mode());
+            grad.set_values(values);
+            grad.set_transform(blMatrix_from_WGMatrix3x3(xform));
+            grad.reset_stops();
+            grad.assign_stops(fGradient.stops_view());
 
             return true;
         }
@@ -537,8 +537,8 @@ namespace waavs {
                 xform = composeGradientTransformBBox(objFrame, fHasGradientTransform, fGradientTransform);
             }
 
-            fGradient.setValues(values);
-            fGradient.setTransform(blMatrix_from_WGMatrix3x3(xform));
+            fGradient.set_values(values);
+            fGradient.set_transform(blMatrix_from_WGMatrix3x3(xform));
             fGradientVar = fGradient;
         }
 
@@ -604,7 +604,7 @@ namespace waavs {
 
         SVGRadialGradient(IAmGroot* groot) :SVGGradient(groot)
         {
-            fGradient.setType(BL_GRADIENT_TYPE_RADIAL);
+            fGradient.set_type(BL_GRADIENT_TYPE_RADIAL);
         }
 
         // getVariant()
@@ -632,8 +632,8 @@ namespace waavs {
         {
             double dpi = groot ? groot->dpi() : 96.0;
 
-            grad.setType(BL_GRADIENT_TYPE_RADIAL);
-            grad.setExtendMode(fGradient.extendMode());
+            grad.set_type(BL_GRADIENT_TYPE_RADIAL);
+            grad.set_extend_mode(fGradient.extend_mode());
             
             // Start setting up the gradient
             BLRadialGradientValues values{};
@@ -706,11 +706,11 @@ namespace waavs {
 
             //clampFocalPointToOuterCircle(values);
 
-            grad.setValues(values);
-            grad.resetStops();
-            grad.assignStops(fGradient.stopsView());
+            grad.set_values(values);
+            grad.reset_stops();
+            grad.assign_stops(fGradient.stops_view());
             if (fHasGradientTransform)
-                grad.setTransform(blMatrix_from_WGMatrix3x3(fGradientTransform));
+                grad.set_transform(blMatrix_from_WGMatrix3x3(fGradientTransform));
 
             return true;
         }
@@ -836,10 +836,10 @@ namespace waavs {
                 //clampFocalPointToOuterCircle(values);
             }
             
-            fGradient.setValues(values);
+            fGradient.set_values(values);
             
             if (fHasGradientTransform) {
-                fGradient.setTransform(blMatrix_from_WGMatrix3x3(fGradientTransform));
+                fGradient.set_transform(blMatrix_from_WGMatrix3x3(fGradientTransform));
             }
             
             fGradientVar = fGradient;
@@ -884,7 +884,7 @@ namespace waavs {
         SVGConicGradient(IAmGroot* aroot) 
             :SVGGradient(aroot)
         {
-            fGradient.setType(BLGradientType::BL_GRADIENT_TYPE_CONIC);
+            fGradient.set_type(BLGradientType::BL_GRADIENT_TYPE_CONIC);
         }
 
         // Attributes to inherit
@@ -950,9 +950,9 @@ namespace waavs {
             
             fHasGradientTransform = parseTransform(getAttribute(svgattr::gradientTransform()), fGradientTransform);
 
-            fGradient.setValues(values);
+            fGradient.set_values(values);
             if (fHasGradientTransform) {
-                fGradient.setTransform(blMatrix_from_WGMatrix3x3(fGradientTransform));
+                fGradient.set_transform(blMatrix_from_WGMatrix3x3(fGradientTransform));
             }
             
             fGradientVar = fGradient;

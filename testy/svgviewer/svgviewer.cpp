@@ -1,4 +1,3 @@
-#pragma comment(lib, "blend2d.lib")
 
 #include "app/apphost.h"
 

@@ -491,7 +491,7 @@ namespace waavs
             double w = (double)px.width();
             double h = (double)px.height();
 
-            BLMatrix2D pattMatrix = BLMatrix2D::makeIdentity();
+            BLMatrix2D pattMatrix = BLMatrix2D::make_identity();
 
 
             // displayUnits - Object bounding box, user space, or physical pixels (default)
@@ -540,12 +540,10 @@ namespace waavs
             // set a pattern transform
             // to accomodate where it's going to be displayed
             fPatternImage = blImageFromSurface(fSource->pixels());
-            fPatternForVariant.setImage(fPatternImage);
-            fPatternForVariant.setTransform(pattMatrix);
-
+            fPatternForVariant.set_image(fPatternImage);
+            fPatternForVariant.set_transform(pattMatrix);
 
             fVar = fPatternForVariant;
-
         }
 
 

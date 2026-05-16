@@ -21,10 +21,11 @@
 
 #include <unordered_map>
 
-#include "bspan.h"
-#include "blend2d.h"
-#include "wsenum.h"
 
+#include <blend2d/blend2d.h>
+
+#include "wsenum.h"
+#include "bspan.h"
 
 
 namespace waavs {

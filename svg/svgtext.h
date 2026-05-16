@@ -365,7 +365,7 @@ namespace waavs {
 
         // 1) Shape
         BLGlyphBuffer gb;
-        gb.setUtf8Text(txt.data(), txt.size());
+        gb.set_utf8_text(txt.data(), txt.size());
         font.shape(gb);
 
         // 2) Resolve baseline origin using your existing alignment policy
@@ -376,7 +376,7 @@ namespace waavs {
         wg_rectD_union(ioBBox, pRect);
 
         // 3) Access glyph run
-        BLGlyphRun grun = gb.glyphRun();
+        BLGlyphRun grun = gb.glyph_run();
         const size_t n = size_t(grun.size);
         if (!n) {
             ctx->textCursor({ pRect.x, pRect.y });
@@ -384,10 +384,10 @@ namespace waavs {
         }
 
         // Ensure placements exist
-        if (!grun.placementData) {
-            font.positionGlyphs(gb);
-            grun = gb.glyphRun();
-            if (!grun.placementData) {
+        if (!grun.placement_data) {
+            font.position_glyphs(gb);
+            grun = gb.glyph_run();
+            if (!grun.placement_data) {
                 ctx->fillText(txt, pRect.x, pRect.y);
                 ctx->textCursor({ pRect.x + pRect.w, pRect.y });
                 return;
@@ -396,7 +396,7 @@ namespace waavs {
 
         // Mutable view of placements
         BLGlyphPlacement* pl = const_cast<BLGlyphPlacement*>(
-            static_cast<const BLGlyphPlacement*>(grun.placementData));
+            static_cast<const BLGlyphPlacement*>(grun.placement_data));
 
         // 4) Consume SVG dx/dy/rotate streams
         //const bool hasPS = ctx->hasTextPosStream();
@@ -492,8 +492,8 @@ namespace waavs {
 
                 // 1-glyph run view.
                 BLGlyphRun one = grun;
-                one.glyphData = (uint32_t*)grun.glyphData + i;
-                one.placementData = &onePl;
+                one.glyph_data = (uint32_t*)grun.glyph_data + i;
+                one.placement_data = &onePl;
                 one.size = 1;
 
                 // convert absX/absY (placement space) to user space using font matrix
@@ -529,7 +529,7 @@ namespace waavs {
         // Blend2D advance does NOT know about your manual dx/dy mutations reliably.
         // So add the final cumulative dx/dy yourself.
         BLTextMetrics tm;
-        font.getTextMetrics(gb, tm);
+        font.get_text_metrics(gb, tm);
 
         const double endX = originX + tm.advance.x + cumDxUser;
         const double endY = originY + tm.advance.y + cumDyUser;
