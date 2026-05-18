@@ -76,6 +76,240 @@ namespace waavs
 
 }
 
+namespace waavs
+{
+    // Color decode using Lookup Tables
+    // This data structure supports two forms of conversion
+    // The unpremul8 LUT converts from premultiplied ARGB8 (alpha + premul channel)
+    // This gives you straight sRGB u8 values directly, which 
+    // can then be dequantized to linear float using the srgb8ToLinear LUT
+    //
+    // If you just want convert to sRGB, you can dequantize the premultiplied ARGB8 
+    // using the unpremul8 LUT
+    struct ColorCodecLUT
+    {
+        // Decode
+        uint8_t unpremul8[256][256];      // [alpha][premulChannel] -> straight sRGB u8
+        float srgb8ToLinear[256];         // straight sRGB u8 -> linear float
+        float alpha8ToFloat[256];         // alpha u8 -> float
+
+        // Encode
+        uint8_t linearToSrgb8[4096];
+    };
+
+    // make_color_decode_lut
+    static INLINE ColorCodecLUT make_color_decode_lut() noexcept
+    {
+        ColorCodecLUT lut{};
+
+        for (int a = 0; a < 256; ++a)
+        {
+            // alpha8ToFloat is just a dequantization of the alpha channel, 
+            // which is needed for unpremultiplication
+            lut.alpha8ToFloat[a] = dequantize0_255(uint8_t(a));
+
+            // unpremul8 is a LUT that takes a premultiplied alpha8 
+            // and a premultiplied color channel 8-bit value, and 
+            // gives you the straight sRGB 8-bit value out
+            for (int c = 0; c < 256; ++c)
+            {
+                if (a == 0)
+                {
+                    lut.unpremul8[a][c] = 0;
+                }
+                else
+                {
+                    // Recover straight sRGB component:
+                    // c/255 divided by a/255 == c/a.
+                    const float straight = clamp01(float(c) / float(a));
+                    lut.unpremul8[a][c] = quantize0_255(straight);
+                }
+            }
+
+
+        }
+
+        // srgb8ToLinear is a LUT that takes a straight sRGB 8-bit value, 
+        // dequantizes it to 0..1, and converts to linear float
+        for (int c = 0; c < 256; ++c)
+        {
+            lut.srgb8ToLinear[c] =
+                coloring_srgb_component_to_linear(dequantize0_255(uint8_t(c)));
+        }
+
+        // Build the linearToSrgb8 LUT for encoding linear float to sRGB u8
+        for (int l = 0; l < 4096; ++l)
+        {
+            const float linear = float(l) / 4095.0f;
+            const float srgb = coloring_linear_component_to_srgb(linear);
+            lut.linearToSrgb8[l] = quantize0_255(srgb);
+        }
+
+
+        return lut;
+    }
+
+    // color_decode_lut
+    //
+    // Returns a reference to a static LUT that can be used for color 
+    // decoding operations.
+    static INLINE const ColorCodecLUT& color_codec_lut() noexcept
+    {
+        static const ColorCodecLUT lut = make_color_decode_lut();
+        return lut;
+    }
+
+    static INLINE float coloring_premul_srgb8_to_linear_lut(
+        const uint8_t a,
+        const uint8_t c) noexcept
+    {
+        const ColorCodecLUT& lut = color_codec_lut();
+
+        if (a == 0)
+            return 0.0f;
+
+        if (a == 255)
+            return lut.srgb8ToLinear[c];
+
+        return lut.srgb8ToLinear[lut.unpremul8[a][c]];
+    }
+
+    static INLINE uint8_t linear_float_to_srgb8_lut(const float v, const ColorCodecLUT& lut) noexcept
+    {
+        constexpr float kScale = 4095.0f;
+
+        const float c = clamp01f(v);
+        const int idx = int(c * kScale + 0.5f);
+
+        return lut.linearToSrgb8[idx];
+    }
+
+    // ---------------------------------------
+    // Use LUT to convert between color spaces
+    
+    // Pixel_ARGB32_to_colorlinear_lut
+    //
+    // Convert a premultiplied ARGB32 pixel to a linear ColorLinear using the LUT
+    //
+    static INLINE ColorLinear Pixel_ARGB32_to_ColorLinear_lut(const Pixel_ARGB32 px, const ColorCodecLUT& lut) noexcept
+    {
+        uint8_t a, r, g, b;
+        argb32_unpack_u8(px, a, r, g, b);
+
+        if (a == 0)
+            return ColorLinear{ 0, 0, 0, 0 };
+
+        if (a == 255)
+        {
+            return ColorLinear{
+                lut.srgb8ToLinear[r],
+                lut.srgb8ToLinear[g],
+                lut.srgb8ToLinear[b],
+                1.0f
+            };
+        }
+
+        return ColorLinear{
+            lut.srgb8ToLinear[lut.unpremul8[a][r]],
+            lut.srgb8ToLinear[lut.unpremul8[a][g]],
+            lut.srgb8ToLinear[lut.unpremul8[a][b]],
+            lut.alpha8ToFloat[a]
+        };
+    }
+
+    // ColorLinear_to_Pixel_ARGB32_lut
+    // 
+    // From ColorLinear to Pixel
+    static INLINE Pixel_ARGB32 ColorLinear_to_Pixel_ARGB32_lut(
+        const float cr,
+        const float cg,
+        const float cb,
+        const float ca,
+        const ColorCodecLUT& lut) noexcept
+    {
+        const float a = clamp01f(ca);
+
+        if (a <= 0.0f)
+            return Pixel_ARGB32(0);
+
+        const uint8_t a8 = quantize0_255(a);
+
+        // cr/cg/cb are expected to be straight linear RGB.
+        // Convert straight linear RGB to straight sRGB8, then premultiply.
+        const uint8_t r8 = linear_float_to_srgb8_lut(clamp01f(cr), lut);
+        const uint8_t g8 = linear_float_to_srgb8_lut(clamp01f(cg), lut);
+        const uint8_t b8 = linear_float_to_srgb8_lut(clamp01f(cb), lut);
+
+        const uint8_t rp8 = uint8_t((uint32_t(r8) * uint32_t(a8) + 127u) / 255u);
+        const uint8_t gp8 = uint8_t((uint32_t(g8) * uint32_t(a8) + 127u) / 255u);
+        const uint8_t bp8 = uint8_t((uint32_t(b8) * uint32_t(a8) + 127u) / 255u);
+
+        return argb32_pack_u8(a8, rp8, gp8, bp8);
+    }
+
+
+    // -----------------------------------
+    //
+    static INLINE ColorSRGB Pixel_ARGB32_to_ColorSRGB_lut(const Pixel_ARGB32 px, const ColorCodecLUT& lut) noexcept
+    {
+        uint8_t a, r, g, b;
+        argb32_unpack_u8(px, a, r, g, b);
+
+        if (a == 0)
+            return ColorSRGB{ 0, 0, 0, 0 };
+
+        if (a == 255)
+        {
+            return ColorSRGB{
+                dequantize0_255(r),
+                dequantize0_255(g),
+                dequantize0_255(b),
+                1.0f
+            };
+        }
+
+        return ColorSRGB{
+            dequantize0_255(lut.unpremul8[a][r]),
+            dequantize0_255(lut.unpremul8[a][g]),
+            dequantize0_255(lut.unpremul8[a][b]),
+            lut.alpha8ToFloat[a]
+        };
+    }
+
+    // ColorSRGB_to_Pixel_ARGB32_lut
+    //
+    static INLINE Pixel_ARGB32 ColorSRGB_to_Pixel_ARGB32_lut(
+        const float cr,
+        const float cg,
+        const float cb,
+        const float ca,
+        const ColorCodecLUT& lut) noexcept
+    {
+        (void)lut;
+
+        const float a = clamp01f(ca);
+
+        if (a <= 0.0f)
+            return Pixel_ARGB32(0);
+
+        const uint8_t a8 = quantize0_255(a);
+
+        const uint8_t r8 = quantize0_255(clamp01f(cr));
+        const uint8_t g8 = quantize0_255(clamp01f(cg));
+        const uint8_t b8 = quantize0_255(clamp01f(cb));
+
+        const uint8_t rp8 = uint8_t((uint32_t(r8) * uint32_t(a8) + 127u) / 255u);
+        const uint8_t gp8 = uint8_t((uint32_t(g8) * uint32_t(a8) + 127u) / 255u);
+        const uint8_t bp8 = uint8_t((uint32_t(b8) * uint32_t(a8) + 127u) / 255u);
+
+        return argb32_pack_u8(a8, rp8, gp8, bp8);
+    }
+
+    static INLINE Pixel_ARGB32 ColorSRGB_to_Pixel_ARGB32_lut(const ColorSRGB& c, const ColorCodecLUT& lut) noexcept
+    {
+        return ColorSRGB_to_Pixel_ARGB32_lut(c.r, c.g, c.b, c.a, lut);
+    }
+}
 
 namespace waavs
 {
@@ -233,6 +467,7 @@ namespace waavs
     {
         return 0.2126f * c->r + 0.7152f * c->g + 0.0722f * c->b;
     }
+
 
 
     // Conversions

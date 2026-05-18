@@ -80,7 +80,7 @@ namespace waavs {
 
             BLPath apath;
             //WGRectD rect(0, 0, fr.w, fr.h);
-            apath.addRect(0,0,fr.w,fr.h);
+            apath.add_rect(0,0,fr.w,fr.h);
 
             if (isSelected())
                 ctx->stroke(BLRgba32(0xff7f2f2f));
@@ -94,7 +94,7 @@ namespace waavs {
         {
             // Draw border around file icon
             BLPath rpath;
-            rpath.addRect(0, 0, fDocIcon.frame().w, fDocIcon.frame().h);
+            rpath.add_rect(0, 0, fDocIcon.frame().w, fDocIcon.frame().h);
             ctx->strokeShape(rpath);
             
             // Draw Draw the icon's filename
@@ -107,7 +107,7 @@ namespace waavs {
             if (isHover())
             {
                 BLPath apath;
-                apath.addRect(0, 0, fr.w, fr.h);
+                apath.add_rect(0, 0, fr.w, fr.h);
                 ctx->fill(BLRgba32(0x80A0A0A0));
                 ctx->fillShape(apath);
             }
@@ -402,7 +402,7 @@ namespace waavs {
         {
             ctx->strokeWidth(4);
             BLPath apath;
-            apath.addRect(0, 0, frame().w, frame().h);
+            apath.add_rect(0, 0, frame().w, frame().h);
             ctx->stroke(BLRgba32(0xffA0A0A0));
             ctx->strokeShape(apath);
 

@@ -10,7 +10,34 @@ namespace waavs
     // =============================================
     // feDiffuseLighting helpers
     // =============================================
+        // --------------------------------------------
+    struct DiffuseLightingRowParams
+    {
+        float surfaceScale{ 1.0f };
+        float diffuseConstant{ 1.0f };
 
+        float lcR{ 1.0f };
+        float lcG{ 1.0f };
+        float lcB{ 1.0f };
+
+        FilterColorInterpolation colorInterp{ FILTER_COLOR_INTERPOLATION_SRGB };
+
+
+        float dux{ 1.0f };
+        float duy{ 1.0f };
+
+        float uxPerPixel{ 1.0f };
+        float uyPerPixel{ 1.0f };
+
+        float rowUy{ 0.0f };
+
+        uint32_t lightType{ FILTER_LIGHT_DISTANT };
+        LightPayload localLight{};
+    };
+
+    // ---------------------------------------------
+    // computeDiffuseTerm()
+    //
     static INLINE float computeDiffuseTerm(
         float nx, float ny, float nz,
         float lx, float ly, float lz,
@@ -24,9 +51,51 @@ namespace waavs
         return clamp01f(diffuseConstant * ndotl * lightFactor);
     }
 
-    static INLINE uint32_t packDiffuseLightingPixel(
+    // ----------------------------------------------
+    static INLINE Pixel_ARGB32 packDiffuseLightingPixel_srgb_lut(
         float lcR, float lcG, float lcB,
-        float lit) noexcept
+        float lit,
+        const ColorCodecLUT& lut) noexcept
+    {
+        return ColorSRGB_to_Pixel_ARGB32_lut(
+            lcR * lit,
+            lcG * lit,
+            lcB * lit,
+            1.0f,
+            lut);
+    }
+
+    static INLINE Pixel_ARGB32 packDiffuseLightingPixel_linear_lut(
+        float lcR, float lcG, float lcB,
+        float lit,
+        const ColorCodecLUT& lut) noexcept
+    {
+        return ColorLinear_to_Pixel_ARGB32_lut(
+            lcR * lit,
+            lcG * lit,
+            lcB * lit,
+            1.0f,
+            lut);
+    }
+
+    static INLINE Pixel_ARGB32 packDiffuseLightingPixel_lut(
+        float lcR, float lcG, float lcB,
+        float lit,
+        FilterColorInterpolation interp,
+        const ColorCodecLUT& lut) noexcept
+    {
+        if (interp == FILTER_COLOR_INTERPOLATION_LINEAR_RGB)
+        {
+            return packDiffuseLightingPixel_linear_lut(
+                lcR, lcG, lcB, lit, lut);
+        }
+
+        return packDiffuseLightingPixel_srgb_lut(
+            lcR, lcG, lcB, lit, lut);
+    }
+
+    /*
+    static INLINE uint32_t packDiffuseLightingPixel(float lcR, float lcG, float lcB, float lit) noexcept
     {
         // For diffuse lighting, we want a fully opaque
         // pixel where the RGB channels represent the lit color, 
@@ -46,28 +115,8 @@ namespace waavs
             quantize0_255(pg),
             quantize0_255(pb));
     }
+    */
 
-    // --------------------------------------------
-    struct DiffuseLightingRowParams
-    {
-        float surfaceScale{ 1.0f };
-        float diffuseConstant{ 1.0f };
-
-        float lcR{ 1.0f };
-        float lcG{ 1.0f };
-        float lcB{ 1.0f };
-
-        float dux{ 1.0f };
-        float duy{ 1.0f };
-
-        float uxPerPixel{ 1.0f };
-        float uyPerPixel{ 1.0f };
-
-        float rowUy{ 0.0f };
-
-        uint32_t lightType{ FILTER_LIGHT_DISTANT };
-        LightPayload localLight{};
-    };
 
 
 
@@ -81,6 +130,8 @@ namespace waavs
         int surfaceW,
         const DiffuseLightingRowParams& p) noexcept
     {
+        const ColorCodecLUT& lut = color_codec_lut();
+
         for (int i = 0; i < count; ++i)
         {
             const int x = x0 + i;
@@ -128,7 +179,9 @@ namespace waavs
                 p.diffuseConstant,
                 lightFactor);
 
-            dst[i] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, lit);
+            dst[i] = packDiffuseLightingPixel_lut(p.lcR, p.lcG, p.lcB, lit, p.colorInterp, lut);
+
+            //dst[i] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, lit);
         }
     }
 
@@ -195,6 +248,9 @@ namespace waavs
             return;
         }
 
+        const ColorCodecLUT& lut = color_codec_lut();
+        constexpr float ksobelFactor = 4.0f; // 8.0f
+
         const float32x4_t kZero = vdupq_n_f32(0.0f);
         const float32x4_t kOne = vdupq_n_f32(1.0f);
         const float32x4_t kTwo = vdupq_n_f32(2.0f);
@@ -208,10 +264,10 @@ namespace waavs
         const float32x4_t kLcG = vdupq_n_f32(p.lcG);
         const float32x4_t kLcB = vdupq_n_f32(p.lcB);
 
-        const float inv8dux = (p.dux > 0.0f) ? (1.0f / (8.0f * p.dux)) : 0.0f;
-        const float inv8duy = (p.duy > 0.0f) ? (1.0f / (8.0f * p.duy)) : 0.0f;
-        const float32x4_t kInv8Dux = vdupq_n_f32(inv8dux);
-        const float32x4_t kInv8Duy = vdupq_n_f32(inv8duy);
+        const float invdux = (p.dux > 0.0f) ? (1.0f / (ksobelFactor * p.dux)) : 0.0f;
+        const float invduy = (p.duy > 0.0f) ? (1.0f / (ksobelFactor * p.duy)) : 0.0f;
+        const float32x4_t kInvDux = vdupq_n_f32(invdux);
+        const float32x4_t kInvDuy = vdupq_n_f32(invduy);
 
         float32x4_t kLx = kZero;
         float32x4_t kLy = kZero;
@@ -275,8 +331,8 @@ namespace waavs
                     vaddq_f32(vaddq_f32(h02, vmulq_f32(kTwo, h12)), h22),
                     vaddq_f32(vaddq_f32(h00, vmulq_f32(kTwo, h10)), h20));
 
-            const float32x4_t dHx = vmulq_f32(dHx_num, kInv8Dux);
-            const float32x4_t dHy = vmulq_f32(dHy_num, kInv8Duy);
+            const float32x4_t dHx = vmulq_f32(dHx_num, kInvDux);
+            const float32x4_t dHy = vmulq_f32(dHy_num, kInvDuy);
 
             // Normal: N = normalize(-surfaceScale*dHdx, -surfaceScale*dHdy, 1)
             float32x4_t nx = vnegq_f32(vmulq_f32(kSurfaceScale, dHx));
@@ -339,15 +395,11 @@ namespace waavs
             vst1q_f32(litArr, lit);
 
             // Pack with the existing scalar packer to keep behavior identical.
-            dst[i + 0] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, litArr[0]);
-            dst[i + 1] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, litArr[1]);
-            dst[i + 2] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, litArr[2]);
-            dst[i + 3] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, litArr[3]);
+            dst[i + 0] = packDiffuseLightingPixel_lut(p.lcR, p.lcG, p.lcB, litArr[0], p.colorInterp, lut);
+            dst[i + 1] = packDiffuseLightingPixel_lut(p.lcR, p.lcG, p.lcB, litArr[1], p.colorInterp, lut);
+            dst[i + 2] = packDiffuseLightingPixel_lut(p.lcR, p.lcG, p.lcB, litArr[2], p.colorInterp, lut);
+            dst[i + 3] = packDiffuseLightingPixel_lut(p.lcR, p.lcG, p.lcB, litArr[3], p.colorInterp, lut);
 
-            //dst[xA] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, litArr[0]);
-            //dst[xB] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, litArr[1]);
-            //dst[xC] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, litArr[2]);
-            //dst[xD] = packDiffuseLightingPixel(p.lcR, p.lcG, p.lcB, litArr[3]);
         }
 
         if (i < count)

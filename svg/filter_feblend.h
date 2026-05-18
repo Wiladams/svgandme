@@ -6,6 +6,7 @@
 #include "filter_program_exec.h"   // FilterProgramExecutor + IAmFroot<T>
 #include "pixeling_composite.h"
 #include "pixeling_blend.h"
+#include "coloring.h"
 
 namespace waavs
 {
@@ -185,7 +186,21 @@ namespace waavs
 
 
     //----------------------------------------------------
+    static INLINE Pixel_ARGB32 feBlendPRGB32_pixel_lut(
+        FilterBlendMode mode,
+        Pixel_ARGB32 backdrop,
+        Pixel_ARGB32 source,
+        const ColorCodecLUT& lut) noexcept
+    {
+        const ColorLinear b = Pixel_ARGB32_to_ColorLinear_lut(backdrop, lut);
+        const ColorLinear s = Pixel_ARGB32_to_ColorLinear_lut(source, lut);
 
+        const ColorLinear o = feBlendColorLinear(mode, b, s);
+
+        return ColorLinear_to_Pixel_ARGB32_lut(o.r, o.g, o.b, o.a, lut);
+    }
+
+    /*
     static INLINE uint32_t feBlendPRGB32_pixel(FilterBlendMode mode, Pixel_ARGB32 backdrop, Pixel_ARGB32 source) noexcept
     {
         const ColorPRGBA bp = coloring_ARGB32_to_prgba(backdrop);
@@ -198,6 +213,7 @@ namespace waavs
 
         return coloring_prgba_to_ARGB32(coloring_linear_premultiply(o));
     }
+    */
 
     static INLINE void feBlendPRGB32_normal_row(
         uint32_t* dst,
@@ -382,6 +398,8 @@ namespace waavs
             int count,
             FilterBlendMode mode) noexcept
         {
+            const ColorCodecLUT& lut = color_codec_lut();
+
             const float32x4_t one = vdupq_n_f32(1.0f);
             const float32x4_t zero = vdupq_n_f32(0.0f);
             const float32x4_t eps = vdupq_n_f32(1.0e-20f);
@@ -444,7 +462,7 @@ namespace waavs
             }
 
             for (; i < count; ++i)
-                dst[i] = feBlendPRGB32_pixel(mode, in1[i], in2[i]);
+                dst[i] = feBlendPRGB32_pixel_lut(mode, in1[i], in2[i], lut);
         }
 
         static INLINE void feBlendPRGB32_normal_row_neon(
@@ -514,7 +532,7 @@ namespace waavs
 #endif
 
 namespace waavs {
-    ///*
+
     static INLINE void feBlendRowPRGB32(
         uint32_t* dst,
         const uint32_t* in1,
@@ -523,6 +541,20 @@ namespace waavs {
         FilterBlendMode mode) noexcept
     {
 
+        if (mode == FILTER_BLEND_NORMAL)
+        {
+            feBlendPRGB32_normal_row(dst, in1, in2, count);
+            return;
+        }
+
+        const ColorCodecLUT& lut = color_codec_lut();
+
+        for (int i = 0; i < count; ++i)
+            dst[i] = feBlendPRGB32_pixel_lut(mode, in1[i], in2[i], lut);
+
+        /*
+        // temporarily disable NEON support until we ensure
+        // correctness of the scalar path with LUT
 #if WAAVS_HAS_NEON
         switch (mode)
         {
@@ -565,11 +597,11 @@ namespace waavs {
             break;
         }
 #endif
-
         // fallback to scalar if no SIMD support
         for (int i = 0; i < count; ++i)
-            dst[i] = feBlendPRGB32_pixel(mode, in1[i], in2[i]);
+            dst[i] = feBlendPRGB32_pixel_lut(mode, in1[i], in2[i], lut);
+            */
     }
-            //*/
+
 }
 

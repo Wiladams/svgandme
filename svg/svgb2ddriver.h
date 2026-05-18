@@ -227,18 +227,17 @@ namespace waavs
         }
 
 
-
         // paint for filling shapes
         void onFill() override
         {
             if (!fDrawingContext)
                 return;
-
+            
             BLVar paint = getFillPaint();
-            if (paint.is_null()) {
-                fDrawingContext->disable_fill_style();
-                return;
-            }
+            //if (paint.is_null()) {
+            //    fDrawingContext->disable_fill_style();
+            //    return;
+            //}
 
             fDrawingContext->set_fill_style(paint);
         }
@@ -268,10 +267,10 @@ namespace waavs
         {
             BLVar paint = getStrokePaint();
 
-            if (paint.is_null()) {
-                fDrawingContext->disable_stroke_style();
-                return;
-            }
+            //if (paint.is_null()) {
+            //    fDrawingContext->disable_stroke_style();
+            //    return;
+            //}
 
             fDrawingContext->set_stroke_style(paint);
 
@@ -364,11 +363,11 @@ namespace waavs
                 switch (ins)
                 {
                 case PaintOrderKind::SVG_PAINT_ORDER_FILL:
-                    fDrawingContext->fill_path(aPath, getFillPaint());
+                    fDrawingContext->fill_path(aPath); // , getFillPaint());
                     break;
 
                 case PaintOrderKind::SVG_PAINT_ORDER_STROKE:
-                    fDrawingContext->stroke_path(aPath, getStrokePaint());
+                    fDrawingContext->stroke_path(aPath); // , getStrokePaint());
                     break;
 
                 case PaintOrderKind::SVG_PAINT_ORDER_MARKERS:

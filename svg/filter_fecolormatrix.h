@@ -7,7 +7,6 @@
 
 namespace waavs
 {
-
     struct ColorMatrixPrepared
     {
         WGFilterColorSpace colorSpace;
@@ -40,50 +39,18 @@ namespace waavs
         uint32_t* dst, const uint32_t* src, size_t n,
         const float Mf[20]) noexcept
     {
+        const ColorCodecLUT& lut = color_codec_lut();
+
         for (size_t i = 0; i < n; ++i)
         {
-            uint32_t ap8, rp8, gp8, bp8;
-            argb32_unpack_u32(src[i], ap8, rp8, gp8, bp8);
+            const ColorLinear s = Pixel_ARGB32_to_ColorLinear_lut(src[i], lut);
 
-            const float ap = dequantize0_255(ap8);
+            const float rr = eval_row_linear_scalar(&Mf[0], s.r, s.g, s.b, s.a);
+            const float gg = eval_row_linear_scalar(&Mf[5], s.r, s.g, s.b, s.a);
+            const float bb = eval_row_linear_scalar(&Mf[10], s.r, s.g, s.b, s.a);
+            const float aa = eval_row_linear_scalar(&Mf[15], s.r, s.g, s.b, s.a);
 
-            float sr = 0.0f;
-            float sg = 0.0f;
-            float sb = 0.0f;
-
-            if (ap > 0.0f)
-            {
-                const float invA = 1.0f / ap;
-
-                const float r_srgb = clamp01f(dequantize0_255(rp8) * invA);
-                const float g_srgb = clamp01f(dequantize0_255(gp8) * invA);
-                const float b_srgb = clamp01f(dequantize0_255(bp8) * invA);
-
-                sr = coloring_srgb_component_to_linear(r_srgb);
-                sg = coloring_srgb_component_to_linear(g_srgb);
-                sb = coloring_srgb_component_to_linear(b_srgb);
-            }
-
-            const float sa = ap;
-
-            const float rr = eval_row_linear_scalar(&Mf[0], sr, sg, sb, sa);
-            const float gg = eval_row_linear_scalar(&Mf[5], sr, sg, sb, sa);
-            const float bb = eval_row_linear_scalar(&Mf[10], sr, sg, sb, sa);
-            const float aa = eval_row_linear_scalar(&Mf[15], sr, sg, sb, sa);
-
-            const float rrp_lin = rr * aa;
-            const float ggp_lin = gg * aa;
-            const float bbp_lin = bb * aa;
-
-            const float rrp_srgb = coloring_linear_component_to_srgb(rrp_lin);
-            const float ggp_srgb = coloring_linear_component_to_srgb(ggp_lin);
-            const float bbp_srgb = coloring_linear_component_to_srgb(bbp_lin);
-
-            dst[i] = argb32_pack_u8(
-                quantize0_255(aa),
-                quantize0_255(rrp_srgb),
-                quantize0_255(ggp_srgb),
-                quantize0_255(bbp_srgb));
+            dst[i] = ColorLinear_to_Pixel_ARGB32_lut(rr, gg, bb, aa, lut);
         }
     }
 

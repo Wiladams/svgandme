@@ -75,6 +75,7 @@ namespace waavs
         float dux, float duy,
         float& nx, float& ny, float& nz) noexcept
     {
+        constexpr float ksobelFactor = 4.0f; // 8.0f
         float dHx = 0.0f;
         float dHy = 0.0f;
 
@@ -82,14 +83,14 @@ namespace waavs
         {
             dHx =
                 ((h20 + 2.0f * h21 + h22) -
-                    (h00 + 2.0f * h01 + h02)) / (8.0f * dux);
+                    (h00 + 2.0f * h01 + h02)) / (ksobelFactor * dux);
         }
 
         if (duy > 0.0f)
         {
             dHy =
                 ((h02 + 2.0f * h12 + h22) -
-                    (h00 + 2.0f * h10 + h20)) / (8.0f * duy);
+                    (h00 + 2.0f * h10 + h20)) / (ksobelFactor * duy);
         }
 
         nx = -surfaceScale * dHx;

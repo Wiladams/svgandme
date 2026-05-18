@@ -1424,8 +1424,10 @@ namespace waavs {
                 return true;
             }
 
-			// Turn the lightingRGBA into separate R,G,B components in [0,1] range.
-			// We can use ColorSRGB here since the lighting color is in sRGB space, 
+			// The lightingColor comes in as the authored sRGB value.
+            // We want to convert it to whichever color space we're using
+            // for calculations, which may be sRGB or linear RGB, depending 
+            // on the color interpolation setting.
             float lcR, lcG, lcB;
             resolveColorInterpolationRGB(lightingColor, io.colorInterp, lcR, lcG, lcB);
 
@@ -1474,15 +1476,20 @@ namespace waavs {
             const int xBeg = area.x;
             const int xCount = area.w;
 
+            // Row kernel
             for (int y = yBeg; y < yEnd; ++y)
             {
                 const int y0 = clamp(y - 1, 0, H - 1);
                 const int y1 = clamp(y, 0, H - 1);
                 const int y2 = clamp(y + 1, 0, H - 1);
 
+                // we grab three row pointers at a time, since the diffuse
+                // kernel needs to sample the 3x3 neighborhood.
                 const uint32_t* row0 = (const uint32_t*)in.rowPointer((size_t)y0);
                 const uint32_t* row1 = (const uint32_t*)in.rowPointer((size_t)y1);
                 const uint32_t* row2 = (const uint32_t*)in.rowPointer((size_t)y2);
+
+                // setup the output row pointer for this scanline
                 uint32_t* drow = (uint32_t*)out.rowPointer((size_t)y);
 
                 DiffuseLightingRowParams p{};
@@ -1498,6 +1505,7 @@ namespace waavs {
                 p.rowUy = (float(y) + 0.5f) * map.uyPerPixel;
                 p.lightType = lightType;
                 p.localLight = localLight;
+                p.colorInterp = io.colorInterp;
 
                 diffuseLighting_row(
                     drow+xBeg,
