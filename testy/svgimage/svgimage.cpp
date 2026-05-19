@@ -98,7 +98,7 @@ static void renderImage(SVGDocumentHandle gDoc, const char* outfilename)
 	// We MUST do this before we perform any other
 	// operations, including the transform
 	BLContextCreateInfo createInfo{};
-	createInfo.threadCount = 4;
+	createInfo.thread_count = 4;
 	SVGB2DDriver ctx;
 	ctx.attach(img, 4);
 
@@ -144,7 +144,7 @@ static void renderImage(SVGDocumentHandle gDoc, const char* outfilename)
 	// Save the image from the drawing context out to a file
 	// or do whatever you're going to do with it
     BLImage blImg = blImageFromSurface(img);
-	blImg.writeToFile(outfilename);
+	blImg.write_to_file(outfilename);
 }
 
 

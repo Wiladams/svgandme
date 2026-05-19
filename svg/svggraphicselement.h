@@ -1012,6 +1012,7 @@ namespace waavs {
 
                 ctx->push();
                 ctx->transform(WGMatrix3x3::makeIdentity());
+                ctx->blendMode(BL_COMP_OP_SRC_OVER);
                 ctx->image(result, double(plan.pixelRect.x), double(plan.pixelRect.y));
                 ctx->flush();
                 ctx->pop();

@@ -116,6 +116,7 @@ namespace waavs
             mx,
             my);
 
+
         const float sxFloat = float(x) + (mx - 0.5f) * p.scaleX;
         const float syFloat = float(y) + (my - 0.5f) * p.scaleY;
 

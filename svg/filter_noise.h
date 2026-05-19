@@ -451,23 +451,39 @@ namespace waavs
     // ------------------------------------------------------------
     // Final SVG-style mapping helpers
     // ------------------------------------------------------------
-    static  float fractal_to_unit(float v, float amp) noexcept
+    static INLINE float fractal_to_unit(float v, float amp) noexcept
     {
         if (!(amp > 0.0f))
             return 0.5f;
-        
-        float rv = (v + 1) * 0.5f;
-        
-        return clamp01f(rv);
+
+        return clamp01f((v / amp) * 0.5f + 0.5f);
     }
 
-    static  float turbulence_to_unit(float v, float amp) noexcept
+    //static  float fractal_to_unit(float v, float amp) noexcept
+    //{
+    //    if (!(amp > 0.0f))
+    //        return 0.5f;
+        
+    //    float rv = (v + 1) * 0.5f;
+        
+    //    return clamp01f(rv);
+    //}
+
+    static INLINE float turbulence_to_unit(float v, float amp) noexcept
     {
         if (!(amp > 0.0f))
             return 0.0f;
 
-        return clamp01f(v);
+        return clamp01f(v / amp);
     }
+
+    //static  float turbulence_to_unit(float v, float amp) noexcept
+    //{
+    //    if (!(amp > 0.0f))
+    //        return 0.0f;
+
+    //    return clamp01f(v);
+    //}
 
     /*
     static INLINE float fractal_to_unit(float v) noexcept
@@ -514,7 +530,7 @@ namespace waavs
     // ------------------------------------------------------------
     // Convenience helpers for sampling RGBA channels
     // ------------------------------------------------------------
-    static float minChannelValue = 0.0f, maxChannelValue = 0.0f;
+    //static float minChannelValue = 0.0f, maxChannelValue = 0.0f;
 
     static INLINE float sampleFractalChannel(
         float x,
@@ -539,15 +555,15 @@ namespace waavs
                 s.channels[channel],
                 s.perm);
 
-            minChannelValue = min(noiseValue, minChannelValue);
-            maxChannelValue = max(noiseValue, maxChannelValue);
+            //minChannelValue = min(noiseValue, minChannelValue);
+            //maxChannelValue = max(noiseValue, maxChannelValue);
 
             return fractal_to_unit( noiseValue, p.amplitudeSum);
         }
 
         noiseValue = fractalNoise2( x, y, p, s.channels[channel], s.perm);
-        minChannelValue = min(noiseValue, minChannelValue);
-        maxChannelValue = max(noiseValue, maxChannelValue);
+        //minChannelValue = min(noiseValue, minChannelValue);
+        //maxChannelValue = max(noiseValue, maxChannelValue);
 
         return fractal_to_unit( noiseValue, p.amplitudeSum);
     }

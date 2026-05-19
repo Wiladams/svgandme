@@ -43,40 +43,84 @@ namespace waavs
     // Pack the specular lighting result into an ARGB32 pixel, 
     // where the RGB components are the lit color and the alpha 
     // is the maximum of the RGB components (for later compositing).
-
-    static INLINE uint32_t packSpecularLightingPixel(
+    static INLINE Pixel_ARGB32 packSpecularLightingPixel_lut(
         float lcR, float lcG, float lcB,
-        float lit) noexcept
+        float lit,
+        FilterColorInterpolation interp,
+        const ColorCodecLUT& lut) noexcept
     {
-        const float sr = clamp01f(lcR * lit);
-        const float sg = clamp01f(lcG * lit);
-        const float sb = clamp01f(lcB * lit);
+        const float r = clamp01f(lcR * lit);
+        const float g = clamp01f(lcG * lit);
+        const float b = clamp01f(lcB * lit);
+        const float a = max(r, max(g, b));
 
-        const uint8_t a = quantize0_255(max(sr, max(sg, sb)));
-        const uint8_t r = quantize0_255(sr);
-        const uint8_t g = quantize0_255(sg);
-        const uint8_t b = quantize0_255(sb);
-
-        return argb32_pack_straight_to_premul_u8(a, r, g, b);
+        return packLightingPixel_lut(
+            r, g, b, a,
+            interp,
+            lut);
     }
 
-    /*
-    static INLINE uint32_t packSpecularLightingPixel(
-        float lcR, float lcG, float lcB,
-        float lit) noexcept
+    static INLINE void specularLighting_row_lut(
+        Pixel_ARGB32* dst,
+        const Surface_ARGB32& src,
+        int y,
+        int x0,
+        int x1,
+        const PixelToFilterUserMap& map,
+        const LightPayload& light,
+        uint32_t lightType,
+        float lcR,
+        float lcG,
+        float lcB,
+        float surfaceScale,
+        float specularConstant,
+        float specularExponent,
+        float dux,
+        float duy,
+        FilterColorInterpolation interp,
+        const ColorCodecLUT& lut) noexcept
     {
-        const float pr = clamp01f(lcR * lit);
-        const float pg = clamp01f(lcG * lit);
-        const float pb = clamp01f(lcB * lit);
+        for (int x = x0; x < x1; ++x)
+        {
+            const LightingHeight3x3 h = sampleLightingHeight3x3(src, x, y);
 
-        float a = max(pr, max(pg, pb)); // pr;
+            float nx, ny, nz;
+            computeLightingNormalFromHeights(
+                h.h00, h.h10, h.h20,
+                h.h01, h.h11, h.h21,
+                h.h02, h.h12, h.h22,
+                surfaceScale,
+                dux, duy,
+                nx, ny, nz);
 
-        return argb32_pack_u8(
-            quantize0_255(a),
-            quantize0_255(pr),
-            quantize0_255(pg),
-            quantize0_255(pb));
+            float ux, uy;
+            pixelCenterToFilterUserStandalone(map, x, y, ux, uy);
+
+            const float surfaceZ = surfaceScale * h.h11;
+
+            float lx, ly, lz;
+            computeSurfaceToLightVector(
+                lightType,
+                light,
+                ux, uy, surfaceZ,
+                lx, ly, lz);
+
+            float lightFactor = 1.0f;
+            if (lightType == FILTER_LIGHT_SPOT)
+                lightFactor = computeLightingSpotConeFactor(light, ux, uy, surfaceZ);
+
+            const float lit = computeSpecularTerm(
+                nx, ny, nz,
+                lx, ly, lz,
+                specularConstant,
+                specularExponent,
+                lightFactor);
+
+            dst[x] = packSpecularLightingPixel_lut(
+                lcR, lcG, lcB,
+                lit,
+                interp,
+                lut);
+        }
     }
-    */
-
 }

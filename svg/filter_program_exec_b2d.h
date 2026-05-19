@@ -1382,9 +1382,6 @@ namespace waavs {
         // onDiffuseLighting
         // Type: lighting
         // 
-		// LightingRGBA is coming in as a pre-multiplied color, 
-        // It should always be fully opaque, so we should be 
-        // able to ignore the alpha?
         // -------------------------------------------
 
         bool onDiffuseLighting(const FilterIO& io, const FilterPrimitiveSubregion& subr,
@@ -1398,12 +1395,11 @@ namespace waavs {
             InternedKey inKey = resolveUnaryInputKey(io);
             InternedKey outKey = resolveOutKeyStrict(io);
 
-            // DEBUG - check input and output
-            //printf("feDiffuseLighting inKey=%s outKey=%s\n", inKey, outKey);
 
             Surface in = getImage(inKey);
             if (in.empty())
                 return false;
+            Surface_ARGB32 inInfo = in.info();
 
             if (!outKey)
                 outKey = filter::Filter_Last();
@@ -1431,21 +1427,11 @@ namespace waavs {
             float lcR, lcG, lcB;
             resolveColorInterpolationRGB(lightingColor, io.colorInterp, lcR, lcG, lcB);
 
+            PixelToFilterUserMap map = makeLightingPixelMap(inInfo, fSpace.filterRectUS);
 
-            PixelToFilterUserMap map;
-            map.surfaceW = int(in.width());
-            map.surfaceH = int(in.height());
-            
-            //map.filterExtentUS = fSpace.filterExtentUS;
-            map.filterExtentUS = fSpace.filterRectUS;
+            LightPayload localLight = localizeLightingPayload(light, lightType, fSpace.filterRectUS);
 
-            map.uxPerPixel = (map.surfaceW > 0)
 
-                ? float(map.filterExtentUS.w / double(map.surfaceW))
-                : 1.0f;
-            map.uyPerPixel = (map.surfaceH > 0)
-                ? float(map.filterExtentUS.h / double(map.surfaceH))
-                : 1.0f;
 
             float defaultDux = 1.0f;
             float defaultDuy = 1.0f;
@@ -1454,19 +1440,6 @@ namespace waavs {
             const float dux = (kernelUnitLengthX > 0.0f) ? kernelUnitLengthX : defaultDux;
             const float duy = (kernelUnitLengthY > 0.0f) ? kernelUnitLengthY : defaultDuy;
 
-            LightPayload localLight = light;
-
-            if (lightType == FILTER_LIGHT_POINT || lightType == FILTER_LIGHT_SPOT)
-            {
-                localLight.L[0] -= float(fSpace.filterRectUS.x);
-                localLight.L[1] -= float(fSpace.filterRectUS.y);
-            }
-
-            if (lightType == FILTER_LIGHT_SPOT)
-            {
-                localLight.L[3] -= float(fSpace.filterRectUS.x);
-                localLight.L[4] -= float(fSpace.filterRectUS.y);
-            }
 
             const int W = int(in.width());
             const int H = int(in.height());
@@ -2500,94 +2473,11 @@ namespace waavs {
             return true;
         }
 
-        /*
-        bool onOffset(
-            const FilterIO& io,
-            const FilterPrimitiveSubregion& subr,
-            float dx,
-            float dy) noexcept override
-        {
-            InternedKey inKey = resolveUnaryInputKey(io);
-            InternedKey outKey = resolveOutKeyStrict(io);
-
-            Surface in = getImage(inKey);
-            if (in.empty())
-                return false;
-
-            if (!outKey)
-                outKey = filter::Filter_Last();
-
-            auto out = createLikeSurfaceHandle(in);
-            if (out.empty())
-                return false;
-
-            out.clearAll();
-
-            const WGRectI area = resolveSubregionPx(subr, in);
-            if (area.w <= 0 || area.h <= 0)
-            {
-                if (!putImage(outKey, out))
-                    return false;
-
-                setLastKey(outKey);
-                return true;
-            }
-
-            double dxUS = double(dx);
-            double dyUS = double(dy);
-
-            switch (fRunState.primitiveUnits)
-            {
-            default:
-            case SpaceUnitsKind::SVG_SPACE_USER:
-                break;
-
-            case SpaceUnitsKind::SVG_SPACE_OBJECT:
-                dxUS *= double(fRunState.objectBBoxUS.w);
-                dyUS *= double(fRunState.objectBBoxUS.h);
-                break;
-
-            case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
-                break;
-            }
-
-            const WGMatrix3x3& m = fSpace.ctm;
-
-            const int offX =
-                int(std::lround(dxUS * m.m00 + dyUS * m.m10));
-
-            const int offY =
-                int(std::lround(dxUS * m.m01 + dyUS * m.m11));
-
-            Surface_ARGB32 outInfo = out.info();
-            Surface_ARGB32 inInfo = in.info();
-
-            Surface_ARGB32 outArea{};
-
-            if (Surface_ARGB32_get_subarea(outInfo, area, outArea) != WG_SUCCESS)
-                return false;
-
-            if (wg_blit_copy(
-                outArea,
-                inInfo,
-                offX - area.x,
-                offY - area.y) != WG_SUCCESS)
-            {
-                return false;
-            }
-
-            if (!putImage(outKey, out))
-                return false;
-
-            setLastKey(outKey);
-            return true;
-        }
-        */
-
 
 
         // -----------------------------------------
         // onSpecularLighting
+        // 
         // ------------------------------------------
         bool onSpecularLighting(const FilterIO& io, const FilterPrimitiveSubregion& subr,
             const ColorSRGB& lightingColor,
@@ -2603,6 +2493,7 @@ namespace waavs {
             Surface in = getImage(inKey);
             if (in.empty())
                 return false;
+            Surface_ARGB32 inInfo = in.info();
 
             if (!outKey)
                 outKey = filter::Filter_Last();
@@ -2623,102 +2514,40 @@ namespace waavs {
                 return true;
             }
 
+            specularExponent = clamp(specularExponent, 1.0f, 128.0f);
+
             float lcR, lcG, lcB;
             resolveColorInterpolationRGB(lightingColor, io.colorInterp, lcR, lcG, lcB);
 
+            PixelToFilterUserMap map = makeLightingPixelMap(inInfo, fSpace.filterRectUS);
+            LightPayload localLight = localizeLightingPayload(light, lightType, fSpace.filterRectUS);
 
+            float dux, duy;
+            resolveLightingKernelStep(map, area, kernelUnitLengthX, kernelUnitLengthY, dux, duy);
 
-            specularExponent = clamp(specularExponent, 1.0f, 128.0f);
-
-            PixelToFilterUserMap map;
-            map.surfaceW = int(in.width());
-            map.surfaceH = int(in.height());
-
-            // need a localized extent
-            map.filterExtentUS = WGRectD{ 0.0, 0.0, fSpace.filterRectUS.w, fSpace.filterRectUS.h };
-            map.uxPerPixel = (map.surfaceW > 0)
-                ? float(map.filterExtentUS.w / double(map.surfaceW))
-                : 1.0f;
-            map.uyPerPixel = (map.surfaceH > 0)
-                ? float(map.filterExtentUS.h / double(map.surfaceH))
-                : 1.0f;
-
-            float defaultDux = 1.0f;
-            float defaultDuy = 1.0f;
-            computeLightingLocalPixelStep(map, area.x, area.y, defaultDux, defaultDuy);
-
-            const float dux = (kernelUnitLengthX > 0.0f) ? kernelUnitLengthX : defaultDux;
-            const float duy = (kernelUnitLengthY > 0.0f) ? kernelUnitLengthY : defaultDuy;
-
-            // Convert light into the same local filter-space used by pixelCenterToFilterUserStandalone().
-            LightPayload localLight = light;
-
-            if (lightType == FILTER_LIGHT_POINT || lightType == FILTER_LIGHT_SPOT)
-            {
-                localLight.L[0] -= float(fSpace.filterRectUS.x);
-                localLight.L[1] -= float(fSpace.filterRectUS.y);
-
-                // z stays as-is
-                // localLight.L[2] unchanged
-            }
-
-            if (lightType == FILTER_LIGHT_SPOT)
-            {
-                localLight.L[3] -= float(fSpace.filterRectUS.x);
-                localLight.L[4] -= float(fSpace.filterRectUS.y);
-
-                // pointsAtZ stays as-is
-                // localLight.L[5] unchanged
-            }
+            const ColorCodecLUT& lut = color_codec_lut();
 
             for (int y = area.y; y < area.y + area.h; ++y)
             {
                 uint32_t* drow = (uint32_t*)out.rowPointer((size_t)y);
 
-                for (int x = area.x; x < area.x + area.w; ++x)
-                {
-                    const float h00 = lightingHeightFromAlpha(in, x - 1, y - 1);
-                    const float h10 = lightingHeightFromAlpha(in, x, y - 1);
-                    const float h20 = lightingHeightFromAlpha(in, x + 1, y - 1);
+                specularLighting_row_lut(
+                    drow,
+                    inInfo,
+                    y,
+                    area.x,
+                    area.x + area.w,
+                    map,
+                    localLight,
+                    lightType,
+                    lcR, lcG, lcB,
+                    surfaceScale,
+                    specularConstant,
+                    specularExponent,
+                    dux, duy,
+                    io.colorInterp,
+                    lut);
 
-                    const float h01 = lightingHeightFromAlpha(in, x - 1, y);
-                    const float h11 = lightingHeightFromAlpha(in, x, y);
-                    const float h21 = lightingHeightFromAlpha(in, x + 1, y);
-
-                    const float h02 = lightingHeightFromAlpha(in, x - 1, y + 1);
-                    const float h12 = lightingHeightFromAlpha(in, x, y + 1);
-                    const float h22 = lightingHeightFromAlpha(in, x + 1, y + 1);
-
-                    float nx, ny, nz;
-                    computeLightingNormalFromHeights(
-                        h00, h10, h20,
-                        h01, h11, h21,
-                        h02, h12, h22,
-                        surfaceScale,
-                        dux, duy,
-                        nx, ny, nz);
-
-                    float ux, uy;
-                    pixelCenterToFilterUserStandalone(map, x, y, ux, uy);
-
-                    const float h = surfaceScale * h11;
-
-                    float lx, ly, lz;
-                    computeSurfaceToLightVector(lightType, localLight, ux, uy, h, lx, ly, lz);
-
-                    float lightFactor = 1.0f;
-                    if (lightType == FILTER_LIGHT_SPOT)
-                        lightFactor = computeLightingSpotConeFactor(localLight, ux, uy, h);
-
-                    const float lit = computeSpecularTerm(
-                        nx, ny, nz,
-                        lx, ly, lz,
-                        specularConstant,
-                        specularExponent,
-                        lightFactor);
-
-                    drow[x] = packSpecularLightingPixel(lcR, lcG, lcB, lit);
-                }
             }
 
             if (!putImage(outKey, out))
@@ -2941,8 +2770,8 @@ namespace waavs {
 
             const bool fractalNoise = (typeKey == FILTER_TURBULENCE_FRACTAL_NOISE);
 
-            minChannelValue = waavs::flt_max;
-            maxChannelValue = waavs::flt_min;
+            //minChannelValue = waavs::flt_max;
+            //maxChannelValue = waavs::flt_min;
 
             // --- Main loop ---
             for (int y = area.y; y < area.y + area.h; ++y)

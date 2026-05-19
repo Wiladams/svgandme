@@ -1,6 +1,7 @@
 #pragma once
 
 #include "filter_types.h"
+#include "surface_info.h"
 
 //
 // Common lighting helpers for feDiffuseLighting and feSpecularLighting.
@@ -30,10 +31,10 @@ namespace waavs
     //
     // Interprets the alpha channel of a pixel as a height value in [0,1].
     //
-    static INLINE float lightingHeightFromAlpha(const Surface& s, int x, int y) noexcept
+    static INLINE float lightingHeightFromAlpha(const Surface_ARGB32& s, int x, int y) noexcept
     {
-        const int W = (int)s.width();
-        const int H = (int)s.height();
+        const int W = (int)s.width;
+        const int H = (int)s.height;
 
         if (W <= 0 || H <= 0)
             return 0.0f;
@@ -44,7 +45,7 @@ namespace waavs
         if (y < 0) y = 0;
         else if (y >= H) y = H - 1;
 
-        const uint32_t* row = (const uint32_t*)s.rowPointer((size_t)y);
+        const uint32_t* row = Surface_ARGB32_row_pointer_const(&s, (size_t)y);
         const uint32_t px = row[x];
 
         return argb32_unpack_alpha_norm(px);
@@ -178,6 +179,52 @@ namespace waavs
         lz = 1.0f;
     }
 
+    static INLINE LightPayload localizeLightingPayload(
+        const LightPayload& light,
+        uint32_t lightType,
+        const WGRectD& filterRectUS) noexcept
+    {
+        LightPayload localLight = light;
+
+        if (lightType == FILTER_LIGHT_POINT || lightType == FILTER_LIGHT_SPOT)
+        {
+            localLight.L[0] -= float(filterRectUS.x);
+            localLight.L[1] -= float(filterRectUS.y);
+        }
+
+        if (lightType == FILTER_LIGHT_SPOT)
+        {
+            localLight.L[3] -= float(filterRectUS.x);
+            localLight.L[4] -= float(filterRectUS.y);
+        }
+
+        return localLight;
+    }
+
+    static INLINE PixelToFilterUserMap makeLightingPixelMap(const Surface_ARGB32& src,
+        const WGRectD& filterRectUS) noexcept
+    {
+        PixelToFilterUserMap map;
+        map.surfaceW = int(src.width);
+        map.surfaceH = int(src.height);
+
+        map.filterExtentUS = WGRectD{
+            0.0,
+            0.0,
+            filterRectUS.w,
+            filterRectUS.h
+        };
+
+        map.uxPerPixel = (map.surfaceW > 0)
+            ? float(map.filterExtentUS.w / double(map.surfaceW))
+            : 1.0f;
+
+        map.uyPerPixel = (map.surfaceH > 0)
+            ? float(map.filterExtentUS.h / double(map.surfaceH))
+            : 1.0f;
+
+        return map;
+    }
 
 
     static  INLINE void resolveColorInterpolationRGB(
@@ -201,4 +248,99 @@ namespace waavs
             b = clamp01f(in.b);
         }
     }
+
+    // ---------------------------------------------
+    //
+    static INLINE void resolveLightingKernelStep(
+        const PixelToFilterUserMap& map,
+        const WGRectI& area,
+        float kernelUnitLengthX,
+        float kernelUnitLengthY,
+        float& dux,
+        float& duy) noexcept
+    {
+        float defaultDux = 1.0f;
+        float defaultDuy = 1.0f;
+
+        computeLightingLocalPixelStep(
+            map,
+            area.x,
+            area.y,
+            defaultDux,
+            defaultDuy);
+
+        dux = (kernelUnitLengthX > 0.0f) ? kernelUnitLengthX : defaultDux;
+        duy = (kernelUnitLengthY > 0.0f) ? kernelUnitLengthY : defaultDuy;
+    }
+
+
+    // ---------------------------------------------
+    // sampleLightingHeight3x3
+    // Calculate a lighting height sample for a 3x3 pixel neighborhood, 
+    // with clamping at edges.
+    //
+    struct LightingHeight3x3
+    {
+        float h00, h10, h20;
+        float h01, h11, h21;
+        float h02, h12, h22;
+    };
+
+    static INLINE LightingHeight3x3 sampleLightingHeight3x3(const Surface_ARGB32& src,
+        int x, int y) noexcept
+    {
+        LightingHeight3x3 h;
+
+        // Gather the pixels in a 3x3 neighborhood around (x,y), 
+        // with clamping at edges, and convert to heights.
+        // 
+        // first row
+        h.h00 = lightingHeightFromAlpha(src, x - 1, y - 1);
+        h.h10 = lightingHeightFromAlpha(src, x, y - 1);
+        h.h20 = lightingHeightFromAlpha(src, x + 1, y - 1);
+
+        // middle row
+        h.h01 = lightingHeightFromAlpha(src, x - 1, y);
+        h.h11 = lightingHeightFromAlpha(src, x, y);
+        h.h21 = lightingHeightFromAlpha(src, x + 1, y);
+
+        // bottom row
+        h.h02 = lightingHeightFromAlpha(src, x - 1, y + 1);
+        h.h12 = lightingHeightFromAlpha(src, x, y + 1);
+        h.h22 = lightingHeightFromAlpha(src, x + 1, y + 1);
+
+        return h;
+    }
+
+    // ---------------------------------------------
+    // Pixel packing helpers for diffuse and specular lighting results.
+    //
+    static INLINE Pixel_ARGB32 packLightingPixel_srgb_lut(
+        float r, float g, float b,
+        float a,
+        const ColorCodecLUT& lut) noexcept
+    {
+        return ColorSRGB_to_Pixel_ARGB32_lut(r, g, b, a, lut);
+    }
+
+    static INLINE Pixel_ARGB32 packLightingPixel_linear_lut(
+        float r, float g, float b,
+        float a,
+        const ColorCodecLUT& lut) noexcept
+    {
+        return ColorLinear_to_Pixel_ARGB32_lut(r, g, b, a, lut);
+    }
+
+    static INLINE Pixel_ARGB32 packLightingPixel_lut(
+        float r, float g, float b,
+        float a,
+        FilterColorInterpolation interp,
+        const ColorCodecLUT& lut) noexcept
+    {
+        if (interp == FILTER_COLOR_INTERPOLATION_LINEAR_RGB)
+            return packLightingPixel_linear_lut(r, g, b, a, lut);
+
+        return packLightingPixel_srgb_lut(r, g, b, a, lut);
+    }
+
 }

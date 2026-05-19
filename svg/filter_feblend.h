@@ -292,9 +292,9 @@ namespace waavs
 
             BlendVec4 out{};
             out.a = c.a;
-            out.r = vbslq_f32(hasA, neon_clamp01_f32(vmulq_f32(c.r, invA)), zero);
-            out.g = vbslq_f32(hasA, neon_clamp01_f32(vmulq_f32(c.g, invA)), zero);
-            out.b = vbslq_f32(hasA, neon_clamp01_f32(vmulq_f32(c.b, invA)), zero);
+            out.r = vbslq_f32(hasA, clamp01q_f32(vmulq_f32(c.r, invA)), zero);
+            out.g = vbslq_f32(hasA, clamp01q_f32(vmulq_f32(c.g, invA)), zero);
+            out.b = vbslq_f32(hasA, clamp01q_f32(vmulq_f32(c.b, invA)), zero);
             return out;
         }
 
@@ -371,10 +371,10 @@ namespace waavs
             float g[4];
             float b[4];
 
-            vst1q_f32(a, neon_clamp01_f32(outA));
-            vst1q_f32(r, neon_clamp01_f32(outR));
-            vst1q_f32(g, neon_clamp01_f32(outG));
-            vst1q_f32(b, neon_clamp01_f32(outB));
+            vst1q_f32(a, clamp01q_f32(outA));
+            vst1q_f32(r, clamp01q_f32(outR));
+            vst1q_f32(g, clamp01q_f32(outG));
+            vst1q_f32(b, clamp01q_f32(outB));
 
             for (int i = 0; i < 4; ++i)
             {
@@ -452,11 +452,11 @@ namespace waavs
                 const float32x4_t invOutA = neon_recip_nr_f32(vmaxq_f32(outA, eps));
 
                 const float32x4_t outR =
-                    vbslq_f32(hasOutA, neon_clamp01_f32(vmulq_f32(outR_p, invOutA)), zero);
+                    vbslq_f32(hasOutA, clamp01q_f32(vmulq_f32(outR_p, invOutA)), zero);
                 const float32x4_t outG =
-                    vbslq_f32(hasOutA, neon_clamp01_f32(vmulq_f32(outG_p, invOutA)), zero);
+                    vbslq_f32(hasOutA, clamp01q_f32(vmulq_f32(outG_p, invOutA)), zero);
                 const float32x4_t outB =
-                    vbslq_f32(hasOutA, neon_clamp01_f32(vmulq_f32(outB_p, invOutA)), zero);
+                    vbslq_f32(hasOutA, clamp01q_f32(vmulq_f32(outB_p, invOutA)), zero);
 
                 neon_store_prgb32_4(dst + i, outA, outR, outG, outB);
             }

@@ -200,6 +200,15 @@ namespace waavs
     {
         return vminq_f32(vmaxq_f32(v, vdupq_n_f32(0.0f)), vdupq_n_f32(1.0f));
     }
+
+    static INLINE float32x4_t neon_recip_nr_f32(float32x4_t x) noexcept
+    {
+        float32x4_t y = vrecpeq_f32(x);
+        y = vmulq_f32(y, vrecpsq_f32(x, y));
+        y = vmulq_f32(y, vrecpsq_f32(x, y));
+        return y;
+    }
+
 #endif
 
     static INLINE float clamp01f(const float v) noexcept { return clamp(v, 0.0f, 1.0f); }

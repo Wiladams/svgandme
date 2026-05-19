@@ -28,7 +28,7 @@ namespace waavs
             fDrawingContext = std::make_unique<BLContext>();
 
             initState();
-            //fDrawingContext->setCompOp(BLCompOp::BL_COMP_OP_SRC_OVER);
+            fDrawingContext->set_comp_op(BLCompOp::BL_COMP_OP_SRC_OVER);
         }
 
 
