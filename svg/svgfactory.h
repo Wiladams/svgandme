@@ -157,7 +157,7 @@ namespace waavs {
             // Filter node registrations
             // Do this registration at the application level
             // If you want to turn the whole thing on or off
-            //SVGFilterElement::registerFactory();                // 'filter'
+            SVGFilterElement::registerFactory();                // 'filter'
 
             SVGFeBlendElement::registerFactory();               // 'feBlend'
             SVGFeColorMatrixElement::registerFactory();         // 'feColorMatrix'
@@ -232,7 +232,7 @@ namespace waavs {
 
         // A convenience to construct the document from a chunk, and return
         // a shared pointer to the document
-        static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, double w, double h, double ppi)
+        static std::shared_ptr<SVGDocument> createFromChunk(const ByteSpan& srcChunk, double w, double h, double ppi=96.0)
         {
             auto doc = getSingleton()->createFromChunkInternal(srcChunk, w, h, ppi);
 

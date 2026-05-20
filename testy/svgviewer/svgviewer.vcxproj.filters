@@ -377,9 +377,6 @@
     <ClInclude Include="..\..\svg\surface_info.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\waavsgraph.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\svg\filter_exec.h">
       <Filter>Header Files</Filter>
     </ClInclude>

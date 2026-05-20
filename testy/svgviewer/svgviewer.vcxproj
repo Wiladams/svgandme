@@ -167,7 +167,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\..\;..\..\3rdparty;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include..\;..\..\;..\..\3rdparty;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\;..\..\;..\..\3rdparty;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;..\;..\..\;..\..\3rdparty;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -177,7 +177,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\3rdparty\blend2d\lib\ARM64\Debug;..\..\3rdparty\ffmpeg\lib\Release;</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\3rdparty\blend2d\lib\ARM64\Release;..\..\3rdparty\ffmpeg\lib\Release;</AdditionalLibraryDirectories>
       <Profile>false</Profile>
     </Link>
   </ItemDefinitionGroup>
@@ -362,7 +362,6 @@
     <ClInclude Include="..\..\svg\twobitpu.h" />
     <ClInclude Include="..\..\svg\utf8.h" />
     <ClInclude Include="..\..\svg\viewport.h" />
-    <ClInclude Include="..\..\svg\waavsgraph.h" />
     <ClInclude Include="..\..\svg\wggeometry.h" />
     <ClInclude Include="..\..\svg\wsenum.h" />
     <ClInclude Include="..\..\svg\xmlentity.h" />

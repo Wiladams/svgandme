@@ -519,47 +519,6 @@ namespace waavs {
             if (elem.getElementAttribute(svgattr::id(), idValue))
                 setId(idValue);
 
-            /*
-            // Scan the list of attributes, separating out the id, style and class attributes
-
-            // since the readNextKeyAttribute() function is destructive of the span
-            // we need to make a copy of the span to work with
-            ByteSpan src = elem.data();
-
-            // Create a couple of spans to hold the name and value
-            // pairs.  These will be reused on each iteration
-            ByteSpan attrName{};
-            ByteSpan attrValue{};
-
-            // Loop through the attributes
-            // setting well known attributes directly
-            // and presentation attributes into their own collection
-            // BUGBUG: This might be better done by just getting the specific
-            // attributes out of the attributeSpan, but not building up
-            // the presentation attributes collection.  That collection is
-            // largely temporary, as it's used in fixup, and just bloats the size of the structure
-            while (readNextKeyAttribute(src, attrName, attrValue))
-            {
-                InternedKey attrKey = PSNameTable::INTERN(attrName);
-
-                if (attrKey == svgattr::id())
-                {
-                    setId(attrValue);
-                }
-                else if (attrKey == svgattr::style() && !attrValue.empty())
-                {
-                    fStyleAttribute = attrValue;
-                }
-                else if (attrKey == svgattr::klass())
-                {
-                    fClassAttribute = attrValue;
-                }
-                else {
-                    fPresentationAttributes.addValue(attrKey, attrValue);
-                }
-            }
-            */
-
         }
 
         virtual void onEndTag(IAmGroot* groot)
@@ -569,9 +528,10 @@ namespace waavs {
             // post processing that requires having the full tree available.
         }
 
-        virtual void loadFromXmlPull(XmlPull& iter, IAmGroot* groot)
+        virtual void loadFromXmlPull(XmlPull& iter, IAmGroot* groot, bool isRoot = false)
         {
-            this->loadFromXmlElement(*iter, groot);
+            if (!isRoot)
+                this->loadFromXmlElement(*iter, groot);
 
             while (iter.next())
             {

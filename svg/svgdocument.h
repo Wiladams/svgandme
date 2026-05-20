@@ -54,7 +54,6 @@
 #include "svgsymbol.h"
 #include "svgtext.h"
 #include "svgpattern.h"
-//#include "svgfont.h"
 #include "svgfilter.h"
 #include "svghyperlink.h"
 
@@ -190,7 +189,14 @@ namespace waavs
 
         // retrieve root svg node
         std::shared_ptr<SVGSVGElement> documentElement() const { return fTopLevelNode; }
-
+        
+        // return first child node, regardless of kind
+        std::shared_ptr<IViewable> rootNode() const 
+        {
+            if (fNodes.empty())
+                return nullptr;
+            return fNodes[0];
+        }
 
         bool addNode(std::shared_ptr < IViewable > node, IAmGroot* groot) override
         {            
@@ -229,7 +235,7 @@ namespace waavs
         {
         }
 
-        void loadFromXmlPull(XmlPull& iter, IAmGroot* groot) override
+        void loadFromXmlPull(XmlPull& iter, IAmGroot* groot, bool isRoot=true) override
         {
             while (iter.next())
             {

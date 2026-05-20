@@ -41,6 +41,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gcoder", "gcoder\gcoder.vcx
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "quickview", "quickview\quickview.vcxproj", "{8EDC7760-8CFD-4C92-BBCB-1F0F924CEE04}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "waavsfx", "waavsfx\waavsfx.vcxproj", "{B150CB2B-F4B9-478F-B6BD-5032BA720BED}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -279,6 +281,18 @@ Global
 		{8EDC7760-8CFD-4C92-BBCB-1F0F924CEE04}.Release|x64.Build.0 = Release|x64
 		{8EDC7760-8CFD-4C92-BBCB-1F0F924CEE04}.Release|x86.ActiveCfg = Release|Win32
 		{8EDC7760-8CFD-4C92-BBCB-1F0F924CEE04}.Release|x86.Build.0 = Release|Win32
+		{B150CB2B-F4B9-478F-B6BD-5032BA720BED}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{B150CB2B-F4B9-478F-B6BD-5032BA720BED}.Debug|ARM64.Build.0 = Debug|ARM64
+		{B150CB2B-F4B9-478F-B6BD-5032BA720BED}.Debug|x64.ActiveCfg = Debug|x64
+		{B150CB2B-F4B9-478F-B6BD-5032BA720BED}.Debug|x64.Build.0 = Debug|x64
+		{B150CB2B-F4B9-478F-B6BD-5032BA720BED}.Debug|x86.ActiveCfg = Debug|Win32
+		{B150CB2B-F4B9-478F-B6BD-5032BA720BED}.Debug|x86.Build.0 = Debug|Win32
+		{B150CB2B-F4B9-478F-B6BD-5032BA720BED}.Release|ARM64.ActiveCfg = Release|ARM64
+		{B150CB2B-F4B9-478F-B6BD-5032BA720BED}.Release|ARM64.Build.0 = Release|ARM64
+		{B150CB2B-F4B9-478F-B6BD-5032BA720BED}.Release|x64.ActiveCfg = Release|x64
+		{B150CB2B-F4B9-478F-B6BD-5032BA720BED}.Release|x64.Build.0 = Release|x64
+		{B150CB2B-F4B9-478F-B6BD-5032BA720BED}.Release|x86.ActiveCfg = Release|Win32
+		{B150CB2B-F4B9-478F-B6BD-5032BA720BED}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

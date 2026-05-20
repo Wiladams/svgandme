@@ -54,6 +54,17 @@
 
     ASSERT_POD_TYPE(WGPointI);
 
+    struct WGSizeI {
+        int width, height;
+
+        WGSizeI() : width(0), height(0) {}
+        WGSizeI(const int w, const int h) : width(w), height(h) {}
+
+
+    };
+
+    ASSERT_POD_TYPE(WGSizeI);
+
 
     struct WGRectD { 
         double x, y, w, h; 

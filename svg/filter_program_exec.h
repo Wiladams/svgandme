@@ -182,7 +182,7 @@ namespace waavs
                 return resolveExplicitOrImplicitInputKey(io.in2);
             }
 
-            INLINE InternedKey resolveOutKeyStrict(const FilterIO& io) const noexcept
+            InternedKey resolveOutKeyStrict(const FilterIO& io) const noexcept
             {
                 if (!io.hasOut) return filter::Filter_Last();
                 if (!io.out)    return filter::Filter_Last();

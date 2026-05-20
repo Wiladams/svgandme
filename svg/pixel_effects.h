@@ -4,6 +4,7 @@
 #include "svgfilter.h"
 #include "blend2d_connect.h"
 #include "svgb2ddriver.h"
+#include "svgfactory.h"
 
 //
 // A standalone single function application of SVG filtering
@@ -14,23 +15,31 @@ namespace waavs
         BLImage& srcBitmap, 
         BLImage& dstBitmap) noexcept;
 
+    // createPixelEffects()
+    //
+    // Given a ByteSpan containing an SVG filter element (or document), 
+    // parse it and create a FilterProgramStream that can be executed.
     static std::shared_ptr<FilterProgramStream> createPixelEffects(ByteSpan pspan) noexcept
     {
-        // Create an XmlPull from the span,
-        // Parse the filter element and its children, and build a filter program.
-        // Let's see if we can get away with just loading a document fragment
-        // we might need to require a complete document, so that
-        // groot exists, and things can be looked up there, like
-        // for chained filters, although that doesn't really seem to be a thing
-        // in practice.
+        // We have to treat the fragment as a complete xml document
+        // Then, the root element should be the filter element, 
+        // and we can pull the program stream from it.
 
-        XmlPull xp(pspan);
-        SVGFilterElement programElement{};
-        programElement.loadFromXmlPull(xp, nullptr);
+
+        auto doc = SVGFactory::createFromChunk(pspan, 0,0);
+
+        auto root = doc->rootNode();
+        if (!root)
+            return nullptr;
+
+        auto filterElement = dynamic_cast<SVGFilterElement*>(root.get());
+        if (!filterElement)
+            return nullptr;
+
         
         // So, we just assume it was successful
         // Now we can transfer the program to the output
-        auto programStream = programElement.getFilterProgramStream(nullptr);
+        auto programStream = filterElement->getFilterProgramStream(nullptr);
 
         return programStream;
     }
@@ -40,18 +49,24 @@ namespace waavs
     // Execute the pixel effects program, using the SourceGraphic as input
     // and writing to dstGraphic as output.
     //
-    static WGResult applyEffectsProgram(const FilterProgramStream& program, 
-        BLImage &srcBitmap, BLImage &dstBitmap) noexcept
+    static WGResult applyEffectsProgram(
+        const FilterProgramStream& program,
+        const Surface& srcSurface,
+        Surface& dstSurface) noexcept
     {
-        Surface srcSurface = surfaceFromBLImage(srcBitmap);
-        
-        // Establish the filter region and object bounding box in user space.
-        WGRectD filterRectUS{ 0, 0, (double)srcSurface.width(), (double)srcSurface.height() };
-        WGRectD objectBBoxUS = filterRectUS; // In SVG, the primitive subregion is always the filter region, so we can just use filterRectUS here.
-        
-        // Setup runstate as soon as possible
-        FilterRunState runState{};
+        if (srcSurface.empty() || dstSurface.empty())
+            return WG_ERROR_Invalid_Argument;
 
+        WGRectD filterRectUS{
+            0,
+            0,
+            (double)srcSurface.width(),
+            (double)srcSurface.height()
+        };
+
+        WGRectD objectBBoxUS = filterRectUS;
+
+        FilterRunState runState{};
         runState.filterUnits = program.filterUnits;
         runState.primitiveUnits = program.primitiveUnits;
         runState.colorInterpolation = program.colorInterpolation;
@@ -59,52 +74,48 @@ namespace waavs
         runState.objectBBoxUS = objectBBoxUS;
 
         WGMatrix3x3 ctm = WGMatrix3x3::makeIdentity();
+
         FilterSpace fSpace{};
-        fSpace = {};
         fSpace.sx = 1.0;
         fSpace.sy = 1.0;
         fSpace.filterRectUS = filterRectUS;
         fSpace.filterExtentUS = WGRectD{ 0.0, 0.0, filterRectUS.w, filterRectUS.h };
-        fSpace.filterRectPX = WGRectI{ 0, 0, filterRectUS.w, filterRectUS.h };
+        fSpace.filterRectPX = WGRectI{
+            0,
+            0,
+            (int)filterRectUS.w,
+            (int)filterRectUS.h
+        };
         fSpace.ctm = ctm;
         fSpace.invCtm = ctm;
         (void)fSpace.invCtm.invert();
 
-        // Setup the executor to start
         B2DFilterExecutor executor;
         executor.setLastKey({});
+        executor.fRunState = runState;
+        executor.fSpace = fSpace;
 
-        // Setup drawing context on the output surface
-        IAmGroot* groot = nullptr; 
+        IAmGroot* groot = nullptr;
 
-        Surface dstSurface = surfaceFromBLImage(dstBitmap);
         SVGB2DDriver ctx{};
         ctx.attach(dstSurface, 1);
         ctx.renew();
 
-        // Setup resolver, so intermediate images can be handled
         B2DFilterResourceResolver<Surface> fResolver(groot, &ctx, &executor);
 
-        // Put the source graphic into the executor's registry 
-        // under the reserved key "SourceGraphic"
-        InternedKey srcGraphicKey = filter::SourceGraphic();
-        if (!executor.putImage(srcGraphicKey, srcSurface))
-        {
+        if (!executor.putImage(filter::SourceGraphic(), srcSurface))
             return WG_ERROR_Invalid_Argument;
-        }
 
-        auto srcAlpha = executor.makeSourceAlpha(srcSurface);
+        Surface srcAlpha = executor.makeSourceAlpha(srcSurface);
         if (srcAlpha.empty())
             return WG_ERROR_Invalid_Argument;
 
         if (!executor.putImage(filter::SourceAlpha(), srcAlpha))
             return WG_ERROR_Invalid_Argument;
 
-        // Execute the program
         if (!executor.execute(program, executor))
             return WG_ERROR_Invalid_Argument;
 
-        // Resolve final output surface
         InternedKey outKey = executor.lastKey();
         if (!outKey)
             outKey = filter::Filter_Last();
@@ -112,18 +123,13 @@ namespace waavs
         Surface outImg = executor.getImage(outKey);
         if (outImg.empty())
             outImg = executor.getImage(filter::SourceGraphic());
+
         if (outImg.empty())
-            return false;
-
-        // --------------------------------------------------
-        // Composite result back to main context
-        // --------------------------------------------------
-
+            return WG_ERROR_Invalid_Argument;
 
         ctx.image(outImg, 0, 0);
         ctx.flush();
-
-
+        ctx.detach();
 
         return WG_SUCCESS;
     }
@@ -133,7 +139,7 @@ namespace waavs
     //
     // 
     static WGResult applyPixelEffects(const ByteSpan &pspan,
-        BLImage& srcBitmap, BLImage& dstBitmap) noexcept
+        Surface& srcBitmap, Surface& dstBitmap) noexcept
     {
         auto programStream = createPixelEffects(pspan);
         if (!programStream)
