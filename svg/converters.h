@@ -10,7 +10,8 @@
 
 #include <string>
 
-#include "bspan.h"
+#include "bspan_utils.h"
+
 #include "maths.h"
 
 namespace waavs
@@ -19,7 +20,6 @@ namespace waavs
     // Forward declarations
     static INLINE bool read_required_digits(ByteSpan& s, uint64_t& v, size_t requiredDigits) noexcept;
 
-    //static INLINE uint8_t  hex_to_dec(const uint8_t vIn) = delete;
     static INLINE int toBoolInt(const ByteSpan& inChunk);
 
     static INLINE bool readNextNumber(ByteSpan& s, double& outNumber) noexcept;
@@ -33,7 +33,7 @@ namespace waavs
         if (!inChunk)
             return std::string();
 
-        return std::string(inChunk.fStart, inChunk.fEnd);
+        return std::string(inChunk.begin(), inChunk.end());
     }
 
     // hex_nibble
@@ -153,8 +153,8 @@ namespace waavs
         if (!s)
             return false;
 
-        const unsigned char* sStart = s.fStart;
-        const unsigned char* sEnd = s.fEnd;
+        const unsigned char* sStart = s.begin();
+        const unsigned char* sEnd = s.end();
 
         // Return early if the next thing is not a digit
         if (!is_digit(*sStart))
@@ -180,8 +180,8 @@ namespace waavs
     // advance the span 
     static INLINE bool read_u64(ByteSpan& s, uint64_t& v, size_t &digitsRead) noexcept
     {
-        const unsigned char* sStart = s.fStart;
-        const unsigned char* sEnd = s.fEnd;
+        const unsigned char* sStart = s.begin();
+        const unsigned char* sEnd = s.end();
 
         digitsRead = 0;
 
@@ -200,7 +200,7 @@ namespace waavs
             ++digitsRead;
         }
 
-        s.fStart = sStart;
+        s.resetStart(sStart);
 
         return true;
     }
@@ -217,8 +217,8 @@ namespace waavs
         if (s.empty())
             return false;
 
-        const unsigned char* sStart = s.fStart;
-        const unsigned char* sEnd = s.fEnd;
+        const unsigned char* sStart = s.begin();
+        const unsigned char* sEnd = s.end();
 
         // Check for a sign if it's there
         int sign = 1;
@@ -228,7 +228,7 @@ namespace waavs
             ++sStart;
         }
 
-        s.fStart = sStart;
+        s.resetStart(sStart);
         uint64_t uvalue{ 0 };
         size_t digitsRead{ 0 };
         if (!read_u64(s, uvalue, digitsRead))
@@ -327,13 +327,13 @@ namespace waavs
 
     // Assumption:  We're sitting at beginning of a number, all whitespace handling
     // has already occured.
-    static bool INLINE readNumber(ByteSpan& s, double& value) noexcept
+    static INLINE bool readNumber(ByteSpan& s, double& value) noexcept
     {
         if (s.empty())
             return false;
 
-        const unsigned char* startAt = s.fStart;
-        const unsigned char* endAt = s.fEnd;
+        const unsigned char* startAt = s.begin();
+        const unsigned char* endAt = s.end();
 
         bool isNegative = false;
         double res = 0.0;
@@ -366,9 +366,9 @@ namespace waavs
         if (is_digit(c))
         {
             hasIntPart = true;
-            s.fStart = startAt;
+            s.resetStart(startAt);
             read_u64(s, intPart, digitsRead);
-            startAt = s.fStart;
+            startAt = s.begin();
             res = static_cast<double>(intPart);
         }
 
@@ -424,13 +424,13 @@ namespace waavs
 
 
             if (is_digit(*startAt)) {
-                s.fStart = startAt;
+                s.resetStart(startAt);
                 read_u64(s, expPart, digitsRead);
-                startAt = s.fStart;
+                startAt = s.begin();
                 res = res * POW(10, double(expSign * double(expPart)));
             }
         }
-        s.fStart = startAt;
+        s.resetStart(startAt);
 
         value = (!isNegative)? res : -res;
 
@@ -456,7 +456,7 @@ namespace waavs
         //static const charset nextNumWsp = chrWspChars + ",+"; // (",+\t\n\f\r ");
         static const charset nextNumWsp = chrWspChars + ","; // (",+\t\n\f\r ");
 
-        s.skipWhile(nextNumWsp);
+        bspan_skip_while(s, nextNumWsp);
 
         if (s.empty())
             return false;
@@ -478,7 +478,7 @@ namespace waavs
         // like on paths and polylines
         static const charset nextNumWsp = chrWspChars + ","; // (",+\t\n\r ");
 
-        s.skipWhile(nextNumWsp);
+        bspan_skip_while(s, nextNumWsp);
 
         if (s.empty())
             return false;
@@ -492,7 +492,7 @@ namespace waavs
         static charset wspChars = chrWspChars + ",";
 
         // clear up leading whitespace, including ','
-        s.skipWhile(wspChars);
+        bspan_skip_while(s, wspChars);
 
         if (s.empty())
             return false;

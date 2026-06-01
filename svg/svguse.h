@@ -32,7 +32,6 @@ namespace waavs
                     return node;
                 });
 
-
             registerSingularNode();
         }
 
@@ -55,6 +54,7 @@ namespace waavs
         SVGUseElement(IAmGroot*)
             : SVGGraphicsElement() 
         {
+            setNeedsBinding(true);
         }
         SVGUseElement(const SVGUseElement& other) = delete;
 
@@ -200,6 +200,8 @@ namespace waavs
             if (fPlacedRect.w > 0.0 && fPlacedRect.h > 0.0)
                 ctx->setViewport({ 0.0, 0.0, fPlacedRect.w, fPlacedRect.h });
 
+            // Ensure the target binds itself to the context before drawing.
+            fTarget->setNeedsBinding(true); 
             fTarget->draw(ctx, groot);
 
             ctx->pop();

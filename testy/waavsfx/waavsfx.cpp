@@ -491,7 +491,7 @@ static INLINE bool looksLikeSvg(const char* filename) noexcept
     if (!filename)
         return false;
 
-    return chunk_ends_with_cstr(filename, ".svg");
+    return bspan_ends_with(filename, ".svg");
 }
 
 // ------------------------------

@@ -302,7 +302,7 @@ namespace waavs
     // Uses readNextNumber(), so it naturally accepts comma/space separators.
     static INLINE bool parseNumberPair(ByteSpan s, SVGNumberPair& out) noexcept
     {
-        s.skipSpaces();
+        bspan_skip_spaces(s);
 
         if (!s) { out.set(0.0f); return false; }
 

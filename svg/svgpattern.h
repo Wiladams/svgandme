@@ -212,7 +212,7 @@ namespace waavs
                 // point to element as source of content if we don't
                 // have any child nodes of our own
                 // Inherit child content pointer
-                if (fNodes.empty() && !gnode->fNodes.empty() && !fContentSource)
+                if (fRenderNodes.empty() && !gnode->fRenderNodes.empty() && !fContentSource)
                 {
                     fContentSource = gnode;
 
@@ -429,9 +429,9 @@ namespace waavs
 
             // Draw children into the tile image.
             if (fContentSource)
-                fContentSource->drawChildren(&ictx, groot);
+                fContentSource->drawRenderSubtree(&ictx, groot);
             else
-                drawChildren(&ictx, groot);
+                drawRenderSubtree(&ictx, groot);
 
             ictx.flush();
             ictx.detach();

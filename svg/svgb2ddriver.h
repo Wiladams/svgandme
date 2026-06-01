@@ -185,9 +185,9 @@ namespace waavs
             fDrawingContext->set_comp_op(compOp);
         }
 
-        void onGlobalOpacity() override
+        void onGlobalOpacity(double alpha) override
         {
-            fDrawingContext->set_global_alpha(getGlobalOpacity());
+            fDrawingContext->set_global_alpha(alpha);
         }
 
         /*
@@ -211,9 +211,9 @@ namespace waavs
             fDrawingContext->set_stroke_caps((BLStrokeCap)caps);
         }
 
-        void onStrokeWidth() override
+        void onStrokeWidth(double width) override
         {
-            fDrawingContext->set_stroke_width(getStrokeWidth());
+            fDrawingContext->set_stroke_width(width);
         }
 
         void onLineJoin() override

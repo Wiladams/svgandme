@@ -88,6 +88,10 @@ namespace waavs
     //
     struct SVGDocument : public  SVGGraphicsElement, public IAmGroot 
     {
+        // create a memBuff from srcChunk
+        // since we use memory references, we need
+        // to keep the memory around for the duration of the 
+        // document's life
         MemBuff fSourceMem{};
                 
         // BUGBUG - this should go away
@@ -97,7 +101,7 @@ namespace waavs
         std::shared_ptr<SVGSVGElement> fTopLevelNode = nullptr;
 
         
-        // We need a style sheet for the entire document
+        // This is the style sheet for the entire document.
         CSSStyleSheet fStyleSheet{};
 
         // IAmGroot
@@ -123,8 +127,7 @@ namespace waavs
             , fCanvasWidth(w)
             , fCanvasHeight(h)
         {
-            // Create document style sheet that can be filled in
-            //fStyleSheet = std::make_shared<CSSStyleSheet>();
+
         }
 
         ~SVGDocument() = default;
@@ -136,7 +139,7 @@ namespace waavs
             //clear();
 
             setDpi(ppi);
-            canvasSize(w, h);
+            setCanvasSize(w, h);
             fStyleSheet.reset();
 
 
@@ -150,7 +153,7 @@ namespace waavs
         
         double canvasWidth() const override { return fCanvasWidth; }
         double canvasHeight() const override { return fCanvasHeight; }
-        void canvasSize(const double w, const double h) { fCanvasWidth = w; fCanvasHeight = h; }
+        void setCanvasSize(const double w, const double h) noexcept { fCanvasWidth = w; fCanvasHeight = h; }
         
         const WGRectD viewPort() const noexcept
         {
@@ -193,9 +196,9 @@ namespace waavs
         // return first child node, regardless of kind
         std::shared_ptr<IViewable> rootNode() const 
         {
-            if (fNodes.empty())
+            if (fRenderNodes.empty())
                 return nullptr;
-            return fNodes[0];
+            return fRenderNodes[0];
         }
 
         bool addNode(std::shared_ptr < IViewable > node, IAmGroot* groot) override
@@ -225,34 +228,87 @@ namespace waavs
             this->resolveStyleSubtree(groot);
         }
 
-
-
-        // We override this here, because we don't want to do anything with the information
-        // in any of the top level xml elements
-        // Maybe we should hold onto the XMLDECL if it's seen, 
-        // so we can know some version and encoding info?
-        void loadFromXmlElement(const XmlElement& elem, IAmGroot* groot) override
+        //
+        //
+        void loadInternalEntityDeclarations(ByteSpan subset)
         {
+            while (subset)
+            {
+                ByteSpan ent = chunk_find_cstr(subset, "<!ENTITY");
+                if (!ent)
+                    return;
+
+                subset.resetStart(ent.begin() + 8);
+
+                bspan_skip_spaces(subset);
+
+                if (subset && *subset == '%')
+                {
+                    // Parameter entity. Skip or ignore for now.
+                    continue;
+                }
+
+                ByteSpan name = chunk_token(subset, chrWspChars);
+                bspan_skip_spaces(subset);
+
+                ByteSpan value{};
+                if (chunk_read_quoted(subset, value))
+                {
+                    addXmlEntity(name, value);
+                }
+
+                ByteSpan endDecl = chunk_find_char(subset, '>');
+                if (!endDecl)
+                    return;
+
+                subset.resetStart(endDecl.begin() + 1);
+            }
         }
 
-        void loadFromXmlPull(XmlPull& iter, IAmGroot* groot, bool isRoot=true) override
+        // loadDocTypeNode
+        //
+        // Parse the DocType and apply entities if they exist
+        void loadDocTypeNode(const XmlElement& elem, IAmGroot* groot)
+        {
+            XmlDocTypeDecl decl{};
+            if (!parseDocTypeDecl(elem.data(), decl))
+                return;
+
+            if (decl.rootName != "svg")
+                return;
+
+            if (decl.internalSubset)
+                loadInternalEntityDeclarations(decl.internalSubset);
+        }
+
+
+
+        void loadDocumentFromXmlPull(XmlPull& iter, IAmGroot* groot)
         {
             while (iter.next())
             {
-                const XmlElement& elem = iter.fCurrentElement;
+                const XmlElement& elem = *iter;
 
                 switch (elem.kind())
                 {
                 case XML_ELEMENT_TYPE_START_TAG:                    // <tag>
-                    this->loadStartTag(iter, groot);
+                    loadStartTag(iter, groot);
                     break;
+
+                case XML_ELEMENT_TYPE_SELF_CLOSING:                 // <tag/>
+                    loadSelfClosingNode(elem, groot);
+                    break;
+
+                case XML_ELEMENT_TYPE_DOCTYPE:                      // <!DOCTYPE greeting SYSTEM "hello.dtd">
+                    loadDocTypeNode(elem, groot);
+                    break;
+
+                /*
                 case XML_ELEMENT_TYPE_END_TAG:                      // </tag>
                     this->loadEndTag(elem, groot);
                     onEndTag(groot);
                     break;
-                case XML_ELEMENT_TYPE_SELF_CLOSING:                 // <tag/>
-                    this->loadSelfClosingNode(elem, groot);
-                    break;
+
                 case XML_ELEMENT_TYPE_CONTENT:                      // <tag>content</tag>
                     this->loadContentNode(elem, groot);
                     break;
@@ -262,21 +318,19 @@ namespace waavs
                 case XML_ELEMENT_TYPE_CDATA:                        // <![CDATA[<greeting>Hello, world!</greeting>]]>
                     this->loadCDataNode(elem, groot);
                     break;
-                case XML_ELEMENT_TYPE_DOCTYPE:                      // <!DOCTYPE greeting SYSTEM "hello.dtd">
                 case XML_ELEMENT_TYPE_ENTITY:                       // <!ENTITY hello "Hello">
                 case XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION:       // <?target data?>
                 case XML_ELEMENT_TYPE_XMLDECL:                      // <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
                 case XML_ELEMENT_TYPE_EMPTY_TAG:                    // <br>
+                */
                 default:
-                {
                     // Ignore anything else
-                }
                 break;
                 }
             }
 
             setNeedsBinding(true);
-            onDocumentLoaded(groot);
+            onDocumentLoaded(this);
         }
  
         
@@ -286,11 +340,6 @@ namespace waavs
         // construct the SVGDocument from the given memory chunk
         bool loadFromChunk(const ByteSpan &srcChunk)
         {
-            // create a memBuff from srcChunk
-            // since we use memory references, we need
-            // to keep the memory around for the duration of the 
-            // document's life
-            
 
             fSourceMem.resetFromSpan(srcChunk);
             
@@ -302,14 +351,16 @@ namespace waavs
             // processing, having the entities converted will cause problems for the scanner.
             // Although it seems like this would be a great place to do this, it's probably 
             // better to either do it only when it matters, or at the scanner level.
-            //fSourceMem.resetFromSize(srcChunk.size());
-            //ByteSpan dstSpan = fSourceMem.span();
-            //size_t sz = expandXmlEntities(srcChunk, dstSpan);
+            // fSourceMem.resetFromSize(srcChunk.size());
+            // ByteSpan dstSpan = fSourceMem.span();
+            // size_t sz = expandXmlEntities(srcChunk, dstSpan);
 
             // Create the XML Iterator we're going to use to parse the document
             XmlPull iter(fSourceMem.span(), true);
-            loadFromXmlPull(iter, this);
+            loadDocumentFromXmlPull(iter, this);
             
+
+
             return true;
         }
 
@@ -323,7 +374,7 @@ namespace waavs
         // and not actually do the drawing
         virtual void bindChildrenToContext(IRenderSVG* ctx, IAmGroot* groot)
         {
-            for (auto& node : fNodes) 
+            for (auto& node : fRenderNodes)
             {
                 node->bindToContext(ctx, groot);
             }
@@ -360,7 +411,7 @@ namespace waavs
             ctx->setObjectFrame(fPortalFrame);
 
             this->drawSelf(ctx, groot);
-            this->drawChildren(ctx, groot);
+            this->drawRenderSubtree(ctx, groot);
 
             ctx->pop();
         }

@@ -565,7 +565,7 @@ namespace waavs {
         charset delims = chrWspChars + ',';
         for (int i = 0; i < 3; i++)
         {
-            nums.skipSpaces();
+            bspan_skip_spaces(nums);
             // get a component, separated by space or ','
             auto num = chunk_token(nums, delims);
 
@@ -581,11 +581,11 @@ namespace waavs {
         // it can be delimited by the previous delimiters
         // or the '/' character
         delims += '/';
-        nums.skipWhile(delims);
+        bspan_skip_while(nums, delims);
 
         if (nums)
         {
-            nums.skipSpaces();
+            bspan_skip_spaces(nums);
             double a = 1.0;
             if (!readCSSAlphaValue(nums, a))
                 return WG_ERROR_Invalid_Argument;

@@ -135,8 +135,8 @@ namespace waavs
         // Validate remaining characters of scheme
         if (schemeLen > 1)
         {
-            ByteSpan tail = ByteSpan::fromPointers(ptr + 1, colon);
-            if (!isAll(tail, kSchemeRest))
+            ByteSpan tail(ptr + 1, colon);
+            if (!bspan_is_all(tail, kSchemeRest))
                 return false;
         }
 

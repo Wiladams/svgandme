@@ -279,7 +279,7 @@ namespace waavs
             fB = {};
             fA = {};
 
-            for (auto& n : fNodes)
+            for (auto& n : fRenderNodes)
             {
                 if (!n)
                     continue;
@@ -712,7 +712,7 @@ namespace waavs
             for (int i = 0; i < 8; ++i)
                 fLight[i] = 0.0f;
 
-            for (auto& n : fNodes)
+            for (auto& n : fRenderNodes)
             {
                 if (!n)
                     continue;
@@ -1230,7 +1230,7 @@ namespace waavs
 
             fInputs.clear();
 
-            for (auto& n : fNodes)
+            for (auto& n : fRenderNodes)
             {
                 if (!n)
                     continue;
@@ -1481,7 +1481,7 @@ namespace waavs
             for (int i = 0; i < 8; ++i)
                 fLight[i] = 0.0f;
 
-            for (auto& n : fNodes)
+            for (auto& n : fRenderNodes)
             {
                 
                 if (!n)
@@ -1790,7 +1790,7 @@ namespace waavs {
 
         bool filterHasPrimitiveChildren() const noexcept
         {
-            for (auto& n : fNodes) {
+            for (auto& n : fRenderNodes) {
                 if (!n) continue;
                 if (std::dynamic_pointer_cast<SVGFilterPrimitiveElement>(n))
                     return true;
@@ -1951,7 +1951,7 @@ namespace waavs {
 
             if (src)
             {
-                for (auto& n : src->fNodes)
+                for (auto& n : src->fRenderNodes)
                 {
                     if (!n) continue;
                     auto prim = std::dynamic_pointer_cast<SVGFilterPrimitiveElement>(n);

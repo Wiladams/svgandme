@@ -306,9 +306,6 @@ namespace waavs
             if (it != fDefinitions.end())
                 return it->second;
 
-            //printf("SVGDocument::getElementById, FAIL: ");
-            //printChunk(name);
-
             return {};
         }
         
@@ -355,26 +352,23 @@ namespace waavs
         
 
         // Entities for entity expansion
-        virtual void addEntity(const ByteSpan& name, ByteSpan expansion)
+        virtual void addXmlEntity(const ByteSpan& name, ByteSpan expansion)
         {
-            fEntities[name] = expansion;
+            ByteSpan key = chunk_trim(name, chrWspChars);
+            fEntities[key] = expansion;
         }
         
-        virtual ByteSpan findEntity(const ByteSpan& name)
+        virtual ByteSpan findXmlEntity(const ByteSpan& name)
         {
             auto it = fEntities.find(name);
             if (it != fEntities.end())
                 return it->second;
 
-            //printf("SVGDocument::findEntity(), FAIL: ");
-            //printChunk(name);
-
             return ByteSpan{};
         }
 
         // IAmGroot
-        //virtual std::shared_ptr<CSSStyleSheet> styleSheet() = 0;
-        //virtual void styleSheet(std::shared_ptr<CSSStyleSheet> sheet) = 0;
+
         virtual const CSSStyleSheet& styleSheet() const = 0;
         virtual CSSStyleSheet& styleSheet() = 0;
 

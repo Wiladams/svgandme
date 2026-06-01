@@ -251,6 +251,7 @@
     <ClInclude Include="..\..\svg\bit_bops.h" />
     <ClInclude Include="..\..\svg\bit_reader.h" />
     <ClInclude Include="..\..\svg\bit_util.h" />
+    <ClInclude Include="..\..\svg\bspan_utils.h" />
     <ClInclude Include="..\..\svg\effects.h" />
     <ClInclude Include="..\..\svg\filter_exec.h" />
     <ClInclude Include="..\..\svg\filter_fecomponenttransfer.h" />
@@ -327,6 +328,7 @@
     <ClInclude Include="..\..\svg\svgclip.h" />
     <ClInclude Include="..\..\svg\svgcolors.h" />
     <ClInclude Include="..\..\svg\svgconditional.h" />
+    <ClInclude Include="..\..\svg\svgcontext.h" />
     <ClInclude Include="..\..\svg\svgcss.h" />
     <ClInclude Include="..\..\svg\svgdatatypes.h" />
     <ClInclude Include="..\..\svg\svgdefs.h" />

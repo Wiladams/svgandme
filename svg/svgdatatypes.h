@@ -387,9 +387,9 @@ namespace waavs
             else if (chrAlphaChars(c))
             {
                 // consume alpha run without consuming the delimiter after it
-                const uint8_t* uStart = cur.fStart;
-                cur.skipWhile(chrAlphaChars);
-                ByteSpan unitTok = ByteSpan::fromPointers( uStart, cur.fStart );
+                const uint8_t* uStart = cur.begin();
+                bspan_skip_while(cur, chrAlphaChars);
+                ByteSpan unitTok( uStart, cur.begin() );
 
                 if (!parseDimensionUnits(unitTok, units))
                     return false; // unknown unit => reject
@@ -612,7 +612,7 @@ namespace waavs
         //
         INLINE void skipSeparators() noexcept
         {
-            fCur.skipWhile(sepChars());
+            bspan_skip_while(fCur, sepChars());
         }
 
 
@@ -639,7 +639,7 @@ namespace waavs
                 return false;
 
             // fCur advanced to first byte after the number lexeme
-            outTok = ByteSpan::fromPointers( start.fStart, fCur.fStart );
+            outTok = ByteSpan::fromPointers( start.begin(), fCur.begin());
             return true;
         }
 
@@ -680,15 +680,15 @@ namespace waavs
                 else if (chrAlphaChars(*fCur))
                 {
                     // consume [A-Za-z]+
-                    const uint8_t* p = fCur.fStart;
-                    const uint8_t* e = fCur.fEnd;
+                    const uint8_t* p = fCur.begin();
+                    const uint8_t* e = fCur.end();
                     while (p < e && chrAlphaChars(*p))
                         ++p;
-                    fCur.fStart = p;
+                    fCur.resetStart(p);
                 }
             }
 
-            outTok = ByteSpan::fromPointers( start.fStart, fCur.fStart );
+            outTok = ByteSpan::fromPointers( start.begin(), fCur.begin());
             return true;
         }
 
@@ -712,8 +712,8 @@ namespace waavs
             if (!(chrAlphaChars(c0) || c0 == '_'))
                 return false;
 
-            const uint8_t* start = fCur.fStart;
-            const uint8_t* end = fCur.fEnd;
+            const uint8_t* start = fCur.begin();
+            const uint8_t* end = fCur.end();
             const uint8_t* p = start;
 
             // first char already validated
@@ -731,7 +731,7 @@ namespace waavs
             }
 
             outTok = ByteSpan::fromPointers( start, p );
-            fCur.fStart = p;
+            fCur.resetStart(p);
             return true;
         }
 
@@ -743,7 +743,7 @@ namespace waavs
         //
         bool skipOneTokenOrChar() noexcept
         {
-            const uint8_t* before = fCur.fStart;
+            const uint8_t* before = fCur.begin();
 
             ByteSpan tok{};
             if (nextLengthToken(tok)) return true;
@@ -752,7 +752,7 @@ namespace waavs
             skipSeparators();
             if (fCur) ++fCur;
 
-            return fCur.fStart != before;
+            return fCur.begin() != before;
         }
 
         // peekHasMoreNumber()
@@ -763,8 +763,9 @@ namespace waavs
         bool peekHasMoreNumber() const noexcept
         {
             ByteSpan tmp = fCur;
-            tmp.skipWhile(sepChars());
-            if (!tmp) return false;
+            bspan_skip_while(tmp, sepChars());
+            if (!tmp) 
+                return false;
 
             double dummy = 0.0;
             ByteSpan t2 = tmp;
@@ -781,13 +782,13 @@ namespace waavs
         bool isListOfNumbers() const noexcept
         {
             ByteSpan tmp = fCur;
-            tmp.skipWhile(sepChars());
+            bspan_skip_while(tmp,sepChars());
             if (!tmp) return false;
 
             double dummy = 0.0;
             if (!readNumber(tmp, dummy)) return false;
 
-            tmp.skipWhile(sepChars());
+            bspan_skip_while(tmp, sepChars());
             if (!tmp) return false;
 
             // second number?
@@ -1283,7 +1284,7 @@ namespace waavs
         // Start the chunk at the current position
         // and expand it after we find the ')'
         ByteSpan item = s;
-        item.fEnd = item.fStart;
+        item.resetEnd(item.begin());
 
         // scan until the closing ')'
         s = chunk_find_char(s, ')');
@@ -1298,7 +1299,7 @@ namespace waavs
         // We found the closing ')', so if we use the current position
         // as the end (sitting on top of the ')', the item chunk will
         // perfectly represent the numbers we want to parse.
-        item.fEnd = s.fStart;
+        item.resetEnd(s.begin());
 
         // Create a chunk that will represent a specific number to be parsed.
         //ByteSpan numChunk{};
@@ -1428,7 +1429,7 @@ namespace waavs
     static bool parseTransform(const ByteSpan& inChunk, WGMatrix3x3& xform)
     {        
         ByteSpan s = inChunk;
-        s = chunk_skip_wsp(s);
+        s = bspan_skip_spaces(s);
         if (!s)
             return false;
         
@@ -1438,42 +1439,42 @@ namespace waavs
 
         while (s)
         {
-            s = chunk_skip_wsp(s);
+            s = bspan_skip_spaces(s);
 
             WGMatrix3x3 tm{};
             tm.reset();
 
-            if (chunk_starts_with_cstr(s, "matrix"))
+            if (bspan_starts_with(s, "matrix"))
             {
                 s = parseMatrix(s, tm);
                 xform = tm;
                 isSet = true;
             }
-            else if (chunk_starts_with_cstr(s, "translate"))
+            else if (bspan_starts_with(s, "translate"))
             {
                 s = parseTranslate(s, tm);
                 xform.transform(tm);
                 isSet = true;
             }
-            else if (chunk_starts_with_cstr(s, "scale"))
+            else if (bspan_starts_with(s, "scale"))
             {
                 s = parseScale(s, tm);
                 xform.transform(tm);
                 isSet = true;
             }
-            else if (chunk_starts_with_cstr(s, "rotate"))
+            else if (bspan_starts_with(s, "rotate"))
             {
                 s = parseRotate(s, tm);
                 xform.transform(tm);
                 isSet = true;
             }
-            else if (chunk_starts_with_cstr(s, "skewX"))
+            else if (bspan_starts_with(s, "skewX"))
             {
                 s = parseSkewX(s, tm);
                 xform.transform(tm);
                 isSet = true;
             }
-            else if (chunk_starts_with_cstr(s, "skewY"))
+            else if (bspan_starts_with(s, "skewY"))
             {
                 s = parseSkewY(s, tm);
                 xform.transform(tm);
@@ -1482,7 +1483,6 @@ namespace waavs
             else {
                 s++;
             }
-
         }
 
         return isSet;

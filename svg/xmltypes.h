@@ -6,7 +6,8 @@
 #include <cstdint>
 #include <unordered_map>
 
-#include "bspan.h"
+
+#include "bspan_utils.h"
 #include "nametable.h"
 
 enum XML_ELEMENT_TYPE {
@@ -24,6 +25,20 @@ enum XML_ELEMENT_TYPE {
     , XML_ELEMENT_TYPE_ENTITY                       // <!ENTITY hello "Hello">
 };
 
+namespace waavs
+{
+    // XmlDocTypeDecl
+    // Data structure for holding onto DOCTYPE declaration
+    struct XmlDocTypeDecl
+    {
+        ByteSpan rootName{};
+        ByteSpan externalKind{};    // PUBLIC or SYSTEM, could be interned
+        ByteSpan publicId{};
+        ByteSpan systemId{};
+        ByteSpan internalSubset{};  // content sinside [...]
+    };
+}
+
 namespace waavs 
 {
     // readNextCSSKeyValue()
@@ -40,8 +55,7 @@ namespace waavs
     static bool readNextCSSKeyValue(ByteSpan& src, ByteSpan& key, ByteSpan& value, const unsigned char fieldDelimeter = ';', const unsigned char keyValueSeparator = ':') noexcept
     {
         // Trim leading whitespace to begin
-        //src = chunk_ltrim(src, chrWspChars);
-        src.skipSpaces();
+        bspan_skip_spaces(src);
 
         // If the string is now blank, return immediately
         if (!src)
@@ -68,7 +82,7 @@ namespace waavs
         value.reset();
 
         // Trim leading whitespace
-        src.skipWhile(chrWspChars);
+        bspan_skip_spaces(src);
 
         if (!src)
             return false;
@@ -78,15 +92,15 @@ namespace waavs
             return false;
 
         // Capture attribute name up to '='
-        const uint8_t* keyStart = src.fStart;
+        const uint8_t* keyStart = src.begin();
         const uint8_t* keyEnd = keyStart; // track last non-whitespace char seen
-        while (src.fStart < src.fEnd && *src.fStart != '=')
+        while (src.begin() < src.end() && *src.begin() != '=')
         {
-            if (!chrWspChars(*src.fStart))
+            if (!chrWspChars(*src.begin()))
             {
-                keyEnd = src.fStart + 1; // past the last non-space character
+                keyEnd = src.begin() + 1; // past the last non-space character
             }
-            ++src.fStart;
+            src.advance(1);
         }
 
         // If no '=' found, return false
@@ -97,10 +111,10 @@ namespace waavs
         key = ByteSpan::fromPointers(keyStart, keyEnd);
 
         // Move past '='
-        ++src.fStart;
+        src.advance(1);
 
         // Skip any whitespace
-        src.skipWhile(chrWspChars);
+        bspan_skip_spaces(src);
 
         if (src.empty())
             return false;
@@ -114,17 +128,16 @@ namespace waavs
         src++;
 
         // Locate the closing quote using `memchr`
-        const uint8_t* endQuote = static_cast<const uint8_t*>(std::memchr(src.fStart, quoteChar, src.size()));
+        const uint8_t* endQuote = static_cast<const uint8_t*>(std::memchr(src.begin(), quoteChar, src.size()));
 
         if (!endQuote)
             return false; // No closing quote found
 
         // Assign the attribute value (excluding quotes)
-        value = ByteSpan::fromPointers(src.fStart, endQuote);
+        value = ByteSpan::fromPointers(src.begin(), endQuote);
 
         // Move past the closing quote
-        src.fStart = endQuote + 1;
-
+        src.resetStart(endQuote + 1);
         return true;
     }
 
@@ -142,7 +155,7 @@ namespace waavs
         while (src)
         {
             // Skip leading whitespace
-            src.skipSpaces();
+            bspan_skip_spaces(src);
 
             if (!src)
                 return false;
@@ -173,8 +186,7 @@ namespace waavs
             if (keyCandidate == key)
             {
                 // Skip whitespace before value
-                src.skipSpaces();
-                //src = chunk_ltrim(src, chrWspChars);
+                bspan_skip_spaces(src);
 
                 if (!src)
                     return false;
@@ -184,14 +196,14 @@ namespace waavs
                 {
                     quoteChar = *src;
                     src++;
-                    value.fStart = src.fStart;
+                    value.resetStart(src.begin());
 
                     // Find the closing quote **quickly**
                     src = chunk_find_char(src, quoteChar);
                     if (!src)
                         return false;
 
-                    value.fEnd = src.fStart;  // Exclude the closing quote
+                    value.resetEnd(src.begin());  // Exclude the closing quote
                     src++;
                     return true; // Successfully found key and value
                 }
@@ -202,7 +214,7 @@ namespace waavs
 
             // If there was no `=`, continue scanning
             //src = chunk_ltrim(src, chrWspChars);
-            src.skipSpaces();
+            bspan_skip_spaces(src);
 
             if (src && *src == '=')
                 src++; // Skip past '=' and continue parsing
@@ -230,10 +242,10 @@ namespace waavs
 
         // find ':'; if found, split
         const unsigned char* p =
-            static_cast<const unsigned char*>(std::memchr(q.fStart, ':', q.size()));
+            static_cast<const unsigned char*>(std::memchr(q.begin(), ':', q.size()));
         if (p) {
-            prefix = ByteSpan::fromPointers(q.fStart, p);
-            local = ByteSpan::fromPointers(p + 1, q.fEnd);
+            prefix = ByteSpan::fromPointers(q.begin(), p);
+            local = ByteSpan::fromPointers(p + 1, q.end());
         }
     }
 
@@ -357,6 +369,13 @@ namespace waavs
         constexpr bool isCData() const { return fElementKind == XML_ELEMENT_TYPE_CDATA; }
         constexpr bool isDoctype() const { return fElementKind == XML_ELEMENT_TYPE_DOCTYPE; }
         constexpr bool isEntityDeclaration() const { return fElementKind == XML_ELEMENT_TYPE_ENTITY; }
+
+        // Names used by XML elements
+        //static PSNameTable* getNameTable() {
+        //    static PSNameTable gTable;
+        //    return &gTable;
+        //}
+        //static const char* INTERN(const ByteSpan& span) { return getNameTable()->intern(span); }
 
     };
 }

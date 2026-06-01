@@ -240,16 +240,16 @@ namespace waavs
             // comment blocks before we get to actual content
             while (fSource)
             {
-                if (fSource.startsWith("/*"))
+                if (bspan_starts_with(fSource, "/*"))
                 {
                     // Skip past /* comment */
                     fSource += 2;
                     fSource = chunk_skip_until_cstr(fSource, "*/");
-                    if (fSource.startsWith("*/"))
+                    if (bspan_starts_with(fSource, "*/"))
                         fSource += 2;
                     continue;
                 }
-                else if (fSource.startsWith("//"))
+                else if (bspan_starts_with(fSource, "//"))
                 {
                     // Skip past // comment
                     fSource = chunk_find_char(fSource, '\n');
@@ -305,7 +305,7 @@ namespace waavs
 
         bool operator==(const CSSSelectorIterator& other) const noexcept 
         { 
-            return fSentinel.fStart == other.fSource.fStart;
+            return fSentinel.begin() == other.fSource.begin();
         }
         bool operator!=(const CSSSelectorIterator& other) const noexcept 
         { 
@@ -349,7 +349,7 @@ namespace waavs
         // Return an iterator representing the end (empty iterator)
         CSSSelectorIterator end() const
         {
-            return CSSSelectorIterator(ByteSpan::fromPointers(fSource.fEnd, fSource.fEnd));
+            return CSSSelectorIterator({ fSource.end(), fSource.end() });
         }
     };
 

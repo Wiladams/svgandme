@@ -226,6 +226,29 @@ namespace waavs
         return wg_blit_copy_unchecked(dstView, srcView);
     }
 
+    static INLINE WGResult wg_surface_composite_binary_unchecked(
+        Surface_ARGB32& dstView,
+        const Surface_ARGB32& in1View,
+        const Surface_ARGB32& in2View,
+        WGCompositeOp op) noexcept
+    {
+        if (dstView.width <= 0 || dstView.height <= 0)
+            return WG_SUCCESS;
+
+        CompositeRowFn rowFn = get_composite_row_fn(op);
+        if (!rowFn)
+            return WG_ERROR_Invalid_Argument;
+
+        return wg_surface_rows_apply_binary_unchecked(
+            dstView,
+            in1View,
+            in2View,
+            [rowFn](uint32_t* d, const uint32_t* s1, const uint32_t* s2, int w) noexcept
+            {
+                rowFn(d, s1, s2, w);
+            });
+    }
+
     // --------------------------------
     // wg_blit_composite_unchecked()
     // 

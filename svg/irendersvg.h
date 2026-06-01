@@ -257,6 +257,9 @@ namespace waavs
         {
             //printf("IRenderSVG.push()\n");
             fStateStack.push();
+            setDrawingState(fStateStack.currentState());
+            fCurrentDrawingState = fStateStack.currentState();
+
             onPush();
         }
 
@@ -389,11 +392,11 @@ namespace waavs
             onBlendMode(mode);
         }
         
-        virtual void onGlobalOpacity() {}
-        void globalOpacity(double opacity) 
+        virtual void onGlobalOpacity(double alpha) {}
+        void globalOpacity(double opa) 
         { 
-            setGlobalOpacity(opacity);
-            onGlobalOpacity();
+            setGlobalOpacity(opa);
+            onGlobalOpacity(opa);
         }
 
         virtual void onStrokeCap() {}
@@ -417,11 +420,11 @@ namespace waavs
             onStrokeCaps(caps);
         }
         
-        virtual void onStrokeWidth() {}
+        virtual void onStrokeWidth(double width) {}
         void strokeWidth(double width)
         {
             setStrokeWidth(width);
-            onStrokeWidth();
+            onStrokeWidth(width);
         }
 
         virtual void onLineJoin() {}

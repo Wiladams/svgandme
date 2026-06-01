@@ -35,7 +35,8 @@ namespace waavs
                 // so we're free to decode the content in isolation
                 auto ent = chunk_token_char(s, ';');
 
-                if (*ent == '#') {
+                if (*ent == '#') 
+                {
                     char outBuff[10] = { 0 };
                     size_t outLen{ 0 };
                     uint64_t value = 0;
@@ -47,23 +48,27 @@ namespace waavs
                         // hex entity
                         ent++;
 
-                        if (parseHex64u(ent, value)) {
+                        if (parseHex64u(ent, value)) 
+                        {
                             // convert the codepoint into a utf8 sequence
                             // and insert that sequence into the outCursor
-                            if (convertUTF32ToUTF8(value, outBuff, outLen)) {
-                                outCursor.copyFrom(outBuff, outLen);
+                            if (convertUTF32ToUTF8(value, outBuff, outLen)) 
+                            {
+                                bspan_copy_from(outCursor, outBuff, outLen);
                                 outCursor += outLen;
                             }
                         }
                     }
-                    else if (isdigit(*ent)) {
+                    else if (isdigit(*ent)) 
+                    {
                         // decimal entity
-
-                        if (parse64u(ent, value)) {
+                        if (parse64u(ent, value)) 
+                        {
                             // convert the codepoint into a utf8 sequence
                             // and insert that sequence into the outCursor
-                            if (convertUTF32ToUTF8(value, outBuff, outLen)) {
-                                outCursor.copyFrom(outBuff, outLen);
+                            if (convertUTF32ToUTF8(value, outBuff, outLen)) 
+                            {
+                                bspan_copy_from(outCursor, outBuff, outLen);
                                 outCursor += outLen;
                             }
                         }
@@ -105,7 +110,7 @@ namespace waavs
 
 
         }
-        outSpan.fEnd = outCursor.fStart;
+        outSpan.resetEnd(outCursor.begin());
 
         return outSpan.size();
     }

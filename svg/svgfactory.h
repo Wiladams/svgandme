@@ -99,7 +99,7 @@ namespace waavs {
 
             // stroke dash attributes
             SVGStrokeDashArray::registerFactory();
-            SVGStrokeDashOffset::registerFactory();
+            //SVGStrokeDashOffset::registerFactory();
 
             // Clipping
             //SVGClipPathAttribute::registerFactory();        // 'clip-path' attribute

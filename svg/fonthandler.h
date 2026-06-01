@@ -190,7 +190,7 @@ namespace waavs {
 					success = (BL_SUCCESS == fFontManager.query_face("Consolas", qprops, face));
 				}
                 else {
-                    familyNameView.reset((char*)name.fStart, name.size());
+                    familyNameView.reset((char*)name.begin(), name.size());
                     success = (BL_SUCCESS == fFontManager.query_face(familyNameView, qprops, face));
                 }
 
@@ -253,7 +253,7 @@ namespace waavs {
             
             BLTextMetrics tm{};
             BLGlyphBuffer gb;
-            gb.set_utf8_text(txt.fStart, txt.size());
+            gb.set_utf8_text(txt.begin(), txt.size());
             afont.shape(gb);
             afont.get_text_metrics(gb, tm);
 

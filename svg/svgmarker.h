@@ -369,7 +369,7 @@ namespace waavs {
             //ctx->setViewport(fRes.viewport);
         }
 
-        void drawChildren(IRenderSVG* ctx, IAmGroot* groot) override
+        void drawRenderSubtree(IRenderSVG* ctx, IAmGroot* groot) override
         {
             // Keep your current marker child paint defaults
             ctx->push();
@@ -380,7 +380,7 @@ namespace waavs {
             ctx->strokeWidth(1.0);
             ctx->lineJoin(BLStrokeJoin::BL_STROKE_JOIN_MITER_BEVEL);
 
-            SVGGraphicsElement::drawChildren(ctx, groot);
+            SVGGraphicsElement::drawRenderSubtree(ctx, groot);
 
             ctx->pop();
         }

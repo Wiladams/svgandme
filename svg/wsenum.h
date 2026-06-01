@@ -1,7 +1,58 @@
 #pragma once
 
 #include <unordered_map>
-#include "bspan.h"
+
+#include "nametable.h"
+#include "bspan_utils.h"
+
+namespace waavs
+{
+    // ------------------------------
+    // Representation of an enum entry, 
+    // which is a mapping between a string key and an enum value.
+    template<typename EnumT>
+    struct EnumEntry
+    {
+        InternedKey key;
+        EnumT value;
+    };
+
+    template <typename EnumT, size_t N>
+    struct EnumTable
+    {
+        const EnumEntry<EnumT>(&entries)[N];
+
+        bool valueOf(InternedKey key, EnumT& value) const noexcept
+        {
+            for (const auto& e : entries)
+            {
+                if (e.key == key)
+                {
+                    value = e.value;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        bool keyOf(EnumT value, InternedKey& key) const noexcept
+        {
+            for (const auto& e : entries)
+            {
+                if (e.value == value)
+                {
+                    key = e.key;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    };
+
+}
+
 
 namespace waavs {
     template<typename EnumT>
@@ -57,6 +108,8 @@ namespace waavs {
 	{
 		return BitFlags<EnumT>(a) | b;
 	}
+
+
 
     // ------------------------------
     //

@@ -64,10 +64,6 @@ namespace waavs {
             resetFromSpan(chunk);
         }
 
-
-
-
-
         ~MemBuff() noexcept
         {
             if (fData != nullptr)
@@ -109,7 +105,7 @@ namespace waavs {
                     fSize = 0;
                     return false; // allocation failed
                 }
-                memcpy(fData, srcSpan.fStart, fSize);
+                memcpy(fData, srcSpan.data(), fSize);
             }
 
             return true;
@@ -167,8 +163,6 @@ namespace waavs {
         constexpr bool empty() const noexcept { return fSize == 0; }
 
 
-
-
         // span()
         // 
         // Create a ByteSpan from the memory buffer.
@@ -176,7 +170,7 @@ namespace waavs {
         // from the data() and size() functions.
         // The lifetime of the ByteSpan that is returned it not governed
         // by the MemBuff object.  This is something the caller must manage.
-        ByteSpan span() const noexcept { return ByteSpan::fromPointers(begin(), end()); }
+        ByteSpan span() const noexcept { return { begin(), end() }; }
     };
 
 

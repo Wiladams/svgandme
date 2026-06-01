@@ -94,8 +94,8 @@ namespace waavs {
             return;
         }
 
-        const uint8_t* p = src.fStart;
-        const uint8_t* e = src.fEnd;
+        const uint8_t* p = src.begin();
+        const uint8_t* e = src.end();
 
         while (p < e)
         {
@@ -151,8 +151,8 @@ namespace waavs {
         OwnedSpan out;
         if (!in) return out;
 
-        const uint8_t* p = in.fStart;
-        const uint8_t* e = in.fEnd;
+        const uint8_t* p = in.begin();
+        const uint8_t* e = in.end();
 
         // trim leading
         while (p < e && chrWspChars(*p)) 
@@ -190,7 +190,7 @@ namespace waavs {
 
         BLTextMetrics tm;
         BLGlyphBuffer gb;
-        gb.set_utf8_text((const char*)utf8.fStart, utf8.size());
+        gb.set_utf8_text((const char*)utf8.begin(), utf8.size());
         font.shape(gb);
         font.get_text_metrics(gb, tm);
 
@@ -211,8 +211,8 @@ namespace waavs {
         if (!t) return 1.25;
 
         // percent
-        if (t.size() >= 2 && t.fEnd[-1] == '%') {
-            ByteSpan num = ByteSpan::fromPointers(t.fStart, t.fEnd - 1);
+        if (t.size() >= 2 && t.end()[-1] == '%') {
+            ByteSpan num = ByteSpan::fromPointers(t.begin(), t.end() - 1);
             double v = 0.0;
             if (parseNumber(num, v) && v > 0.0)
                 return v / 100.0;
@@ -220,8 +220,8 @@ namespace waavs {
         }
 
         // px
-        if (t.size() >= 2 && t.fEnd[-2] == 'p' && t.fEnd[-1] == 'x') {
-            ByteSpan num = ByteSpan::fromPointers(t.fStart, t.fEnd - 2);
+        if (t.size() >= 2 && t.end()[-2] == 'p' && t.end()[-1] == 'x') {
+            ByteSpan num = ByteSpan::fromPointers(t.begin(), t.end() - 2);
             double v = 0.0;
             if (parseNumber(num, v) && v > 0.0) {
                 absolutePx = true;
@@ -291,7 +291,7 @@ namespace waavs {
         {
             if (!preserveSpace) {
                 // skip leading whitespace (should be none in collapsed mode, but in preserveSpace it may exist)
-                s.skipWhile(wsp);
+                bspan_skip_spaces(s);
             }
             else {
                 // preserveSpace: ... we DO NOT auto-insert spaces

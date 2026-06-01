@@ -134,7 +134,6 @@ namespace waavs {
 
         BLGradient fGradient{};
         BLVar fGradientVar{};
-        //ByteSpan fTemplateReference{};
 
         // Some common attributes
         BLExtendMode fSpreadMethod{ BL_EXTEND_MODE_PAD };
@@ -142,10 +141,12 @@ namespace waavs {
 
 
         // Constructor
-        SVGGradient(IAmGroot* )
+        SVGGradient(BLGradientType aType)
             :SVGGraphicsElement()
         {
+            fGradient.set_type(aType);
             fGradient.set_extend_mode(BL_EXTEND_MODE_PAD);
+
             setIsStructural(true);
             setIsVisible(false);
             setNeedsBinding(true);
@@ -209,9 +210,13 @@ namespace waavs {
             ;
         }
         
+        // inheritProperties
+        //
+        // Inherit properties from the given element
         virtual void inheritProperties(const SVGGradient* elem)
         {
-            if (!elem) return;
+            if (!elem) 
+                return;
 
             // 1) stops: copy stops from referred to only if 
             // we don't have any stops already.
@@ -336,7 +341,7 @@ namespace waavs {
         static void registerSingularNode()
         {
             registerSVGSingularNodeByName("linearGradient", [](IAmGroot* groot, const XmlElement& elem) {
-                auto node = std::make_shared<SVGLinearGradient>(groot);
+                auto node = std::make_shared<SVGLinearGradient>();
                 node->loadFromXmlElement(elem, groot);
 
                 return node;
@@ -347,7 +352,7 @@ namespace waavs {
         {
             registerContainerNodeByName("linearGradient",
                 [](IAmGroot* groot, XmlPull& iter) {
-                    auto node = std::make_shared<SVGLinearGradient>(groot);
+                    auto node = std::make_shared<SVGLinearGradient>();
                     node->loadFromXmlPull(iter, groot);
 
                     return node;
@@ -356,9 +361,9 @@ namespace waavs {
             registerSingularNode();
         }
 
-        SVGLinearGradient(IAmGroot* aroot) :SVGGradient(aroot)
+        SVGLinearGradient() 
+            :SVGGradient(BLGradientType::BL_GRADIENT_TYPE_LINEAR)
         {
-            fGradient.set_type(BL_GRADIENT_TYPE_LINEAR);
         }
 
         // getVariant()
@@ -429,21 +434,40 @@ namespace waavs {
             {
                 const WGRectD objFrame = ctx->getObjectFrame();
 
+                const double x0N = resolveLengthBBoxUnits(x1, 0.0);
+                const double y0N = resolveLengthBBoxUnits(y1, 0.0);
+                const double x1N = resolveLengthBBoxUnits(x2, 1.0);
+                const double y1N = resolveLengthBBoxUnits(y2, 0.0);
+
+                values.x0 = objFrame.x + x0N * objFrame.w;
+                values.y0 = objFrame.y + y0N * objFrame.h;
+                values.x1 = objFrame.x + x1N * objFrame.w;
+                values.y1 = objFrame.y + y1N * objFrame.h;
+
+                //xform = WGMatrix3x3::makeIdentity();
+
+
+
                 // resolve into bbox space (0..1),
                 values.x0 = resolveLengthBBoxUnits(x1, 0.0);
                 values.y0 = resolveLengthBBoxUnits(y1, 0.0);
                 values.x1 = resolveLengthBBoxUnits(x2, 1.0);
                 values.y1 = resolveLengthBBoxUnits(y2, 0.0);
 
-                xform = composeGradientTransformBBox(objFrame, fHasGradientTransform, fGradientTransform);
+                //xform = composeGradientTransformBBox(objFrame, fHasGradientTransform, fGradientTransform);
+            
             }
+
 
             grad.set_type(BL_GRADIENT_TYPE_LINEAR);
             grad.set_extend_mode(fGradient.extend_mode());
             grad.set_values(values);
-            grad.set_transform(blMatrix_from_WGMatrix3x3(xform));
             grad.reset_stops();
             grad.assign_stops(fGradient.stops_view());
+            if (fHasGradientTransform)
+            {
+                grad.set_transform(blMatrix_from_WGMatrix3x3(fGradientTransform));
+            }
 
             return true;
         }
@@ -574,7 +598,7 @@ namespace waavs {
         static void registerSingularNode()
         {
             registerSVGSingularNodeByName("radialGradient", [](IAmGroot* groot, const XmlElement& elem) {
-                auto node = std::make_shared<SVGRadialGradient>(groot);
+                auto node = std::make_shared<SVGRadialGradient>();
                 node->loadFromXmlElement(elem, groot);
 
                 return node;
@@ -585,7 +609,7 @@ namespace waavs {
         {
             registerContainerNodeByName("radialGradient",
                 [](IAmGroot* groot, XmlPull& iter) {
-                    auto node = std::make_shared<SVGRadialGradient>(groot);
+                    auto node = std::make_shared<SVGRadialGradient>();
                     node->loadFromXmlPull(iter, groot);
                     return node;
                 });
@@ -602,9 +626,10 @@ namespace waavs {
         SVGLengthValue fFr{};
 
 
-        SVGRadialGradient(IAmGroot* groot) :SVGGradient(groot)
+        SVGRadialGradient() 
+            :SVGGradient(BLGradientType::BL_GRADIENT_TYPE_RADIAL)
         {
-            fGradient.set_type(BL_GRADIENT_TYPE_RADIAL);
+            //fGradient.set_type(BL_GRADIENT_TYPE_RADIAL);
         }
 
         // getVariant()
@@ -638,8 +663,6 @@ namespace waavs {
             // Start setting up the gradient
             BLRadialGradientValues values{};
             //WGMatrix3x3 xform = WGMatrix3x3::makeIdentity();
-
-
 
             // If the gradientUnits are ObjectBoundingBox, then 
             // the parameters are relative to the size of that box
@@ -860,7 +883,7 @@ namespace waavs {
         static void registerSingularNode()
         {
             registerSVGSingularNodeByName("conicGradient", [](IAmGroot* groot, const XmlElement& elem) {
-                auto node = std::make_shared<SVGConicGradient>(groot);
+                auto node = std::make_shared<SVGConicGradient>();
                 node->loadFromXmlElement(elem, groot);
 
                 return node;
@@ -871,7 +894,7 @@ namespace waavs {
         {
             registerContainerNodeByName("conicGradient",
                 [](IAmGroot* groot, XmlPull& iter) {
-                    auto node = std::make_shared<SVGConicGradient>(groot);
+                    auto node = std::make_shared<SVGConicGradient>();
                     node->loadFromXmlPull(iter, groot);
 
                     return node;
@@ -881,10 +904,10 @@ namespace waavs {
         }
 
 
-        SVGConicGradient(IAmGroot* aroot) 
-            :SVGGradient(aroot)
+        SVGConicGradient() 
+            :SVGGradient(BLGradientType::BL_GRADIENT_TYPE_CONIC)
         {
-            fGradient.set_type(BLGradientType::BL_GRADIENT_TYPE_CONIC);
+            //fGradient.set_type(BLGradientType::BL_GRADIENT_TYPE_CONIC);
         }
 
         // Attributes to inherit

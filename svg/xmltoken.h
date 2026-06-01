@@ -70,20 +70,20 @@ namespace waavs {
     // === Outside of tag ===
     static inline bool readText(XmlTokenState& state, XmlToken& out)
     {
-        const unsigned char* start = state.input.fStart;
+        const unsigned char* start = state.input.begin();
         const unsigned char* lt = static_cast<const unsigned char*>(memchr(start, '<', state.input.size()));
         
         if (!lt)
-            lt = state.input.fEnd;
+            lt = state.input.end();
 
         if (lt != start) {
             out.reset(XML_TOKEN_TEXT, ByteSpan::fromPointers( start, lt ), false);
-            state.input.fStart = lt;
+            state.input.resetStart(lt);
             return true;
         }
 
         // Found '<'
-        ++state.input.fStart;
+        ++state.input;
         state.inTag = true;
         out.reset(XML_TOKEN_LT, {}, true);
 
@@ -93,7 +93,7 @@ namespace waavs {
     // === Inside tag ===
     static inline bool readTagToken(XmlTokenState& state, XmlToken& out)
     {
-        state.input.skipSpaces();
+        bspan_skip_spaces(state.input);
         if (state.input.empty())
             return false;
 
@@ -111,27 +111,27 @@ namespace waavs {
         case '"':
         case '\'':
         {
-            const unsigned char* start = state.input.fStart;
+            const unsigned char* start = state.input.begin();
             const unsigned char* end = start;
-            while (end < state.input.fEnd && *end != ch)
+            while (end < state.input.end() && *end != ch)
                 ++end;
             out.reset(XML_TOKEN_STRING, ByteSpan::fromPointers( start, end ), true);
-            state.input.fStart = (end < state.input.fEnd) ? end + 1 : end;
+            state.input.resetStart((end < state.input.end()) ? end + 1 : end);
             return true;
         }
 
         default:
             if (xmlNameStartChars(ch)) {
-                const unsigned char* start = state.input.fStart - 1;
+                const unsigned char* start = state.input.begin() - 1;
                 while (!state.input.empty() && xmlNameChars(*state.input))
-                    ++state.input.fStart;
-                out.reset(XML_TOKEN_NAME, ByteSpan::fromPointers( start, state.input.fStart ), true);
+                    ++state.input;
+                out.reset(XML_TOKEN_NAME, ByteSpan::fromPointers( start, state.input.begin() ), true);
                 return true;
             }
             break;
         }
 
-        out.reset(XML_TOKEN_INVALID, ByteSpan::fromPointers( state.input.fStart - 1, state.input.fStart ), state.inTag);
+        out.reset(XML_TOKEN_INVALID, ByteSpan::fromPointers( state.input.begin() - 1, state.input.begin()), state.inTag);
         return true;
     }
 

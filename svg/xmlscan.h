@@ -1,3 +1,5 @@
+// xmlscan.h
+
 #pragma once
 
 
@@ -36,6 +38,7 @@
 #include "xmltoken.h"
 #include "xmltokengen.h"
 #include "xmlschema.h"
+#include "bspan_utils.h"
 
 
 namespace waavs {
@@ -104,10 +107,14 @@ namespace waavs {
 
 namespace waavs
 {
-    // XML whitespace per your xmlwsp charset: " \t\r\n"
+    // isAllXmlWhitespace
+    // 
+    // Return true if all characters in the span are 
+    // XML whitespace characters : " \t\r\n"
+    //
     inline bool isAllXmlWhitespace(const ByteSpan& span) noexcept
     {
-        bool allWhiteSpace = isAll(span, xmlwsp);
+        bool allWhiteSpace = bspan_is_all(span, xmlwsp);
         return allWhiteSpace;
     }
 }
@@ -115,89 +122,187 @@ namespace waavs
 
 namespace waavs {
 
+    // Constants for sizes of prefixes
+    static constexpr size_t kCommentPrefixLen = 3;  // !--
+    static constexpr size_t kCDataPrefixLen = 8;    // ![CDATA[
+    static constexpr size_t kCDataPostfixLen = 3;   // ]]>
+    static constexpr size_t kDoctypePrefixLen = 8;  // !DOCTYPE
+    static constexpr size_t kEntityPrefixLen = 7;   // !ENTITY
+
+
+    // Helper for bracketed parsing
+    static INLINE bool readBangDelimited(
+        ByteSpan& src,
+        size_t prefixLen,
+        const char* suffix,
+        ByteSpan& dataChunk) noexcept
+    {
+        if (src.size() < prefixLen)
+            return false;
+
+        src.advance(prefixLen);
+
+        ByteSpan endMark = chunk_find_cstr(src, suffix);
+        if (!endMark)
+            return false;
+
+        dataChunk = ByteSpan::fromPointers(src.begin(), endMark.begin());
+
+        src.resetStart(endMark.begin() + std::strlen(suffix));
+        return true;
+    }
+
+    // readBangUntilGtQuoted
+    // 
+    // Helper for parsing constructs that start with '!' and end with '>', 
+    // but can have quoted sections that contain '>' characters 
+    // that should be ignored.
+    static bool readBangUntilGtQuoted(
+        ByteSpan& src,
+        size_t prefixLen,
+        ByteSpan& dataChunk) noexcept
+    {
+        if (src.size() < prefixLen)
+            return false;
+
+        src.advance(prefixLen);
+
+        const uint8_t* start = src.begin();
+        const uint8_t* p = src.begin();
+        const uint8_t* end = src.end();
+        uint8_t quote = 0;
+
+        while (p < end)
+        {
+            uint8_t c = *p++;
+
+            if (quote)
+            {
+                if (c == quote)
+                    quote = 0;
+                continue;
+            }
+
+            if (c == '"' || c == '\'')
+            {
+                quote = c;
+                continue;
+            }
+
+            if (c == '>')
+            {
+                dataChunk = ByteSpan::fromPointers(start, p - 1);
+                src.resetStart(p);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
 
     //============================================================
     // readCData()
     // starting: ![CDATA[
     //============================================================
-
+    static bool readCData(ByteSpan& src, ByteSpan& dataChunk) noexcept
+    {
+        return readBangDelimited(src, kCDataPrefixLen, "]]>", dataChunk);
+    }
+    /*
     static bool readCData(ByteSpan& src, ByteSpan& dataChunk) noexcept
     {
         // Skip past the ![CDATA[
-        src += 8;
+        src.advance(kCDataPrefixLen);
 
         dataChunk = src;
-        dataChunk.fEnd = src.fStart;
+        dataChunk.resetEnd(src.begin());
 
         // Extend the data chunk until we find the closing ]]>
         ByteSpan endCData = chunk_find_cstr(src, "]]>");
         if (!endCData)
             return false;
 
-        dataChunk.fEnd = endCData.fStart;
+        dataChunk.resetEnd(endCData.begin());
 
         src = endCData;
 
         // skip past the closing ]]>.
-        src += 3;
+        src.advance(kCDataPostfixLen);
 
         return true;
     }
+    */
 
     //============================================================
     // readComment()
     // starting: !--
     //============================================================
     static bool readComment(ByteSpan &src, ByteSpan &dataChunk) noexcept
-	{
-		// Skip past the !--
-		src += 3;
+    {
+        return readBangDelimited(src, kCommentPrefixLen, "-->", dataChunk);
+    }
 
-		dataChunk = src;
-		dataChunk.fEnd = src.fStart;
+    /*
+    static bool readComment(ByteSpan &src, ByteSpan &dataChunk) noexcept
+    {
+        // Skip past the !--
+        src.advance(kCommentPrefixLen);
 
-		// Extend the data chunk until we find the closing -->
-		ByteSpan endComment = chunk_find_cstr(src, "-->");
+        dataChunk = src;
+        dataChunk.resetEnd(src.begin());
+
+        // Extend the data chunk until we find the closing -->
+        ByteSpan endComment = chunk_find_cstr(src, "-->");
         if (!endComment)
             return false;
         
-		dataChunk.fEnd = endComment.fStart;
+        dataChunk.resetEnd(endComment.begin());
 
-		src = endComment;
+        src = endComment;
 
-		// skip past the closing -->
-		src += 3;
+        // skip past the closing -->
+        src.advance(3);
 
-		return true;
-	}
-    
+        return true;
+    }
+    */
+
     //============================================================
-	// readEntityDeclaration()
+    // readEntityDeclaration()
     // A processing instruction.  
     // Starting: !ENTITY
     // 
     // Return a name and value
-	//============================================================
+    //============================================================
+
+    static bool readEntityDeclaration(ByteSpan& src, ByteSpan& dataChunk) noexcept
+    {
+        return readBangUntilGtQuoted(src, kEntityPrefixLen, dataChunk);
+    }
+
+    /*
     static bool readEntityDeclaration(ByteSpan& src, ByteSpan& dataChunk) noexcept
     {
         // Skip past the !ENTITY
-		src += 7;
+        src.advance(kEntityPrefixLen);
 
         dataChunk = src;
 
-		// skip until we see the closing '>' character
-		src = chunk_find_char(src, '>');
+        // skip until we see the closing '>' character
+        src = chunk_find_char(src, '>');
         if (!src)
             return false;
 
-        dataChunk.fEnd = src.fStart;
+        dataChunk.resetEnd(src.begin());
 
-        // skip past that character and return
-		src++;
+        // skip past the '>' character and return
+        src++;
 
-		return true;
+        return true;
     }
-    
+    */
+
     //============================================================
     // readDoctype
     // Reads the doctype chunk, and returns it as a ByteSpan
@@ -205,127 +310,238 @@ namespace waavs {
     // Starting: !DOCTYPE
     // Note: https://www.tutorialspoint.com/xml/xml_dtds.htm
     //============================================================
+
     static bool readDoctype(ByteSpan& src, ByteSpan& dataChunk) noexcept
     {
-        // skip past the !DOCTYPE to the first whitespace character
-        //src += 8;
-        src.advance(8);
+        if (src.size() < kDoctypePrefixLen)
+            return false;
 
-        // Skip past the whitespace
+        src.advance(kDoctypePrefixLen);
+
+        const uint8_t* start = src.begin();
+        const uint8_t* p = src.begin();
+        const uint8_t* end = src.end();
+
+        uint8_t quote = 0;
+        int bracketDepth = 0;
+
+        while (p < end)
+        {
+            uint8_t c = *p++;
+
+            if (quote)
+            {
+                if (c == quote)
+                    quote = 0;
+                continue;
+            }
+
+            if (c == '"' || c == '\'')
+            {
+                quote = c;
+                continue;
+            }
+
+            if (c == '[')
+            {
+                ++bracketDepth;
+                continue;
+            }
+
+            if (c == ']')
+            {
+                if (bracketDepth > 0)
+                    --bracketDepth;
+                continue;
+            }
+
+            if (c == '>' && bracketDepth == 0)
+            {
+                dataChunk = ByteSpan::fromPointers(start, p - 1);
+                src.resetStart(p);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // parseDocTypeDecl()
+    //
+    // Read the internal subset of the doctype declaration, 
+    // if it exists, and return it as a XmlDocTypeDecl
+    static bool parseDocTypeDecl(ByteSpan payload, XmlDocTypeDecl& out) noexcept
+    {
+        bspan_skip_spaces(payload);
+
+        out.rootName = chunk_token(payload, chrWspChars);
+        if (!out.rootName)
+            return false;
+
+        bspan_skip_spaces(payload);
+
+        if (!payload)
+            return true;
+
+        if (*payload == '[')
+        {
+            out.internalSubset = chunk_read_bracketed(payload, '[', ']');
+            return bool(out.internalSubset);
+        }
+
+        if (bspan_starts_with(payload, "PUBLIC"))
+        {
+            out.externalKind = ByteSpan("PUBLIC");
+            payload.advance(6);
+
+            if (!chunk_read_quoted(payload, out.publicId))
+                return false;
+
+            if (!chunk_read_quoted(payload, out.systemId))
+                return false;
+        }
+        else if (bspan_starts_with(payload, "SYSTEM"))
+        {
+            out.externalKind = ByteSpan("SYSTEM");
+            payload.advance(6);
+
+            if (!chunk_read_quoted(payload, out.systemId))
+                return false;
+        }
+
+        bspan_skip_spaces(payload);
+
+        if (payload && *payload == '[')
+        {
+            out.internalSubset = chunk_read_bracketed(payload, '[', ']');
+            return bool(out.internalSubset);
+        }
+
+        return true;
+    }
+
+    /*
+    static bool readDoctype(ByteSpan& src, ByteSpan& dataChunk) noexcept
+    {
+        // skip past the !DOCTYPE
+        src.advance(kDoctypePrefixLen);
+
+        // Skip past whitespace
         // to get to the beginning of things
-		src.skipWhile(chrWspChars);
+        bspan_skip_spaces(src);
 
         // Get the name of the root element
         auto element = chunk_token(src, chrWspChars);
         
         // Trim whitespace as usual
-        src.skipWhile(chrWspChars);
+        bspan_skip_spaces(src);
         
         // If the next thing we see is a '[', then we have 
         // an 'internal' DTD.  Read to the closing ']>' and be done
-		if (*src == '[')
-		{
-			// Skip past the opening '['
-			src++;
+        if (!src)
+            return false;
+        if (*src == '[')
+        {
+            // Skip past the opening '['
+            src++;
 
-			// Find the closing ']>'
-			ByteSpan endDTD = chunk_find_cstr(src, "]>");
+            // Find the closing ']>'
+            ByteSpan endDTD = chunk_find_cstr(src, "]>");
             if (!endDTD)
                 return false;
 
-			dataChunk = src;
-			dataChunk.fEnd = endDTD.fStart;
+            dataChunk = src;
+            dataChunk.resetEnd(endDTD.begin());
 
-			// Skip past the closing ']>'
-			src.fStart = endDTD.fStart + 2;
+            // Skip past the closing ']>'
+            src.resetStart(endDTD.begin() + 2);
             return true;
-		}
+        }
         
         // If we've gotten here, we have an 'external' DTD
-		// It can either be a SYSTEM or PUBLIC DTD
+        // It can either be a SYSTEM or PUBLIC DTD
         // First check for a PUBLIC DTD
-		if (src.startsWith("PUBLIC"))
-		{
-			// Skip past the PUBLIC
-			src += 6;
+        if (bspan_starts_with(src, "PUBLIC"))
+        {
+            // Skip past the PUBLIC
+            src.advance(6);
 
             ByteSpan publicId{};
-			ByteSpan systemId{};
+            ByteSpan systemId{};
             
             chunk_read_quoted(src, publicId);
             chunk_read_quoted(src, systemId);
 
-			// Skip past the whitespace
-            src.skipWhile(chrWspChars);
+            // Skip past the whitespace
+            bspan_skip_spaces(src);
 
-			// If we have a closing '>', then we're done
-			if (*src == '>')
-			{
-				src++;
-                dataChunk.fStart = src.fStart;
-				dataChunk.fEnd = src.fStart;
+            // If we have a closing '>', then we're done
+            if (*src == '>')
+            {
+                src++;
+                dataChunk.resetPointers(src.begin(), src.begin());
                 
-				return true;
-			}
+                return true;
+            }
 
-			// If we have an opening '[', then we have more to parse
-			if (*src == '[')
-			{
-				// Skip past the opening '['
-				src++;
+            // If we have an opening '[', then we have more to parse
+            if (*src == '[')
+            {
+                // Skip past the opening '['
+                src++;
 
-				// Find the closing ']>'
-				ByteSpan endDTD = chunk_find_cstr(src, "]>");
-				dataChunk = src;
-				dataChunk.fEnd = endDTD.fStart;
+                // Find the closing ']>'
+                ByteSpan endDTD = chunk_find_cstr(src, "]>");
+                dataChunk = src;
+                dataChunk.resetEnd(endDTD.begin());
 
-				// Skip past the closing ']>'
-				src.fStart = endDTD.fStart + 2;
-				return true;
-			}
-		}
-		else if (src.startsWith("SYSTEM"))
-		{
-			// Skip past the SYSTEM
-			src += 6;
+                // Skip past the closing ']>'
+                src.resetStart(endDTD.begin() + 2);
+                return true;
+            }
+        }
+        else if (bspan_starts_with(src, "SYSTEM"))
+        {
+            // Skip past the SYSTEM
+            src.advance(6);
 
             ByteSpan systemId{};
             chunk_read_quoted(src, systemId);
 
-			// Skip past the whitespace
-            src.skipWhile(chrWspChars);
+            // Skip past the whitespace
+            bspan_skip_spaces(src);
 
-			// If we have a closing '>', then we're done
-			if (*src == '>')
-			{
-				src++;
-				return true;
-			}
+            // If we have a closing '>', then we're done
+            if (*src == '>')
+            {
+                src++;
+                return true;
+            }
 
-			// If we have an opening '[', then we have more to parse
-			if (*src == '[')
-			{
-				// Skip past the opening '['
-				src++;
+            // If we have an opening '[', then we have more to parse
+            if (*src == '[')
+            {
+                // Skip past the opening '['
+                src++;
 
-				// Find the closing ']>'
-				ByteSpan endDTD = chunk_find_cstr(src, "]>");
+                // Find the closing ']>'
+                ByteSpan endDTD = chunk_find_cstr(src, "]>");
                 if (!endDTD)
                     return false;
 
-				dataChunk = src;
-				dataChunk.fEnd = endDTD.fStart;
+                dataChunk = src;
+                dataChunk.resetEnd(endDTD.begin());
 
-				// Skip past the closing ']>'
-				src.fStart = endDTD.fStart + 2;
-				return true;
-			}
-		}
+                // Skip past the closing ']>'
+                src.resetStart(endDTD.begin() + 2);
+                return true;
+            }
+        }
 
-		// We have an invalid DTD
-		return false;
+        // We have an invalid DTD
+        return false;
     }
-    
+    */
 }
 
 
@@ -367,11 +583,11 @@ namespace waavs {
         //    Skip whitespace manually.  
         //    The tokenizer would also skip whitespace, but we're about to do 
         //    a raw scan to find the closing '?>', so we might as well just do it here.
-        st.fState.input.skipWhile(chrWspChars);
+        bspan_skip_spaces(st.fState.input);
 
-        const unsigned char* contentStart = st.fState.input.fStart;
+        const unsigned char* contentStart = st.fState.input.begin();
         const unsigned char* p = contentStart;
-        const unsigned char* end = st.fState.input.fEnd;
+        const unsigned char* end = st.fState.input.end();
 
         // 3) Scan for '?>'
         for (;;)
@@ -386,7 +602,7 @@ namespace waavs {
                 ByteSpan content = ByteSpan::fromPointers( contentStart, q );
 
                 // Advance past '?>'
-                st.fState.input.fStart = q + 2;
+                st.fState.input.resetStart(q + 2);
                 st.fState.inTag = false;
 
                 int kind = XML_ELEMENT_TYPE_PROCESSING_INSTRUCTION;
@@ -470,8 +686,8 @@ namespace waavs {
     static bool scanToTagEnd(XmlIterator& iter, ByteSpan& attrSpan, bool& selfClosing) noexcept
     {
 
-        const unsigned char* p = iter.fState.input.fStart;
-        const unsigned char* end = iter.fState.input.fEnd;
+        const unsigned char* p = iter.fState.input.begin();
+        const unsigned char* end = iter.fState.input.end();
 
         const unsigned char* attrStart = p;
 
@@ -518,7 +734,7 @@ namespace waavs {
                 }
 
                 // Advance iterator past '>'
-                iter.fState.input.fStart = p;
+                iter.fState.input.resetStart(p);
                 iter.fState.inTag = false;
                 return true;
             }
@@ -571,18 +787,19 @@ namespace waavs {
     {
         // Reconstruct a ByteSpan that starts at '!'
         ByteSpan src;
-        src.fStart = st.fState.input.fStart - 1;   // back up to '!'
-        src.fEnd = st.fState.input.fEnd;
+        src.resetStart(st.fState.input.begin() - 1);   // back up to '!'
+        src.resetEnd(st.fState.input.end());
 
         ByteSpan data{};
 
         // COMMENT: <!-- ... -->
-        if (src.startsWith("!--")) {
+        if (bspan_starts_with(src, "!--")) 
+        {
             if (!readComment(src, data))
                 return false;
 
             // Sync token state to where readComment() left off
-            st.fState.input.fStart = src.fStart;
+            st.fState.input.resetStart(src.begin());
             st.fState.inTag = false;
 
             elem.reset(XML_ELEMENT_TYPE_COMMENT, {}, data);
@@ -590,11 +807,12 @@ namespace waavs {
         }
 
         // CDATA: <![CDATA[ ... ]]>
-        if (src.startsWith("![CDATA[")) {
+        if (bspan_starts_with(src, "![CDATA[")) 
+        {
             if (!readCData(src, data))
                 return false;
 
-            st.fState.input.fStart = src.fStart;
+            st.fState.input.resetStart(src.begin());
             st.fState.inTag = false;
 
             elem.reset(XML_ELEMENT_TYPE_CDATA, {}, data);
@@ -602,11 +820,12 @@ namespace waavs {
         }
 
         // DOCTYPE: <!DOCTYPE ... >
-        if (src.startsWith("!DOCTYPE")) {
+        if (bspan_starts_with(src, "!DOCTYPE")) 
+        {
             if (!readDoctype(src, data))
                 return false;
 
-            st.fState.input.fStart = src.fStart;
+            st.fState.input.resetStart(src.begin());
             st.fState.inTag = false;
 
             elem.reset(XML_ELEMENT_TYPE_DOCTYPE, {}, data);
@@ -614,11 +833,12 @@ namespace waavs {
         }
 
         // ENTITY declaration: <!ENTITY ... >
-        if (src.startsWith("!ENTITY")) {
+        if (bspan_starts_with(src, "!ENTITY")) 
+        {
             if (!readEntityDeclaration(src, data))
                 return false;
 
-            st.fState.input.fStart = src.fStart;
+            st.fState.input.resetStart(src.begin());
             st.fState.inTag = false;
 
             elem.reset(XML_ELEMENT_TYPE_ENTITY, {}, data);
@@ -645,7 +865,10 @@ namespace waavs {
             attrs.addValueBySpan(name, value);
         }
 
-        return true;
+        // if we consumed everything successfully, 
+        // src should be empty
+        bspan_skip_spaces(src);
+        return src.empty();  
     }
     
     // nextXmlElement
@@ -732,10 +955,10 @@ namespace waavs {
 
         bool next()
         {
-            const unsigned char* before = fIter.fState.input.fStart;
+            const unsigned char* before = fIter.fState.input.begin();
 
             bool success = nextXmlElement(fIter, fCurrentElement);
-            const unsigned char* after = fIter.fState.input.fStart;
+            const unsigned char* after = fIter.fState.input.begin();
 
             if (success && (before == after))
             {

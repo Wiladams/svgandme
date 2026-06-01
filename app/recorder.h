@@ -16,6 +16,99 @@
 #include "blend2d_connect.h"
 #include "surface.h"
 
+namespace waavs
+{
+    class IRecordFrames
+    {
+    public:
+        virtual ~IRecordFrames() = default;
+
+        virtual void record() = 0;
+        virtual void pause() = 0;
+        virtual void resume() = 0;
+        virtual void end() = 0;
+
+        virtual bool isRecording() const noexcept = 0;
+        virtual int64_t frameCount() const noexcept = 0;
+
+        virtual bool recordFrame(const Surface& src, int64_t timeUs) = 0;
+    };
+}
+
+namespace waavs
+{
+    // Make a series of keyframe files for recording from
+    // a single surface.
+    // It is assumed the surface changes over time
+    struct MonoSurfaceRecorder : public IRecordFrames
+    {
+        Surface* fSurface{ nullptr };
+        BLImage fImage{};
+        BLImageCodec fCodec;
+
+        // Recording state
+        std::string fBasename;
+
+        bool fIsRecording = false;
+        bool fFrameRate = 30;   // frames per second
+        int fFrameCount = 0;
+        int fCurrentFrame = 0;
+        int fMaxFrames = 0;
+
+        // For now, just record frames as individual files, and then use ffmpeg to stitch them together into a video.
+        // In the future, we could implement an actual video encoder here, but that is a bit more work.
+
+        MonoSurfaceRecorder(const char* basename = "frame", double fps = 30, int maxFrames = 0)
+        {
+            fBasename = basename;
+            fFrameRate = fps;
+            fIsRecording = false;
+            fCurrentFrame = 0;
+            fMaxFrames = maxFrames;
+            fCodec.find_by_name("QOI");
+        }
+
+        void record() override
+        {
+            // do whatever is necessary to begin
+            // recording.
+            fIsRecording = true;
+        }
+
+        void pause() override
+        {
+            fIsRecording = false;
+        }
+
+        void resume() override
+        {
+            fIsRecording = true;
+        }
+
+        void end() override
+        {
+            fIsRecording = false;
+        }
+        bool isRecording() const noexcept override
+        {
+            return fIsRecording;
+        }
+        int64_t frameCount() const noexcept override
+        {
+            return fFrameCount;
+        }
+
+        bool recordFrame(const Surface& src, int64_t timeUs) override
+        {
+            // For now, just save the frame as an image file.  In the future, we could implement an actual video encoder here.
+            return true;
+        }
+    };
+}
+
+
+
+
 namespace waavs {
     class Recorder
     {

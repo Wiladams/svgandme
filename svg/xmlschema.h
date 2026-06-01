@@ -165,7 +165,7 @@ namespace waavs {
 		if (!xmlNameStartChars(*c))
 			return false;
 
-		name.fStart = c;
+		name.resetStart(c);
 		++c;
 
 		while (c < end)
@@ -174,8 +174,8 @@ namespace waavs {
 				break;
 			++c;
 		}
-		name.fEnd = c;
-		src.fStart = c;
+		name.resetEnd(c);
+		src.resetStart(c);
 
 		return true;
 	}

@@ -1,3 +1,5 @@
+// charset.h
+
 #pragma once
 
 #include "definitions.h"
@@ -73,14 +75,14 @@ namespace waavs {
                 bits[i] = aset.bits[i];
         }
 
-        charset& add(const char achar) noexcept
+        constexpr charset& add(const char achar) noexcept
         {
             bits[static_cast<unsigned char>(achar)] = 1;
 
             return *this;
         }
 
-        charset& add(const char* chars) noexcept
+        constexpr charset& add(const char* chars) noexcept
         {
             const char* s = chars;
             while (0 != *s) {
@@ -91,7 +93,7 @@ namespace waavs {
             return *this;
         }
 
-        charset& add(const charset& aset) noexcept
+        constexpr charset& add(const charset& aset) noexcept
         {
             for (size_t i = 0; i < 256; ++i)
                 bits[i] |= aset.bits[i];
@@ -99,12 +101,13 @@ namespace waavs {
             return *this;
         }
 
-        charset& remove(const char achar) noexcept
+        constexpr charset& remove(const char achar) noexcept
         {
             bits[static_cast<unsigned char>(achar)] = 0;
             return *this;
         }
-        charset& remove(const char* chars) noexcept
+
+        constexpr charset& remove(const char* chars) noexcept
         {
             const char* s = chars;
             while (0 != *s) {
@@ -113,7 +116,8 @@ namespace waavs {
             }
             return *this;
         }
-        charset& remove(const charset& aset) noexcept
+
+        constexpr charset& remove(const charset& aset) noexcept
         {
             for (size_t i = 0; i < 256; ++i)
                 bits[i] &= ~aset.bits[i];
@@ -121,20 +125,14 @@ namespace waavs {
         }
 
         // Convenience for adding characters and strings
-        charset& operator+=(const char achar) noexcept { this->add(achar); return *this; }
-        charset& operator+=(const char* chars) noexcept { this->add(chars); return *this; }
-        charset& operator+=(const charset& aset) noexcept { this->add(aset); return *this; }
+        constexpr charset& operator+=(const char achar) noexcept { this->add(achar); return *this; }
+        constexpr charset& operator+=(const char* chars) noexcept { this->add(chars); return *this; }
+        constexpr charset& operator+=(const charset& aset) noexcept { this->add(aset); return *this; }
 
         // Convenience for removing characters and ranges from a set
-        charset& operator-=(const char achar) noexcept { bits[(uint8_t)achar]=0; return *this; }
-        charset& operator-=(const char* chars) noexcept 
-        { 
-            return this->remove(chars);
-        }
-        charset& operator-=(const charset& aset) noexcept 
-        { 
-            return this->remove(aset);
-        }
+        constexpr charset& operator-=(const char achar) noexcept { bits[(uint8_t)achar]=0; return *this; }
+        constexpr charset& operator-=(const char* chars) noexcept  {  return this->remove(chars); }
+        constexpr charset& operator-=(const charset& aset) noexcept  {  return this->remove(aset); }
 
 
         // get an inverse of the set
@@ -156,7 +154,7 @@ namespace waavs {
             return copy;
         }
 
-        charset& invert() noexcept
+        constexpr charset& invert() noexcept
         {
             for (size_t i = 0; i < 256; ++i)
             {
@@ -170,7 +168,10 @@ namespace waavs {
         constexpr bool test(unsigned char c) const noexcept { return bits[c] != 0; }
 
         // This one makes it look like an array
-        constexpr bool operator [](const size_t idx) const noexcept { return bits[idx] != 0; }
+        constexpr bool operator [](const unsigned char idx) const noexcept 
+        { 
+            return bits[idx] != 0; 
+        }
 
         // This one makes it look like a function
         constexpr bool operator ()(const unsigned char c) const noexcept { return bits[c] != 0; }
@@ -225,6 +226,10 @@ namespace waavs {
         // Configurable skipWhile
         inline const unsigned char* skipWhile(const unsigned char* p, const unsigned char* end) const noexcept 
         {
+            while (p < end && bits[static_cast<unsigned char>(*p)])
+                ++p;
+            return p;
+/*
             if constexpr (kUseFastPath) {
                 // 4-at-a-time fast scan
                 while (p + 3 < end) {
@@ -253,11 +258,21 @@ namespace waavs {
                 ++p;
 
             return p;
+*/
         }
 
-
+        // skipUntil
+        // Most generic form of skipUntil, which takes a pointer to 
+        // the end of the buffer, and returns a pointer to the first 
+        // character that is in the set, or
+        // end if no characters in the set are found.
         inline const unsigned char* skipUntil(const unsigned char* p, const unsigned char* end) const noexcept 
         {
+            while (p < end && !bits[static_cast<unsigned char>(*p)])
+                ++p;
+            return p;
+
+/*
             if constexpr (kUseFastPath) {
                 // 4-at-a-time fast scan
                 while (p + 3 < end) {
@@ -286,22 +301,19 @@ namespace waavs {
                 ++p;
 
             return p;
+*/
         }
-
-
-
     };
 
-
-
 }
-
-
 
 namespace waavs {
     // The classic character ccategorizers (isdigit(), isalpha(), etc.) from ctype.h
     // are replicated here.  They are implemented as constexpr functions, so they can
     // be used in other constexpr functions.
+    // Probably not much of a performance difference between
+    // these and the standard library functions, but at least 
+    // you can be sure of how they work, and that they are constexpr.
     static constexpr bool is_digit(const unsigned char c) noexcept { return ((c >= '0') && (c <= '9')); }
     static constexpr bool is_xdigit(const unsigned char c) noexcept { return (((c >= '0') && (c <= '9')) || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')); }
     static constexpr bool is_alpha(const unsigned char c) noexcept { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'); }
@@ -316,7 +328,7 @@ namespace waavs {
 
     // Returns true if all 16 bytes in v are XML whitespace:
     // ' ', '\t', '\n', '\r'
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#if WAAVS_HAS_NEON
     static INLINE bool neon_is_all_wsp_16(uint8x16_t v) noexcept
     {
         const uint8x16_t vsp = vdupq_n_u8(' ');
@@ -350,7 +362,7 @@ namespace waavs {
     }
 
     // Returns true if the 16-byte chunk beginning at p is all XML whitespace.
-    static INLINE bool neon_chunk_is_all_xml_wsp_16(const uint8_t* p) noexcept
+    static INLINE bool neon_span_is_all_xml_wsp_16(const uint8_t* p) noexcept
     {
         return neon_is_all_wsp_16(vld1q_u8(p));
     }
@@ -418,8 +430,8 @@ namespace waavs {
 
 namespace waavs {
     // Some common character sets
-    static constexpr charset chrWspChars("\t\r\n\f\v ");          // whitespace characters
-    static constexpr charset chrWspComma = chrWspChars + ",";		// whitespace + comma	
+    static constexpr charset chrWspChars("\t\r\n\f\v ");            // whitespace characters
+    static constexpr charset chrWspComma = chrWspChars + ",";       // whitespace + comma	
     static constexpr charset chrAlphaChars("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
     static constexpr charset chrDecDigits("0123456789");
     static constexpr charset chrHexDigits("0123456789ABCDEFabcdef");

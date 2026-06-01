@@ -195,8 +195,8 @@ int main(int argc, char** argv)
     //testTokenizer("<svg><rect width='100' height='150' /></svg>");
 	//testTokenGenerator(s);
 
-    testXmlElementScan("<svg><!-- comment --> <rect width='100' height='150' /></svg>");
-    //testXmlElementScan(s);
+    //testXmlElementScan("<svg><!-- comment --> <rect width='100' height='150' /></svg>");
+    testXmlElementScan(s);
     //testXmlElementGenerator(s);
 
     //testXmlIter(s);

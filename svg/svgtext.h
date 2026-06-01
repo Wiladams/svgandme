@@ -644,7 +644,7 @@ namespace waavs
         {
             SVGGraphicsElement::onEndTag(groot);
 
-            if (fNodes.empty())
+            if (fRenderNodes.empty())
                 return;
 
             // Determine xml:space policy for THIS container.
@@ -660,7 +660,7 @@ namespace waavs
             }
 
             std::vector<std::shared_ptr<IViewable>> out;
-            out.reserve(fNodes.size());
+            out.reserve(fRenderNodes.size());
 
             auto asRun = [&](const std::shared_ptr<IViewable>& n) noexcept -> std::shared_ptr<SVGTextRun>
                 {
@@ -677,7 +677,7 @@ namespace waavs
                     // Pass 1: compute total bytes
                     size_t totalBytes = 0;
                     for (size_t i = i0; i < i1; ++i) {
-                        auto run = asRun(fNodes[i]);
+                        auto run = asRun(fRenderNodes[i]);
                         if (!run) continue;
                         totalBytes += run->rawText().size();
                     }
@@ -690,7 +690,7 @@ namespace waavs
 
                     // Pass 2: copy bytes
                     for (size_t i = i0; i < i1; ++i) {
-                        auto run = asRun(fNodes[i]);
+                        auto run = asRun(fRenderNodes[i]);
                         if (!run) continue;
 
                         ByteSpan s = run->rawText();
@@ -714,23 +714,23 @@ namespace waavs
 
             // Merge maximal contiguous groups of runs
             size_t i = 0;
-            while (i < fNodes.size())
+            while (i < fRenderNodes.size())
             {
-                if (!isRun(fNodes[i])) {
-                    out.push_back(fNodes[i]);
+                if (!isRun(fRenderNodes[i])) {
+                    out.push_back(fRenderNodes[i]);
                     ++i;
                     continue;
                 }
 
                 const size_t i0 = i;
                 ++i;
-                while (i < fNodes.size() && isRun(fNodes[i]))
+                while (i < fRenderNodes.size() && isRun(fRenderNodes[i]))
                     ++i;
 
                 flushRunGroup(i0, i);
             }
 
-            fNodes.swap(out);
+            fRenderNodes.swap(out);
         }
 
 
@@ -796,11 +796,11 @@ namespace waavs
 
         // --- draw (shared ) ---
 
-        void drawChildren(IRenderSVG* ctx, IAmGroot* groot) override
+        void drawRenderSubtree(IRenderSVG* ctx, IAmGroot* groot) override
         {
             fBBox = {};
 
-            for (auto& node : fNodes) {
+            for (auto& node : fRenderNodes) {
                 if (auto textNode = std::dynamic_pointer_cast<SVGTextRun>(node)) {
                     //drawTextRun(ctx, textNode->text(), fTextVAlignment, fDominantBaseline, fBBox);
                     drawTextRunGlyphLoop(ctx, groot, textNode->textForLayout(), fTextVAlignment, fDominantBaseline, fBBox);

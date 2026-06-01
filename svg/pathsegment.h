@@ -246,14 +246,11 @@ namespace waavs
         constexpr  charset pathWsp = chrWspChars + ',';
         
         // always ignore leading whitespace
-        iter.fState.remains.skipWhile(pathWsp);
+        bspan_skip_while(iter.fState.remains, pathWsp);
 
         if (iter.fState.remains.empty())
             return false;
         
-        // put in a progress guard to ensure we don't
-        // cause an infinite loop
-        //const unsigned char* before = iter.fState.remains.fStart;
 
         // if the next character is not numeric, then 
         // it must be a new command

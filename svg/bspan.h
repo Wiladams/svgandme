@@ -6,40 +6,13 @@
 #include <cctype>
 #include <cmath>
 #include <cstdint>
-#include <cstring>  // for std::memchr
+
 #include <iterator>	// for std::data(), std::size()
 #include <string.h>
 
 #include "bit_hacks.h"
 #include "bit_util.h"
-#include "charset.h"
-#include "scanning.h"
 
-
-
-// Forward declaration of some useful functions
-namespace waavs
-{
-    struct ByteSpan;
-
-    INLINE size_t copy_to_cstr(char* str, size_t len, const ByteSpan& a) noexcept;
-    INLINE ByteSpan chunk_ltrim(const ByteSpan& a, const charset& skippable) noexcept;
-    INLINE ByteSpan chunk_rtrim(const ByteSpan& a, const charset& skippable) noexcept;
-    INLINE ByteSpan chunk_trim(const ByteSpan& a, const charset& skippable) noexcept;
-    INLINE ByteSpan chunk_skip_wsp(const ByteSpan& a) noexcept;
-
-    INLINE bool chunk_starts_with_char(const ByteSpan& a, const uint8_t b) noexcept;
-    INLINE bool chunk_starts_with_cstr(const ByteSpan& a, const char* b) noexcept;
-
-    INLINE bool chunk_ends_with_char(const ByteSpan& a, const uint8_t b) noexcept;
-    INLINE bool chunk_ends_with_cstr(const ByteSpan& a, const char* b) noexcept;
-
-    INLINE ByteSpan chunk_token(ByteSpan& a, const charset& delims) noexcept;
-    INLINE ByteSpan chunk_find_char(const ByteSpan& a, char c) noexcept;
-    INLINE bool chunk_find(const ByteSpan& src, const ByteSpan& str, ByteSpan& value) noexcept;
-    INLINE ByteSpan chunk_find_cstr(const ByteSpan& a, const char* c) noexcept;
-
-}
 
 namespace waavs 
 {
@@ -66,9 +39,11 @@ namespace waavs
 
     struct ByteSpan final
     {
+    private:
         const unsigned char* fStart{ nullptr };
         const unsigned char* fEnd{ nullptr };
 
+    public:
         static const ByteSpan& null() noexcept 
         {
             static ByteSpan nullSpan{};
@@ -76,11 +51,20 @@ namespace waavs
         }
 
         // Constructors
-        ByteSpan() = default;
+        constexpr ByteSpan() noexcept = default;
 
         // Construct from start and end pointers
-        constexpr ByteSpan(const unsigned char* start, const unsigned char* end) noexcept = delete; // : fStart(start), fEnd(end) {}
+        constexpr ByteSpan(const unsigned char* start, const unsigned char* end) noexcept 
+            : fStart(start)
+            , fEnd(end) {}
         
+        // Construct from a pointer and size
+        constexpr ByteSpan(const unsigned char * start, size_t sz) noexcept
+            : fStart(start)
+            , fEnd(start ? start + sz : nullptr)
+        {
+        }
+
         // Construct from a null-terminated C string
         // Error:  If there is no null terminator, this will read past the end of the buffer
         ByteSpan(const char* cstr) noexcept
@@ -94,32 +78,34 @@ namespace waavs
             }
         }
 
-        // Construct from a pointer and size
-        //explicit constexpr ByteSpan(const void* data, size_t sz) noexcept
-        //	: fStart(static_cast<const uint8_t*>(data)), 
-        //	fEnd(fStart + sz) {
-        //}
-
         //~ByteSpan() = default;
 
 
-        constexpr void reset() { fStart = nullptr; fEnd = nullptr; }
-        void resetFromSize(const void *data, size_t sz) noexcept
+        constexpr void reset()
+        { fStart = nullptr; fEnd = nullptr; }
+        
+        constexpr void resetPointers(const unsigned char* start, const unsigned char* end) noexcept
+        {
+            fStart = start;
+            fEnd = end;
+        }
+        constexpr void resetStart(const unsigned char* start) noexcept { fStart = start; }
+        constexpr void resetEnd(const unsigned char* end) noexcept {fEnd = end;}
+
+        constexpr void resetFromSize(const void *data, size_t sz) noexcept
         {
             fStart = static_cast<const unsigned char *>(data);
             fEnd = fStart + sz;
         }
         
-        static  ByteSpan fromPointers(const unsigned char* start, const unsigned char* end) noexcept
+        // Static factory methods for convenience
+        static  constexpr ByteSpan fromPointers(const unsigned char* startAt, const unsigned char* endAt) noexcept
         {
-            ByteSpan bs;
-            bs.fStart = start;
-            bs.fEnd = end;
-
+            ByteSpan bs(startAt, endAt);
             return bs;
         }
         
-        static INLINE ByteSpan createFromPointerAndSize(const unsigned char* start, size_t sz)
+        static INLINE ByteSpan fromPointerAndSize(const unsigned char* start, size_t sz)
         {
             ByteSpan bs;
             bs.fStart = start;
@@ -128,16 +114,73 @@ namespace waavs
         }
 
         // setting up for a range-based for loop
-        constexpr const unsigned char* data() const noexcept { return (unsigned char*)fStart; }
+        // not actually that useful, as it's just memory traversal
+        // but, having data() and size() hides the internals
+        constexpr const unsigned char* data() const noexcept { return fStart; }
+        constexpr size_t size() const noexcept { return (fStart && fEnd >= fStart) ? size_t(fEnd - fStart) : 0; }
+
         constexpr const uint8_t* begin() const noexcept { return fStart; }
         constexpr const uint8_t* end() const noexcept { return fEnd; }
-
-        constexpr size_t size() const noexcept { return (fEnd >= fStart) ? static_cast<size_t>(fEnd - fStart) : 0; }
-        constexpr bool empty() const noexcept { return fStart == fEnd; }
+        constexpr bool empty() const noexcept { return size() == 0; }
 
 
         // Type conversions
-        explicit constexpr operator bool() const noexcept { return size() > 0; };
+        explicit constexpr operator bool() const noexcept { return !empty(); }
+
+        // get value of character at fStart, like a 'peek' operation
+        // If the ByteSpan is currently empty, these will return 0, rather than 
+        // throwing an exception, so check size before calling if that's necessary
+        constexpr uint8_t operator*() const noexcept
+        {
+            return (fStart && fStart < fEnd) ? *fStart : 0;
+        }
+
+        // subSpan()
+        // 
+        // Create a ByteSpan that is a view on the current span
+        // If the requested position plus size is greater than the amount
+        // of span remaining at that position, the size will be truncated 
+        // to the amount remaining from the requested position.
+        // So, it's more like an intersection of the desired subspan
+        // and the current span.
+        constexpr ByteSpan subSpan(size_t startAt, size_t sz) const noexcept
+        {
+            const size_t n = size();
+            const size_t off = startAt < n ? startAt : n;
+            const size_t len = sz < (n - off) ? sz : (n - off);
+            return ByteSpan(fStart + off, len);
+        }
+
+        constexpr ByteSpan take(size_t n) const noexcept
+        {
+            return subSpan(0, n);
+        }
+
+        // advance the start pointer the specified number of entries
+        // constrain to end 
+        constexpr ByteSpan& advance(size_t n) noexcept
+        {
+            fStart = (fStart + n <= fEnd) ? fStart + n : fEnd;
+            return *this;
+        }
+
+        constexpr ByteSpan& advanceToEnd() noexcept
+        {
+            fStart = fEnd;
+            return *this;
+        }
+
+        constexpr ByteSpan& operator+=(size_t n) noexcept  {  return advance(n); }
+
+        constexpr ByteSpan& operator++() noexcept { return advance(1); }
+        constexpr ByteSpan operator++(int) noexcept
+        {
+            ByteSpan tmp = *this;
+            advance(1);
+            return tmp;
+        }
+
+
 
 
         // Array access
@@ -145,16 +188,10 @@ namespace waavs
         const uint8_t& operator[](size_t i) const noexcept { return fStart[i]; }
 
 
-        // get current value from fStart, like a 'peek' operation
-        // If the ByteSpan is currently empty, these will return 0, rather than 
-        // throwing an exception
-        constexpr uint8_t operator*() const noexcept {
-            return (fStart < fEnd) ? *fStart : 0;
-        }
-
-
-        //
+        // BUGBUG - not sure these should be used any more
+        // favoring interned strings is probably a better approach
         // operators for comparison
+        // 
         // operator==;
         // operator!=;
         // operator<=;
@@ -226,7 +263,6 @@ namespace waavs
             return (cmp < 0) || (cmp == 0 && size() <= b.size());
         }
 
-
         bool operator>=(const ByteSpan& b) const noexcept
         {
             size_t minSize = size() < b.size() ? size() : b.size();
@@ -234,777 +270,12 @@ namespace waavs
             return (cmp > 0) || (cmp == 0 && size() >= b.size());
         }
 
-        // advance the start pointer the specified number of entries
-        // constrain to end 
-        constexpr ByteSpan& advance(size_t n) noexcept
-        {
-            fStart = (fStart + n <= fEnd) ? fStart + n : fEnd; 
-            return *this;
-        }
-
-        constexpr ByteSpan& operator+=(size_t n) noexcept {fStart = (fStart + n <= fEnd) ? fStart + n : fEnd; return *this;}
-
-        constexpr ByteSpan& operator++() noexcept { return (*this += 1); }
-         ByteSpan operator++(int) noexcept { ByteSpan temp = *this; ++(*this); return temp; } 
-
-
-        void setAll(uint8_t c) noexcept { std::memset(const_cast<uint8_t*>(fStart), c, size()); }
-        void copyFrom(const void* src, size_t sz) noexcept {
-            if (sz > 0) std::memcpy(const_cast<uint8_t*>(fStart), src, sz);
-        }
-
-        
-        // subSpan()
-        // Create a bytespan that is a subspan of the current span
-        // If the requested position plus size is greater than the amount
-        // of span remaining at that position, the size will be truncated 
-        // to the amount remaining from the requested position.
-        constexpr ByteSpan subSpan(size_t startAt, size_t sz) const noexcept
-        {
-            const uint8_t* newStart = (startAt < size()) ? fStart + startAt : fEnd;
-            const uint8_t* newEnd = (newStart + sz <= fEnd) ? newStart + sz : fEnd;
-            return ByteSpan::fromPointers( newStart, newEnd );
-        }
-
-
-        ByteSpan take(size_t n) const noexcept
-        {
-            return subSpan(0, n);
-        }
-
-        // Some convenient routines
-        ByteSpan &prefix_trim(const charset& skippable) noexcept
-        {			
-            while (fStart < fEnd && skippable(*fStart))
-                ++fStart;
-
-            return *this;
-        }
-
-        bool startsWith(const ByteSpan& b) const noexcept
-        {
-            return (subSpan((size_t)0, b.size()) == b);
-        }
-
-        bool endsWith(const ByteSpan& b) const noexcept
-        {
-            return (subSpan(size() - b.size(), b.size()) == b);
-        }
-
-        void skipSpaces() noexcept 
-        {
-            const uint8_t* start = find_first_not_of4(fStart, fEnd, ' ', '\t', '\r', '\n');
-            fStart = start;
-        }
-
-        // Move the start of the span forward while the predicate
-        // returns true for the current starting pointer
-        // Example: Skipping whitespace
-        //	ByteSpan aSpan("   Hello World");
-        //	aSpan.skip<IsSpace>();
-        //
-        template <typename Predicate>
-        ByteSpan& skipWhile() noexcept 
-        {
-            auto* p = fStart;
-            auto* end = fEnd;
-            Predicate pred{};
-
-            while (p < end) {
-                unsigned char c = static_cast<unsigned char>(*p);
-                if (!pred(c))
-                    break;
-                ++p;
-            }
-
-            fStart = p;
-            return *this;
-        }
-
-        ByteSpan& skipWhile(const charset & aset) noexcept
-        {
-            fStart = aset.skipWhile(fStart, fEnd);
-
-            return *this;
-        }
-
-        // Advance the start of the span until the predicate returns true
-        // Typically used to move forward through the span until we reach
-        // a character in a specified set of characters
-        // Example: Scanning until we see a space
-        //   ByteSpan aSpan("Hello World");
-        //   unint8_t *tokenStart = aSpan.data();
-        //   aSpan.scanUntil<is_space>(chrWspChars);
-        //   unint8_t *tokenEnd = aSpan.data();
-        ByteSpan& skipUntil(const charset & aset) noexcept
-        {
-            fStart = aset.skipUntil(fStart, fEnd);
-
-            return *this;
-        }
     };
 
     ASSERT_MEMCPY_SAFE(ByteSpan);
 }
 
 
-namespace waavs 
-{
-    // isAll()
-    // Check if all characters in the span are in the specified charset.
-    // This is typically used when you're trying to determine if the 
-    // whole span is whitespace.
-    static inline bool isAll(const ByteSpan& src, const charset& aset)
-    {
-        auto found = aset.skipWhile(src.fStart, src.fEnd);
-        return found == src.fEnd;
-    }
-
-    // Check if all characters in the span are 
-    // whitespace (space, tab, newline, carriage return)
-    INLINE bool is_all_whitespace(const ByteSpan& s) noexcept
-    {
-        const uint8_t* p = s.fStart;
-        const uint8_t* end = s.fEnd;
-
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
-        while ((end - p) >= 16)
-        {
-            if (!neon_chunk_is_all_xml_wsp_16(p))
-                return false;
-
-            p += 16;
-        }
-#endif
-
-        while (p < end)
-        {
-            if (!chrWspChars(*p))
-                return false;
-            ++p;
-        }
-
-        return true;
-    }
-}
-
-
-namespace waavs {
-    INLINE size_t copy(ByteSpan& a, const ByteSpan& b) noexcept;
-    INLINE size_t copy_to_cstr(char* str, size_t len, const ByteSpan& a) noexcept;
-    INLINE int compare(const ByteSpan& a, const ByteSpan& b) noexcept;
-    INLINE int comparen(const ByteSpan& a, const ByteSpan& b, int n) noexcept;
-    INLINE int comparen_cstr(const ByteSpan& a, const char* b, int n) noexcept;
-
-    // Some utility functions for common operations
-    INLINE ByteSpan& chunk_skip(ByteSpan& dc, size_t n) noexcept;
-    INLINE ByteSpan& chunk_skip_to_end(ByteSpan& dc) noexcept;
-
-    
-    // ByteSpan routines
-
-    // inline size_t chunk_size(const ByteSpan& a) noexcept { return a.size(); }
-    INLINE size_t copy(ByteSpan& a, const ByteSpan& b) noexcept
-    {
-        size_t maxBytes = a.size() < b.size() ? a.size() : b.size();
-        memcpy((uint8_t*)a.fStart, b.fStart, maxBytes);
-        return maxBytes;
-    }
-
-    INLINE int compare(const ByteSpan& a, const ByteSpan& b) noexcept
-    {
-        size_t maxBytes = a.size() < b.size() ? a.size() : b.size();
-        return memcmp(a.fStart, b.fStart, maxBytes);
-    }
-
-    INLINE int comparen(const ByteSpan& a, const ByteSpan& b, int n) noexcept
-    {
-        size_t maxBytes = a.size() < b.size() ? a.size() : b.size();
-        if (maxBytes > n)
-            maxBytes = n;
-        return memcmp(a.fStart, b.fStart, maxBytes);
-    }
-
-    INLINE int comparen_cstr(const ByteSpan& a, const char* b, int n) noexcept
-    {
-        size_t maxBytes = a.size() < n ? a.size() : n;
-        
-        return memcmp(a.fStart, b, maxBytes);
-    }
-
-
-    INLINE ByteSpan& chunk_skip(ByteSpan& dc, size_t n) noexcept
-    {
-        if (n > dc.size())
-            n = dc.size();
-        dc.fStart += n;
-
-        return dc;
-    }
-
-    INLINE ByteSpan& chunk_skip_to_end(ByteSpan& dc) noexcept { dc.fStart = dc.fEnd; return dc; }
-
-
-}
-
-
-
-// Implementation of hash function for ByteSpan
-// so it can be used in 'map' collections
-/*
-namespace std {
-    template<>
-    struct hash<waavs::ByteSpan> {
-        size_t operator()(const waavs::ByteSpan& span) const 
-        {
-            return waavs::fnv1a_32(span.data(), span.size());
-        }
-    };
-}
-*/
-
-namespace waavs {
-    struct ByteSpanHash {
-        size_t operator()(const ByteSpan& span) const noexcept {
-            return waavs::fnv1a_32(span.data(), span.size());
-        }
-    };
-
-    struct ByteSpanEquivalent {
-        bool operator()(const ByteSpan& a, const ByteSpan& b) const noexcept {
-            if (a.size() != b.size())
-                return false;
-            return memcmp(a.fStart, b.fStart, a.size()) == 0;
-        }
-    };
-
-    // Case insensitive 'string' comparison
-    struct ByteSpanInsensitiveHash {
-        size_t operator()(const ByteSpan& span) const noexcept {
-            return waavs::fnv1a_32_case_insensitive(span.data(), span.size());
-        }
-    };
-    
-    struct ByteSpanCaseInsensitive {
-        bool operator()(const ByteSpan& a, const ByteSpan& b) const noexcept {
-            if (a.size() != b.size())
-                return false;
-
-            for (size_t i = 0; i < a.size(); ++i) {
-                //if (TOLOWER(a[i]) != TOLOWER(b[i]))  // Case-insensitive comparison
-                if (std::tolower(a[i]) != std::tolower(b[i]))  // Case-insensitive comparison
-
-                return false;
-            }
-            
-            return true;
-        }
-    };
-}
-
-// Functions that are implemented here
-
-namespace waavs
-{
-    INLINE size_t copy_to_cstr(char* str, size_t len, const ByteSpan& a) noexcept
-    {
-        size_t maxBytes = a.size() < len ? a.size() : len;
-        memcpy(str, a.fStart, maxBytes);
-        str[maxBytes] = 0;
-
-        return maxBytes;
-    }
-
-    // Trim the left side of skippable characters
-    INLINE ByteSpan chunk_ltrim(const ByteSpan& a, const charset& skippable) noexcept
-    {
-        const uint8_t* startAt = a.fStart;
-        const uint8_t* endAt = a.fEnd;
-        while (startAt < endAt && skippable(*startAt))
-            ++startAt;
-
-        return ByteSpan::fromPointers( startAt, endAt );
-    }
-
-    // trim the right side of skippable characters
-    INLINE ByteSpan chunk_rtrim(const ByteSpan& a, const charset& skippable) noexcept
-    {
-        const uint8_t* start = a.fStart;
-        const uint8_t* end = a.fEnd;
-        while (start < end && skippable(*(end - 1)))
-            --end;
-
-        return ByteSpan::fromPointers( start, end );
-    }
-
-    // trim the left and right side of skippable characters
-    INLINE ByteSpan chunk_trim(const ByteSpan& a, const charset& skippable) noexcept
-    {
-        const uint8_t* start = a.fStart;
-        const uint8_t* end = a.fEnd;
-
-        // trim from the beginning
-        while (start < end && skippable(*start))
-            ++start;
-
-        // trim from the end
-        while (start < end && skippable(*(end - 1)))
-            --end;
-
-        return ByteSpan::fromPointers( start, end );
-    }
-
-
-
-
-/*
-    static inline const uint8_t* skip_space(const uint8_t* p, const uint8_t* end) noexcept
-    {
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
-        const uint8x16_t sp = vdupq_n_u8(' ');
-        const uint8x16_t tb = vdupq_n_u8('\t');
-        const uint8x16_t nl = vdupq_n_u8('\n');
-        const uint8x16_t cr = vdupq_n_u8('\r');
-
-        while (p + 16 <= end)
-        {
-            uint8x16_t v = vld1q_u8(p);
-            uint8x16_t m0 = vceqq_u8(v, sp);
-            uint8x16_t m1 = vceqq_u8(v, tb);
-            uint8x16_t m2 = vceqq_u8(v, nl);
-            uint8x16_t m3 = vceqq_u8(v, cr);
-            uint8x16_t m = vorrq_u8(vorrq_u8(m0, m1), vorrq_u8(m2, m3));
-
-#if defined(__aarch64__)
-            if (vminvq_u8(m) != 0xFF)
-            {
-                alignas(16) uint8_t tmp[16];
-                vst1q_u8(tmp, m);
-                for (int i = 0; i < 16; ++i)
-                {
-                    if (tmp[i] != 0xFF)
-                        return p + i;
-                }
-            }
-#else
-            // Portable reduction for older ARM NEON.
-            alignas(16) uint8_t tmp[16];
-            vst1q_u8(tmp, m);
-
-            bool all_space = true;
-            for (int i = 0; i < 16; ++i)
-            {
-                if (tmp[i] != 0xFF)
-                {
-                    all_space = false;
-                    return p + i;
-                }
-            }
-            if (!all_space)
-                return p;
-#endif
-
-            p += 16;
-        }
-#endif
-
-        while (p < end && is_space(*p))
-            ++p;
-
-        return p;
-    }
-
-    INLINE ByteSpan chunk_skip_xml_wsp_4(const ByteSpan& a) noexcept
-    {
-        const uint8_t* p = find_first_not_of4(a.fStart, a.fEnd, ' ', '\t', '\r', '\n');
-        return ByteSpan::fromPointers(p, a.fEnd);
-    }
-    */
-
-    INLINE ByteSpan chunk_skip_wsp(const ByteSpan& a) noexcept
-    {
-        const uint8_t* start = find_first_not_of4(a.fStart, a.fEnd, ' ', '\t', '\r', '\n');
-        return ByteSpan::fromPointers(start, a.fEnd);
-    }
-
-
-    INLINE ByteSpan chunk_skip_until_cstr(const ByteSpan& inChunk, const char* str) noexcept
-    {
-        const uint8_t* start = inChunk.fStart;
-        const uint8_t* end = inChunk.fEnd;
-        size_t len = std::strlen(str);
-
-        while (start < end - len + 1)  // Ensure we don't read past the buffer
-        {
-            if (std::memcmp(start, str, len) == 0)
-                return ByteSpan::fromPointers( start, end );  // Return position at match
-
-            ++start;
-        }
-
-        return ByteSpan::null();  // No match found, return empty
-    }
-
-    INLINE ByteSpan chunk_skip_until_chunk(const ByteSpan& inChunk, const ByteSpan& match) noexcept
-    {
-        const uint8_t* start = inChunk.fStart;
-        const uint8_t* end = inChunk.fEnd;
-        size_t len = match.size();
-
-        if (len == 0 || start == end)
-            return ByteSpan::null();  // Empty input or match, return empty
-
-        while (start < end - len + 1)
-        {
-            if (std::memcmp(start, match.fStart, len) == 0)
-                return ByteSpan::fromPointers( start, end );  // Return position at match
-
-            ++start;
-        }
-
-        return ByteSpan::fromPointers( end, end );  // No match found, return empty
-    }
-
-
-
-    INLINE bool chunk_starts_with_char(const ByteSpan& a, const uint8_t b) noexcept
-    {
-        return (a.size() > 0) && (a.fStart[0] == b);
-    }
-
-    INLINE bool chunk_starts_with(const ByteSpan& src, const ByteSpan& str) noexcept
-    {
-        return src.startsWith(str);
-    }
-
-    INLINE bool chunk_starts_with_cstr(const ByteSpan& a, const char* b) noexcept
-    {
-        // see if the null terminated string is at the beginning of the bytespan
-        const uint8_t* start = a.fStart;
-        const uint8_t* end = a.fEnd;
-        while (*b && start < end && *start == *b)
-        {
-            ++start;
-            ++b;
-        }
-
-        return *b == 0;
-    }
-
-    INLINE bool chunk_ends_with(const ByteSpan& a, const ByteSpan& b) noexcept
-    {
-        return a.endsWith(b);
-    }
-
-    INLINE bool chunk_ends_with_char(const ByteSpan& a, const uint8_t b) noexcept
-    {
-        return ((a.size() > 0) && (a.fEnd[-1] == b));
-    }
-
-    INLINE bool chunk_ends_with_cstr(const ByteSpan& a, const char* b) noexcept
-    {
-        return a.endsWith(ByteSpan(b));
-    }
-
-    // chuk_token_char()
-    // 
-    // Given a source chunk, and a single character delimeter
-    // split the source into two chunks, the token, and the rest
-    // The 'token', represents the portion of the source before the delim
-    // The 'rest', represents the portion of the source after the delim
-    // 
-    // Returns - false if the delimeter is not found
-
-    INLINE bool chunk_token_char(const ByteSpan &src, const uint8_t delim, ByteSpan &tok, ByteSpan &rest)
-    {
-        const uint8_t* startAt = src.begin();
-        const uint8_t* endAt = src.end();
-
-        // Start with token being entire source input
-        tok = src;
-
-        // Try to find the delimeter
-        const uint8_t* tokenEnd = static_cast<const uint8_t*>(std::memchr(startAt, delim, endAt - startAt));
-
-        if (!tokenEnd) {
-            // No delimiter found, return entire input
-            //tok.fStart = src.begin();
-            //tok.fEnd = src.end();
-
-            // mark the 'rest' as being blank
-            rest.fStart = endAt;
-            rest.fEnd = endAt;
-            return false;
-        }
-        else {
-            // truncate the token to match where the 
-            // delimeter was found
-            tok.fEnd = tokenEnd;
-
-            rest.fStart = tokenEnd + 1;  // Advance past the delimiter
-            rest.fEnd = endAt;
-        }
-
-        return true;
-    }
-
-    // Given an input chunk
-    // split it into two chunks, 
-    // Returns - the first chunk before delimeter
-    //	a - adjusted to reflect the rest of the input after delims
-    // If delimeter NOT found
-    //	returns the entire input chunk
-    //	and 'a' is set to an empty chunk
-    INLINE ByteSpan chunk_token_char(ByteSpan& a, const char delim) noexcept
-    {
-        if (!a) return {}; // Return empty ByteSpan if 'a' is empty
-
-        const uint8_t* start = a.fStart;
-        const uint8_t* end = a.fEnd;
-
-        // Use std::memchr() to find the delimiter efficiently
-        const uint8_t* tokenEnd = static_cast<const uint8_t*>(std::memchr(start, delim, end - start));
-
-        if (tokenEnd) {
-            a.fStart = tokenEnd + 1;  // Advance past the delimiter
-        }
-        else {
-            tokenEnd = end;  // No delimiter found, return entire input
-            a.fStart = end;  // Move 'a' to empty state
-        }
-
-        return ByteSpan::fromPointers( start, tokenEnd );
-    }
-
-
-    INLINE ByteSpan chunk_token(ByteSpan& a, const charset& delims) noexcept
-    {
-        if (!a) {
-            a = {};
-            return {};
-        }
-
-        const uint8_t* start = a.fStart;
-        const uint8_t* end = a.fEnd;
-        const uint8_t* tokenEnd = start;
-
-        // skip forward until we see a delimiting character
-        while (tokenEnd < end && !delims(*tokenEnd))
-            ++tokenEnd;
-
-        // If we stopped because we saw a delimiting character
-        // advance past that.
-        if (tokenEnd < end && delims(*tokenEnd))
-        {
-            a.fStart = tokenEnd + 1;
-        }
-        else {
-            a.fStart = tokenEnd;
-        }
-
-        return ByteSpan::fromPointers( start, tokenEnd );
-    }
-
-    // name alias
-    INLINE ByteSpan nextToken(ByteSpan& a, const charset&& delims) noexcept
-    {
-        return chunk_token(a, delims);
-    }
-
-
-
-    // Given an input chunk
-    // find the first instance of a specified character
-    // Return 
-    //	If character found, return chunk beginning where the character was found
-    //  If character not found, return empty chunk
-    INLINE ByteSpan chunk_find_char(const ByteSpan& a, char c) noexcept
-    {
-        if (!a) return {}; // Return empty chunk if input is empty
-
-        const uint8_t* start = a.fStart;
-        const uint8_t* end = a.fEnd;
-
-        // Use std::memchr() to locate the first occurrence of 'c'
-        const uint8_t* found = static_cast<const uint8_t*>(std::memchr(start, c, end - start));
-
-        if (!found) return {}; // Character not found, return empty chunk
-
-        return ByteSpan::fromPointers( found, end );
-    }
-
-
-    // 
-    // chunk_find()
-    // 
-    // Scan a ByteSpan 'src', looking for the search span 'str'
-    // return true if it's found, and set the 'value' ByteSpan 
-    // to the location.
-    INLINE bool chunk_find(const ByteSpan& src, const ByteSpan& str, ByteSpan& value) noexcept
-    {
-        if (src.size() < str.size() || str.empty())
-            return false;
-
-        const uint8_t* srcStart = src.fStart;
-        const uint8_t* srcEnd = src.fEnd - (str.size() - 1); // Avoid over-scanning
-        const uint8_t* pattern = str.fStart;
-        const size_t patternSize = str.size();
-
-        while (srcStart < srcEnd)
-        {
-            // Fast forward to the first occurrence of the first character of `str`
-            srcStart = static_cast<const uint8_t*>(std::memchr(srcStart, *pattern, srcEnd - srcStart));
-            if (!srcStart) return false; // Not found
-
-            // Check if the rest of the `str` matches
-            if (std::memcmp(srcStart, pattern, patternSize) == 0)
-            {
-                value = ByteSpan::fromPointers( srcStart, srcStart + patternSize );
-                return true;
-            }
-
-            ++srcStart; // Move to the next position
-        }
-
-        return false;
-    }
-
-
-    INLINE ByteSpan chunk_find_cstr(const ByteSpan& a, const char* c) noexcept
-    {
-        if (!a || !c || *c == '\0')
-            return {};  // Return empty ByteSpan if input is invalid
-
-        const uint8_t* start = a.fStart;
-        const uint8_t* end = a.fEnd;
-        const size_t clen = std::strlen(c);
-
-        if (clen > static_cast<size_t>(end - start))
-            return {};  // If search string is larger than input, it can't be found
-
-        const uint8_t firstChar = static_cast<uint8_t>(c[0]);
-
-        while (start < end)
-        {
-            // Use memchr() to quickly find the first character
-            start = static_cast<const uint8_t*>(std::memchr(start, firstChar, end - start));
-            if (!start || start + clen > end)
-                return {};  // If first char is not found or rest of string doesn't fit, return empty
-
-            // Check the rest of the string using memcmp()
-            if (std::memcmp(start, c, clen) == 0)
-                return ByteSpan::fromPointers( start, end );
-
-            ++start;  // Move to next potential match
-        }
-
-        return {};
-    }
-
-
-
-
-    INLINE ByteSpan chunk_read_bracketed(ByteSpan& src, const uint8_t lbracket, const uint8_t rbracket) noexcept
-    {
-        // Skip leading whitespace
-        src = chunk_ltrim(src, chrWspChars);
-
-        if (!src || *src != lbracket)
-            return {};  // No valid opening bracket found
-
-        // Advance past the opening bracket
-        src++;
-        const uint8_t* beginAttrValue = src.fStart;
-
-        // Use std::memchr() to find the closing rbracket
-        const uint8_t* endAttrValue = static_cast<const uint8_t*>(std::memchr(beginAttrValue, rbracket, src.fEnd - beginAttrValue));
-
-        if (!endAttrValue)
-            return {};  // No closing bracket found
-
-        // Advance `src` past the closing bracket
-        src.fStart = endAttrValue + 1;
-
-        return ByteSpan::fromPointers( beginAttrValue, endAttrValue );
-    }
-
-
-    //
-    // chunk_read_quoted()
-    // 
-    // Read a quoted string from the input stream
-    // Read a first quote, then use that as the delimiter
-    // to read to the end of the string
-    //
-    static bool chunk_read_quoted(ByteSpan& src, ByteSpan& dataChunk) noexcept
-    {
-        // Skip leading whitespace
-        src = chunk_ltrim(src, chrWspChars);
-
-        if (!src)
-            return false;
-
-        // Capture the opening quote character
-        const uint8_t quote = *src;
-
-        // Move past the opening quote
-        src++;
-        const uint8_t* beginAttrValue = src.fStart;
-
-        // Use std::memchr() to find the matching closing quote
-        const uint8_t* endAttrValue = static_cast<const uint8_t*>(std::memchr(beginAttrValue, quote, src.fEnd - beginAttrValue));
-
-        if (!endAttrValue)
-            return false;  // No closing quote found
-
-        // Assign the extracted span
-        dataChunk = ByteSpan::fromPointers( beginAttrValue, endAttrValue );
-
-        // Advance `src` past the closing quote
-        src.fStart = endAttrValue + 1;
-
-        return true;
-    }
-
-}
-
-
-namespace waavs {
-
-    INLINE void writeChunk(const ByteSpan& chunk) noexcept
-    {
-        ByteSpan s = chunk;
-
-        while (s && *s) {
-            printf("%c", *s);
-            s++;
-        }
-    }
-
-    INLINE void writeChunkBordered(const ByteSpan& chunk) noexcept
-    {
-        ByteSpan s = chunk;
-
-        printf("||");
-        while (s && *s) {
-            printf("%c", *s);
-            s++;
-        }
-        printf("||");
-    }
-
-    INLINE void printChunk(const ByteSpan& chunk) noexcept
-    {
-        if (chunk)
-        {
-            writeChunk(chunk);
-            printf("\n");
-        }
-        else
-            printf("BLANK==CHUNK\n");
-
-    }
-}
 
 #endif // BSPAN_H_INCLUDED
 

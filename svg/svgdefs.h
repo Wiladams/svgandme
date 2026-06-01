@@ -48,12 +48,12 @@ namespace waavs
 
         // We override this here, because we want to add all nodes to our 
         // sub-tree, not just the ones that are structural.
-        bool addNodeToSubtree(std::shared_ptr < IViewable > node, IAmGroot* groot) override
+        bool addNodeToRenderTree(std::shared_ptr < IViewable > node, IAmGroot* groot) override
         {
             if (node == nullptr || groot == nullptr)
                 return false;
 
-            fNodes.push_back(node);
+            fRenderNodes.push_back(node);
 
             return true;
         }

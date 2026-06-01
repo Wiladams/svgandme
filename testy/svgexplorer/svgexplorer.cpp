@@ -270,7 +270,6 @@ static void setup()
 
 	//DisplayCaptureElement::registerFactory();
 	//SVGFramesElement::registerFactory();
-	SVGFilterElement::registerFactory();                // <filter>
 
 	refreshDoc();
 }

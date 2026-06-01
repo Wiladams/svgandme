@@ -169,8 +169,17 @@ namespace waavs {
         bool fStyleResolved{ false };
 
 
+        // The resolved properties of this node
         std::unordered_map<InternedKey, std::shared_ptr<SVGVisualProperty>, InternedKeyHash, InternedKeyEquivalent> fVisualProperties{};
-        std::vector<std::shared_ptr<IViewable>> fNodes{};
+        
+        // The child nodes of this element, in tree order.
+        // This is all the nodes in the subtree, not just the
+        // ones that are used for rendering.
+        std::vector<std::shared_ptr<IViewable>> fChildren{};
+
+        // All the nodes in the subtree which participate in drawing directly.
+        std::vector<std::shared_ptr<IViewable>> fRenderNodes{};
+
 
         SVGGraphicsElement()
         {
@@ -183,7 +192,7 @@ namespace waavs {
         const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot) noexcept
         {
             WGRectD bbox{};
-            for (auto& node : fNodes)
+            for (auto& node : fRenderNodes)
             {
                 if (!node || !node->isVisible()) continue;
 
@@ -273,7 +282,7 @@ namespace waavs {
             // and return that.
             if (fVar.is_null())
             {
-                for (auto& node : fNodes)
+                for (auto& node : fRenderNodes)
                 {
                     // cast to IServePaint, if it fails, then we can't use it as a paint server
                     //auto paintServer = std::dynamic_pointer_cast<IServePaint *>(node);
@@ -359,6 +368,10 @@ namespace waavs {
 
 
         // Adding nodes to our tree
+
+        // We want to give all nodes a chance to be added to 
+        // the index of whatever 'groot' is passed in.  That way
+        // they can be looked up by their ID later if they have one.
         virtual bool addNodeToIndex(std::shared_ptr < IViewable > node, IAmGroot* groot)
         {
             if (node == nullptr || groot == nullptr)
@@ -371,30 +384,41 @@ namespace waavs {
             return true;
         }
 
-        virtual bool addNodeToSubtree(std::shared_ptr < IViewable > node, IAmGroot* groot)
+        virtual bool addNodeToChildren(std::shared_ptr < IViewable > node, IAmGroot* groot)
         {
-            if (node == nullptr || groot == nullptr)
+            if (!node || !groot)
                 return false;
+
+            fChildren.push_back(node);
+
+            return true;
+        }
+
+        virtual bool addNodeToRenderTree(std::shared_ptr < IViewable > node, IAmGroot* groot)
+        {
+            if (!node)
+                return false;
+
             if (node->isStructural()) {
-                fNodes.push_back(node);
+                fRenderNodes.push_back(node);
             }
             return true;
         }
 
         virtual bool addNode(std::shared_ptr < IViewable > node, IAmGroot* groot)
         {
-            if (node == nullptr || groot == nullptr)
+            if (!node || !groot)
                 return false;
 
             addNodeToIndex(node, groot);
-            addNodeToSubtree(node, groot);
+            addNodeToChildren(node, groot);
+            addNodeToRenderTree(node, groot);
 
             return true;
         }
 
         virtual void loadSelfClosingNode(const XmlElement& elem, IAmGroot* groot)
         {
-            //printf("SVGGraphicsElement::loadSelfClosingNode: \n");
 
             auto anode = createSingularNode(elem, groot);
             if (anode != nullptr) {
@@ -570,10 +594,6 @@ namespace waavs {
                 }
             }
 
-            // If we're here, we've run off the end of the document without finding a matching end tag
-            // Maybe an assert would be appropriate here, but for now we'll just call the 'onLoadedFromXmlPull' 
-            // to allow any post processing to happen
-            //onEndTag(groot);
         }
 
         virtual void fixupSelfStyleAttributes(IAmGroot*)
@@ -613,7 +633,32 @@ namespace waavs {
                 }
                 else if (attrKey == svgattr::style() && !attrValue.empty())
                 {
-                    styleAttribute = attrValue;
+                    ByteSpan styleValue = attrValue;
+                    styleValue = chunk_trim(styleValue, chrWspChars);
+
+                    if (styleValue && *styleValue == '&')
+                    {
+                        // advance past the '&' character
+                        styleValue.advance(1);
+
+                        // remove the trailing ';' if it exists
+                        styleValue = chunk_rtrim(styleValue,";");
+
+                        
+                        // check to see if there's an entity reference at the beginning
+                        styleValue = groot->findXmlEntity(styleValue);
+                        if (styleValue.empty())
+                        {
+                            // if we can't resolve the entity reference, then just use the original value
+                            styleAttribute = attrValue;
+                        }
+                        else
+                            styleAttribute = styleValue;
+                    }
+                    else
+                    {
+                        styleAttribute = styleValue;
+                    }
                 }
                 else if (attrKey == svgattr::klass())
                 {
@@ -699,10 +744,19 @@ namespace waavs {
 
         }
 
+        // resolveStyleAttributes
+        //
+        // At this point, the document has been fully loaded
+        // so all the styles can be fixed up, and the ones
+        // that have property mappers can be converted 
+        // into properties for use during drawing.
+        // 
         void resolveStyleAttributes(IAmGroot* groot)
         {
             fixupStyleAttributes(groot);
             fStyleResolved = true;
+
+            convertAttributesToProperties(nullptr, groot);
         }
 
         // This is called after the document is fully loaded
@@ -716,7 +770,8 @@ namespace waavs {
                 resolveStyleAttributes(groot);
 
             // Then resolve the subtree
-            for (auto& node : fNodes)
+            //for (auto& node : fRenderNodes)
+            for (auto& node : fChildren)
             {
                 if (!node)
                     continue;
@@ -748,7 +803,7 @@ namespace waavs {
 
         void updateChildren(IAmGroot* groot)
         {
-            for (auto& node : fNodes)
+            for (auto& node : fChildren)
             {
                 node->update(groot);
             }
@@ -787,6 +842,8 @@ namespace waavs {
         }
 
         virtual void bindSelfToContext(IRenderSVG*, IAmGroot*) { ; }
+        virtual void bindGeometryToContext(IRenderSVG*, IAmGroot*) { ; }
+        virtual void bindPaintToContext(IRenderSVG*, IAmGroot*) { ; }
 
 
         // For compound nodes (which have children) we want to 
@@ -802,15 +859,47 @@ namespace waavs {
             if (!fStyleResolved)
                 this->resolveStyleAttributes(groot);
 
-
             // Convert the attributes that have a property registration 
             // into VisualProperty objects
-            convertAttributesToProperties(ctx, groot);
+            //convertAttributesToProperties(ctx, groot);
 
             // Tell the structure to bind the rest of its stuff
             bindSelfToContext(ctx, groot);
 
             setNeedsBinding(false);
+        }
+
+        // applyProperty
+        // 
+        // Apply a single property to the context
+        // if it exists, is set, and is autoDraw
+        void applyProperty(IRenderSVG *ctx, IAmGroot* groot, InternedKey key)
+        {
+            auto prop = getVisualProperty(key);
+            if (prop && prop->autoDraw() && prop->isSet())
+            {
+                prop->applyToContext(ctx, groot);
+            }
+        }
+
+        // applyProperties
+        // 
+        // Given a comma separated list of property names,
+        // apply each of those properties to the context if they exist.
+
+        void applyProperties(IRenderSVG* ctx, IAmGroot* groot, ByteSpan names)
+        {
+            ByteSpan s = names;
+
+            while (s)
+            {
+                ByteSpan name = chunk_trim(chunk_token(s, ","), chrWspChars);
+
+                if (!name)
+                    continue;
+
+                applyProperty(ctx, groot, PSNameTable::INTERN(name));
+            }
         }
 
         virtual void applyProperties(IRenderSVG* ctx, IAmGroot* groot)
@@ -824,9 +913,9 @@ namespace waavs {
             }
         }
 
-        virtual void drawChildren(IRenderSVG* ctx, IAmGroot* groot)
+        virtual void drawRenderSubtree(IRenderSVG* ctx, IAmGroot* groot)
         {
-            for (auto& node : fNodes)
+            for (auto& node : fRenderNodes)
             {
                 // should we check to see if the node
                 // is visible before drawing it?
@@ -848,23 +937,54 @@ namespace waavs {
         // All environment preperation occurs outside this call.
         void drawContent(IRenderSVG* ctx, IAmGroot* groot)
         {
-            applyProperties(ctx, groot);
+            //applyProperties(ctx, groot);
             drawSelf(ctx, groot);
-            drawChildren(ctx, groot);
+            drawRenderSubtree(ctx, groot);
         }
 
         WGRectD drawBegin(IRenderSVG* ctx, IAmGroot* groot) 
         {
+            static  ByteSpan kPreBindProperties = 
+                "font-family,font-size,font-style,font-weight,"
+                "stroke,stroke-width,stroke-linecap,stroke-linejoin,stroke-miterlimit,"
+                "stroke-dasharray,stroke-dashoffset,"
+                "fill-rule,clip-rule,"
+                "marker,marker-start,marker-mid,marker-end";
+
+            //"fill,fill-opacity,"
+            //    "stroke-opacity,"
+            static ByteSpan kPostBindProperties =
+                "opacity,"
+                "filter,"
+                "mask,"
+                "clip-path,"
+                "paint-order,"
+                "visibility,"
+                "display,"
+                "shape-rendering,"
+                "image-rendering,"
+                "color-interpolation,"
+                "color-interpolation-filters,"
+                "mix-blend-mode,"
+                "isolation,"
+                "vector-effect";
+
+            ctx->push();
+
+            //applyProperties(ctx, groot, kPreBindProperties);
+            applyProperties(ctx, groot);
+
             if (needsBinding())
                 this->bindToContext(ctx, groot);
 
-            ctx->push();
+            //applyProperties(ctx, groot, kPostBindProperties);
 
             // Apply transform first since it affects bbox space
             auto tform = getVisualProperty(svgattr::transform());
             if (tform)
                 tform->applyToContext(ctx, groot);
 
+            bindGeometryToContext(ctx, groot);
             // Compute bbox in current user space
             WGRectD bbox = getObjectBoundingBox(ctx, groot);
 
@@ -911,6 +1031,9 @@ namespace waavs {
                 if (program) {
                     RenderFlags sourceFlags = rFlags;
                     sourceFlags.remove(RF_Filter);
+                    sourceFlags.remove(RF_Opacity);
+                    sourceFlags.remove(RF_Mask);
+                    sourceFlags.remove(RF_Clip);
 
                     B2DFilterExecutor exec;
                     WGResult err = exec.applyFilterToSurface(
@@ -955,6 +1078,12 @@ namespace waavs {
                         featureNode->applyClipToSurface(ctx,groot, plan, result);
                 }
 
+                // draw whatever was rendered offscreen to the context
+                ctx->push();
+                ctx->transform(WGMatrix3x3::makeIdentity());
+                ctx->blendMode(BL_COMP_OP_SRC_OVER);
+
+                // Apply global opacity if required
                 if (plan.hasOpacity)
                 {
                     //printf("Applying opacity to surface...\n");
@@ -970,9 +1099,7 @@ namespace waavs {
                     }
                 }
 
-                ctx->push();
-                ctx->transform(WGMatrix3x3::makeIdentity());
-                ctx->blendMode(BL_COMP_OP_SRC_OVER);
+
                 ctx->image(result, double(plan.pixelRect.x), double(plan.pixelRect.y));
                 ctx->flush();
                 ctx->pop();

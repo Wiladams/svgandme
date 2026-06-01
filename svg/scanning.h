@@ -88,7 +88,7 @@ static INLINE const uint8_t* find_first_not_of4_scalar(
     return end;
 }
 
-#if defined(__ARM_NEON) || defined(__aarch64__)
+#if WAAVS_HAS_NEON
 
 // Helper: scan a 16-byte "match" mask that is 0xFF at matching lanes, 0x00 otherwise.
 // Returns the first matching lane index, or 16 if none.
@@ -247,7 +247,7 @@ static INLINE const uint8_t* find_first_of2(
     uint8_t c0,
     uint8_t c1) noexcept
 {
-#if defined(__ARM_NEON) || defined(__aarch64__)
+#if WAAVS_HAS_NEON
     return find_first_of2_neon(p, end, c0, c1);
 #else
     return find_first_of2_scalar(p, end, c0, c1);
@@ -261,7 +261,7 @@ static INLINE const uint8_t* find_first_of3(
     uint8_t c1,
     uint8_t c2) noexcept
 {
-#if defined(__ARM_NEON) || defined(__aarch64__)
+#if WAAVS_HAS_NEON
     return find_first_of3_neon(p, end, c0, c1, c2);
 #else
     return find_first_of3_scalar(p, end, c0, c1, c2);
@@ -276,7 +276,7 @@ static INLINE const uint8_t* find_first_of4(
     uint8_t c2,
     uint8_t c3) noexcept
 {
-#if defined(__ARM_NEON) || defined(__aarch64__)
+#if WAAVS_HAS_NEON
     return find_first_of4_neon(p, end, c0, c1, c2, c3);
 #else
     return find_first_of4_scalar(p, end, c0, c1, c2, c3);
@@ -291,7 +291,7 @@ static INLINE const uint8_t* find_first_not_of4(
     uint8_t c2,
     uint8_t c3) noexcept
 {
-#if defined(__ARM_NEON) || defined(__aarch64__)
+#if WAAVS_HAS_NEON
     return find_first_not_of4_neon(p, end, c0, c1, c2, c3);
 #else
     return find_first_not_of4_scalar(p, end, c0, c1, c2, c3);
@@ -352,7 +352,7 @@ static INLINE const uint8_t* find_first_not_namestart_ascii_scalar(
     return p;
 }
 
-#if defined(__ARM_NEON) || defined(__aarch64__)
+#if WAAVS_HAS_NEON
 
 // ------------------------------------------------------------
 // NEON helpers
@@ -483,7 +483,7 @@ static INLINE const uint8_t* find_first_not_namechar_ascii(
     const uint8_t* p,
     const uint8_t* end) noexcept
 {
-#if defined(__ARM_NEON) || defined(__aarch64__)
+#if WAAVS_HAS_NEON
     return find_first_not_namechar_ascii_neon(p, end);
 #else
     return find_first_not_namechar_ascii_scalar(p, end);
@@ -494,7 +494,7 @@ static INLINE const uint8_t* find_first_not_namestart_ascii(
     const uint8_t* p,
     const uint8_t* end) noexcept
 {
-#if defined(__ARM_NEON) || defined(__aarch64__)
+#if WAAVS_HAS_NEON
     return find_first_not_namestart_ascii_neon(p, end);
 #else
     return find_first_not_namestart_ascii_scalar(p, end);

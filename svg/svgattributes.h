@@ -191,9 +191,10 @@ namespace waavs {
         }
         
         double fValue{1};
-        BLVar fOpacityVar;
+        //BLVar fOpacityVar;
         
-        SVGOpacity(IAmGroot* groot) :SVGVisualProperty(groot) { setName(svgattr::opacity()); }        
+        SVGOpacity(IAmGroot* groot) 
+            :SVGVisualProperty(groot) { setName(svgattr::opacity()); }        
         
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
@@ -212,7 +213,7 @@ namespace waavs {
                 return false;
 
             fValue = waavs::clamp(op.calculatedValue(), 0.0, 1.0);
-            fOpacityVar = fValue;
+            //fOpacityVar = fValue;
 
             set(true);
             setNeedsBinding(false);
@@ -713,15 +714,15 @@ namespace waavs {
         {
             return parse_colorsrgb_from_hex(cSpan, cSRGB);
         }
-        else if (cSpan.startsWith(rgbStr) ||
-            cSpan.startsWith(rgbaStr) ||
-            cSpan.startsWith(rgbaStrCaps) ||
-            cSpan.startsWith(rgbStrCaps))
+        else if (bspan_starts_with(cSpan, rgbStr) ||
+            bspan_starts_with(cSpan, rgbaStr) ||
+            bspan_starts_with(cSpan, rgbaStrCaps) ||
+            bspan_starts_with(cSpan, rgbStrCaps))
         {
             return parse_colorsrgb_from_func(cSpan, cSRGB);
         }
-        else if (cSpan.startsWith(hslStr) ||
-            cSpan.startsWith(hslaStr))
+        else if (bspan_starts_with(cSpan, hslStr) ||
+            bspan_starts_with(cSpan, hslaStr))
         {
             // BUGBUG - need to modernize Hsl to fill
             // in ColorSRGB
@@ -871,7 +872,7 @@ namespace waavs {
             }
 
             // Quick success if we have a URL reference
-            if (chunk_starts_with_cstr(colorSpan, "url("))
+            if (bspan_starts_with(colorSpan, "url("))
             {
                 set(true);
                 setNeedsBinding(true);
@@ -920,10 +921,10 @@ namespace waavs {
                         return false;
                     }
                 }
-                else if (cSpan.startsWith(rgbStr) ||
-                    cSpan.startsWith(rgbaStr) ||
-                    cSpan.startsWith(rgbaStrCaps) ||
-                    cSpan.startsWith(rgbStrCaps))
+                else if (bspan_starts_with(cSpan, rgbStr) ||
+                    bspan_starts_with(cSpan,rgbaStr) ||
+                    bspan_starts_with(cSpan, rgbaStrCaps) ||
+                    bspan_starts_with(cSpan, rgbStrCaps))
                 {
                     if (parse_colorsrgb_from_func(cSpan, cSRGB) == WG_SUCCESS)
                     {
@@ -934,8 +935,8 @@ namespace waavs {
                         return false;
                     }
                 }
-                else if (cSpan.startsWith(hslStr) ||
-                    cSpan.startsWith(hslaStr))
+                else if (bspan_starts_with(cSpan, hslStr) ||
+                    bspan_starts_with(cSpan, hslaStr))
                 {
                     // BUGBUG - need to modernize Hsl to fill
                     // in ColorSRGB
@@ -1116,7 +1117,7 @@ namespace waavs {
         {
             ByteSpan ref = rawValue();
 
-            if (chunk_starts_with_cstr(ref, "url("))
+            if (bspan_starts_with(ref, "url("))
             {
                 if (groot != nullptr) {
                     auto node = groot->findNodeByUrl(ref);
@@ -1612,7 +1613,7 @@ namespace waavs {
         bool loadFromChunk(const ByteSpan& inChunk)
         {
             ByteSpan s = inChunk;
-            s = chunk_skip_wsp(s);
+            s = bspan_skip_spaces(s);
 
             if (!s)
                 return false;
@@ -1781,7 +1782,7 @@ namespace waavs {
         void bindToContext(IRenderSVG *ctx, IAmGroot* groot) noexcept override
         {
             
-            if (chunk_starts_with_cstr(rawValue(), "url("))
+            if (bspan_starts_with(rawValue(), "url("))
             {
                 fWrappedNode = groot->findNodeByUrl(rawValue());
 
@@ -1839,16 +1840,6 @@ namespace waavs {
         
         SVGClipPathAttribute(IAmGroot* groot) : SVGVisualProperty(groot) { setName(svgattr::clip_path()); }
 
-        //const BLVar getVariant(IRenderSVG*, IAmGroot*) noexcept override
-        //{
-        //    if (fClipNode == nullptr)
-        //        return fClipVar;
-
-            // BUGBUG
-            //return fClipNode->getVariant();
-        //    return BLVar::null();
-        //}
-
         
         bool loadFromUrl(IRenderSVG *ctx, IAmGroot* groot, const ByteSpan& inChunk)
         {
@@ -1874,8 +1865,6 @@ namespace waavs {
         }
 
         
-
-
         // Let's get a connection to our referenced thing
         void bindToContext(IRenderSVG *ctx, IAmGroot* groot) noexcept override
         {
@@ -1883,7 +1872,7 @@ namespace waavs {
 
             // Just load the referenced node at this point
             
-            if (chunk_starts_with_cstr(str, "url("))
+            if (bspan_starts_with(str, "url("))
             {
                 loadFromUrl(ctx, groot, str);
             }
@@ -1953,6 +1942,7 @@ namespace waavs
         }
 
         std::vector<float> fArray{};
+        double fOffset{ 0.0 };
         bool fIsNone{ true };
 
         SVGStrokeDashArray() : SVGVisualProperty(nullptr)
@@ -1960,24 +1950,36 @@ namespace waavs
             setName(svgattr::stroke_dasharray());
         }
 
-
-
         bool loadFromAttributes(const XmlAttributeCollection& attrs) override
         {
+            // Get the dash array and offset if they exist
             ByteSpan dashArrayAttr{};
-            if (!attrs.getValue(svgattr::stroke_dasharray(), dashArrayAttr))
-                return false;
+            attrs.getValue(svgattr::stroke_dasharray(), dashArrayAttr);
+            
+            // Get the dash-offset if it exists
+            ByteSpan dashOffsetAttr{};
+            attrs.getValue(svgattr::stroke_dashoffset(), dashOffsetAttr);
+            
+            // if the two attributes are empty, then no dash pattern
+            // was specified.  So we can just keep the attribute
+            // not set and return.
+            // It's not exactly the same as 'none', because it won't alter
+            // the state of the drawing context, so whatever state dashing was
+            // in previously will remain
+            if (!dashArrayAttr && !dashOffsetAttr)
+                return set(false);
+            
 
             // parse the dash array value
             if (!parseStrokeDashArray(dashArrayAttr, fArray, fIsNone))
                 return set(false);
 
+            // get the offset value, if it exists, otherwise default to 0
+            if (!parseNumber(dashOffsetAttr, fOffset))
+                fOffset = 0.0;
+
             set(true);
             setNeedsBinding(false);
-
-            // Get the dash-offset if it exists
-            ByteSpan dashOffsetAttr{};
-            attrs.getValue(svgattr::stroke_dashoffset(), dashOffsetAttr);
 
             return true;
         }
@@ -1989,6 +1991,13 @@ namespace waavs
             if (!ctx)
                 return;
 
+            // If we're not set, don't do anything
+            if (!isSet())
+                return;
+
+            // If it was explicitly set to 'none', then we need
+            // to clear any dash pattern on the context, 
+            // which is different than just not setting it at all
             if (fIsNone)
             {
                 // No dash pattern.
@@ -2000,11 +2009,12 @@ namespace waavs
 
             // Store raw dash segments in state.
             ctx->dashArray(fArray);
+            ctx->dashOffset(fOffset);
         }
     };
 
-
-    //=========================================================
+/*
+//=========================================================
 // SVGStrokeDashOffset
 // stroke-dashoffset: <length-percentage>
 //=========================================================
@@ -2044,7 +2054,7 @@ namespace waavs
             return true;
         }
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* /*groot*/) override
+        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
             if (ctx == nullptr)
                 return;
@@ -2058,6 +2068,6 @@ namespace waavs
             ctx->dashOffset(fOffset);
         }
     };
-
+    */
 } // namespace waavs
 

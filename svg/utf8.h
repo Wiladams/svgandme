@@ -87,7 +87,7 @@ namespace waavs
 
 				// Stop decoding by truncating the source.
 				if (newState == UTF8_REJECT)
-					chunk_skip_to_end(fSource);
+					(fSource.advanceToEnd());
 
 			}
 

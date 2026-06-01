@@ -296,7 +296,7 @@ namespace waavs {
 
             // We haven't found it yet, so, see if the key is one of
             // our specially named items
-            if (inKey == filter::SourceGraphic())
+            if (inKey == filter::SourceAlpha())
                 return getOrCreateAlphaImage(filter::SourceAlpha(), filter::SourceGraphic());
 
             if (inKey == filter::BackgroundAlpha())
@@ -986,7 +986,7 @@ namespace waavs {
         // onComposite()
         // binary
         // -----------------------------------------
-        WGCompositeOp WGCompositeOpFromFilterCompositeOp(FilterCompositeOp op) noexcept
+        static WGCompositeOp WGCompositeOpFromFilterCompositeOp(FilterCompositeOp op) noexcept
         {
             switch (op)
             {
@@ -1000,6 +1000,8 @@ namespace waavs {
 
             return WG_COMP_SRC_COPY;
         }
+
+
 
         bool onComposite(
             const FilterIO& io,
@@ -1027,7 +1029,7 @@ namespace waavs {
             if (out.empty())
                 return false;
 
-            //out.clearAll();
+            out.clearAll();
 
             WGRectI area = resolveSubregionPx(subr, in1);
             if (area.w <= 0 || area.h <= 0)
@@ -1151,11 +1153,20 @@ namespace waavs {
                 const WGCompositeOp surfOp =
                     WGCompositeOpFromFilterCompositeOp(op);
 
-                if (wg_blit_copy_unchecked(outView, in2View) != WG_SUCCESS)
+                WGResult res = wg_surface_composite_binary_unchecked(
+                    outView,
+                    in1View,
+                    in2View,
+                    surfOp);
+
+                if (res != WG_SUCCESS)
                     return false;
 
-                if (wg_blit_composite_unchecked(outView, in1View, surfOp) != WG_SUCCESS)
-                    return false;
+                //if (wg_blit_copy_unchecked(outView, in2View) != WG_SUCCESS)
+                //    return false;
+
+                //if (wg_blit_composite_unchecked(outView, in1View, surfOp) != WG_SUCCESS)
+                //    return false;
             }
 
             if (!putImage(outKey, out))
@@ -1924,6 +1935,7 @@ namespace waavs {
             auto out = createLikeSurfaceHandle(in);
             if (out.empty())
                 return false;
+            out.clearAll();
 
             auto primLenToUser = [&](double v, double range) noexcept -> double
                 {
@@ -1955,7 +1967,7 @@ namespace waavs {
 
             const WGRectI writeArea = resolveSubregionPx(subr, in);
 
-            out.clearAll();
+
 
             if (writeArea.w <= 0 || writeArea.h <= 0)
             {
@@ -2111,6 +2123,42 @@ namespace waavs {
         // onImage()
         // Type: generator
         // -----------------------------------------
+        bool onImage(
+            const FilterIO& io,
+            const FilterPrimitiveSubregion& subr,
+            InternedKey imageKey,
+            AspectRatioAlignKind align,
+            AspectRatioMeetOrSliceKind mos) noexcept override
+        {
+            if (!fResolver)
+                return false;
+
+            InternedKey outKey = resolveOutKeyStrict(io);
+            if (!outKey)
+                outKey = filter::Filter_Last();
+
+            const WGRectD dstRectUS = resolveSubregionUS(subr);
+            if (!(dstRectUS.w > 0.0) || !(dstRectUS.h > 0.0))
+                return false;
+
+            Surface out = fResolver->resolveFeImage(
+                imageKey,
+                fRunState,
+                dstRectUS,
+                align,
+                mos);
+
+            if (out.empty())
+                return false;
+
+            if (!putImage(outKey, out))
+                return false;
+
+            setLastKey(outKey);
+            return true;
+        }
+
+        /*
         bool onImage(const FilterIO& io, 
             const FilterPrimitiveSubregion& subr,
             InternedKey imageKey,
@@ -2139,6 +2187,8 @@ namespace waavs {
             setLastKey(outKey);
             return true;
         }
+        */
+
 
         // ------------------------------------------
         // onMerge

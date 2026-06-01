@@ -215,7 +215,7 @@ namespace waavs
             if (fDocState.href)
             {
                 // First, see if it's embedded data
-                if (chunk_starts_with_cstr(fDocState.href, "data:"))
+                if (bspan_starts_with(fDocState.href, "data:"))
                 {
                     if (!parseImage(fDocState.href, fImage))
                         return;

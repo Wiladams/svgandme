@@ -185,7 +185,7 @@ namespace waavs {
         {
             WGRectD pbox{};
 
-            for (auto& node : fNodes)
+            for (auto& node : fRenderNodes)
             {
                 if (!node || !node->isVisible()) continue;
 
@@ -203,7 +203,7 @@ namespace waavs {
         {
             WGRectD pbox{};
 
-            for (auto& node : fNodes)
+            for (auto& node : fRenderNodes)
             {
                 if (!node || !node->isVisible()) continue;
 
