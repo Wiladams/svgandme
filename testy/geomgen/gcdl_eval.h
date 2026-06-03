@@ -7,7 +7,7 @@
 namespace waavs
 {
     // Generic signature for node evaluation functions.
-    using GCDLEvalFunc = bool (*)(const GCDLNode&, GCDLEvalContext&);
+    using GCDLEvalFunc = bool (*)(const GCDLPrimitiveNode&, GCDLEvalContext&);
 
     // dictionary that maps node op keys to their evaluation functions
     using GCDLEvalMap =
@@ -58,7 +58,7 @@ namespace waavs
         return map;
     }
 
-    static inline bool evalGCDLNode(const GCDLNode& n, GCDLEvalContext& ctx)
+    static inline bool evalGCDLNode(const GCDLPrimitiveNode& n, GCDLEvalContext& ctx)
     {
         if (!n.op)
             return false;

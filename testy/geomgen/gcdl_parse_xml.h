@@ -180,7 +180,7 @@ namespace waavs
         const XmlElement& elem,
         GCDLProgram& prog)
     {
-        GCDLNode n;
+        GCDLPrimitiveNode n;
 
         n.op = PSNameTable::INTERN("point.xy");
 
@@ -236,7 +236,7 @@ namespace waavs
         const XmlElement& elem,
         GCDLProgram& prog)
     {
-        GCDLNode n;
+        GCDLPrimitiveNode n;
 
         n.op = PSNameTable::INTERN("point.pick");
 
@@ -267,7 +267,7 @@ namespace waavs
         const XmlElement& elem,
         GCDLProgram& prog)
     {
-        GCDLNode n;
+        GCDLPrimitiveNode n;
 
         n.op = PSNameTable::INTERN("line.fromPoints");
 
@@ -291,7 +291,7 @@ namespace waavs
 
     static bool parseLinePerpendicularNode(const XmlElement& elem, GCDLProgram& prog)
     {
-        GCDLNode n;
+        GCDLPrimitiveNode n;
 
         n.op = GCDLOp_line_perpendicular();
 
@@ -317,7 +317,7 @@ namespace waavs
         const XmlElement& elem,
         GCDLProgram& prog)
     {
-        GCDLNode n;
+        GCDLPrimitiveNode n;
 
         n.op = PSNameTable::INTERN("line.divide");
 
@@ -343,7 +343,7 @@ namespace waavs
         const XmlElement& elem,
         GCDLProgram& prog)
     {
-        GCDLNode n;
+        GCDLPrimitiveNode n;
 
         n.op = PSNameTable::INTERN("circle.centerPoint");
 
@@ -369,7 +369,7 @@ namespace waavs
         const XmlElement& elem,
         GCDLProgram& prog)
     {
-        GCDLNode n;
+        GCDLPrimitiveNode n;
 
         n.op = GCDLOp_circle_center_radius();
 
@@ -399,7 +399,7 @@ namespace waavs
         if (!gcdl_attr(elem, "kind", kind))
             return false;
 
-        GCDLNode n;
+        GCDLPrimitiveNode n;
 
         if (kind == "circleCircle") {
             n.op = GCDLOp_intersect_circle_circle();
@@ -471,7 +471,7 @@ namespace waavs
         const XmlElement& elem,
         GCDLProgram& prog)
     {
-        GCDLNode n;
+        GCDLPrimitiveNode n;
 
         n.op = PSNameTable::INTERN("arc.circleFromTo");
 
@@ -507,7 +507,7 @@ namespace waavs
 
     static bool parseArcCenterAnglesNode( const XmlElement& elem, GCDLProgram& prog)
     {
-        GCDLNode n;
+        GCDLPrimitiveNode n;
 
         n.op = GCDLOp_arc_center_angles();
 
@@ -548,7 +548,7 @@ namespace waavs
         const XmlElement& elem,
         GCDLProgram& prog)
     {
-        GCDLNode n;
+        GCDLPrimitiveNode n;
 
         n.op = PSNameTable::INTERN("mirror.point");
 
@@ -574,7 +574,7 @@ namespace waavs
         const XmlElement& elem,
         GCDLProgram& prog)
     {
-        GCDLNode n;
+        GCDLPrimitiveNode n;
 
         n.op = PSNameTable::INTERN("mirror.arc");
 
@@ -598,7 +598,7 @@ namespace waavs
 
     static bool parsePointPolarNode(const XmlElement& elem,GCDLProgram& prog)
     {
-        GCDLNode n;
+        GCDLPrimitiveNode n;
 
         n.op = PSNameTable::INTERN("point.polar");
 
@@ -629,7 +629,7 @@ namespace waavs
         const XmlElement& elem,
         GCDLProgram& prog)
     {
-        GCDLNode n;
+        GCDLPrimitiveNode n;
 
         n.op = GCDLOp_point_project();
 
@@ -656,7 +656,7 @@ namespace waavs
         const XmlElement& elem,
         GCDLProgram& prog)
     {
-        GCDLNode n;
+        GCDLPrimitiveNode n;
 
         n.op = GCDLOp_point_along_line();
 
@@ -682,7 +682,7 @@ namespace waavs
         const XmlElement& elem,
         GCDLProgram& prog)
     {
-        GCDLNode n;
+        GCDLPrimitiveNode n;
 
         n.op = GCDLOp_line_from_point_angle();
 
@@ -711,7 +711,7 @@ namespace waavs
 
     static bool parseLineParallelNode( const XmlElement& elem, GCDLProgram& prog)
     {
-        GCDLNode n;
+        GCDLPrimitiveNode n;
 
         n.op = GCDLOp_line_parallel();
 
@@ -738,7 +738,7 @@ namespace waavs
         const XmlElement& elem,
         GCDLProgram& prog)
     {
-        GCDLNode n;
+        GCDLPrimitiveNode n;
 
         n.op = GCDLOp_point_rotate();
 
@@ -767,7 +767,7 @@ namespace waavs
 
     static bool parseLineRotateNode(const XmlElement& elem, GCDLProgram& prog)
     {
-        GCDLNode n;
+        GCDLPrimitiveNode n;
         n.op = GCDLOp_line_rotate();
 
         GeoRef line;
@@ -795,7 +795,7 @@ namespace waavs
 
     static bool parsePolygonRegularNode( const XmlElement& elem, GCDLProgram& prog)
     {
-        GCDLNode n;
+        GCDLPrimitiveNode n;
 
         n.op = GCDLOp_polygon_regular();
 
@@ -828,7 +828,7 @@ namespace waavs
 
     static bool parsePolygonStarNode( const XmlElement& elem, GCDLProgram& prog)
     {
-        GCDLNode n;
+        GCDLPrimitiveNode n;
 
         n.op = GCDLOp_polygon_star();
 
@@ -869,7 +869,7 @@ namespace waavs
         const XmlElement& elem,
         GCDLProgram& prog)
     {
-        GCDLNode n;
+        GCDLPrimitiveNode n;
 
         n.op = GCDLOp_path_from_points();
 

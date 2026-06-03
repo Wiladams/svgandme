@@ -9,7 +9,7 @@ namespace waavs
 {
     struct GCDLResolveResult {
         bool ok = true;
-        const GCDLNode* failedNode = nullptr;
+        const GCDLPrimitiveNode* failedNode = nullptr;
         InternedKey missingRef = nullptr;
         InternedKey duplicateId = nullptr;
     };
@@ -42,7 +42,7 @@ namespace waavs
         }
 
         for (size_t i = 0; i < prog.nodes.size(); i++) {
-            const GCDLNode& node = prog.nodes[i];
+            const GCDLPrimitiveNode& node = prog.nodes[i];
 
             if (!node.id || !node.op) {
                 result.ok = false;

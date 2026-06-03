@@ -15,7 +15,7 @@ namespace waavs
     // -------------------------------------------
     //
 
-    static inline bool eval_point_xy(const GCDLNode& n, GCDLEvalContext& ctx)
+    static inline bool eval_point_xy(const GCDLPrimitiveNode& n, GCDLEvalContext& ctx)
     {
         if (n.nums.size() < 2)
             return false;
@@ -23,7 +23,7 @@ namespace waavs
         return ctx.putPoint(n.id, { n.nums[0], n.nums[1] });
     }
 
-    static inline bool eval_point_pick(const GCDLNode& n, GCDLEvalContext& ctx)
+    static inline bool eval_point_pick(const GCDLPrimitiveNode& n, GCDLEvalContext& ctx)
     {
         if (n.refs.size() < 1 || n.nums.size() < 1)
             return false;
@@ -79,7 +79,7 @@ namespace waavs
         return ctx.putPoint(n.id, pts[best]);
     }
 
-    static inline bool eval_line_from_points(const GCDLNode& n, GCDLEvalContext& ctx)
+    static inline bool eval_line_from_points(const GCDLPrimitiveNode& n, GCDLEvalContext& ctx)
     {
         if (n.refs.size() < 2)
             return false;
@@ -96,7 +96,7 @@ namespace waavs
         return ctx.putLine(n.id, { a, b });
     }
 
-    static inline bool eval_circle_center_point(const GCDLNode& n, GCDLEvalContext& ctx)
+    static inline bool eval_circle_center_point(const GCDLPrimitiveNode& n, GCDLEvalContext& ctx)
     {
         if (n.refs.size() < 2)
             return false;
@@ -118,7 +118,7 @@ namespace waavs
     }
 
     static inline bool eval_circle_center_radius(
-        const GCDLNode& n,
+        const GCDLPrimitiveNode& n,
         GCDLEvalContext& ctx)
     {
         if (n.refs.size() < 1 || n.nums.size() < 1)
@@ -139,7 +139,7 @@ namespace waavs
         return ctx.putCircle(n.id, circle);
     }
 
-    static inline bool eval_divide_line(const GCDLNode& n, GCDLEvalContext& ctx)
+    static inline bool eval_divide_line(const GCDLPrimitiveNode& n, GCDLEvalContext& ctx)
     {
         if (n.refs.size() < 1 || n.nums.size() < 1)
             return false;
@@ -172,7 +172,7 @@ namespace waavs
     }
 
 
-    static inline bool eval_intersect_circle_circle(const GCDLNode& n, GCDLEvalContext& ctx)
+    static inline bool eval_intersect_circle_circle(const GCDLPrimitiveNode& n, GCDLEvalContext& ctx)
     {
         if (n.refs.size() < 2)
             return false;
@@ -256,7 +256,7 @@ namespace waavs
     }
 
     static inline bool eval_intersect_line_circle(
-        const GCDLNode& n,
+        const GCDLPrimitiveNode& n,
         GCDLEvalContext& ctx)
     {
         if (n.refs.size() < 2)
@@ -331,7 +331,7 @@ namespace waavs
         return true;
     }
 
-    static inline bool eval_arc_center_angles( const GCDLNode& n, GCDLEvalContext& ctx)
+    static inline bool eval_arc_center_angles( const GCDLPrimitiveNode& n, GCDLEvalContext& ctx)
     {
         if (n.refs.size() < 1 || n.nums.size() < 3)
             return false;
@@ -357,7 +357,7 @@ namespace waavs
         return ctx.putArc(n.id, arc);
     }
 
-    static inline bool eval_arc_circle_from_to(const GCDLNode& n, GCDLEvalContext& ctx)
+    static inline bool eval_arc_circle_from_to(const GCDLPrimitiveNode& n, GCDLEvalContext& ctx)
     {
         if (n.refs.size() < 3)
             return false;
@@ -388,7 +388,7 @@ namespace waavs
         return ctx.putArc(n.id, a);
     }
 
-    static inline bool eval_intersect_line_line(const GCDLNode& n, GCDLEvalContext& ctx)
+    static inline bool eval_intersect_line_line(const GCDLPrimitiveNode& n, GCDLEvalContext& ctx)
     {
         if (n.refs.size() < 2)
             return false;
@@ -460,7 +460,7 @@ namespace waavs
         return out;
     }
 
-    static inline bool eval_mirror_point(const GCDLNode& n, GCDLEvalContext& ctx)
+    static inline bool eval_mirror_point(const GCDLPrimitiveNode& n, GCDLEvalContext& ctx)
     {
         if (n.refs.size() < 2)
             return false;
@@ -477,7 +477,7 @@ namespace waavs
         return ctx.putPoint(n.id, gcdl_mirror_point_across_line(p, axis));
     }
 
-    static inline bool eval_mirror_arc(const GCDLNode& n, GCDLEvalContext& ctx)
+    static inline bool eval_mirror_arc(const GCDLPrimitiveNode& n, GCDLEvalContext& ctx)
     {
         if (n.refs.size() < 2)
             return false;
@@ -515,7 +515,7 @@ namespace waavs
         return ctx.putArc(n.id, out);
     }
 
-    static inline bool eval_point_polar(const GCDLNode& n, GCDLEvalContext& ctx)
+    static inline bool eval_point_polar(const GCDLPrimitiveNode& n, GCDLEvalContext& ctx)
     {
         if (n.refs.size() < 1 || n.nums.size() < 2)
             return false;
@@ -534,7 +534,7 @@ namespace waavs
         return ctx.putPoint(n.id, p);
     }
 
-    static inline bool eval_point_along_line( const GCDLNode& n, GCDLEvalContext& ctx)
+    static inline bool eval_point_along_line( const GCDLPrimitiveNode& n, GCDLEvalContext& ctx)
     {
         if (n.refs.size() < 1 || n.nums.size() < 1)
             return false;
@@ -553,7 +553,7 @@ namespace waavs
     }
 
     static inline bool eval_line_from_point_angle(
-        const GCDLNode& n,
+        const GCDLPrimitiveNode& n,
         GCDLEvalContext& ctx)
     {
         if (n.refs.size() < 1 || n.nums.size() < 1)
@@ -573,7 +573,7 @@ namespace waavs
         return ctx.putLine(n.id, { a, b });
     }
 
-    static inline bool eval_line_parallel(const GCDLNode& n, GCDLEvalContext& ctx)
+    static inline bool eval_line_parallel(const GCDLPrimitiveNode& n, GCDLEvalContext& ctx)
     {
         if (n.refs.size() < 2)
             return false;
@@ -602,7 +602,7 @@ namespace waavs
     }
 
     static inline bool eval_line_perpendicular(
-        const GCDLNode& n,
+        const GCDLPrimitiveNode& n,
         GCDLEvalContext& ctx)
     {
         if (n.refs.size() < 2)
@@ -634,7 +634,7 @@ namespace waavs
     }
 
     static inline bool eval_point_project(
-        const GCDLNode& n,
+        const GCDLPrimitiveNode& n,
         GCDLEvalContext& ctx)
     {
         if (n.refs.size() < 2)
@@ -671,7 +671,7 @@ namespace waavs
         return ctx.putPoint(n.id, out);
     }
 
-    static inline bool eval_point_rotate( const GCDLNode& n,  GCDLEvalContext& ctx)
+    static inline bool eval_point_rotate( const GCDLPrimitiveNode& n,  GCDLEvalContext& ctx)
     {
         if (n.refs.size() < 2 || n.nums.size() < 1)
             return false;
@@ -693,7 +693,7 @@ namespace waavs
 
 
 
-    static inline bool eval_line_rotate(const GCDLNode& n, GCDLEvalContext& ctx)
+    static inline bool eval_line_rotate(const GCDLPrimitiveNode& n, GCDLEvalContext& ctx)
     {
         if (n.refs.size() < 2 || n.nums.size() < 1)
             return false;
@@ -715,7 +715,7 @@ namespace waavs
     }
 
     static inline bool eval_polygon_regular(
-        const GCDLNode& n,
+        const GCDLPrimitiveNode& n,
         GCDLEvalContext& ctx)
     {
         if (n.refs.size() < 1 || n.nums.size() < 2)
@@ -755,7 +755,7 @@ namespace waavs
         return true;
     }
 
-    static inline bool eval_path_from_points(const GCDLNode& n, GCDLEvalContext& ctx)
+    static inline bool eval_path_from_points(const GCDLPrimitiveNode& n, GCDLEvalContext& ctx)
     {
         if (n.refs.size() < 1)
             return false;
@@ -787,7 +787,7 @@ namespace waavs
 
 
     static inline bool eval_polygon_star(
-        const GCDLNode& n,
+        const GCDLPrimitiveNode& n,
         GCDLEvalContext& ctx)
     {
         if (n.refs.size() < 1 || n.nums.size() < 3)

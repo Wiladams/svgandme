@@ -48,7 +48,7 @@ static int test_case_01()
     InternedKey leftArc = PSNameTable::INTERN("leftArc");
     InternedKey rightArc = PSNameTable::INTERN("rightArc");
 
-    GCDLNode n;
+    GCDLPrimitiveNode n;
 
     n = {};
     n.id = A;

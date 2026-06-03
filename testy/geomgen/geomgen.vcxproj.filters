@@ -47,5 +47,14 @@
     <ClInclude Include="gcdl_maths.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="gcdl_program_authored.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gcdl_program_authored_xml_parse.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gcdl_program_normalized.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

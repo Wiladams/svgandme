@@ -68,7 +68,7 @@ namespace waavs
         bool closed = true;
     };
 
-    struct GCDLNode {
+    struct GCDLPrimitiveNode {
         InternedKey id = nullptr;
         InternedKey op = nullptr;
         std::vector<GeoRef> refs;

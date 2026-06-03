@@ -331,10 +331,6 @@ namespace waavs
 
         ByteSpan data() const noexcept { return fData; }
 
-        //ByteSpan qname() = delete; // const noexcept { return fQName; }
-        //ByteSpan name() = delete; // const noexcept { return fLocalName; }
-        //ByteSpan prefix() = delete; // const noexcept { return fPrefix; }
-
         const char* qNameAtom() const noexcept { return fQNameAtom; }
         const char* nameAtom() const noexcept { return fLocalNameAtom; }
         const char* prefixAtom() const noexcept { return fPrefixAtom; } 
@@ -369,13 +365,6 @@ namespace waavs
         constexpr bool isCData() const { return fElementKind == XML_ELEMENT_TYPE_CDATA; }
         constexpr bool isDoctype() const { return fElementKind == XML_ELEMENT_TYPE_DOCTYPE; }
         constexpr bool isEntityDeclaration() const { return fElementKind == XML_ELEMENT_TYPE_ENTITY; }
-
-        // Names used by XML elements
-        //static PSNameTable* getNameTable() {
-        //    static PSNameTable gTable;
-        //    return &gTable;
-        //}
-        //static const char* INTERN(const ByteSpan& span) { return getNameTable()->intern(span); }
 
     };
 }
