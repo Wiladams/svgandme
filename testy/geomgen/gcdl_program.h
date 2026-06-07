@@ -7,51 +7,7 @@
 
 namespace waavs
 {
-    enum struct GCDLDesignRole
-    {
-        None,
-        Construction,
-        Finished,
-        VoidBoundary,
-        SolidBoundary,
-        Decoration,
-        Dimension,
-        Label,
-        Debug,
-    };
 
-    enum struct GCDLFabricationRole 
-    {
-        None,
-        Cut,
-        Score,
-        Engrave,
-        Drill,
-        Pocket
-    };
-
-    struct GCDLNodeMeta
-    {
-        InternedKey sourceStep = nullptr;
-        InternedKey sourceMotif = nullptr;
-        InternedKey sourceNode = nullptr;
-
-        GCDLDesignRole designRole = GCDLDesignRole::None;
-        GCDLFabricationRole fabricationRole = GCDLFabricationRole::None;
-    };
-
-    struct GCDLParam {
-        InternedKey id = nullptr;
-        double value = 0.0;
-    };
-
-    struct GCDLOutput {
-        InternedKey id = nullptr;
-        InternedKey ref = nullptr;
-
-        GCDLDesignRole designRole = GCDLDesignRole::Finished;
-        GCDLFabricationRole fabRole = GCDLFabricationRole::None;
-    };
 
     // A 'program' is a recipe for constructing a geometric figure. It consists of:
     struct GCDLProgram {

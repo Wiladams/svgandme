@@ -37,6 +37,30 @@ namespace waavs
         }
     };
 
+
+
+    static bool gcdl_find_authored_node_by_id(
+        const GCDLAuthoredNode& rootNode,
+        InternedKey id,
+        const GCDLAuthoredNode*& out) noexcept
+    {
+        if (!id)
+            return false;
+
+        if (rootNode.id == id) {
+            out = &rootNode;
+            return true;
+        }
+
+        for (const auto& child : rootNode.children) {
+            if (gcdl_find_authored_node_by_id(child, id, out))
+                return true;
+        }
+
+        return false;
+    }
+
+
     struct GCDLAuthoredProgram
     {
         MemBuff sourceMem{};

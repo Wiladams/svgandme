@@ -192,7 +192,9 @@
     <ClInclude Include="gcdl_parse_xml.h" />
     <ClInclude Include="gcdl_program_authored.h" />
     <ClInclude Include="gcdl_program_authored_xml_parse.h" />
+    <ClInclude Include="gcdl_program_flattener.h" />
     <ClInclude Include="gcdl_program_normalized.h" />
+    <ClInclude Include="gcdl_program_normalizer.h" />
     <ClInclude Include="gcdl_resolver.h" />
     <ClInclude Include="gcdl_svg_export.h" />
     <ClInclude Include="gcdl_types.h" />

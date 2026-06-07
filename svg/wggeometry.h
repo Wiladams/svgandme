@@ -397,14 +397,31 @@ namespace waavs
 
 namespace waavs {
 
-
+    // WGMatrix3x3
+    // 
     // Matrix type for 2D graphics
     // This matrix is a 3x3, which means it can represent
     // all affine transformations in 2D, including translation, 
     // rotation, scaling, and skewing.
-    // I can also do perspective transformations, 
-    // This matrix is meant to be easily compatible with
-    // the BLMatrix2D type used in Blend2D
+    // As such, it can be a drop-in replacement for the BLMatrix2D type used
+    // in blend2d.  This gives us some backend independence, as well as gives
+    // us the ability to do perspective transformations if the applicaiton needs that.
+    // 
+    // The trick is to maintain good performance for the default case of
+    // affine transformations, while still supporting the general
+    // case of perspective transformations.
+    
+    // This enum tells you what kind of matrix you have
+    // so you can optimize certain operations based on the type of matrix.
+    enum WGTransformType : uint32_t 
+    {
+        WG_TRANSFORM_TYPE_IDENTITY     = 0x00000001u,
+        WG_TRANSFORM_TYPE_TRANSLATE    = 0x00000002u,
+        WG_TRANSFORM_TYPE_SCALE        = 0x00000004u,
+        WG_TRANSFORM_TYPE_AFFINE       = 0x00000008u,
+        WG_TRANSFORM_TYPE_PERSPECTIVE  = 0x00000010u
+    };
+
     struct WGMatrix3x3 final 
     {
         union {
@@ -519,6 +536,32 @@ namespace waavs {
             WGMatrix3x3 m;
             m.resetToRotation(angle, x, y);
             return m;
+        }
+
+        // ----------------------------------------
+        // 
+        WG_NODISCARD
+        INLINE WGTransformType getType() const noexcept
+        {
+            if (m02 != 0.0 || m12 != 0.0 || m22 != 1.0)
+                return WG_TRANSFORM_TYPE_PERSPECTIVE;
+
+            if (m00 == 1.0 && m01 == 0.0 &&
+                m10 == 0.0 && m11 == 1.0) {
+                if (m20 == 0.0 && m21 == 0.0)
+                    return WG_TRANSFORM_TYPE_IDENTITY;
+
+                return WG_TRANSFORM_TYPE_TRANSLATE;
+            }
+
+            if (m01 == 0.0 && m10 == 0.0) {
+                if (m20 == 0.0 && m21 == 0.0)
+                    return WG_TRANSFORM_TYPE_SCALE;
+
+                return WG_TRANSFORM_TYPE_AFFINE;
+            }
+
+            return WG_TRANSFORM_TYPE_AFFINE;
         }
 
         // ------------------------------------------------------------------------
@@ -818,7 +861,6 @@ namespace waavs {
         // ------------------------------------------------------------------------
         // Mapping
         // ------------------------------------------------------------------------
-
         // Row-vector convention:
         //
         // [x y 1] * M
@@ -826,8 +868,33 @@ namespace waavs {
         // x' = x*m00 + y*m10 + m20
         // y' = x*m01 + y*m11 + m21
         //
+        // 
+        // mapPoint()
+        // Perform affine mapping directly, without perspective division.  
+        // This is the one most common for 2D graphics and does the same
+        // thing as BLMatrix2D::mapPoint() under row-vector convention.
         WG_NODISCARD
-        INLINE WGPointD mapPoint(double x, double y) const noexcept {
+        INLINE WGPointD mapPoint(double x, double y) const noexcept
+        {
+            return WGPointD{
+                x * m00 + y * m10 + m20,
+                x * m01 + y * m11 + m21
+            };
+        }
+
+        WG_NODISCARD
+        INLINE WGPointD mapPoint(const WGPointD& p) const noexcept
+        {
+            return mapPoint(p.x, p.y);
+        }
+
+        // mapPointPerspective()
+        //
+        // Perform mapping with perspective division.  
+        // This allows for perspective transformations
+        WG_NODISCARD
+        INLINE WGPointD mapPointPerspective(double x, double y) const noexcept 
+        {
             const double xp = x * m00 + y * m10 + m20;
             const double yp = x * m01 + y * m11 + m21;
             const double wp = x * m02 + y * m12 + m22;
@@ -841,12 +908,20 @@ namespace waavs {
         }
 
         WG_NODISCARD
-        INLINE WGPointD mapPoint(const WGPointD& p) const noexcept {
-            return mapPoint(p.x, p.y);
+        INLINE WGPointD mapPointPerspective(const WGPointD& p) const noexcept {
+            return mapPointPerspective(p.x, p.y);
         }
 
+
+        // mapVector()
+        // 
+        // [x y 0] * M
+        // Since it's a vector, we ignore the translation components (m20, m21) 
+        // and the perspective components (m02, m12, m22).
+        // So, it becomes even simpler and faster to compute.
         WG_NODISCARD
-        INLINE WGPointD mapVector(double x, double y) const noexcept {
+        INLINE WGPointD mapVector(double x, double y) const noexcept 
+        {
             const double xp = x * m00 + y * m10;
             const double yp = x * m01 + y * m11;
             return WGPointD{ xp, yp };

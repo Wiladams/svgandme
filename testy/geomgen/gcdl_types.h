@@ -3,6 +3,7 @@
 
 #include "definitions.h"
 #include "nametable.h"
+#include "gcdl_program.h"
 
 #include <vector>
 
@@ -31,6 +32,54 @@ namespace waavs
         Left = 3,
         Right = 4
     };
+
+    enum struct GCDLDesignRole
+    {
+        None,
+        Construction,
+        Finished,
+        VoidBoundary,
+        SolidBoundary,
+        Decoration,
+        Dimension,
+        Label,
+        Debug,
+    };
+
+    enum struct GCDLFabricationRole
+    {
+        None,
+        Cut,
+        Score,
+        Engrave,
+        Drill,
+        Pocket
+    };
+
+
+    struct GCDLNodeMeta
+    {
+        InternedKey sourceStep = nullptr;
+        InternedKey sourceMotif = nullptr;
+        InternedKey sourceNode = nullptr;
+
+        GCDLDesignRole designRole = GCDLDesignRole::None;
+        GCDLFabricationRole fabricationRole = GCDLFabricationRole::None;
+    };
+
+    struct GCDLParam {
+        InternedKey id = nullptr;
+        double value = 0.0;
+    };
+
+    struct GCDLOutput {
+        InternedKey id = nullptr;
+        InternedKey ref = nullptr;
+
+        GCDLDesignRole designRole = GCDLDesignRole::Finished;
+        GCDLFabricationRole fabricationRole = GCDLFabricationRole::None;
+    };
+
 
     struct GeoRef {
         InternedKey id=nullptr;
@@ -73,8 +122,20 @@ namespace waavs
         InternedKey op = nullptr;
         std::vector<GeoRef> refs;
         std::vector<double> nums;
+        GCDLNodeMeta meta{};
+
     };
 
+    struct GCDLProgramNode
+    {
+        InternedKey id = nullptr;
+        InternedKey op = nullptr;
+
+        std::vector<GeoRef> refs;
+        std::vector<double> nums;
+
+        GCDLNodeMeta meta{};
+    };
 }
 
 // Declaring names that will be used in GCDL programs. 
@@ -99,6 +160,8 @@ namespace waavs
     x(line_from_point_angle, "line-from-point-angle") \
     x(mirror_point, "mirror-point") \
     x(mirror_arc, "mirror-arc") \
+    x(motif, "motif") \
+    x(path_from_refs, "path-from-refs") \
     x(path_offset, "path-offset") \
     x(path_union, "path-union") \
     x(path_intersect, "path-intersect") \
@@ -154,6 +217,7 @@ namespace waavs
     x(mirror_point, "mirror.point") \
     x(mirror_arc, "mirror.arc") \
     x(path_from_points, "path.fromPoints") \
+    x(path_from_refs, "path.fromRefs") \
     x(path_close, "path.close") \
     x(path_offset, "path.offset") \
     x(path_union, "path.union") \

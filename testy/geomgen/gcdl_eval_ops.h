@@ -784,6 +784,33 @@ namespace waavs
         return ctx.putPath(n.id, p);
     }
 
+    static inline bool eval_path_from_refs(
+        const GCDLPrimitiveNode& n,
+        GCDLEvalContext& ctx)
+    {
+        if (n.refs.empty())
+            return false;
+
+        const uint32_t first = (uint32_t)ctx.points.size();
+
+        for (size_t i = 0; i < n.refs.size(); ++i) {
+            GCDLPoint p;
+            if (!ctx.getPoint(n.refs[i], p))
+                return false;
+
+            ctx.points.push_back(p);
+        }
+
+        GCDLPath path;
+        path.firstPoint = first;
+        path.pointCount = (uint32_t)n.refs.size();
+        path.closed = true;
+
+        if (!n.nums.empty())
+            path.closed = n.nums[0] != 0.0;
+
+        return ctx.putPath(n.id, path);
+    }
 
 
     static inline bool eval_polygon_star(

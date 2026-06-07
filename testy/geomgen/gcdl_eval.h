@@ -49,6 +49,7 @@ namespace waavs
             { GCDLOp_mirror_arc(), eval_mirror_arc },
             
             { GCDLOp_path_from_points(), eval_path_from_points },
+            { GCDLOp_path_from_refs(), eval_path_from_refs },
 
             { GCDLOp_polygon_regular(), eval_polygon_regular },
             { GCDLOp_polygon_star(), eval_polygon_star },

@@ -56,5 +56,11 @@
     <ClInclude Include="gcdl_program_normalized.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="gcdl_program_normalizer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gcdl_program_flattener.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
