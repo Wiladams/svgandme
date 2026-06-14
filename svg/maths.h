@@ -115,11 +115,13 @@ namespace waavs {
 namespace waavs
 {
     // Vector Sequence Operations
-    INLINE constexpr int          size(const vec2f& a);
+    INLINE constexpr int size(const vec2f& a);
     INLINE const float* begin(const vec2f& a);
-    INLINE const float* end(const vec2f& a);
     INLINE float*       begin(vec2f& a);
+
+    INLINE const float* end(const vec2f& a);
     INLINE float*       end(vec2f& a);
+
     INLINE const float* data(const vec2f& a);
     INLINE float*       data(vec2f& a);
 

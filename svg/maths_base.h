@@ -189,6 +189,26 @@ namespace waavs
             return radians_normalize(rads);
         }
     }
+
+    // distance_to_line()
+    // Calculate the distance from a point to a line passing
+    // through two points (a and b).
+    // General line formula: Ax + By + C = 0, 
+    //  where A = ay - by, B = bx - ax, C = ax * by - bx * ay
+    static INLINE double distance_to_line(
+        double px, double py,
+        double ax, double ay,
+        double bx, double by) noexcept
+    {
+        double A = ay - by;
+        double B = bx - ax;
+        double C = ax * by - bx * ay;
+
+        double num = std::abs(A * px + B * py + C);
+        double den = std::sqrt(A * A + B * B);
+
+        return den > 0.0 ? num / den : 0.0;
+    }
 }
 
 

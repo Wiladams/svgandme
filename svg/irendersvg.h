@@ -14,8 +14,6 @@
 
 namespace waavs
 {
-
-
     // SVGTextPosStream
     // 
     // Used to manage the 'dx' and 'dy' attributes

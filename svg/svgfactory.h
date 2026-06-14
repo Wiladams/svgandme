@@ -64,18 +64,20 @@ namespace waavs {
             //=============================================
 
             // Global paint attributes
-            SVGPaintOrderAttribute::registerFactory();
             //SVGOpacity::registerFactory();
+            //SVGFillOpacity::registerFactory();    // don't register as we handle opacity directly
+            //SVGStrokeOpacity::registerFactory();  // don't register, as we handle opacity directly
+
+
+            SVGPaintOrderAttribute::registerFactory();
             SVGColorPaint::registerFactory();
 
             // Fill attributes
             SVGFillPaint::registerFactory();
-            //SVGFillOpacity::registerFactory();    // don't register as we handle opacity directly
             SVGFillRuleAttribute::registerFactory();
 
             // Stroke attributes
             SVGStrokePaint::registerFactory();
-            //SVGStrokeOpacity::registerFactory();  // don't register, as we handle opacity directly
 
             SVGStrokeLineCap::registerFactory();
             SVGStrokeLineJoin::registerFactory();

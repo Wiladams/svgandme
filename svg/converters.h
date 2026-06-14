@@ -11,7 +11,6 @@
 #include <string>
 
 #include "bspan_utils.h"
-
 #include "maths.h"
 
 namespace waavs

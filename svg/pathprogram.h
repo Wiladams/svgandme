@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "wggeometry.h"
+#include "wg_bezier.h"
 
 // Machinery for a PathProgram
 // That represents a sequence of path segment operations
@@ -120,7 +121,7 @@ namespace waavs
                 break;
 
             case OP_QUADTO:
-                quadBounds(cx, cy,
+                bez_quad_bounds(cx, cy,
                     a[0], a[1],
                     a[2], a[3],
                     minX, minY, maxX, maxY);
@@ -128,7 +129,7 @@ namespace waavs
                 break;
 
             case OP_CUBICTO:
-                cubicBounds(cx, cy,
+                bez_cubic_bounds(cx, cy,
                     a[0], a[1],
                     a[2], a[3],
                     a[4], a[5],

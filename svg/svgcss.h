@@ -88,6 +88,9 @@ namespace waavs
     // what kind of simple selector it is.
     static CSSSelectorKind parseSimpleSelectorKind(const waavs::ByteSpan& inChunk)
     {
+        if (!inChunk)
+            return CSSSelectorKind::CSS_SELECTOR_INVALID;
+
         if (*inChunk == '.')
             return CSSSelectorKind::CSS_SELECTOR_CLASS;         // Select a particular class
         else if (*inChunk == '#')
@@ -108,25 +111,151 @@ namespace waavs
             return CSSSelectorKind::CSS_SELECTOR_INVALID;
     }
     
-    static bool gatherCssAttributes(const ByteSpan& inChunk, XmlAttributeCollection &attributes)
+    static INLINE bool css_read_property_value(ByteSpan& src, ByteSpan& out) noexcept
     {
-        waavs::ByteSpan s = inChunk;
-        while (s.size() > 0)
-        {
-            // get the name of the attribute
-            auto prop = chunk_token(s, charset(':'));
-            prop = chunk_trim(prop, chrWspChars);
+        out.reset();
 
-            // get the value of the attribute
-            auto value = chunk_token(s, charset(';'));
-            value = chunk_trim(value, chrWspChars);
+        bspan_skip_spaces(src);
+
+        const uint8_t* start = src.begin();
+        const uint8_t* p = start;
+        const uint8_t* end = src.end();
+
+        int parenDepth = 0;
+        int bracketDepth = 0;
+        int braceDepth = 0;
+
+        while (p < end)
+        {
+            uint8_t ch = *p;
+
+            if (ch == '"' || ch == '\'')
+            {
+                uint8_t quote = ch;
+                ++p;
+
+                while (p < end)
+                {
+                    if (*p == '\\')
+                    {
+                        ++p;
+                        if (p < end)
+                            ++p;
+                        continue;
+                    }
+
+                    if (*p == quote)
+                    {
+                        ++p;
+                        break;
+                    }
+
+                    ++p;
+                }
+
+                continue;
+            }
+
+            if (ch == '(')
+            {
+                ++parenDepth;
+                ++p;
+                continue;
+            }
+
+            if (ch == ')' && parenDepth > 0)
+            {
+                --parenDepth;
+                ++p;
+                continue;
+            }
+
+            if (ch == '[')
+            {
+                ++bracketDepth;
+                ++p;
+                continue;
+            }
+
+            if (ch == ']' && bracketDepth > 0)
+            {
+                --bracketDepth;
+                ++p;
+                continue;
+            }
+
+            if (ch == '{')
+            {
+                ++braceDepth;
+                ++p;
+                continue;
+            }
+
+            if (ch == '}' && braceDepth > 0)
+            {
+                --braceDepth;
+                ++p;
+                continue;
+            }
+
+            if (ch == ';' &&
+                parenDepth == 0 &&
+                bracketDepth == 0 &&
+                braceDepth == 0)
+            {
+                out.resetPointers(start, p);
+                out = chunk_trim(out, chrWspChars);
+                src.resetStart(p + 1);
+                return true;
+            }
+
+            ++p;
+        }
+
+        out.resetPointers(start, end);
+        out = chunk_trim(out, chrWspChars);
+        src.resetStart(end);
+
+        return out.size() > 0;
+    }
+
+
+    static bool gatherCssAttributes(const ByteSpan& inChunk, XmlAttributeCollection& attributes)
+    {
+        ByteSpan s = inChunk;
+
+        while (s)
+        {
+            bspan_skip_spaces(s);
+
+            if (!s)
+                break;
+
+            ByteSpan prop{};
+            if (!bspan_read_identifier(s, prop, cssstartnamechar, cssnamechar))
+                return false;
+
+            bspan_skip_spaces(s);
+
+            if (!s || *s != ':')
+                return false;
+
+            ++s;
+
+            ByteSpan value{};
+            if (!css_read_property_value(s, value))
+                return false;
 
             attributes.addValueBySpan(prop, value);
         }
 
         return true;
     }
-    
+
+
+
+
+
     //======================================================
     // CSSSelector
     // 
@@ -407,6 +536,23 @@ namespace waavs
         }
 
  
+        static INLINE bool css_class_list_contains(ByteSpan classList, const ByteSpan& name) noexcept
+        {
+            while (classList)
+            {
+                bspan_skip_spaces(classList);
+
+                if (!classList)
+                    break;
+
+                ByteSpan item = bspan_read_prefix(classList, charset(" \t\r\n"));
+
+                if (item == name)
+                    return true;
+            }
+
+            return false;
+        }
 
         // Add a selector to the style sheet
         // based on the info.name(), put the selector into
@@ -430,8 +576,8 @@ namespace waavs
             case CSS_SELECTOR_CLASS:
                 predicate = [info](const XmlElement& elem) {
                     ByteSpan classValue{};
-                    ByteSpan nameValue{};
-                    return elem.getElementAttribute("class", classValue) && chunk_find(classValue,info.name(), nameValue);
+                    return elem.getElementAttribute("class", classValue) &&
+                        css_class_list_contains(classValue, info.name());
                     };
                 break;
 

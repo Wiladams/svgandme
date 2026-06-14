@@ -62,6 +62,7 @@ namespace waavs
             return false;
 
         // peel off a key/value pair by taking a token up to the fieldDelimeter
+        // BUGBUG - should be able to use read_identifier here
         value = chunk_token_char(src, fieldDelimeter);
 
         // Now, separate the key from the value using the keyValueSeparator

@@ -380,7 +380,7 @@ namespace waavs {
     // CubicBezierAdaptiveGenerator
     //
     // This generator uses an adaptive subdivision algorithm to generate 
-    // points along a cubic B�zier curve.
+    // points along a cubic Bezier curve.
     // It recursively subdivides the curve until the segments are flat enough.
     // This is in contrast to the SegmentGenerator, which uses a fixed number
     // of segments, no matter how flat the curve is.

@@ -627,3 +627,21 @@ namespace waavs::svgattr_legacy
     inline InternedKey animateColor() { static InternedKey k = PSNameTable::INTERN("animateColor");      return k; }
 }
 
+namespace waavs::svgfunc
+{
+    // svg transform functions
+    static INLINE InternedKey scale() { return PSNameTable::INTERN("scale"); }
+    static INLINE InternedKey rotate() { return PSNameTable::INTERN("rotate"); }
+    static INLINE InternedKey translate() { return PSNameTable::INTERN("translate"); }
+    static INLINE InternedKey skewX() { return PSNameTable::INTERN("skewX"); }
+    static INLINE InternedKey skewY() { return PSNameTable::INTERN("skewY"); }
+    static INLINE InternedKey matrix() { return PSNameTable::INTERN("matrix"); }
+
+    // svgcolor functions
+    static INLINE InternedKey rgb() { return PSNameTable::INTERN("rgb"); }
+    static INLINE InternedKey rgba() { return PSNameTable::INTERN("rgba"); }
+    static INLINE InternedKey hsl() { return PSNameTable::INTERN("hsl"); }
+    static INLINE InternedKey hsla() { return PSNameTable::INTERN("hsla"); }
+    static INLINE InternedKey url() { return PSNameTable::INTERN("url"); }
+
+}

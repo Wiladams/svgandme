@@ -17,6 +17,7 @@
 #include "svgunits.h"
 #include "xmlscan.h"
 #include "wggeometry.h"
+#include "svgtransform.h"
 
 //
 // Parsing routines for the core SVG data types
@@ -37,12 +38,6 @@
 // calculateDistance
 // parseStyleAttribute
 //
-// hexSpanToRgba32
-// parseColorHex
-// parseColorHsl
-// parseColorRGB
-//
-// parseTransform
 
 namespace waavs
 {
@@ -867,7 +862,7 @@ namespace waavs
     {
         static charset chrNotAlpha = ~chrAlphaChars;
 
-        s = chunk_ltrim(s, chrWspChars);
+        bspan_skip_spaces(s);
         
         if (s.empty())
             return false;
@@ -885,7 +880,8 @@ namespace waavs
         InternedKey ukey = unitSpan ? waavs::svgunits::internUnit(unitSpan) : InternedKey{};
         units = parseAngleUnits(ukey);
 
-
+        // the angle value is returned as radians
+        // we use the units to perform a conversion if necessary
         switch (units)
         {
             // If degrees or unspecified, convert degress to radians
@@ -900,10 +896,12 @@ namespace waavs
             break;
             
             // If gradians specified, convert to radians
+            // Gradians are a unit where 100 gradians = 90 degrees = pi/2 radians
             case SVG_ANGLETYPE_GRAD:
                 value = value * (3.14159265358979323846 / 200.0);
             break;
             
+            // Turns are a percentage of a full rotation
             case SVG_ANGLETYPE_TURN:
                 value = value * (2.0 * 3.14159265358979323846);
             break;
@@ -1183,10 +1181,6 @@ namespace waavs
 
 
 
-
-
-
-
 namespace waavs {
     
     static bool parseStyleAttribute(const ByteSpan & inChunk, XmlAttributeCollection &styleAttributes) noexcept
@@ -1198,7 +1192,6 @@ namespace waavs {
 
         if (styleChunk.empty())
             return false;
-
 
         ByteSpan name{};
         ByteSpan value{};
@@ -1215,279 +1208,6 @@ namespace waavs {
 
 
 
-
-
-namespace waavs {
-
-
-    static bool parseMarkerOrientation(const ByteSpan& inChunk, MarkerOrientation& orient)
-    {
-        uint32_t value;
-        
-        if (getEnumValue(MarkerOrientationEnum, inChunk, value))
-        {
-            orient = static_cast<MarkerOrientation>(value);
-            return true;
-        }
-        
-        // Assume the orientation is an angle
-        orient = MarkerOrientation::MARKER_ORIENT_ANGLE;
-        
-        return true;
-    }
-}
-
-
-
-
-
-
-   
-
-
-namespace waavs
-{
-
-    //
-    // parsing transforms
-    //
-    // parse a number of numeric arguments from a chunk.  The numbers
-    // are delimited by whitspace, and/or ',' characters.
-    // Parameters
-    //   'args' is an array where the values will be stored
-    //   'maxNa' is the maximum number of arguments
-    //   'na' - returns the number of arguments actually retrieved
-    static ByteSpan parseTransformArgs(const ByteSpan& inChunk, double* args, int maxNa, int& na)
-    {
-        // Now we're ready to parse the individual numbers
-        //static const charset numDelims = xmlwsp + ',';
-        
-        na = 0;
-
-        ByteSpan s = inChunk;
-
-        // Skip past everything until we see a '('
-        s = chunk_find_char(s, '(');
-
-        // If we got to the end of the chunk, and did not see the '('
-        // then just return
-        if (!s)
-            return s;
-
-        // by the time we're here, we're sitting right on top of the 
-        //'(', so skip past that to get to what should be the numbers
-        s++;
-
-        // We want to create a  chunk that contains all the numbers
-        // without the closing ')', so create a chunk that just
-        // represents that range.
-        // Start the chunk at the current position
-        // and expand it after we find the ')'
-        ByteSpan item = s;
-        item.resetEnd(item.begin());
-
-        // scan until the closing ')'
-        s = chunk_find_char(s, ')');
-
-
-        // At this point, we're either sitting at the ')' or at the end
-        // of the chunk.  If we're at the end of the chunk, then we
-        // didn't find the closing ')', so just return
-        if (!s)
-            return s;
-
-        // We found the closing ')', so if we use the current position
-        // as the end (sitting on top of the ')', the item chunk will
-        // perfectly represent the numbers we want to parse.
-        item.resetEnd(s.begin());
-
-        // Create a chunk that will represent a specific number to be parsed.
-        //ByteSpan numChunk{};
-
-        // Move the source chunk cursor past the ')', so that whatever
-        // needs to use it next is ready to go.
-        s++;
-
-
-
-        while (item) {
-            if (na >= maxNa)
-                break;
-
-            if (!readNextNumber(item, args[na]))
-                break;
-            na++;
-        }
-
-        return s;
-    }
-
-    static ByteSpan parseMatrix(ByteSpan& inMatrix, WGMatrix3x3& m)
-    {
-        ByteSpan s = inMatrix;
-        m.reset();  // start with identity
-
-
-        double t[6];    // storage for our 6 numbers
-        int na = 0;     // Number of arguments parsed
-
-        s = parseTransformArgs(s, t, 6, na);
-
-        if (na != 6)
-            return s;
-
-        m.resetAffine(t[0], t[1], t[2], t[3], t[4], t[5]);
-
-        return s;
-    }
-
-
-    static ByteSpan parseTranslate(const ByteSpan& inChunk, WGMatrix3x3& xform)
-    {
-        double args[2];
-        int na = 0;
-        ByteSpan s = inChunk;
-        s = parseTransformArgs(s, args, 2, na);
-        if (na == 1)
-            args[1] = 0.0;
-
-        xform.translate(args[0], args[1]);
-
-        return s;
-    }
-
-    static ByteSpan parseScale(const ByteSpan& inChunk, WGMatrix3x3& xform)
-    {
-        double args[2]{ 0 };
-        int na = 0;
-        ByteSpan s = inChunk;
-
-        s = parseTransformArgs(s, args, 2, na);
-
-        if (na == 1)
-            args[1] = args[0];
-
-        xform.scale(args[0], args[1]);
-
-        return s;
-    }
-
-
-    static ByteSpan parseSkewX(const ByteSpan& inChunk, WGMatrix3x3& xform)
-    {
-        double args[1];
-        int na = 0;
-        ByteSpan s = inChunk;
-        s = parseTransformArgs(s, args, 1, na);
-
-        xform.skew(radians(args[0]), 0.0);
-
-        return s;
-    }
-
-    static ByteSpan parseSkewY(const ByteSpan& inChunk, WGMatrix3x3& xform)
-    {
-        double args[1]{ 0 };
-        int na = 0;
-        ByteSpan s = inChunk;
-        s = parseTransformArgs(s, args, 1, na);
-
-        xform.skew(0.0, radians(args[0]));
-
-        return s;
-    }
-
-
-    static ByteSpan parseRotate(const ByteSpan& inChunk, WGMatrix3x3& xform) noexcept
-    {
-        double args[3]{ 0 };
-        int na = 0;
-        ByteSpan s = inChunk;
-
-        s = parseTransformArgs(s, args, 3, na);
-
-        // If there was only one parameter, then the center
-        // of rotation is the point 0,0
-        if (na == 1)
-            args[1] = args[2] = 0.0;
-
-        double ang = radians(args[0]);
-        double x = args[1];
-        double y = args[2];
-        
-        xform.rotate(ang, x, y);
-
-        return  s;
-    }
-
-    // parseTransform()
-    // 
-    // Parse a transform attribute, stuffing the results
-    // into a single BLMatrix2D structure
-    // This will repeatedly apply the portions that are parsed
-    //
-    static bool parseTransform(const ByteSpan& inChunk, WGMatrix3x3& xform)
-    {        
-        ByteSpan s = inChunk;
-        s = bspan_skip_spaces(s);
-        if (!s)
-            return false;
-        
-        xform = WGMatrix3x3::makeIdentity();
-        
-        bool isSet = false;
-
-        while (s)
-        {
-            s = bspan_skip_spaces(s);
-
-            WGMatrix3x3 tm{};
-            tm.reset();
-
-            if (bspan_starts_with(s, "matrix"))
-            {
-                s = parseMatrix(s, tm);
-                xform = tm;
-                isSet = true;
-            }
-            else if (bspan_starts_with(s, "translate"))
-            {
-                s = parseTranslate(s, tm);
-                xform.transform(tm);
-                isSet = true;
-            }
-            else if (bspan_starts_with(s, "scale"))
-            {
-                s = parseScale(s, tm);
-                xform.transform(tm);
-                isSet = true;
-            }
-            else if (bspan_starts_with(s, "rotate"))
-            {
-                s = parseRotate(s, tm);
-                xform.transform(tm);
-                isSet = true;
-            }
-            else if (bspan_starts_with(s, "skewX"))
-            {
-                s = parseSkewX(s, tm);
-                xform.transform(tm);
-                isSet = true;
-            }
-            else if (bspan_starts_with(s, "skewY"))
-            {
-                s = parseSkewY(s, tm);
-                xform.transform(tm);
-                isSet = true;
-            }
-            else {
-                s++;
-            }
-        }
-
-        return isSet;
-    }
-}
 
 
 

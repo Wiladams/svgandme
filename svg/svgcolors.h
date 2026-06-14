@@ -8,6 +8,8 @@
 #include <blend2d/blend2d.h>
 #include "bspan.h"
 #include "coloring.h"
+#include "svgscan.h"
+
 
 namespace waavs
 {
@@ -250,6 +252,7 @@ namespace waavs
 
 
 namespace waavs {
+
     // Scan a bytespan for a sequence of hex digits
     // without using scanf. return 'true' upon success
     // false for any error.
@@ -596,4 +599,360 @@ namespace waavs {
 
         return WG_SUCCESS;
     }
+
+    // Parse only the color portion of a color specification
+// not concerned with a separate opacity value
+    static WGResult parseColor(const ByteSpan& colorSpan, ColorSRGB& cSRGB) noexcept
+    {
+        static const char* rgbStr = "rgb(";
+        static const char* rgbaStr = "rgba(";
+        static const char* rgbStrCaps = "RGB(";
+        static const char* rgbaStrCaps = "RGBA(";
+        static const char* hslStr = "hsl(";
+        static const char* hslaStr = "hsla(";
+
+        float opacity = 1.0f;
+
+        colorsrgb_reset(cSRGB, 0, 0, 0, opacity);
+
+        ByteSpan cSpan = colorSpan;
+        size_t len = 0;
+        len = cSpan.size();
+        if ((len >= 1) && (*cSpan == '#'))
+        {
+            return parse_colorsrgb_from_hex(cSpan, cSRGB);
+        }
+        else if (bspan_starts_with(cSpan, rgbStr) ||
+            bspan_starts_with(cSpan, rgbaStr) ||
+            bspan_starts_with(cSpan, rgbaStrCaps) ||
+            bspan_starts_with(cSpan, rgbStrCaps))
+        {
+            return parse_colorsrgb_from_func(cSpan, cSRGB);
+        }
+        else if (bspan_starts_with(cSpan, hslStr) ||
+            bspan_starts_with(cSpan, hslaStr))
+        {
+            // BUGBUG - need to modernize Hsl to fill
+            // in ColorSRGB
+            //c = parseColorHsl(str);
+            return WGErrorCode::WG_ERROR_NotImplemented;
+        }
+        else {
+            // so we can detect failure and return false from this function
+            return get_color_by_name_as_srgb(cSpan, cSRGB);
+        }
+    }
+}
+
+namespace waavs {
+    //
+    // htt://www.w3.org/TR/SVG11/feature#PaintAttribute
+    // color, 
+    // fill, fill-opacity,
+    // stroke, stroke-opacity,
+    // stroke-width
+
+    // SVGColor
+    // Representation of a color.  
+    // Not a Paint Server, just a pure sRGBA color.  
+    // The internal representation is ColorSRGB, which is what the SVG
+    // spec says the authored colors are.  We use 4 float values as a matter
+    // of convenience to convert to other representations.
+    // 
+    // The values are in the range [0..1].  
+    // And the components are NOT premultiplied, so they are
+    // 'straight' 
+    // 
+    // This can be converted to pixel values, or other color
+    // representations when needed
+    // When parsing a color, it might be an actual color returned
+    // or it might be symbolic.  If it is an actual color, then 
+    // isColor() returns true
+    // Otherwise, one of the other symbolic tests will tell what it was
+    // Multiple of the symbolic types might be set
+    // so, you can have: isReference() == true AND isOpacity() == true
+    //
+    enum ColorSemantics : uint32_t
+    {
+        COLOR_SEMANTIC_UNKNOWN = 0x00,     // neither opacity, nor color
+        // distinctly different than 'none'
+        COLOR_SEMANTIC_NONE = 0x01,     // literal 'none'
+        COLOR_SEMANTIC_OPACITY = 0x02,     // opacity specified
+        COLOR_SEMANTIC_COLOR = 0x04,     // regular color
+        COLOR_SEMANTIC_INHERIT = 0x08,     // literal 'inherit'
+        COLOR_SEMANTIC_CURRENT = 0x10,     // literal 'currentColor'
+        COLOR_SEMANTIC_CONTEXT_STROKE = 0x20,     // literal 'context-stroke'
+        COLOR_SEMANTIC_CONTEXT_FILL = 0x40,     // literal 'context-fill'
+        COLOR_SEMANTIC_REFERENCE = 0x80,     // starts-with 'url('
+    };
+
+    // A few little helpers for color semantics
+    inline ColorSemantics operator|(ColorSemantics a, ColorSemantics b) noexcept
+    {
+        return static_cast<ColorSemantics>(
+            static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
+    }
+
+    inline ColorSemantics operator&(ColorSemantics a, ColorSemantics b) noexcept
+    {
+        return static_cast<ColorSemantics>(
+            static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
+    }
+
+    inline ColorSemantics& operator|=(ColorSemantics& a, ColorSemantics b) noexcept
+    {
+        a = a | b;
+        return a;
+    }
+
+
+
+
+    struct SVGColor
+    {
+        ColorSRGB fValue{};
+        ColorSemantics fSemantics{ COLOR_SEMANTIC_UNKNOWN };
+        ByteSpan fColorSpan{};
+
+        // Which attributes do we pull color and opacity from?
+        InternedKey fColorField;
+        InternedKey fOpacityField;
+
+
+        SVGColor(InternedKey colorField, InternedKey opacityField)
+            : fColorField(colorField)
+            , fOpacityField(opacityField)
+        {
+            //setName(colorField);
+        }
+
+        void setValue(float r, float g, float b, float a = 1.0f) noexcept
+        {
+            colorsrgb_reset(fValue, r, g, b, a);
+            fSemantics = COLOR_SEMANTIC_COLOR;
+        }
+
+        ColorSRGB value() const { return fValue; }
+        ByteSpan rawValue() const { return fColorSpan; }
+
+        // semantics helpers
+        void addSemantic(ColorSemantics sem) noexcept { fSemantics |= sem; }
+        bool hasSemantic(ColorSemantics sem) const noexcept
+        {
+            return (static_cast<uint32_t>(fSemantics & sem)) != 0;
+        }
+        bool isNone() const { return hasSemantic(COLOR_SEMANTIC_NONE); }
+        bool isInherit() const { return hasSemantic(COLOR_SEMANTIC_INHERIT); }
+        bool isCurrent() const { return hasSemantic(COLOR_SEMANTIC_CURRENT); }
+        bool isContextStroke() const { return hasSemantic(COLOR_SEMANTIC_CONTEXT_STROKE); }
+        bool isContextFill() const { return hasSemantic(COLOR_SEMANTIC_CONTEXT_FILL); }
+        bool isColor() const {
+            // Something is a color if it is explicityly a color,
+            // or if it is exclusively opacity, and nothing else.
+            return hasSemantic(COLOR_SEMANTIC_COLOR) ||
+                (fSemantics == COLOR_SEMANTIC_OPACITY);
+        }
+        bool isOpacity() const { return hasSemantic(COLOR_SEMANTIC_OPACITY); }
+        bool isReference() const { return hasSemantic(COLOR_SEMANTIC_REFERENCE); }
+
+
+        // load a color from a set of attributes
+        // This function will try to figure out what the color is
+        // Function forms:
+        //   rgb(255, 0, 0)
+        //   rgba(255, 0, 0, 0.5)
+        //   rgb(255 0 0 / 50%)
+
+        //   hsl(120, 100%, 50%)
+        //   hsla(120, 100%, 50%, 0.5)
+
+        // Literals:
+        //   #ffRRGGBB  - full hex for RGBA
+        //   #ff0000    - full hex for RGB
+        //   #FFFF      - single hex duplicated for RGBA
+        //   #FFF       - single hex duplicated for RGB
+        //   color name
+
+        // Note:  When the colorField is a 'url()' reference,
+        // we don't resolve the actual reference here, we just
+        // retain it as the rawValue() of the attribute, and 
+        // fill in the semantics to be: COLOR_SEMANTIC_REFERENCE
+        // so isReference() will return true.
+        // 
+        // Note: 'currentColor' is a special value.
+        // 1) If the colorSpan == 'currentColor' and the set of attributes 
+        //  has a 'color' attribute, then substitute that value of that
+        //  attribute in as the colorSpan before trying to parse the color
+        // 2) If the current attribute set does not contain a 'color'
+        //  attribute, then mark the semantics as: COLOR_SEMANTIC_CURRENT
+        //  so isCurrent() will return true.  
+        //  In that case, the paint server dealing with it will resolve 
+        //  the current color at time of render, probably taking it from 
+        //  the drawing context at the site of call.
+        //
+        bool loadFromAttributes(const XmlAttributeCollection& attrs)
+        {
+            static const char* rgbStr = "rgb(";
+            static const char* rgbaStr = "rgba(";
+            static const char* rgbStrCaps = "RGB(";
+            static const char* rgbaStrCaps = "RGBA(";
+            static const char* hslStr = "hsl(";
+            static const char* hslaStr = "hsla(";
+
+            //ByteSpan colorSpan{};
+            ByteSpan opacitySpan{};
+
+            // You can still have a valid color if only 
+            // opacity is specified.
+            attrs.getValue(fColorField, fColorSpan);
+            attrs.getValue(fOpacityField, opacitySpan);
+
+            // only return early if neither color nor opacity is specified
+            if (!fColorSpan)
+            {
+                if (!opacitySpan)
+                    return false;
+            }
+
+            // temporary values
+            ColorSRGB cSRGB{};
+            double opacity = 1.0;
+            colorsrgb_reset(cSRGB, 0, 0, 0, opacity);
+
+
+            // Capture opacity early, because even if it ends up being
+            // a reference, we still might want to apply the opacity
+
+            // Check the opacity first, as it is valid to just
+            // specify an opacity, without a color value.  The default
+            // color value might be context specific, but we'll go
+            // with black for the moment.
+            // 
+            // If there is an opacity field, the value should be
+            // between [0..1], or a percentage.
+            // Include the opacity with the color, but since the 
+            // color is sRGB, DO NOT PREMULTIPLY 
+            // 
+            if (opacitySpan)
+            {
+                SVGNumberOrPercent op{};
+                ByteSpan s = opacitySpan;
+                if (readSVGNumberOrPercent(s, op))
+                {
+                    opacity = clamp01f((float)op.calculatedValue());
+                    fSemantics = COLOR_SEMANTIC_OPACITY;
+                }
+            }
+
+            // Quick success if we have a URL reference
+            if (bspan_starts_with(fColorSpan, "url("))
+            {
+                fSemantics = COLOR_SEMANTIC_REFERENCE;
+
+                return true;
+            }
+
+
+
+
+            // Finally, if we have a color value, we need to 
+            // parse it.  
+            if (fColorSpan)
+            {
+                // Before we try to parse the color, check 
+                // to see if the value is 'currentColor'.
+                // If it is, then we need to check if there 
+                // is a 'color' attribute in the current set of attributes.
+                if (fColorSpan == "currentColor")
+                {
+                    ByteSpan currentColorValue{};
+                    if (attrs.getValue(svgattr::color(), currentColorValue))
+                    {
+                        fColorSpan = currentColorValue;
+                    }
+                    else {
+                        fSemantics = COLOR_SEMANTIC_CURRENT;
+                        return true;
+                    }
+                }
+
+
+                ByteSpan cSpan = fColorSpan;
+                size_t len = 0;
+                len = cSpan.size();
+                if ((len >= 1) && (*cSpan == '#'))
+                {
+                    if (parse_colorsrgb_from_hex(cSpan, cSRGB) == WG_SUCCESS)
+                    {
+                        fSemantics = COLOR_SEMANTIC_COLOR;
+                    }
+                    else {
+                        return false;
+                    }
+                }
+                else if (bspan_starts_with(cSpan, rgbStr) ||
+                    bspan_starts_with(cSpan, rgbaStr) ||
+                    bspan_starts_with(cSpan, rgbaStrCaps) ||
+                    bspan_starts_with(cSpan, rgbStrCaps))
+                {
+                    if (parse_colorsrgb_from_func(cSpan, cSRGB) == WG_SUCCESS)
+                    {
+                        fSemantics = COLOR_SEMANTIC_COLOR;
+                    }
+                    else {
+                        return false;
+                    }
+                }
+                else if (bspan_starts_with(cSpan, hslStr) ||
+                    bspan_starts_with(cSpan, hslaStr))
+                {
+                    // BUGBUG - need to modernize Hsl to fill
+                    // in ColorSRGB
+                    //c = parseColorHsl(str);
+
+                    fSemantics = COLOR_SEMANTIC_COLOR;
+                }
+                else {
+                    if (cSpan == svgval::none()) {
+                        fSemantics = COLOR_SEMANTIC_NONE;
+                    }
+                    else if (cSpan == "context-stroke")
+                    {
+                        fSemantics = COLOR_SEMANTIC_CONTEXT_STROKE;
+                    }
+                    else if (cSpan == "context-fill")
+                    {
+                        fSemantics = COLOR_SEMANTIC_CONTEXT_FILL;
+                    }
+                    else if ((cSpan == "inherit"))
+                    {
+                        fSemantics = COLOR_SEMANTIC_INHERIT;
+                    }
+                    else if (cSpan == "currentColor")
+                    {
+                        // Take on whatever color was set in the 'color'
+                        // attribute of this node, or whatever is the 
+                        // currently Active color at the time of render
+                        fSemantics = COLOR_SEMANTIC_CURRENT;
+                    }
+                    else {
+                        if (get_color_by_name_as_srgb(cSpan, cSRGB) == WG_SUCCESS)
+                        {
+                            fSemantics = COLOR_SEMANTIC_COLOR;
+                        }
+                    }
+                }
+            }
+
+            // Finally, assign the color value.  
+            // Since we are not premultiplying, 
+            // we apply (multiply) the opacity against the alpha
+            // channel, but we don't modify the r,g,b values.
+            fValue = cSRGB;
+            fValue.a = clamp01f(fValue.a * opacity);
+
+            return true;
+        }
+    };
+
 }

@@ -49,6 +49,7 @@ namespace waavs {
         return m;
     }
 
+
 }
 
 namespace waavs {
@@ -111,7 +112,7 @@ namespace waavs {
                 if (sColor.isColor())
                     fColor.value = Pixel_ARGB32_from_ColorSRGB(sColor.value());
             }
-            // do nothing, as the default color value is black
+            // else, do nothing, as the default color value is black
             //    fColor.value = 0xFF000000u;
         }
         
@@ -129,11 +130,19 @@ namespace waavs {
     {
         static constexpr uint32_t kMaxGradientHrefDepth = 32;
 
+    protected:
+        // Used for gradient construction
+        IRenderSVG* fBuildCtx = nullptr;
+        IAmGroot* fBuildGroot = nullptr;
+        double fBuildDpi = 96.0;
+        WGRectD fBuildViewport{};
+        WGRectD fBuildObjectFrame{};
+
+    public:
         WGMatrix3x3 fGradientTransform{};
         bool fHasGradientTransform = false;
 
         BLGradient fGradient{};
-        BLVar fGradientVar{};
 
         // Some common attributes
         BLExtendMode fSpreadMethod{ BL_EXTEND_MODE_PAD };
@@ -169,7 +178,132 @@ namespace waavs {
             return svgHref;
         }
 
+    protected:
 
+        void beginGradientBuild(IRenderSVG* ctx, IAmGroot* groot) noexcept
+        {
+            fBuildCtx = ctx;
+            fBuildGroot = groot;
+            fBuildDpi = groot ? groot->dpi() : 96.0;
+
+            if (ctx) {
+                fBuildViewport = ctx->viewport();
+                fBuildObjectFrame = ctx->getObjectFrame();
+            }
+            else {
+                fBuildViewport = {};
+                fBuildObjectFrame = {};
+            }
+        }
+
+        bool isGradientUserSpace() const noexcept { return fGradientUnits == SVG_SPACE_USER; }
+        bool isGradientObjectBBox() const noexcept { return fGradientUnits == SVG_SPACE_OBJECT; }
+
+        WGMatrix3x3 gradientFinalTransform() const noexcept
+        {
+            if (isGradientObjectBBox())
+                return composeGradientTransformBBox(
+                    fBuildObjectFrame,
+                    fHasGradientTransform,
+                    fGradientTransform);
+
+            if (fHasGradientTransform)
+                return fGradientTransform;
+
+            return WGMatrix3x3::makeIdentity();
+        }
+
+        LengthResolveCtx gradientWidthCtx() const noexcept
+        {
+            return LengthResolveCtx{
+                fBuildDpi,
+                nullptr,
+                fBuildViewport.w,
+                0.0,
+                SVG_SPACE_USER
+            };
+        }
+
+        LengthResolveCtx gradientHeightCtx() const noexcept
+        {
+            return LengthResolveCtx{
+                fBuildDpi,
+                nullptr,
+                fBuildViewport.h,
+                0.0,
+                SVG_SPACE_USER
+            };
+        }
+
+        LengthResolveCtx gradientRadiusCtx() const noexcept
+        {
+            const double d = std::sqrt(
+                fBuildViewport.w * fBuildViewport.w +
+                fBuildViewport.h * fBuildViewport.h);
+
+            return LengthResolveCtx{
+                fBuildDpi,
+                nullptr,
+                d,
+                0.0,
+                SVG_SPACE_USER
+            };
+        }
+
+        double resolveGradientX(const SVGLengthValue& v, double fallback) const noexcept
+        {
+            if (isGradientObjectBBox())
+                return resolveLengthBBoxUnits(v, fallback);
+
+            if (!v.isSet())
+                return fallback;
+
+            return resolveLengthUserUnits(v, gradientWidthCtx());
+        }
+
+        double resolveGradientY(const SVGLengthValue& v, double fallback) const noexcept
+        {
+            if (isGradientObjectBBox())
+                return resolveLengthBBoxUnits(v, fallback);
+
+            if (!v.isSet())
+                return fallback;
+
+            return resolveLengthUserUnits(v, gradientHeightCtx());
+        }
+
+        double resolveGradientRadius(const SVGLengthValue& v, double fallback) const noexcept
+        {
+            if (isGradientObjectBBox())
+                return resolveLengthBBoxUnits(v, fallback);
+
+            if (!v.isSet())
+                return fallback;
+
+            return resolveLengthUserUnits(v, gradientRadiusCtx());
+        }
+
+
+        bool buildCommonGradient(IRenderSVG* ctx, IAmGroot* groot, BLGradient& grad) noexcept
+        {
+            beginGradientBuild(ctx, groot);
+
+            grad.set_type(fGradient.type());
+            grad.set_extend_mode(fGradient.extend_mode());
+            grad.reset_stops();
+            grad.assign_stops(fGradient.stops_view());
+
+            if (!buildGradientValues(grad))
+                return false;
+
+            grad.set_transform(blMatrix_from_WGMatrix3x3(gradientFinalTransform()));
+
+            return true;
+        }
+
+        virtual bool buildGradientValues(BLGradient& grad) noexcept = 0;
+
+    public:
         // getVariant()
         //
         // Whomever is using us for paint is calling in here to get
@@ -178,12 +312,17 @@ namespace waavs {
         //
         // It's like a bindToContext essentially, but bindToContext is
         // only called as part of a drawing chain.
-        const BLVar getVariant(IRenderSVG *ctx, IAmGroot *groot) noexcept override
-        {
-            //if (needsBinding())
-                bindToContext(ctx, groot);
 
-            return fGradientVar;
+        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        {
+            BLGradient grad{};
+
+            if (!buildCommonGradient(ctx, groot, grad))
+                return BLVar::null();
+
+            BLVar out{};
+            out = grad;
+            return out;
         }
 
         // Inherit the raw attributes that are common to all gradients,
@@ -366,6 +505,30 @@ namespace waavs {
         {
         }
 
+        bool buildGradientValues(BLGradient& grad) noexcept override
+        {
+            SVGLengthValue x1{ 0.0, SVG_LENGTHTYPE_PERCENTAGE, false };
+            SVGLengthValue y1{ 0.0, SVG_LENGTHTYPE_PERCENTAGE, false };
+            SVGLengthValue x2{ 100.0, SVG_LENGTHTYPE_PERCENTAGE, false };
+            SVGLengthValue y2{ 0.0, SVG_LENGTHTYPE_PERCENTAGE, false };
+
+            ByteSpan s;
+            if ((s = getAttribute(svgattr::x1()))) { ByteSpan t = s; parseLengthValue(t, x1); }
+            if ((s = getAttribute(svgattr::y1()))) { ByteSpan t = s; parseLengthValue(t, y1); }
+            if ((s = getAttribute(svgattr::x2()))) { ByteSpan t = s; parseLengthValue(t, x2); }
+            if ((s = getAttribute(svgattr::y2()))) { ByteSpan t = s; parseLengthValue(t, y2); }
+
+            BLLinearGradientValues values{};
+            values.x0 = resolveGradientX(x1, 0.0);
+            values.y0 = resolveGradientY(y1, 0.0);
+            values.x1 = resolveGradientX(x2, isGradientObjectBBox() ? 1.0 : fBuildViewport.w);
+            values.y1 = resolveGradientY(y2, 0.0);
+
+            grad.set_values(values);
+
+            return true;
+        }
+
         // getVariant()
         //
         // Whomever is using us for paint is calling in here to get
@@ -374,103 +537,8 @@ namespace waavs {
         //
         // It's like a bindToContext essentially, but bindToContext is
         // only called as part of a drawing chain.
-        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
-        {
-            BLGradient grad;
-
-            if (!buildBoundGradient(ctx, groot, grad))
-                return BLVar::null();
-
-            BLVar out{};
-            out = grad;
-
-            return out;
-        }
 
 
-        bool buildBoundGradient(IRenderSVG* ctx, IAmGroot* groot, BLGradient &grad)
-        {
-
-            double dpi = groot ? groot->dpi() : 96.0;
-
-            // Start setting up the gradient
-            BLLinearGradientValues values{ 0,0,1,0 };
-            WGMatrix3x3 xform = WGMatrix3x3::makeIdentity();
-
-            // Parse attributes if present
-            // defaults per SVG:
-            // x1 = 0%, y1 = 0%, x2 = 100%, y2 = 0%
-            SVGLengthValue x1{ 0.0, SVG_LENGTHTYPE_PERCENTAGE, false };
-            SVGLengthValue y1{ 0.0, SVG_LENGTHTYPE_PERCENTAGE, false };
-            SVGLengthValue x2{ 100.0, SVG_LENGTHTYPE_PERCENTAGE, false };
-            SVGLengthValue y2{ 0.0, SVG_LENGTHTYPE_PERCENTAGE, false };
-
-
-            ByteSpan s;
-            if ((s = getAttribute(svgattr::x1()))) { ByteSpan t = s; parseLengthValue(t, x1); }
-            if ((s = getAttribute(svgattr::y1()))) { ByteSpan t = s; parseLengthValue(t, y1); }
-            if ((s = getAttribute(svgattr::x2()))) { ByteSpan t = s; parseLengthValue(t, x2); }
-            if ((s = getAttribute(svgattr::y2()))) { ByteSpan t = s; parseLengthValue(t, y2); }
-
-
-            if (fGradientUnits == SVG_SPACE_USER)
-            {
-                const WGRectD vp = ctx->viewport();
-
-                LengthResolveCtx rx{ dpi, nullptr, vp.w, 0.0, SpaceUnitsKind::SVG_SPACE_USER };
-                LengthResolveCtx ry{ dpi, nullptr, vp.h, 0.0, SpaceUnitsKind::SVG_SPACE_USER };
-
-                // defaults if not set
-                values.x0 = x1.isSet() ? resolveLengthUserUnits(x1, rx) : 0.0;
-                values.y0 = y1.isSet() ? resolveLengthUserUnits(y1, ry) : 0.0;
-                values.x1 = x2.isSet() ? resolveLengthUserUnits(x2, rx) : vp.w;
-                values.y1 = y2.isSet() ? resolveLengthUserUnits(y2, ry) : 0.0;
-
-                if (fHasGradientTransform)
-                    xform = fGradientTransform;
-
-            }
-            else // SVG_SPACE_OBJECT (objectBoundingBox)
-            {
-                const WGRectD objFrame = ctx->getObjectFrame();
-
-                const double x0N = resolveLengthBBoxUnits(x1, 0.0);
-                const double y0N = resolveLengthBBoxUnits(y1, 0.0);
-                const double x1N = resolveLengthBBoxUnits(x2, 1.0);
-                const double y1N = resolveLengthBBoxUnits(y2, 0.0);
-
-                values.x0 = objFrame.x + x0N * objFrame.w;
-                values.y0 = objFrame.y + y0N * objFrame.h;
-                values.x1 = objFrame.x + x1N * objFrame.w;
-                values.y1 = objFrame.y + y1N * objFrame.h;
-
-                //xform = WGMatrix3x3::makeIdentity();
-
-
-
-                // resolve into bbox space (0..1),
-                values.x0 = resolveLengthBBoxUnits(x1, 0.0);
-                values.y0 = resolveLengthBBoxUnits(y1, 0.0);
-                values.x1 = resolveLengthBBoxUnits(x2, 1.0);
-                values.y1 = resolveLengthBBoxUnits(y2, 0.0);
-
-                //xform = composeGradientTransformBBox(objFrame, fHasGradientTransform, fGradientTransform);
-            
-            }
-
-
-            grad.set_type(BL_GRADIENT_TYPE_LINEAR);
-            grad.set_extend_mode(fGradient.extend_mode());
-            grad.set_values(values);
-            grad.reset_stops();
-            grad.assign_stops(fGradient.stops_view());
-            if (fHasGradientTransform)
-            {
-                grad.set_transform(blMatrix_from_WGMatrix3x3(fGradientTransform));
-            }
-
-            return true;
-        }
 
         // Attributes to inherit from the template if
         // it's also linearGradient
@@ -487,8 +555,6 @@ namespace waavs {
             setAttributeIfAbsent(elem, svgattr::y1());
             setAttributeIfAbsent(elem, svgattr::x2());
             setAttributeIfAbsent(elem, svgattr::y2());
-
-
         }
         
 
@@ -504,67 +570,6 @@ namespace waavs {
             fixupCommonAttributes(groot);
         }
 
-
-        void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) override
-        {
-            double dpi = groot ? groot->dpi() : 96.0;
-
-            // Start setting up the gradient
-            BLLinearGradientValues values{ 0,0,1,0 };
-            WGMatrix3x3 xform = WGMatrix3x3::makeIdentity();
-
-            // Parse attributes if present
-            // defaults per SVG:
-            // x1 = 0%, y1 = 0%,, x2 = 100%, y2 = 0%
-            SVGLengthValue x1{ 0.0, SVG_LENGTHTYPE_PERCENTAGE, false };
-            SVGLengthValue y1{ 0.0, SVG_LENGTHTYPE_PERCENTAGE, false };
-            SVGLengthValue x2{ 100.0, SVG_LENGTHTYPE_PERCENTAGE, false };
-            SVGLengthValue y2{ 0.0, SVG_LENGTHTYPE_PERCENTAGE, false };
-
-
-            ByteSpan s;
-            if ((s = getAttribute(svgattr::x1()))) { ByteSpan t = s; parseLengthValue(t, x1); }
-            if ((s = getAttribute(svgattr::y1()))) { ByteSpan t = s; parseLengthValue(t, y1); }
-            if ((s = getAttribute(svgattr::x2()))) { ByteSpan t = s; parseLengthValue(t, x2); }
-            if ((s = getAttribute(svgattr::y2()))) { ByteSpan t = s; parseLengthValue(t, y2); }
-
-
-
-            if (fGradientUnits == SVG_SPACE_USER)
-            {
-                const WGRectD vp = ctx->viewport();
-
-                LengthResolveCtx rx{ dpi, nullptr, vp.w, 0.0, SpaceUnitsKind::SVG_SPACE_USER };
-                LengthResolveCtx ry{ dpi, nullptr, vp.h, 0.0, SpaceUnitsKind::SVG_SPACE_USER };
-
-                // defaults if not set
-                values.x0 = x1.isSet() ? resolveLengthUserUnits(x1, rx) : 0.0;
-                values.y0 = y1.isSet() ? resolveLengthUserUnits(y1, ry) : 0.0;
-                values.x1 = x2.isSet() ? resolveLengthUserUnits(x2, rx) : vp.w;
-                values.y1 = y2.isSet() ? resolveLengthUserUnits(y2, ry) : 0.0;
-
-                if (fHasGradientTransform)
-                    xform = fGradientTransform;
-
-            }
-            else // SVG_SPACE_OBJECT (objectBoundingBox)
-            {
-                const WGRectD objFrame = ctx->getObjectFrame();
-
-                // resolve into bbox space (0..1),
-                // then use transform to map bbox -> user
-                values.x0 = resolveLengthBBoxUnits(x1, 0.0);
-                values.y0 = resolveLengthBBoxUnits(y1, 0.0);
-                values.x1 = resolveLengthBBoxUnits(x2, 1.0);
-                values.y1 = resolveLengthBBoxUnits(y2, 0.0);
-
-                xform = composeGradientTransformBBox(objFrame, fHasGradientTransform, fGradientTransform);
-            }
-
-            fGradient.set_values(values);
-            fGradient.set_transform(blMatrix_from_WGMatrix3x3(xform));
-            fGradientVar = fGradient;
-        }
 
     };
 
@@ -629,112 +634,21 @@ namespace waavs {
         SVGRadialGradient() 
             :SVGGradient(BLGradientType::BL_GRADIENT_TYPE_RADIAL)
         {
-            //fGradient.set_type(BL_GRADIENT_TYPE_RADIAL);
         }
 
-        // getVariant()
-        //
-        // Whomever is using us for paint is calling in here to get
-        // our paint variant.  This is the place to construct the thing,
-        // if it hasn't already been constructed.
-        //
-        // It's like a bindToContext essentially, but bindToContext is
-        // only called as part of a drawing chain.
-        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        bool buildGradientValues(BLGradient& grad) noexcept override
         {
-            BLGradient grad;
-
-            if (!buildBoundGradient(ctx, groot, grad))
-                return BLVar::null();
-
-            BLVar out{};
-            out = grad;
-
-            return out;
-        }
-
-        bool buildBoundGradient(IRenderSVG* ctx, IAmGroot* groot, BLGradient& grad)
-        {
-            double dpi = groot ? groot->dpi() : 96.0;
-
-            grad.set_type(BL_GRADIENT_TYPE_RADIAL);
-            grad.set_extend_mode(fGradient.extend_mode());
-            
-            // Start setting up the gradient
             BLRadialGradientValues values{};
-            //WGMatrix3x3 xform = WGMatrix3x3::makeIdentity();
 
-            // If the gradientUnits are ObjectBoundingBox, then 
-            // the parameters are relative to the size of that box
-            if (fGradientUnits == SVG_SPACE_OBJECT)
-            {
-                WGRectD objFrame = ctx->getObjectFrame();
-                auto w = objFrame.w;
-                auto h = objFrame.h;
-                auto x = objFrame.x;
-                auto y = objFrame.y;
+            values.x0 = resolveGradientX(fCx, 0.5);
+            values.y0 = resolveGradientY(fCy, 0.5);
+            values.r0 = resolveGradientRadius(fR, 0.5);
 
-                const double cxN = resolveLengthBBoxUnits(fCx, 0.5);
-                const double cyN = resolveLengthBBoxUnits(fCy, 0.5);
-                const double crN = resolveLengthBBoxUnits(fR, 0.5);
-
-                const double fxN = resolveLengthBBoxUnits(fFx, cxN);
-                const double fyN = resolveLengthBBoxUnits(fFy, cyN);
-                const double frN = resolveLengthBBoxUnits(fFr, 0.0);
-
-                values.x0 = x + (cxN * w);
-                values.y0 = y + (cyN * h);
-                values.r0 = calculateDistance(crN, w, h);
-
-
-                values.x1 = x + fxN * w;
-                values.y1 = y + fyN * h;
-                values.r1 = calculateDistance(frN, w, h);
-
-                //if (fHasGradientTransform)
-                //    xform = fGradientTransform;
-
-                //xform = composeGradientTransformBBox(objFrame, fHasGradientTransform, fGradientTransform);
-            }
-            else if (fGradientUnits == SVG_SPACE_USER)
-            {
-                WGRectD lFrame = ctx->viewport();
-                double w = lFrame.w;
-                double h = lFrame.h;
-
-                LengthResolveCtx wCtx{ dpi, nullptr, w, 0.0, SpaceUnitsKind::SVG_SPACE_USER };
-                LengthResolveCtx hCtx{ dpi, nullptr, h, 0.0, SpaceUnitsKind::SVG_SPACE_USER };
-                LengthResolveCtx rCtx{ dpi, nullptr, calculateDistance(1.0, w, h), 0.0, SpaceUnitsKind::SVG_SPACE_USER };
-
-                values.x0 = resolveLengthUserUnits(fCx, wCtx);
-                values.y0 = resolveLengthUserUnits(fCy, hCtx);
-                values.r0 = resolveLengthUserUnits(fR, rCtx);
-
-                values.x1 = values.x0;
-                values.y1 = values.y0;
-                values.r1 = 0;
-
-                LengthResolveCtx fwCtx{ dpi, nullptr, w, 0.0, SpaceUnitsKind::SVG_SPACE_USER };
-                LengthResolveCtx fhCtx{ dpi, nullptr, h, 0.0, SpaceUnitsKind::SVG_SPACE_USER };
-                LengthResolveCtx frCtx{ dpi, nullptr, calculateDistance(1.0, w, h), 0.0, SpaceUnitsKind::SVG_SPACE_USER };
-
-                values.x1 = resolveLengthOr(fFx, fwCtx, values.x0);
-                values.y1 = resolveLengthOr(fFy, fhCtx, values.y0);
-                values.r1 = resolveLengthOr(fFr, frCtx, 0.0);
-
-
-                //if (fHasGradientTransform)
-                //    xform = fGradientTransform;
-            }
-
-            //clampFocalPointToOuterCircle(values);
+            values.x1 = resolveGradientX(fFx, values.x0);
+            values.y1 = resolveGradientY(fFy, values.y0);
+            values.r1 = resolveGradientRadius(fFr, 0.0);
 
             grad.set_values(values);
-            grad.reset_stops();
-            grad.assign_stops(fGradient.stops_view());
-            if (fHasGradientTransform)
-                grad.set_transform(blMatrix_from_WGMatrix3x3(fGradientTransform));
-
             return true;
         }
 
@@ -797,76 +711,6 @@ namespace waavs {
             }
         }
 
-        void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) override
-        {
-            double dpi = groot ? groot->dpi() : 96.0;
-
-            BLRadialGradientValues values{};
-
-            
-            if (fGradientUnits == SVG_SPACE_OBJECT)
-            {
-                WGRectD objFrame = ctx->getObjectFrame();
-                auto w = objFrame.w;
-                auto h = objFrame.h;
-                auto x = objFrame.x;
-                auto y = objFrame.y;
-                
-                const double cxN = resolveLengthBBoxUnits(fCx, 0.5);
-                const double cyN = resolveLengthBBoxUnits(fCy, 0.5);
-                const double crN = resolveLengthBBoxUnits(fR, 0.5);
-
-                const double fxN = resolveLengthBBoxUnits(fFx, cxN);
-                const double fyN = resolveLengthBBoxUnits(fFy, cyN);
-                const double frN = resolveLengthBBoxUnits(fFr, 0.0);
-
-                values.x0 = x + cxN * w;
-                values.y0 = y + cyN* h;
-                values.r0 = calculateDistance(crN, w, h);
-
-
-                values.x1 = x + fxN * w;
-                values.y1 = y + fyN * h;
-                values.r1 = calculateDistance(frN, w, h);
-
-            }
-            else if (fGradientUnits == SVG_SPACE_USER)
-            {
-                WGRectD lFrame = ctx->viewport();
-                double w = lFrame.w;
-                double h = lFrame.h;
-                
-                LengthResolveCtx wCtx{ dpi, nullptr, w, 0.0, SpaceUnitsKind::SVG_SPACE_USER };
-                LengthResolveCtx hCtx{ dpi, nullptr, h, 0.0, SpaceUnitsKind::SVG_SPACE_USER };
-                LengthResolveCtx rCtx{ dpi, nullptr, calculateDistance(1.0, w, h), 0.0, SpaceUnitsKind::SVG_SPACE_USER };
-
-                values.x0 = resolveLengthUserUnits(fCx, wCtx);
-                values.y0 = resolveLengthUserUnits(fCy, hCtx);
-                values.r0 = resolveLengthUserUnits(fR,  rCtx);
-                
-                values.x1 = values.x0;
-                values.y1 = values.y0;
-                values.r1 = 0;
-
-                LengthResolveCtx fwCtx{ dpi, nullptr, w, 0.0, SpaceUnitsKind::SVG_SPACE_USER };
-                LengthResolveCtx fhCtx{ dpi, nullptr, h, 0.0, SpaceUnitsKind::SVG_SPACE_USER };
-                LengthResolveCtx frCtx{ dpi, nullptr, calculateDistance(1.0, w, h), 0.0, SpaceUnitsKind::SVG_SPACE_USER };
-
-                values.x1 = resolveLengthOr(fFx, fwCtx,values.x0);
-                values.y1 = resolveLengthOr(fFy, fhCtx, values.y0);
-                values.r1 = resolveLengthOr(fFr, frCtx, 0.0);
-                
-                //clampFocalPointToOuterCircle(values);
-            }
-            
-            fGradient.set_values(values);
-            
-            if (fHasGradientTransform) {
-                fGradient.set_transform(blMatrix_from_WGMatrix3x3(fGradientTransform));
-            }
-            
-            fGradientVar = fGradient;
-        }
 
     };
 
@@ -903,11 +747,37 @@ namespace waavs {
             registerSingularNode();
         }
 
+        SVGLengthValue fCx{ };
+        SVGLengthValue fCy{};
+        SVGLengthValue fRepeat{};
+        double fAngle{};    // in radians
 
         SVGConicGradient() 
             :SVGGradient(BLGradientType::BL_GRADIENT_TYPE_CONIC)
         {
-            //fGradient.set_type(BLGradientType::BL_GRADIENT_TYPE_CONIC);
+        }
+
+        bool buildGradientValues(BLGradient& grad) noexcept override
+        {
+            BLConicGradientValues values{};
+
+            values.x0 = resolveGradientX(fCx, 0.5);
+            values.y0 = resolveGradientY(fCy, 0.5);
+            if (fRepeat.isSet()) {
+                LengthResolveCtx repeatCtx{fBuildDpi,nullptr, 1.0, 0.0, SVG_SPACE_USER};
+                values.repeat = resolveLengthUserUnits(fRepeat, repeatCtx);
+            }
+
+            // blend2d's conic gradient doesn't support a repeat value of 0, 
+            // but SVG allows that to mean "no repeat", so treat 0 as 1 here.
+            if (values.repeat == 0.0)
+                values.repeat = 1.0;
+
+            values.angle = fAngle;
+
+            grad.set_values(values);
+
+            return true;
         }
 
         // Attributes to inherit
@@ -919,8 +789,8 @@ namespace waavs {
             if (!elem)
                 return;
 
-            setAttributeIfAbsent(elem, svgattr::x1());
-            setAttributeIfAbsent(elem, svgattr::y1());
+            setAttributeIfAbsent(elem, svgattr::cx());
+            setAttributeIfAbsent(elem, svgattr::cy());
             setAttributeIfAbsent(elem, svgattr::angle());
             setAttributeIfAbsent(elem, svgattr::repeat());
         }
@@ -928,58 +798,23 @@ namespace waavs {
         void fixupSelfStyleAttributes(IAmGroot* groot) override
         {
             resolveReferenceChain(groot);
-
             fixupCommonAttributes(groot);
+
+            // Parse our own attributes after they've been 
+            // inherited and resolved.
+            parseLengthValue(getAttribute(svgattr::cx()), fCx);
+            parseLengthValue(getAttribute(svgattr::cy()), fCy);
+
+            parseLengthValue(getAttribute(svgattr::repeat()), fRepeat);
+
+            ByteSpan angleSpan{};
+            if (getAttribute(svgattr::angle(), angleSpan))
+            {
+                SVGAngleUnits units{};
+                parseAngle(angleSpan, fAngle, units);
+            }
         }
 
-
-        void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) override
-        {
-            double dpi = groot ? groot->dpi() : 96.0;
-            double w = groot ? groot->canvasWidth() : 1.0;
-            double h = groot ? groot->canvasHeight() : 1.0;
-
-            BLConicGradientValues values = fGradient.conic();
-
-            SVGDimension x0{};
-            SVGDimension y0{};
-            SVGDimension angle{};
-            SVGDimension repeat{};
-            
-            ByteSpan x1Attr, y1Attr, angleAttr, repeatAttr;
-            if (getAttribute(svgattr::x1(), x1Attr)) {
-                x0.loadFromChunk(x1Attr);
-                values.x0 = x0.calculatePixels(w, 0, dpi);
-            }
-
-            if (getAttribute(svgattr::y1(), y1Attr)) {
-                y0.loadFromChunk(y1Attr);
-                values.y0 = y0.calculatePixels(h, 0, dpi);
-            }
-
-            if (getAttribute(svgattr::angle(), angleAttr)) {
-                // treat the angle as an angle type
-                SVGAngleUnits units;
-                parseAngle(angleAttr, values.angle, units);
-            }
-
-            if (getAttribute(svgattr::repeat(), repeatAttr)) {
-                repeat.loadFromChunk(repeatAttr);
-                values.repeat = repeat.calculatePixels(1.0, 0, dpi);
-            }
-            else if (values.repeat == 0)
-                values.repeat = 1.0;
-
-            
-            fHasGradientTransform = parseTransform(getAttribute(svgattr::gradientTransform()), fGradientTransform);
-
-            fGradient.set_values(values);
-            if (fHasGradientTransform) {
-                fGradient.set_transform(blMatrix_from_WGMatrix3x3(fGradientTransform));
-            }
-            
-            fGradientVar = fGradient;
-        }
 
     };
 }

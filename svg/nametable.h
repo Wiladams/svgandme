@@ -65,6 +65,30 @@ namespace waavs {
     public:
         static const char* INTERN(const ByteSpan& span) { return getSingletonTable()->intern(span); }
         static const char* INTERN(const char* cstr) { return getSingletonTable()->intern(cstr); }
+    
+        // Case-insensitive versions of the intern functions
+        static const char* INTERN_CI(const ByteSpan& span)
+        {
+            std::string tmp;
+            tmp.reserve(span.size());
+
+            for (size_t i = 0; i < span.size(); ++i)
+            {
+                unsigned char ch = span[i];
+
+                if (ch >= 'A' && ch <= 'Z')
+                    ch = static_cast<unsigned char>(ch - 'A' + 'a');
+
+                tmp.push_back(static_cast<char>(ch));
+            }
+
+            return getSingletonTable()->intern(std::string_view(tmp));
+        }
+
+        static const char* INTERN_CI(const char* cstr)
+        {
+            return INTERN_CI(ByteSpan(cstr));
+        }
     };
 
 

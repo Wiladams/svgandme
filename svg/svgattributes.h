@@ -170,36 +170,35 @@ namespace waavs {
 // Specific types of attributes
 namespace waavs {
 
-    //
     // SVGOpacity
+    // 
     // https://svgwg.org/svg2-draft/render.html#ObjectAndGroupOpacityProperties
-    // Opacity, when applied to a group, should create a backing
-    // store to be created.
-    // We don't need to set the global opacity as part of drawing
-    // this attribute.  Allow the specific geometry to do what it will 
-    // with this attribute during it's own drawing.  That might include
-    // simply inheriting the value.
+    // Opacity is an attribute that causes a sub-tree to be rendered into
+    // a buffer, then a global opacity is applied to that buffer as it's being
+    // composited into the final output.
+    // So, this property triggers the offscreen drawing.  We retain the actual
+    // opacity value so that when the compositing occurs, the value can be 
+    // applied to the context at that point.
+    // 
     //
-    struct SVGOpacity : public SVGVisualProperty // , public IServePaint
+    struct SVGOpacity : public SVGVisualProperty 
     {
         static void registerFactory() {
             registerSVGAttribute(svgattr::opacity(), [](const XmlAttributeCollection& attrs) {
-                auto node = std::make_shared<SVGOpacity>(nullptr);
+                auto node = std::make_shared<SVGOpacity>();
             node->loadFromAttributes(attrs);
             return node;
                 });
         }
         
         double fValue{1};
-        //BLVar fOpacityVar;
         
-        SVGOpacity(IAmGroot* groot) 
-            :SVGVisualProperty(groot) { setName(svgattr::opacity()); }        
+        SVGOpacity() : SVGVisualProperty(nullptr) { setName(svgattr::opacity()); }        
         
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
-        {
-            ctx->globalOpacity(fValue);
-        }
+        //void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        //{
+        //    ctx->globalOpacity(fValue);
+        //}
 
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
@@ -213,7 +212,6 @@ namespace waavs {
                 return false;
 
             fValue = waavs::clamp(op.calculatedValue(), 0.0, 1.0);
-            //fOpacityVar = fValue;
 
             set(true);
             setNeedsBinding(false);
@@ -228,14 +226,14 @@ namespace waavs {
     {
         static void registerFactory() {
             registerSVGAttribute(svgattr::fill_opacity(), [](const XmlAttributeCollection& attrs) {
-                auto node = std::make_shared<SVGFillOpacity>(nullptr); 
+                auto node = std::make_shared<SVGFillOpacity>(); 
                 node->loadFromAttributes(attrs);
                 return node;
                 });
             
         }
         
-        SVGFillOpacity(IAmGroot* iMap)  :SVGOpacity(iMap)  { setName(svgattr::fill_opacity());}
+        SVGFillOpacity()  :SVGOpacity()  { setName(svgattr::fill_opacity());}
         
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
@@ -248,14 +246,14 @@ namespace waavs {
     {
         static void registerFactory() {
             registerSVGAttribute(svgattr::stroke_opacity(), [](const XmlAttributeCollection& attrs) {
-                auto node = std::make_shared<SVGStrokeOpacity>(nullptr); 
+                auto node = std::make_shared<SVGStrokeOpacity>(); 
                 node->loadFromAttributes(attrs);
                 return node; 
                 });
 
         }
 
-        SVGStrokeOpacity(IAmGroot* iMap) :SVGOpacity(iMap) { setName(svgattr::stroke_opacity()); }
+        SVGStrokeOpacity() :SVGOpacity() { setName(svgattr::stroke_opacity()); }
 
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
@@ -626,563 +624,8 @@ namespace waavs {
 
 
 
-
-namespace waavs {
-    //
-    // htt://www.w3.org/TR/SVG11/feature#PaintAttribute
-    // color, 
-    // fill, fill-opacity,
-    // fill-rule, 
-    // stroke, stroke-opacity,
-    // stroke-width
-    // stroke-dasharray, stroke-dashoffset, 
-    // stroke-linecap, stroke-linejoin, stroke-miterlimit,  
-    
-    // SVGColor
-    // Representation of a color.  
-    // Not a Paint Server, just a pure sRGBA color.  
-    // The internal representation is ColorSRGB, which is what the SVG
-    // spec says the authored colors are.  We use 4 float values as a matter
-    // of convenience to convert to other representations.
-    // 
-    // The values are in the range [0..1].  
-    // And the components are NOT premultiplied, so they are
-    // 'straight' 
-    // 
-    // This can be converted to pixel values, or other color
-    // representations when needed
-    // When parsing a color, it might be an actual color returned
-    // or it might be symbolic.  If it is an actual color, then 
-    // isColor() returns true
-    // Otherwise, one of the other symbolic tests will tell what it was
-    // Multiple of the symbolic types might be set
-    // so, you can have: isReference() == true AND isOpacity() == true
-    //
-	enum ColorSemantics : uint32_t
-	{
-        COLOR_SEMANTIC_UNKNOWN          = 0x00,     // neither opacity, nor color
-                                                    // distinctly different than 'none'
-        COLOR_SEMANTIC_NONE             = 0x01,     // literal 'none'
-        COLOR_SEMANTIC_OPACITY          = 0x02,     // opacity specified
-		COLOR_SEMANTIC_COLOR            = 0x04,     // regular color
-		COLOR_SEMANTIC_INHERIT          = 0x08,     // literal 'inherit'
-		COLOR_SEMANTIC_CURRENT          = 0x10,     // literal 'currentColor'
-        COLOR_SEMANTIC_CONTEXT_STROKE   = 0x20,     // literal 'context-stroke'
-        COLOR_SEMANTIC_CONTEXT_FILL     = 0x40,     // literal 'context-fill'
-        COLOR_SEMANTIC_REFERENCE        = 0x80,     // starts-with 'url('
-    };
-
-    // A few little helpers for color semantics
-    inline ColorSemantics operator|(ColorSemantics a, ColorSemantics b) noexcept
-    {
-        return static_cast<ColorSemantics>(
-            static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
-    }
-
-    inline ColorSemantics operator&(ColorSemantics a, ColorSemantics b) noexcept
-    {
-        return static_cast<ColorSemantics>(
-            static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
-    }
-
-    inline ColorSemantics& operator|=(ColorSemantics& a, ColorSemantics b) noexcept
-    {
-        a = a | b;
-        return a;
-    }
-
-
-    // Parse only the color portion of a color specification
-    // not concerned with a separate opacity value
-    static WGResult parseColor(const ByteSpan& colorSpan, ColorSRGB& cSRGB) noexcept
-    {
-        static const char* rgbStr = "rgb(";
-        static const char* rgbaStr = "rgba(";
-        static const char* rgbStrCaps = "RGB(";
-        static const char* rgbaStrCaps = "RGBA(";
-        static const char* hslStr = "hsl(";
-        static const char* hslaStr = "hsla(";
-
-        float opacity = 1.0f;
-
-        colorsrgb_reset(cSRGB, 0, 0, 0, opacity);
-
-        ByteSpan cSpan = colorSpan;
-        size_t len = 0;
-        len = cSpan.size();
-        if ((len >= 1) && (*cSpan == '#'))
-        {
-            return parse_colorsrgb_from_hex(cSpan, cSRGB);
-        }
-        else if (bspan_starts_with(cSpan, rgbStr) ||
-            bspan_starts_with(cSpan, rgbaStr) ||
-            bspan_starts_with(cSpan, rgbaStrCaps) ||
-            bspan_starts_with(cSpan, rgbStrCaps))
-        {
-            return parse_colorsrgb_from_func(cSpan, cSRGB);
-        }
-        else if (bspan_starts_with(cSpan, hslStr) ||
-            bspan_starts_with(cSpan, hslaStr))
-        {
-            // BUGBUG - need to modernize Hsl to fill
-            // in ColorSRGB
-            //c = parseColorHsl(str);
-            return WGErrorCode::WG_ERROR_NotImplemented;
-        }
-        else {
-            // so we can detect failure and return false from this function
-            return get_color_by_name_as_srgb(cSpan, cSRGB);
-        }
-    }
-
-    struct SVGColor : public SVGVisualProperty
-    {
-        ColorSRGB fValue{};
-		ColorSemantics fSemantics{ COLOR_SEMANTIC_UNKNOWN };
-        InternedKey fColorField;
-        InternedKey fOpacityField;
-
-		SVGColor(InternedKey colorField, InternedKey opacityField)
-			: SVGVisualProperty(nullptr) 
-            ,fColorField(colorField)
-            ,fOpacityField(opacityField)
-		{
-			setName(colorField);
-		}
-
-        void setValue(float r, float g, float b, float a = 1.0f) noexcept
-        {
-            colorsrgb_reset(fValue, r, g, b, a);
-            fSemantics = COLOR_SEMANTIC_COLOR;
-            set(true);
-            setNeedsBinding(false);
-        }
-
-		ColorSRGB value() const { return fValue; }
-        
-        void addSemantic(ColorSemantics sem) noexcept { fSemantics |= sem; }
-
-        bool hasSemantic(ColorSemantics sem) const noexcept 
-        { 
-            return (static_cast<uint32_t>(fSemantics & sem)) != 0; 
-        }
-		bool isNone() const { return hasSemantic(COLOR_SEMANTIC_NONE); }
-		bool isInherit() const { return hasSemantic(COLOR_SEMANTIC_INHERIT); }
-		bool isCurrent() const { return hasSemantic(COLOR_SEMANTIC_CURRENT); }
-		bool isContextStroke() const { return hasSemantic(COLOR_SEMANTIC_CONTEXT_STROKE); }
-        bool isContextFill() const { return hasSemantic(COLOR_SEMANTIC_CONTEXT_FILL); }
-        bool isColor() const { 
-            // Something is a color if it is explicityly a color,
-            // or if it is exclusively opacity, and nothing else.
-            return hasSemantic(COLOR_SEMANTIC_COLOR) ||
-                (fSemantics == COLOR_SEMANTIC_OPACITY); 
-        }
-        bool isOpacity() const { return hasSemantic(COLOR_SEMANTIC_OPACITY); }
-        bool isReference() const { return hasSemantic(COLOR_SEMANTIC_REFERENCE); }
-
-
-        // load a color from a set of attributes
-        // This function will try to figure out what the color is
-        // Function forms:
-        //   rgb(255, 0, 0)
-        //   rgba(255, 0, 0, 0.5)
-        //   rgb(255 0 0 / 50%)
-
-        //   hsl(120, 100%, 50%)
-        //   hsla(120, 100%, 50%, 0.5)
-
-        // Literals:
-        //   #ffRRGGBB  - full hex for RGBA
-        //   #ff0000    - full hex for RGB
-        //   #FFFF      - single hex duplicated for RGBA
-        //   #FFF       - single hex duplicated for RGB
-        //   color name
-
-        // Note:  When the colorField is a 'url()' reference,
-        // we don't resolve the actual reference here, we just
-        // retain it as the rawValue() of the attribute, and 
-        // fill in the semantics to be: COLOR_SEMANTIC_REFERENCE
-        // so isReference() will return true.
-        // 
-        // Note: 'currentColor' is a special value.
-        // 1) If the colorSpan == 'currentColor' and the set of attributes 
-        //  has a 'color' attribute, then substitute that value of that
-        //  attribute in as the colorSpan before trying to parse the color
-        // 2) If the current attribute set does not contain a 'color'
-        //  attribute, then mark the semantics as: COLOR_SEMANTIC_CURRENT
-        //  so isCurrent() will return true.  
-        //  In that case, the paint server dealing with it will resolve 
-        //  the current color at time of render, probably taking it from 
-        //  the drawing context at the site of call.
-        //
-        bool loadFromAttributes(const XmlAttributeCollection& attrs) override
-        {
-            static const char* rgbStr = "rgb(";
-            static const char* rgbaStr = "rgba(";
-            static const char* rgbStrCaps = "RGB(";
-            static const char* rgbaStrCaps = "RGBA(";
-            static const char* hslStr = "hsl(";
-            static const char* hslaStr = "hsla(";
-
-            ByteSpan colorSpan{};
-            ByteSpan opacitySpan{};
-
-            // You can still have a valid color if only 
-            // opacity is specified.
-            attrs.getValue(fColorField, colorSpan);
-            attrs.getValue(fOpacityField, opacitySpan);
-            setRawValue(colorSpan);
-
-            // only return early if neither color nor opacity is specified
-            if (!colorSpan)
-            {
-                if (!opacitySpan)
-                    return false;
-            }
-
-            // temporary values
-            ColorSRGB cSRGB{};
-            double opacity = 1.0;
-            colorsrgb_reset(cSRGB, 0, 0, 0, opacity);
-
-
-            // Capture opacity early, because even if it ends up being
-            // a reference, we still might want to apply the opacity
-            
-            // Check the opacity first, as it is valid to just
-            // specify an opacity, without a color value.  The default
-            // color value might be context specific, but we'll go
-            // with black for the moment.
-            // 
-            // If there is an opacity field, the value should be
-            // between [0..1], or a percentage.
-            // Include the opacity with the color, but since the 
-            // color is sRGB, DO NOT PREMULTIPLY 
-            // 
-            if (opacitySpan)
-            {
-                SVGNumberOrPercent op{};
-                ByteSpan s = opacitySpan;
-                if (readSVGNumberOrPercent(s, op))
-                {
-                    opacity = clamp01f((float)op.calculatedValue());
-                    fSemantics = COLOR_SEMANTIC_OPACITY;
-                    set(true);
-                }
-            }
-
-            // Quick success if we have a URL reference
-            if (bspan_starts_with(colorSpan, "url("))
-            {
-                set(true);
-                setNeedsBinding(true);
-                fSemantics = COLOR_SEMANTIC_REFERENCE;
-
-                return true;
-            }
-
-
-
-
-            // Finally, if we have a color value, we need to 
-            // parse it.  
-            if (colorSpan)
-            {
-                // Before we try to parse the color, check 
-                // to see if the value is 'currentColor'.
-                // If it is, then we need to check if there 
-                // is a 'color' attribute in the current set of attributes.
-                if (colorSpan == "currentColor")
-                {
-                    ByteSpan currentColorValue{};
-                    if (attrs.getValue(svgattr::color(), currentColorValue))
-                    {
-                        colorSpan = currentColorValue;
-                    }
-                    else {
-                        set(true);
-                        fSemantics = COLOR_SEMANTIC_CURRENT;
-                        return true;
-                    }
-                }
-
-
-                ByteSpan cSpan = colorSpan;
-                size_t len = 0;
-                len = cSpan.size();
-                if ((len >= 1) && (*cSpan == '#'))
-                {
-                    if (parse_colorsrgb_from_hex(cSpan, cSRGB) == WG_SUCCESS)
-                    {
-                        set(true);
-                        fSemantics = COLOR_SEMANTIC_COLOR;
-                    }
-                    else {
-                        return false;
-                    }
-                }
-                else if (bspan_starts_with(cSpan, rgbStr) ||
-                    bspan_starts_with(cSpan,rgbaStr) ||
-                    bspan_starts_with(cSpan, rgbaStrCaps) ||
-                    bspan_starts_with(cSpan, rgbStrCaps))
-                {
-                    if (parse_colorsrgb_from_func(cSpan, cSRGB) == WG_SUCCESS)
-                    {
-                        set(true);
-                        fSemantics = COLOR_SEMANTIC_COLOR;
-                    }
-                    else {
-                        return false;
-                    }
-                }
-                else if (bspan_starts_with(cSpan, hslStr) ||
-                    bspan_starts_with(cSpan, hslaStr))
-                {
-                    // BUGBUG - need to modernize Hsl to fill
-                    // in ColorSRGB
-                    //c = parseColorHsl(str);
-
-                    set(true);
-                    fSemantics = COLOR_SEMANTIC_COLOR;
-                }
-                else {
-                    if (cSpan == svgval::none()) {
-                        set(true);
-                        fSemantics = COLOR_SEMANTIC_NONE;
-                    }
-                    else if (cSpan == "context-stroke")
-                    {
-                        set(true);
-                        fSemantics = COLOR_SEMANTIC_CONTEXT_STROKE;
-                    }
-                    else if (cSpan == "context-fill")
-                    {
-                        set(true);
-                        fSemantics = COLOR_SEMANTIC_CONTEXT_FILL;
-                    }
-                    else if ((cSpan == "inherit"))
-                    {
-                        set(true);
-                        fSemantics = COLOR_SEMANTIC_INHERIT;
-                    }
-                    else if (cSpan == "currentColor")
-                    {
-                        // Take on whatever color was set in the 'color'
-                        // attribute of this node, or whatever is the 
-                        // currently Active color at the time of render
-                        set(true);
-                        fSemantics = COLOR_SEMANTIC_CURRENT;
-                    }
-                    else {
-                        // BUGBUG - should change the call to take 
-                        // cSRGB as parameter and return WGResult, 
-                        // so we can detect failure and return false from this function
-                        if (get_color_by_name_as_srgb(cSpan, cSRGB) == WG_SUCCESS)
-                        {
-                            set(true);
-                            fSemantics = COLOR_SEMANTIC_COLOR;
-                        }
-                    }
-                }
-            }
-
-            // Finally, assign the color value.  
-            // Since we are not premultiplying, 
-            // we apply (multiply) the opacity against the alpha
-            // channel, but we don't modify the r,g,b values.
-            fValue = cSRGB;
-            fValue.a = clamp01f(fValue.a * opacity);
-
-            return true;
-        }
-    };
-
-
-    //=====================================================
-    // SVG Paint
-    // 
-    // General base class for paint.  
-    // This is essentially the "paint server".  We parse
-    // what the 'color' is, and if it's a reference to something
-    // that reference's 'getVariant' is called at the right time
-    // otherwise, we return the appropriate color value.
-    // The primary usage here is 'fill' and 'stroke' attributes.
-    // 'stop-color' and filter primitives handle their own colors
-    // as they just use SVGColor instead, as there is no allowance
-    // for 'paint server' style
-    
-            // There are a couple of cases when using 'currentColor' as the
-            // color value.
-            // 1) It is being used on an element, where there is also a 'color' attribute
-            //   In this case, whatever is in the 'color' attribute needs to become our
-            //   BLVar value, and set on the context at drawing time.
-            // 2) It is being used on an element, where there is no 'color' attribute
-            //   In this case, it is inheritance.  The color value is determined by what is
-            //   currently on the 'currentColor()' property of the context, so we should use
-            //   that when it comes time to draw.
-
-    //=====================================================
-    struct SVGPaint : public SVGVisualProperty, public IServePaint
-    {
-        ByteSpan fPaintReference{};
-        SVGColor fColor;
-        InternedKey fColorKey;
-        InternedKey fOpacityKey;
-
-
-        SVGPaint(InternedKey colorKey, InternedKey opacityKey)
-            : SVGVisualProperty(nullptr)
-            , fColor(colorKey, opacityKey)
-        {}
-
-        SVGPaint(const SVGPaint& other) = delete;
-
-        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
-        {
-            // if it's simply a color, then do a quick convert and return
-            if (fColor.isColor())
-            {
-				BLRgba32 bColor{};
-                bColor.value = Pixel_ARGB32_from_ColorSRGB(fColor.value());
-                BLVar tmpVar{};
-                tmpVar = bColor;
-
-                return tmpVar;
-            }
-			else if (fColor.isNone())
-			{
-				return BLVar::null();
-			}
-            else if (fColor.isCurrent())
-            {
-				// if it's 'currentColor', then we need to look up 
-                // the current color from the context.
-                // we still need to apply our specific opacity if
-                // it exists
-                return ctx->getDefaultColor();
-            }
-            else if (fColor.isInherit())
-            {
-                // if it's 'inherit' treat it the same
-                // as 'currentColor'
-                // we'll keep it separate for now until we
-                // confirm the semantic differences
-                // this is a little more tricky, we want to retrieve
-                // the inherited color, depends on whether we are
-                // stroke or fill
-                return ctx->getDefaultColor();
-            }
-            else if (fColor.isReference())
-            {
-                // we must have groot to do a lookup
-				if (!groot)
-					return BLVar::null();
-
-                auto node = groot->findNodeByUrl(fColor.rawValue());
-
-                if (nullptr == node)
-                    return BLVar::null();
-
-                // dynamic cast to IServePaint, if it fails, then we can't use it as a paint server
-                auto paintServer = dynamic_cast<IServePaint*>(node.get());
-                if (paintServer == nullptr)
-                    return BLVar::null();
-                
-                // assume calling getVariant on the referant node will
-                // cause itself to do binding
-                BLVar tmpVar = paintServer->getVariant(ctx, groot);
-                return tmpVar;
-            }
-
-            // otherwise, use the variant we have calculated
-            return BLVar::null();
-        }
-
-        // paint usually comes in color/opacity pairs
-        // so use SVGColor to read it, if it's not a URL 
-        // reference
-        bool loadFromAttributes(const XmlAttributeCollection& attrs) override
-        {
-			if (!fColor.loadFromAttributes(attrs))
-                return false;
-
-            set(true);
-
-            return true;
-        }
-
-
-
-        void update(IAmGroot* groot) override
-        {
-            ByteSpan ref = rawValue();
-
-            if (bspan_starts_with(ref, "url("))
-            {
-                if (groot != nullptr) {
-                    auto node = groot->findNodeByUrl(ref);
-                    if (nullptr != node)
-                    {
-                        node->update(groot);
-                    }
-                }
-            }
-        }
-        
-        
-    };
-}
-
-namespace waavs {
-    struct SVGColorPaint : public SVGPaint
-    {
-        static void registerFactory() {
-            registerSVGAttributeByName("color", [](const XmlAttributeCollection& attrs) {
-                auto node = std::make_shared<SVGColorPaint>();
-                node->loadFromAttributes(attrs);
-                return node;
-                });
-        }
-
-
-        SVGColorPaint() 
-            : SVGPaint(svgattr::color(), nullptr) { setName(svgattr::color()); }
-
-
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
-        {
-            ctx->setDefaultColor(getVariant(ctx, groot));
-        }
-
-    };
-}
-
-namespace waavs {
-    //
-    //
-    struct SVGFillPaint : public SVGPaint
-    {
-        static void registerFactory() {
-            registerSVGAttribute(svgattr::fill(), [](const XmlAttributeCollection& attrs) {
-                auto node = std::make_shared<SVGFillPaint>();
-                node->loadFromAttributes(attrs);
-                return node;
-                });
-        }
-
-        SVGFillPaint() 
-            : SVGPaint(svgattr::fill(), svgattr::fill_opacity()) 
-        { 
-            setName(svgattr::fill()); 
-        }
-
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
-        {
-            BLVar aVar = getVariant(ctx, groot);
-            ctx->fill(aVar);
-        }
-
-    };
+namespace waavs 
+{
 
     //=========================================================
     // SVGFillRule
@@ -1225,77 +668,7 @@ namespace waavs {
 
 namespace waavs {
     
-    struct SVGStrokePaint : public SVGPaint
-    {
-        static void registerFactory() {
-            registerSVGAttributeByName(svgattr::stroke(), [](const XmlAttributeCollection& attrs) {
-                auto node = std::make_shared<SVGStrokePaint>(); 
-                node->loadFromAttributes(attrs);
-                return node; 
-                });
-        }
 
-        SVGStrokePaint() 
-            : SVGPaint(svgattr::stroke(), svgattr::stroke_opacity()) 
-        { setName(svgattr::stroke()); }
-
-        // BUGBUG - getVariant is where we should be resolving
-        // things like 'currentColor' as well as references
-        /*
-        bool loadFromAttributes(const XmlAttributeCollection& attrs) override
-        {
-            // get the value of the 'stroke' attribute.
-            // if it == 'color', then we need to get the color from 
-            // other attributes
-            ByteSpan strokeAttr{};
-
-            if (!attrs.getValue(svgattr::stroke(), strokeAttr))
-                return false;
-
-            // There are a couple of cases when using 'currentColor' as the
-            // stroke value.
-            // 1) It is being used on an element, where there is also a 'color' attribute
-            //   In this case, whatever is in the 'color' attribute needs to become our
-            //   BLVar value, and set on the context at drawing time.
-            // 2) It is being used on an element, where there is no 'color' attribute
-            //   In this case, it is inheritance.  The color value is determined by what is
-            //   currently on the 'currentColor()' property of the context, so we should use
-            //   that when it comes time to draw.
-            if (strokeAttr == "currentColor")
-            {
-                // get the value of the 'color' attribute, if it exists
-                // and use that as the color
-                ByteSpan colorAttr{};
-                if (!attrs.getValue(svgattr::color(),colorAttr))
-                {
-                    return loadFromChunk(colorAttr);
-                }
-                else {
-                    // if the 'color' attribute does not exist
-                    // set our rawValue to 'currentColor', and pick up 
-                    // the default color from the drawing context at drawing time
-                    setRawValue(strokeAttr);
-                    set(true);
-                    return true;
-                }
-
-            }
-
-            // It's not 'currentColor', so process an immediate color value
-            return loadFromChunk(strokeAttr);
-        }
-        */
-
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
-        {
-            BLVar aVar = getVariant(ctx, groot);
-            if (aVar.is_null())
-                ctx->noStroke();
-            else
-                ctx->stroke(aVar);
-        }
-
-    };
 
 
     //=========================================================
@@ -1509,6 +882,7 @@ namespace waavs {
         bool loadSelfFromChunk(const ByteSpan& inChunk) override
         {
             if (!parseTransform(inChunk, fMatrix)) {
+                printf("Failed to parse transform: '%.*s'\n", (int)inChunk.size(), inChunk.data());
                 return false;
             }
 
@@ -1594,158 +968,6 @@ namespace waavs {
 
 namespace waavs {
 
-
-    //
-    // SVGOrient
-    // Determines how the marker should be oriented, and ultimately
-    // what angle of rotation should be applied before drawing
-    // 
-    struct SVGOrient
-    {
-        double fAngle{ 0 };
-        MarkerOrientation fOrientation{ MarkerOrientation::MARKER_ORIENT_ANGLE };
-
-
-        SVGOrient(IAmGroot* groot) {}
-
-        // In order to calculate the angle, we need the path
-        // so we can determine the tangent at the start or end
-        bool loadFromChunk(const ByteSpan& inChunk)
-        {
-            ByteSpan s = inChunk;
-            s = bspan_skip_spaces(s);
-
-            if (!s)
-                return false;
-
-            if (!parseMarkerOrientation(s, fOrientation))
-                return false;
-
-            switch (fOrientation)
-            {
-            case MarkerOrientation::MARKER_ORIENT_AUTO:
-                return true;
-                break;
-
-
-            case MarkerOrientation::MARKER_ORIENT_AUTOSTARTREVERSE:
-            {
-                return true;
-
-            } break;
-
-            case MarkerOrientation::MARKER_ORIENT_ANGLE:
-            default:
-            {
-                SVGAngleUnits units{ SVGAngleUnits::SVG_ANGLETYPE_UNKNOWN };
-                return parseAngle(s, fAngle, units);
-            } break;
-
-            }
-
-            return true;
-        }
-
-
-        // calculate the angle between line segments
-        // return the value in radians
-        //
-        double calcRadians(MarkerPosition pos, const BLPoint& p1, const BLPoint& p2, const BLPoint& p3) const
-        {
-
-            
-            if (fOrientation == MarkerOrientation::MARKER_ORIENT_ANGLE)
-            {
-                // fAngle is already in radians
-                return fAngle;
-            }
-            
-            // get the angle between the vectors
-            auto angleOfVec = [](double x, double y) noexcept -> double {
-                return std::atan2(y, x);
-                };
-            
-            auto norm = [](double x, double y, double& ox, double& oy) noexcept -> bool {
-                const double len2 = x * x + y * y;
-                if (len2 == 0.0) { ox = 0.0; oy = 0.0; return false; }
-                const double inv = 1.0 / std::sqrt(len2);
-                ox = x * inv;
-                oy = y * inv;
-                return true;
-                };
-
-
-            // v1 = p2 - p1 (incoming tangent direction in your triplet)
-            const double v1x = p2.x - p1.x;
-            const double v1y = p2.y - p1.y;
-
-            // v2 = p3 - p2 (outgoing tangent direction)
-            const double v2x = p3.x - p2.x;
-            const double v2y = p3.y - p2.y;
-
-            double angle = 0.0;
-
-
-            switch (pos)
-            {
-            case MARKER_POSITION_START:
-            {
-                // angle is between the first point, and the second point
-                angle = angleOfVec(v1x, v1y);
-
-
-                // If the marker is at the start, and orient='auto-start-reverse',
-                // then we want to flip the angle 180 degrees, which we can do 
-                // by adding 'pi' to it, as that's half a circle.
-                if (fOrientation == MarkerOrientation::MARKER_ORIENT_AUTOSTARTREVERSE)
-                    angle = angle + waavs::kPi;
-            }
-            break;
-
-            case MARKER_POSITION_END:
-                angle = angleOfVec(v1x, v1y);
-                break;
-
-
-            case MARKER_POSITION_MIDDLE:
-            {
-                // Normalize both, then bisect by vector sum
-                double u1x, u1y, u2x, u2y;
-                const bool ok1 = norm(v1x, v1y, u1x, u1y);
-                const bool ok2 = norm(v2x, v2y, u2x, u2y);
-
-                if (!ok1 && !ok2) {
-                    angle = 0.0;
-                    break;
-                }
-                if (!ok1) { angle = angleOfVec(u2x, u2y); break; }
-                if (!ok2) { angle = angleOfVec(u1x, u1y); break; }
-
-                // Bisector candidate
-                double bx = u1x + u2x;
-                double by = u1y + u2y;
-
-                // If cusp (180°), sum is near zero; choose a stable fallback
-                const double bLen2 = bx * bx + by * by;
-                if (bLen2 == 0.0) {
-                    // choose outgoing (common pragmatic choice)
-                    angle = angleOfVec(u2x, u2y);
-                }
-                else {
-                    angle = angleOfVec(bx, by);
-                }
-            }
-            break;
-
-
-            }
-            
-            //printf("calcRadians::MARKER_POSITION: %d - %3.2f\n", pos, waavs::degrees(angle));
-            
-            return radians_normalize(angle);
-        }
-
-    };
 }
 
 //

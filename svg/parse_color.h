@@ -8,37 +8,38 @@
 #include "coloring.h"
 #include "svgdatatypes.h"
 
+namespace waavs
+{
+    //======================================================
+    // Definition of SVG colors
+    //======================================================
 
-//======================================================
-// Definition of SVG colors
-//======================================================
-
-    // Representation of color according to CSS specification
-    // https://www.w3.org/TR/css-color-4/#typedef-color
-    // Over time, this structure could represent the full specification
-    // but for practical purposes, we'll focus on rgb, rgba for now
-    //
-    //<color> = <absolute-color-base> | currentcolor | <system-color>
-    //
-    //<absolute-color-base> = <hex-color> | <absolute-color-function> | <named-color> | transparent
-    //<absolute-color-function> = <rgb()> | <rgba()> |
-    //                        <hsl()> | <hsla()> | <hwb()> |
-    //                        <lab()> | <lch()> | <oklab()> | <oklch()> |
-    //                        <color()>
-
-
-
+        // Representation of color according to CSS specification
+        // https://www.w3.org/TR/css-color-4/#typedef-color
+        // Over time, this structure could represent the full specification
+        // but for practical purposes, we'll focus on rgb, rgba for now
+        //
+        //<color> = <absolute-color-base> | currentcolor | <system-color>
+        //
+        //<absolute-color-base> = <hex-color> | <absolute-color-function> | <named-color> | transparent
+        //<absolute-color-function> = <rgb()> | <rgba()> |
+        //                        <hsl()> | <hsla()> | <hwb()> |
+        //                        <lab()> | <lch()> | <oklab()> | <oklch()> |
+        //                        <color()>
 
 
-    // Scan a bytespan for a sequence of hex digits
-    // without using scanf. return 'true' upon success
-    // false for any error.
-    // The format is either
-    // 
-    // #RRGGBB
-    // #RGB
-    // 
-    // Anything else is an error
+
+
+
+        // Scan a bytespan for a sequence of hex digits
+        // without using scanf. return 'true' upon success
+        // false for any error.
+        // The format is either
+        // 
+        // #RRGGBB
+        // #RGB
+        // 
+        // Anything else is an error
     static int parse_color_hexSpanToRgba32(const waavs::ByteSpan& inSpan, ColorSRGB& outValue) noexcept
     {
         outValue = SRGB8_ARGB(0);
@@ -101,7 +102,7 @@
     // Turn a 3 or 6 digit hex string into a BLRgba32 value
     // if there's an error in the conversion, a transparent color is returned
     // BUGBUG - maybe a more obvious color should be returned
-    static int parse_color_ColorHex(const waavs::ByteSpan& chunk, ColorSRGB &outValue) noexcept
+    static int parse_color_ColorHex(const waavs::ByteSpan& chunk, ColorSRGB& outValue) noexcept
     {
         if (parse_color_hexSpanToRgba32(chunk, outValue))
             return 0;
@@ -145,7 +146,7 @@
         return SRGB8(uint32_t(r * 255), uint32_t(g * 255), uint32_t(b * 255), 255);
     }
 
-    static int parse_color_parseColorHsl(const waavs::ByteSpan& inChunk, ColorSRGB &res) noexcept
+    static int parse_color_parseColorHsl(const waavs::ByteSpan& inChunk, ColorSRGB& res) noexcept
     {
         res = SRGB8(0, 0, 0, 255);
         waavs::ByteSpan str = inChunk;
@@ -232,7 +233,7 @@
         }
 
         int i = 0;
-        while (num && i<4)
+        while (num && i < 4)
         {
             SVGDimension cv{};
             cv.loadFromChunk(num);
@@ -263,7 +264,7 @@
 
         return 0;
     }
-
+}
 
 
 #endif

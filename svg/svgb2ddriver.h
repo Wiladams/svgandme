@@ -41,8 +41,34 @@ namespace waavs
 
         void onCopyDrawingState(const SVGDrawingState& state) override
         {
-            IAccessSVGState stateAccessor{ const_cast<SVGDrawingState*>(&state) };
-            stateAccessor.applyToContext(fDrawingContext.get());
+            //IAccessSVGState stateAccessor{ const_cast<SVGDrawingState*>(&state) };
+            //stateAccessor.applyToContext(fDrawingContext.get());
+            
+            // clear the clipping state
+            fDrawingContext->restore_clipping();
+            WGRectD cRect = getClipRect();
+            if ((cRect.w > 0) && (cRect.h > 0))
+            {
+                BLRect blr{ cRect.x, cRect.y, cRect.w, cRect.h };
+                fDrawingContext->clip_to_rect(blr);
+            }
+
+            fDrawingContext->set_comp_op((BLCompOp)getCompositeMode());
+            fDrawingContext->set_fill_rule((BLFillRule)getFillRule());
+
+            // Set the transform
+            BLMatrix2D t = blMatrix_from_WGMatrix3x3(getTransform());
+            fDrawingContext->set_transform(t);
+
+            // Stroke Options
+            fDrawingContext->set_stroke_options(fDrawingState->fStrokeOptions);
+
+            // Paints
+            fDrawingContext->set_stroke_style(getStrokePaint());
+            fDrawingContext->set_fill_style(getFillPaint());
+            //fDrawingContext->set_global_alpha(getGlobalOpacity());
+            //fDrawingContext->set_stroke_alpha(getStrokeOpacity());
+            //fDrawingContext->set_fill_alpha(getFillOpacity());
         }
 
         void onAttach(Surface& surf, int threadCount, const SVGDrawingState *state) override
@@ -55,8 +81,8 @@ namespace waavs
 
             if (state)
                 copyDrawingState(*state);
-            else
-                applyToContext(fDrawingContext.get());
+            //else
+            //    applyToContext(fDrawingContext.get());
         }
 
 

@@ -902,16 +902,52 @@ namespace waavs {
             }
         }
 
-        virtual void applyProperties(IRenderSVG* ctx, IAmGroot* groot)
+        virtual void resolvePaintServers(IRenderSVG* ctx, IAmGroot* groot)
         {
-            for (auto& prop : fVisualProperties)
+            if (!ctx)
+                return;
+
+            IServePaint* fillServer = ctx->getFillPaintServer();
+            IServePaint* strokeServer = ctx->getStrokeServer();
+        
+            if (fillServer)
             {
-                if (prop.second->autoDraw() && prop.second->isSet())
-                {
-                    prop.second->applyToContext(ctx, groot);
-                }
+                BLVar aVar = fillServer->getVariant(ctx, groot);
+                if (aVar.is_null())
+                    ctx->noFill();
+                else
+                    ctx->fill(aVar);
+            }
+
+            if (strokeServer)
+            {
+                BLVar aVar = strokeServer->getVariant(ctx, groot);
+                if (aVar.is_null())
+                    ctx->noStroke();
+                else
+                    ctx->stroke(aVar);
             }
         }
+
+
+
+        virtual void applyTransform(IRenderSVG* ctx, IAmGroot* groot)
+        {
+            auto tform = getVisualProperty(svgattr::transform());
+            if (tform)
+                tform->applyToContext(ctx, groot);
+        }
+
+        virtual void applyProperties(IRenderSVG* ctx, IAmGroot* groot) = delete;
+        //{
+        //    for (auto& prop : fVisualProperties)
+        //    {
+        //        if (prop.second->autoDraw() && prop.second->isSet())
+        //        {
+        //            prop.second->applyToContext(ctx, groot);
+        //        }
+        //    }
+        //}
 
         virtual void drawRenderSubtree(IRenderSVG* ctx, IAmGroot* groot)
         {
@@ -942,18 +978,25 @@ namespace waavs {
             drawRenderSubtree(ctx, groot);
         }
 
+
         WGRectD drawBegin(IRenderSVG* ctx, IAmGroot* groot) 
         {
-            static  ByteSpan kPreBindProperties = 
+            static ByteSpan kPreGeometryProperties =
                 "font-family,font-size,font-style,font-weight,"
-                "stroke,stroke-width,stroke-linecap,stroke-linejoin,stroke-miterlimit,"
-                "stroke-dasharray,stroke-dashoffset,"
+                "stroke-width,stroke-linecap,stroke-linejoin,stroke-miterlimit,"
+                "stroke-dasharray,stroke-dashoffset,vector-effect,"
                 "fill-rule,clip-rule,"
-                "marker,marker-start,marker-mid,marker-end";
+                "marker,marker-start,marker-mid,marker-end,"
+                "fill, stroke, color";
 
-            //"fill,fill-opacity,"
-            //    "stroke-opacity,"
-            static ByteSpan kPostBindProperties =
+            static ByteSpan kGeometryProperties =
+                "transform";
+
+            static ByteSpan kPaintServerProperties =
+                "fill,fill-opacity,"
+                "stroke,stroke-opacity";
+
+            static ByteSpan kIsolationProperties =
                 "opacity,"
                 "filter,"
                 "mask,"
@@ -966,29 +1009,30 @@ namespace waavs {
                 "color-interpolation,"
                 "color-interpolation-filters,"
                 "mix-blend-mode,"
-                "isolation,"
-                "vector-effect";
+                "isolation";
+
+
 
             ctx->push();
 
-            //applyProperties(ctx, groot, kPreBindProperties);
-            applyProperties(ctx, groot);
+            // apply early properties
+            // BUGBUG - need to examine what goes on in bindToContext
+            //applyProperties(ctx, groot, kPreGeometryProperties);
 
             if (needsBinding())
                 this->bindToContext(ctx, groot);
 
-            //applyProperties(ctx, groot, kPostBindProperties);
-
-            // Apply transform first since it affects bbox space
-            auto tform = getVisualProperty(svgattr::transform());
-            if (tform)
-                tform->applyToContext(ctx, groot);
+            applyProperties(ctx, groot, kPreGeometryProperties);
+            applyTransform(ctx, groot);
 
             bindGeometryToContext(ctx, groot);
-            // Compute bbox in current user space
             WGRectD bbox = getObjectBoundingBox(ctx, groot);
-
             ctx->setObjectFrame(bbox);
+
+            // apply late properties
+            resolvePaintServers(ctx, groot);
+            //applyProperties(ctx, groot, kPaintServerProperties);
+
 
             return bbox;
         }

@@ -39,6 +39,23 @@ namespace waavs
         return a;
     }
 
+    // bspan_is_all()
+    // 
+    // Check if all characters in the span are in the specified charset.
+    // This is typically used when you're trying to determine if the 
+    // whole span is whitespace.
+    static INLINE bool bspan_is_all(const ByteSpan& src, const charset& aset)
+    {
+        auto found = aset.skipWhile(src.begin(), src.end());
+        return found == src.end();
+    }
+
+    // bspan_skip_while()
+    //
+    // Skip characters from the beginning of the span, 
+    // as long as they are in the specified charset.
+    // This is typically used to skip whitespaces, but
+    // can be used to skip any set of characters.
     static INLINE ByteSpan& bspan_skip_while(ByteSpan &a, const charset& aset) noexcept
     {
         const unsigned char * startAt = aset.skipWhile(a.begin(), a.end());
@@ -47,6 +64,15 @@ namespace waavs
         return a;
     }
 
+    // bspan_read_prefix()
+    //
+    // Read a span from the beginning of the source span, 
+    // until we encounter a character that is not in the 'allowed' charset.
+    // RETURN
+    //  From the beginning of the source span, until the
+    //  first character that is not in the 'allowed' charset.
+    //  src - advances past the characters that were read.
+    //
     static INLINE ByteSpan bspan_read_prefix(ByteSpan& src, const charset& allowed) noexcept
     {
         const uint8_t* start = src.begin();
@@ -57,6 +83,92 @@ namespace waavs
 
         return ByteSpan::fromPointers(start, p);
     }
+
+    // readIdentifier()
+    // 
+    // An identifier typically begins with an allowed
+    // set of characters as the first character, and continues
+    // until you reach a character that is not in the set of
+    // allowed body characters.
+    static INLINE bool bspan_read_identifier(ByteSpan& src, ByteSpan& out, 
+        const charset &firstChars, const charset &bodyChars) noexcept
+    {
+        out.reset();
+        if (!src || !firstChars(*src))
+            return false;
+
+        const uint8_t* start = src.begin();
+        const uint8_t* end = src.end();
+
+        // We already know the first character is valid, 
+        // so start from the next character
+        const uint8_t* p = start + 1; 
+        p = bodyChars.skipWhile(p, end);
+
+        out.resetPointers(start, p);
+        src.resetStart(p);
+
+        return true;
+    }
+
+    // bspan_read_enclosed()
+    //
+    // Read a span that is enclosed by a pair of brackets, 
+    // such as parentheses or square brackets.
+    // The source span is advanced past the closing bracket.
+    // out - the span that is enclosed by the brackets, 
+    //      excluding the brackets themselves
+    // lbracket - the opening bracket character
+    // rbracket - the closing bracket character
+    // 
+    // Note: This will handle nested brackets, but if they are not
+    // balanced, it will return 'false'.
+    //
+    static INLINE bool bspan_read_enclosed(
+        ByteSpan& src,
+        ByteSpan& out,
+        const unsigned char lbracket,
+        const unsigned char rbracket) noexcept
+    {
+        out.reset();
+
+        if (!src || *src != lbracket)
+            return false;
+
+        const unsigned char* p = src.data() + 1;
+        const unsigned char* const e = src.end();
+        const unsigned char* const payloadStart = p;
+
+        size_t depth = 1;
+
+        while (p < e)
+        {
+            const unsigned char ch = *p++;
+
+            if (ch == lbracket)
+            {
+                ++depth;
+                continue;
+            }
+
+            if (ch == rbracket)
+            {
+                --depth;
+
+                if (depth == 0)
+                {
+                    const unsigned char* const payloadEnd = p - 1;
+
+                    out.resetPointers(payloadStart, payloadEnd);
+                    src.resetStart(p);
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
 }
 
 
@@ -99,44 +211,7 @@ namespace std {
 }
 */
 
-namespace waavs {
-    struct ByteSpanHash {
-        size_t operator()(const ByteSpan& span) const noexcept {
-            return waavs::fnv1a_32(span.data(), span.size());
-        }
-    };
 
-    struct ByteSpanEquivalent {
-        bool operator()(const ByteSpan& a, const ByteSpan& b) const noexcept {
-            if (a.size() != b.size())
-                return false;
-            return memcmp(a.data(), b.data(), a.size()) == 0;
-        }
-    };
-
-    // Case insensitive 'string' comparison
-    struct ByteSpanInsensitiveHash {
-        size_t operator()(const ByteSpan& span) const noexcept {
-            return waavs::fnv1a_32_case_insensitive(span.data(), span.size());
-        }
-    };
-
-    struct ByteSpanCaseInsensitive {
-        bool operator()(const ByteSpan& a, const ByteSpan& b) const noexcept {
-            if (a.size() != b.size())
-                return false;
-
-            for (size_t i = 0; i < a.size(); ++i) {
-                //if (TOLOWER(a[i]) != TOLOWER(b[i]))  // Case-insensitive comparison
-                if (std::tolower(a[i]) != std::tolower(b[i]))  // Case-insensitive comparison
-
-                    return false;
-            }
-
-            return true;
-        }
-    };
-}
 
 
 // Functions that are implemented here
@@ -282,6 +357,7 @@ namespace waavs
     //	and 'a' is set to an empty chunk
     static INLINE ByteSpan chunk_token_char(ByteSpan& a, const char delim) noexcept
     {
+
         if (!a) return {}; // Return empty ByteSpan if 'a' is empty
 
         const uint8_t* start = a.begin();
@@ -496,18 +572,17 @@ namespace waavs
 
 namespace waavs
 {
-    // isAll()
-    // Check if all characters in the span are in the specified charset.
-    // This is typically used when you're trying to determine if the 
-    // whole span is whitespace.
-    static INLINE bool bspan_is_all(const ByteSpan& src, const charset& aset)
-    {
-        auto found = aset.skipWhile(src.begin(), src.end());
-        return found == src.end();
-    }
-
+    // is_all_whitespace()
+    // 
     // Check if all characters in the span are 
     // whitespace (space, tab, newline, carriage return)
+    // This is highly specialized to use SIMD instructions
+    // to check 16 bytes at a time, and then fall back 
+    // to scalar checking for the remaining characters.
+    // Note: Probably not that useful in practice, as most
+    // whitespace is much smaller than 16 bytes.
+    //
+
     static INLINE bool is_all_whitespace(const ByteSpan& s) noexcept
     {
         const uint8_t* p = s.begin();
@@ -534,6 +609,46 @@ namespace waavs
     }
 }
 
+namespace waavs {
+    // Structures for using ByteSpan as keys in unordered maps, 
+    // with proper hashing and equality checks
+    struct ByteSpanHash {
+        size_t operator()(const ByteSpan& span) const noexcept {
+            return waavs::fnv1a_32(span.data(), span.size());
+        }
+    };
+
+    struct ByteSpanEquivalent {
+        bool operator()(const ByteSpan& a, const ByteSpan& b) const noexcept {
+            if (a.size() != b.size())
+                return false;
+            return memcmp(a.data(), b.data(), a.size()) == 0;
+        }
+    };
+
+    // Case insensitive 'string' comparison
+    struct ByteSpanInsensitiveHash {
+        size_t operator()(const ByteSpan& span) const noexcept {
+            return waavs::fnv1a_32_case_insensitive(span.data(), span.size());
+        }
+    };
+
+    struct ByteSpanCaseInsensitive {
+        bool operator()(const ByteSpan& a, const ByteSpan& b) const noexcept {
+            if (a.size() != b.size())
+                return false;
+
+            for (size_t i = 0; i < a.size(); ++i) {
+                //if (TOLOWER(a[i]) != TOLOWER(b[i]))  // Case-insensitive comparison
+                if (std::tolower(a[i]) != std::tolower(b[i]))  // Case-insensitive comparison
+
+                    return false;
+            }
+
+            return true;
+        }
+    };
+}
 
 namespace waavs {
 

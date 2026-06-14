@@ -59,6 +59,178 @@ namespace waavs
 
 
 namespace waavs {
+    
+    static bool parseMarkerOrientation(const ByteSpan& inChunk, MarkerOrientation& orient)
+    {
+        uint32_t value;
+
+        if (getEnumValue(MarkerOrientationEnum, inChunk, value))
+        {
+            orient = static_cast<MarkerOrientation>(value);
+            return true;
+        }
+
+        // Assume the orientation is an angle
+        orient = MarkerOrientation::MARKER_ORIENT_ANGLE;
+
+        return true;
+    }
+
+
+    //
+    // SVGOrient
+    // Determines how the marker should be oriented, and ultimately
+    // what angle of rotation should be applied before drawing
+    // 
+    struct SVGOrient
+    {
+        double fAngle{ 0 };
+        MarkerOrientation fOrientation{ MarkerOrientation::MARKER_ORIENT_ANGLE };
+
+
+        SVGOrient(IAmGroot* groot) {}
+
+        // In order to calculate the angle, we need the path
+        // so we can determine the tangent at the start or end
+        bool loadFromChunk(const ByteSpan& inChunk)
+        {
+            ByteSpan s = inChunk;
+            s = bspan_skip_spaces(s);
+
+            if (!s)
+                return false;
+
+            if (!parseMarkerOrientation(s, fOrientation))
+                return false;
+
+            switch (fOrientation)
+            {
+            case MarkerOrientation::MARKER_ORIENT_AUTO:
+                return true;
+                break;
+
+
+            case MarkerOrientation::MARKER_ORIENT_AUTOSTARTREVERSE:
+            {
+                return true;
+
+            } break;
+
+            case MarkerOrientation::MARKER_ORIENT_ANGLE:
+            default:
+            {
+                SVGAngleUnits units{ SVGAngleUnits::SVG_ANGLETYPE_UNKNOWN };
+                return parseAngle(s, fAngle, units);
+            } break;
+
+            }
+
+            return true;
+        }
+
+
+        // calculate the angle between line segments
+        // return the value in radians
+        //
+        double calcRadians(MarkerPosition pos, const BLPoint& p1, const BLPoint& p2, const BLPoint& p3) const
+        {
+
+
+            if (fOrientation == MarkerOrientation::MARKER_ORIENT_ANGLE)
+            {
+                // fAngle is already in radians
+                return fAngle;
+            }
+
+            // get the angle between the vectors
+            auto angleOfVec = [](double x, double y) noexcept -> double {
+                return std::atan2(y, x);
+                };
+
+            auto norm = [](double x, double y, double& ox, double& oy) noexcept -> bool {
+                const double len2 = x * x + y * y;
+                if (len2 == 0.0) { ox = 0.0; oy = 0.0; return false; }
+                const double inv = 1.0 / std::sqrt(len2);
+                ox = x * inv;
+                oy = y * inv;
+                return true;
+                };
+
+
+            // v1 = p2 - p1 (incoming tangent direction in your triplet)
+            const double v1x = p2.x - p1.x;
+            const double v1y = p2.y - p1.y;
+
+            // v2 = p3 - p2 (outgoing tangent direction)
+            const double v2x = p3.x - p2.x;
+            const double v2y = p3.y - p2.y;
+
+            double angle = 0.0;
+
+
+            switch (pos)
+            {
+            case MARKER_POSITION_START:
+            {
+                // angle is between the first point, and the second point
+                angle = angleOfVec(v1x, v1y);
+
+
+                // If the marker is at the start, and orient='auto-start-reverse',
+                // then we want to flip the angle 180 degrees, which we can do 
+                // by adding 'pi' to it, as that's half a circle.
+                if (fOrientation == MarkerOrientation::MARKER_ORIENT_AUTOSTARTREVERSE)
+                    angle = angle + waavs::kPi;
+            }
+            break;
+
+            case MARKER_POSITION_END:
+                angle = angleOfVec(v1x, v1y);
+                break;
+
+
+            case MARKER_POSITION_MIDDLE:
+            {
+                // Normalize both, then bisect by vector sum
+                double u1x, u1y, u2x, u2y;
+                const bool ok1 = norm(v1x, v1y, u1x, u1y);
+                const bool ok2 = norm(v2x, v2y, u2x, u2y);
+
+                if (!ok1 && !ok2) {
+                    angle = 0.0;
+                    break;
+                }
+                if (!ok1) { angle = angleOfVec(u2x, u2y); break; }
+                if (!ok2) { angle = angleOfVec(u1x, u1y); break; }
+
+                // Bisector candidate
+                double bx = u1x + u2x;
+                double by = u1y + u2y;
+
+                // If cusp (180°), sum is near zero; choose a stable fallback
+                const double bLen2 = bx * bx + by * by;
+                if (bLen2 == 0.0) {
+                    // choose outgoing (common pragmatic choice)
+                    angle = angleOfVec(u2x, u2y);
+                }
+                else {
+                    angle = angleOfVec(bx, by);
+                }
+            }
+            break;
+
+
+            }
+
+            //printf("calcRadians::MARKER_POSITION: %d - %3.2f\n", pos, waavs::degrees(angle));
+
+            return radians_normalize(angle);
+        }
+
+    };
+
+
+
     //=================================================
     // SVGMarkerElement
     //
@@ -391,7 +563,6 @@ namespace waavs {
 
 namespace waavs 
 {
-
     struct ResolvedMarkers {
         std::shared_ptr<SVGMarkerElement> start;
         std::shared_ptr<SVGMarkerElement> mid;

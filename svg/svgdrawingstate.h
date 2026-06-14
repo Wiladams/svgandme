@@ -12,7 +12,6 @@
 #include "svgdatatypes.h"
 #include "svgobject.h"
 
-
 namespace waavs {
 
 	// Represents the current state of the SVG rendering context
@@ -22,6 +21,18 @@ namespace waavs {
 
     // SVGDrawingState 
     // Brings all the state management together
+    static IServePaint* defaultFillServer()
+    {
+        static SolidColorPaint kFillPaint(0, 0, 0, 255);
+        return &kFillPaint;
+    }
+
+    static IServePaint* defaultStrokeServer()
+    {
+        static SolidColorPaint kStrokePaint;
+        return &kStrokePaint;
+    }
+
     struct SVGDrawingState 
     {
 		uint8_t fCompositeMode{ BL_COMP_OP_SRC_OVER };
@@ -31,10 +42,10 @@ namespace waavs {
         // PaintState
         uint32_t fPaintOrder{ PaintOrderKind::SVG_PAINT_ORDER_NORMAL };
         
-        IServePaint*fStrokePaintServer{nullptr};
+        IServePaint*fStrokePaintServer = defaultStrokeServer();
         BLVar fStrokePaint{};
         
-        IServePaint*fFillPaintServer{nullptr};
+        IServePaint*fFillPaintServer= defaultFillServer();
         BLVar fFillPaint{};
 
         BLVar fDefaultColor{};
@@ -72,8 +83,10 @@ namespace waavs {
         // Begin Constructors
         SVGDrawingState() 
         {
+            //fFillPaintServer = ColorPaintServer(BLRgba32(0, 0, 0, 255));
             fFillPaint = BLRgba32(0, 0, 0, 255);
-            fStrokePaint = BLVar::null();
+            fStrokePaintServer = nullptr;
+            //fStrokePaint = BLVar::null();
 			fDefaultColor = BLRgba32(0, 0, 0, 255);
             fBackgroundPaint = BLVar::null();
 			fTransform = WGMatrix3x3::makeIdentity();
@@ -103,7 +116,7 @@ namespace waavs {
             fStrokePaintServer = other.fStrokePaintServer;
 
             // Paints
-            fStrokePaint.assign(other.fStrokePaint);
+            //fStrokePaint.assign(other.fStrokePaint);
             fFillPaint.assign(other.fFillPaint);
             fDefaultColor.assign(other.fDefaultColor);
             fBackgroundPaint.assign(other.fBackgroundPaint);
@@ -470,7 +483,7 @@ namespace waavs {
             resetFont();
             markModified();
         }
-
+        /*
         virtual bool applyToContext(BLContext* ctx)
         {
             // clear the clipping state
@@ -502,6 +515,6 @@ namespace waavs {
 
             return true;
         }
-
+        */
     };
 }
