@@ -8,7 +8,7 @@
 
 #include "svgattributes.h"
 #include "svggraphicselement.h"
-#include "viewport.h"
+
 #include "svgmarker.h"
 #include "pathattribute_parser.h"
 #include "pathprogram_builder.h"
@@ -149,7 +149,7 @@ namespace waavs
 
         bool hasDashing(IRenderSVG* ctx) const noexcept
         {
-            if (ctx->hasDashing()) { return true;}
+            if (ctx->state().hasDashing()) { return true;}
 
             //ByteSpan dashAttr{};
             //if (getAttribute(svgattr::stroke_dasharray(), dashAttr)) 
@@ -183,7 +183,7 @@ namespace waavs
 
             if (hasDashing(ctx))
             {
-                const auto &sds = ctx->getStrokeDashState();
+                const auto &sds = ctx->state().getStrokeDashState();
 
                 PathProgramBuilder builder;
 
@@ -306,7 +306,7 @@ namespace waavs
         
         void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            PaintOrderProgram<uint8_t> prog(ctx->getPaintOrder());
+            PaintOrderProgram<uint8_t> prog(ctx->state().getPaintOrder());
 
             const BLPath& fillP = getFillPath();
             const BLPath& strokeP = getStrokePath(ctx, groot);
@@ -347,10 +347,15 @@ namespace waavs {
         attrs.getValue(svgattr::x2(), fX2);
         attrs.getValue(svgattr::y2(), fY2);
 
-        state.x1 = parseLengthAttr(fX1);
-        state.y1 = parseLengthAttr(fY1);
-        state.x2 = parseLengthAttr(fX2);
-        state.y2 = parseLengthAttr(fY2);
+        lengthValue_parse(fX1, state.x1);
+        lengthValue_parse(fY1, state.y1);
+        lengthValue_parse(fX2, state.x2);
+        lengthValue_parse(fY2, state.y2);
+
+        //state.x1 = parseLengthAttr(fX1);
+        //state.y1 = parseLengthAttr(fY1);
+        //state.x2 = parseLengthAttr(fX2);
+        //state.y2 = parseLengthAttr(fY2);
     }
 
     struct SVGLineElement : public SVGPathBasedGeometry
@@ -388,7 +393,7 @@ namespace waavs {
             double dpi = groot ? groot->dpi() : 96;
 
             const BLFont* fontOpt = nullptr;    // font not relevant here
-            WGRectD paintVP = ctx->viewport();
+            WGRectD paintVP = ctx->state().getViewport();
 
             LengthResolveCtx cx{}, cy{};
             cx = makeLengthCtxUser(paintVP.w, 0.0, dpi, fontOpt);
@@ -524,21 +529,29 @@ namespace waavs {
 
     static INLINE void loadDocRectState(DocRectState& state, const XmlAttributeCollection& attrs) noexcept
     {
-        ByteSpan fX{}, fY{}, fWidth{}, fHeight{}, fRx{}, fRy{};
+        lengthValue_parse(attrs.getValue(svgattr::x()), state.x);
+        lengthValue_parse(attrs.getValue(svgattr::y()), state.y);
+        lengthValue_parse(attrs.getValue(svgattr::width()), state.width);
+        lengthValue_parse(attrs.getValue(svgattr::height()), state.height);
+        lengthValue_parse(attrs.getValue(svgattr::rx()), state.rx);
+        lengthValue_parse(attrs.getValue(svgattr::ry()), state.ry);
 
-        attrs.getValue(svgattr::x(), fX);
-        attrs.getValue(svgattr::y(), fY);
-        attrs.getValue(svgattr::width(), fWidth);
-        attrs.getValue(svgattr::height(), fHeight);
-        attrs.getValue(svgattr::rx(), fRx);
-        attrs.getValue(svgattr::ry(), fRy);
 
-        state.x = parseLengthAttr(fX);
-        state.y = parseLengthAttr(fY);
-        state.width = parseLengthAttr(fWidth);
-        state.height = parseLengthAttr(fHeight);
-        state.rx = parseLengthAttr(fRx);
-        state.ry = parseLengthAttr(fRy);
+        //ByteSpan fX{}, fY{}, fWidth{}, fHeight{}, fRx{}, fRy{};
+
+        //attrs.getValue(svgattr::x(), fX);
+        //attrs.getValue(svgattr::y(), fY);
+        //attrs.getValue(svgattr::width(), fWidth);
+        //attrs.getValue(svgattr::height(), fHeight);
+        //attrs.getValue(svgattr::rx(), fRx);
+        //attrs.getValue(svgattr::ry(), fRy);
+
+        //state.x = parseLengthAttr(fX);
+        //state.y = parseLengthAttr(fY);
+        //state.width = parseLengthAttr(fWidth);
+        //state.height = parseLengthAttr(fHeight);
+        //state.rx = parseLengthAttr(fRx);
+        //state.ry = parseLengthAttr(fRy);
     }
 
     struct SVGRectElement : public SVGPathBasedGeometry
@@ -578,7 +591,7 @@ namespace waavs {
             double dpi = groot ? groot->dpi() : 96.0;
 
             const BLFont* fontOpt = nullptr;    // font not relevant here
-            const WGRectD paintVP = ctx->viewport();
+            const WGRectD paintVP = ctx->state().getViewport();
 
             LengthResolveCtx cx{}, cy{};
             cx = makeLengthCtxUser(paintVP.w, 0.0, dpi, fontOpt);
@@ -673,9 +686,9 @@ namespace waavs {
         }
 
         
-        SVGDimension fCx{};
-        SVGDimension fCy{};
-        SVGDimension fR{};
+        SVGLengthValue fCx{};
+        SVGLengthValue fCy{};
+        SVGLengthValue fR{};
 
 
         SVGCircleElement() 
@@ -683,9 +696,11 @@ namespace waavs {
 
         void fixupSelfStyleAttributes(IAmGroot* groot) override
         {
-            fCx.loadFromChunk(getAttributeByName(svgattr::cx()));
-            fCy.loadFromChunk(getAttributeByName(svgattr::cy()));
-            fR.loadFromChunk(getAttributeByName(svgattr::r()));
+            lengthValue_parse(getAttributeByName(svgattr::cx()), fCx);
+            lengthValue_parse(getAttributeByName(svgattr::cy()), fCy);
+            lengthValue_parse(getAttributeByName(svgattr::r()), fR);
+
+
         }
 
         void bindSelfToContext(IRenderSVG *ctx, IAmGroot *groot) override
@@ -694,17 +709,26 @@ namespace waavs {
             double w = 1.0;
             double h = 1.0;
             
+            if (!ctx)
+                return;
+
             dpi = groot ? groot->dpi() : 96.0;
-            
-            WGRectD cFrame = ctx->viewport();
+            const BLFont& fontOpt = ctx->state().getFont();
+
+            WGRectD cFrame = ctx->state().getViewport();
                 w = cFrame.w;
                 h = cFrame.h;
             
 
             double cx, cy, r;
-            cx = fCx.calculatePixels(w, 0, dpi);
-            cy = fCy.calculatePixels(h, 0, dpi);
-            r = fR.calculatePixels(w, h, dpi);
+
+            LengthResolveCtx wCtx = makeLengthCtxUser(w, 0, dpi, &fontOpt);
+            LengthResolveCtx hCtx = makeLengthCtxUser(h, 0, dpi, &fontOpt);
+
+
+            cx = lengthValue_resolve(fCx, wCtx);
+            cy = lengthValue_resolve(fCy, hCtx);
+            r = lengthValue_resolve(fR, wCtx); // Use width context for radius
 
             fProg.clear();
             invalidateGeometry();
@@ -763,11 +787,11 @@ namespace waavs {
                 });
         }
 
-
-        SVGDimension fCx{};
-        SVGDimension fCy{};
-        SVGDimension fRx{};
-        SVGDimension fRy{};
+        
+        SVGLengthValue fCx{};
+        SVGLengthValue fCy{};
+        SVGLengthValue fRx{};
+        SVGLengthValue fRy{};
 
         
         SVGEllipseElement(IAmGroot* iMap)
@@ -775,34 +799,32 @@ namespace waavs {
         
         void fixupSelfStyleAttributes(IAmGroot* groot) override
         {
-            fCx.loadFromChunk(getAttributeByName(svgattr::cx()));
-            fCy.loadFromChunk(getAttributeByName(svgattr::cy()));
-            fRx.loadFromChunk(getAttributeByName(svgattr::rx()));
-            fRy.loadFromChunk(getAttributeByName(svgattr::ry()));
-
+            lengthValue_parse(getAttributeByName(svgattr::cx()), fCx);
+            lengthValue_parse(getAttributeByName(svgattr::cy()), fCy);
+            lengthValue_parse(getAttributeByName(svgattr::rx()), fRx);
+            lengthValue_parse(getAttributeByName(svgattr::ry()), fRy);
         }
 
         void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            double dpi = 96;
+            double dpi = groot ? groot->dpi() : 96;
             double w = 1.0;
             double h = 1.0;
             
-            if (nullptr != groot)
-            {
-                dpi = groot->dpi();
-            }
-            
-            WGRectD cFrame = ctx->viewport();
+            const BLFont& fontOpt = ctx->state().getFont();
+            WGRectD cFrame = ctx->state().getViewport();
             w = cFrame.w;
             h = cFrame.h;
 
-            double cx, cy, rx, ry;
-            cx = fCx.calculatePixels(w, 0, dpi);
-            cy = fCy.calculatePixels(h, 0, dpi);
-            rx = fRx.calculatePixels(w, 0, dpi);
-            ry = fRy.calculatePixels(h, 0, dpi);
+            LengthResolveCtx wCtx = makeLengthCtxUser(w, 0, dpi, &fontOpt);
+            LengthResolveCtx hCtx = makeLengthCtxUser(h, 0, dpi, &fontOpt);
 
+
+            double cx, cy, rx, ry;
+            cx = lengthValue_resolve(fCx, wCtx);
+            cy = lengthValue_resolve(fCy, hCtx);
+            rx = lengthValue_resolve(fRx, wCtx);
+            ry = lengthValue_resolve(fRy, hCtx);
 
             fProg.clear();
             invalidateGeometry();
@@ -828,7 +850,8 @@ namespace waavs {
     {
         outProg.clear();
 
-        ByteSpan s = chunk_trim(inChunk, chrWspChars);
+        ByteSpan s = inChunk;
+        bspan_trim(s, chrWspChars);
         if (!s)
             return false;
 
@@ -843,7 +866,7 @@ namespace waavs {
             return false;
         {
             ByteSpan t = tok;
-            if (!readNumber(t, dx))
+            if (!number_read(t, dx))
                 return false;
         }
 
@@ -852,7 +875,7 @@ namespace waavs {
             return false;
         {
             ByteSpan t = tok;
-            if (!readNumber(t, dy))
+            if (!number_read(t, dy))
                 return false;
         }
 
@@ -866,14 +889,14 @@ namespace waavs {
         while (view.nextNumberToken(tok))
         {
             ByteSpan t = tok;
-            if (!readNumber(t, dx))
+            if (!number_read(t, dx))
                 break;
 
             if (!view.nextNumberToken(tok))
                 break; // trailing odd number (permissive)
 
             t = tok;
-            if (!readNumber(t, dy))
+            if (!number_read(t, dy))
                 break;
 
             b.lineTo((float)dx, (float)dy);

@@ -83,9 +83,9 @@ namespace waavs {
             apath.add_rect(0,0,fr.w,fr.h);
 
             if (isSelected())
-                ctx->stroke(BLRgba32(0xff7f2f2f));
+                ctx->stroke(BLVar(BLRgba32(0xff7f2f2f)));
             else
-                ctx->stroke(BLRgba32(0xff7fA0A0));
+                ctx->stroke(BLVar(BLRgba32(0xff7fA0A0)));
 
             ctx->strokeShape(apath);
         }
@@ -100,7 +100,7 @@ namespace waavs {
             // Draw Draw the icon's filename
 
             WGRectD fr = frame();
-            ctx->fill(BLRgba32(0xff000000));
+            ctx->fill(BLVar(BLRgba32(0xff000000)));
             ctx->fillText(fFilename.c_str(), 4 + fIconSize, fr.h - 6);
             
             // Draw the mouse hover state
@@ -108,7 +108,7 @@ namespace waavs {
             {
                 BLPath apath;
                 apath.add_rect(0, 0, fr.w, fr.h);
-                ctx->fill(BLRgba32(0x80A0A0A0));
+                ctx->fill(BLVar(BLRgba32(0x80A0A0A0)));
                 ctx->fillShape(apath);
             }
         }
@@ -403,7 +403,7 @@ namespace waavs {
             ctx->strokeWidth(4);
             BLPath apath;
             apath.add_rect(0, 0, frame().w, frame().h);
-            ctx->stroke(BLRgba32(0xffA0A0A0));
+            ctx->stroke(BLVar(BLRgba32(0xffA0A0A0)));
             ctx->strokeShape(apath);
 
             // draw a semi-transparent rectangle around the hover icon frame
@@ -419,10 +419,10 @@ namespace waavs {
         {
             ctx->resetFont();
 
-            ctx->setFontFamily("Arial");
-            ctx->setFontSize(16);
+            ctx->fontFamily("Arial");
+            ctx->fontSize(16);
             ctx->noStroke();
-            ctx->fill(BLRgba32(0xff000000));
+            ctx->fill(BLVar(BLRgba32(0xff000000)));
 
             for (auto& item : fFileList) {
                 item->draw(ctx);

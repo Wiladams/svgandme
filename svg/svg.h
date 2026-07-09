@@ -10,14 +10,14 @@
 // to render any SVG file found in the wild, and certainly those
 // constructed from scratch by typical developers.
 //
-#include "irendersvg.h"
+#include "render_interface.h"
 #include "svgcolors.h"
 #include "svgcss.h"
 #include "svgstructuretypes.h"
 #include "svgattributes.h"
 #include "svgshapes.h"
 #include "svgfilter.h"
-#include "viewport.h"
+
 #include "fonthandler.h"
 #include "svgdocument.h"
 #include "svgfactory.h"

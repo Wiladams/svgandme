@@ -1,7 +1,7 @@
 #pragma once
 
-#include "nametable.h"
-#include "bspan.h"
+#include "core_nametable.h"
+#include "lang_span.h"
 
 
 namespace waavs::svgunits

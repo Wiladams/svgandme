@@ -33,7 +33,8 @@
 
 #include <array>
 
-#include "bspan.h"
+
+#include "lang_scanner.h"
 #include "converters.h"
 
 
@@ -234,19 +235,190 @@ namespace waavs
 
 namespace waavs 
 {	
+    static INLINE void svgPath_wsp_skip(ByteSpan& s) noexcept
+    {
+        bspan_ltrim(s, chrWspChars);
+    }
+
+    // svgPathSep_skip
+    // Skip over any whitespace or commas in the path data
+    static INLINE void svgPath_sep_skip(ByteSpan& s) noexcept
+    {
+        static constexpr charset pathSep = chrWspChars + ',';
+        bspan_ltrim(s, pathSep);
+    }
+
+
+    static INLINE bool svgPath_number_read(ByteSpan& s, float& out) noexcept
+    {
+        svgPath_sep_skip(s);
+
+        double value = 0;
+        if (!number_read(s, value))
+            return false;
+
+        out = static_cast<float>(value);
+        return true;
+    }
+
+    static INLINE bool svgPath_arc_flag_read(ByteSpan& s, float& out) noexcept
+    {
+        svgPath_sep_skip(s);
+
+        if (s.empty())
+            return false;
+
+        if (*s != '0' && *s != '1')
+            return false;
+
+        out = float(*s - '0');
+        ++s;
+        return true;
+    }
+
+    static INLINE int svgPath_args_read(
+        ByteSpan& s,
+        const char* argTypes,
+        float* outArgs) noexcept
+    {
+        int i = 0;
+
+        for (; argTypes[i]; ++i)
+        {
+            switch (argTypes[i])
+            {
+            case 'c':
+            case 'r':
+            {
+                if (!svgPath_number_read(s, outArgs[i]))
+                    return i;
+            } break;
+
+            case 'f':
+            {
+                if (!svgPath_arc_flag_read(s, outArgs[i]))
+                    return i;
+            } break;
+
+            default:
+                return 0;
+            }
+        }
+
+        return i;
+    }
+
+    static INLINE bool svgPath_CommandArgs_read(
+        ByteSpan& s,
+        SVGPathCommand cmd,
+        float* outArgs,
+        uint8_t& outArgCount) noexcept
+    {
+        const char* argTypes = getSegmentArgTypes(static_cast<uint8_t>(cmd));
+        if (!argTypes)
+            return false;
+
+        outArgCount = uint8_t(strlen(argTypes));
+
+        return outArgCount == svgPath_args_read(s, argTypes, outArgs);
+    }
+
+    static INLINE bool svgPath_isCommandChar(uint8_t ch) noexcept
+    {
+        return getSegmentArgTypes(ch) != nullptr;
+    }
+
+    static INLINE bool svgPath_isNumberStart(uint8_t ch) noexcept
+    {
+        return is_digit(ch) || ch == '+' || ch == '-' || ch == '.';
+    }
+
+    static bool svgPathSegment_read(SVGSegmentIterator& iter, PathSegment& seg) noexcept
+    {
+        SVGSegmentParseState& st = iter.fState;
+
+        // A segment may be preceded by whitespace, but not by a free-standing comma.
+        svgPath_wsp_skip(st.remains);
+
+        if (st.remains.empty())
+            return false;
+
+        const uint8_t ch = *st.remains;
+
+        if (svgPath_isCommandChar(ch))
+        {
+            st.fSegmentKind = static_cast<SVGPathCommand>(ch);
+            st.fArgTypes = getSegmentArgTypes(ch);
+            st.fArgCount = st.fArgTypes ? strlen(st.fArgTypes) : 0;
+            st.fIteration = 0;
+
+            ++st.remains;
+
+            // After an explicit command, path argument parsing may consume comma/wsp.
+            svgPath_sep_skip(st.remains);
+        }
+        else if (svgPath_isNumberStart(ch))
+        {
+            // Repeated command: same command, next argument tuple.
+            if (st.fArgTypes == nullptr || st.fArgCount == 0)
+            {
+                st.fError = -1;
+                return false;
+            }
+
+            ++st.fIteration;
+        }
+        else
+        {
+            st.fError = -1;
+            return false;
+        }
+
+        if (st.fArgCount == 0)
+        {
+            seg.reset(nullptr, 0, nullptr, st.fSegmentKind, static_cast<uint8_t>(st.fIteration));
+            return true;
+        }
+
+        float args[kMaxPathArgs]{ 0.0f };
+        uint8_t argCount = 0;
+
+        if (!svgPath_CommandArgs_read(st.remains, st.fSegmentKind, args, argCount))
+        {
+            st.fError = -1;
+            return false;
+        }
+
+        if (argCount != st.fArgCount)
+        {
+            st.fError = -1;
+            return false;
+        }
+
+        seg.reset(
+            args,
+            argCount,
+            st.fArgTypes,
+            st.fSegmentKind,
+            static_cast<uint8_t>(st.fIteration));
+
+        return true;
+    }
+
     //
     // readNextSegmentCommand
     // Given a current state of parsing, read the next segment command within
     // an SVG path.  The state is updated with the new command, and the numeric
     // arguments to go with it.
     //
+    /*
     static bool readNextSegmentCommand(SVGSegmentIterator& iter, PathSegment& seg)
     {
         constexpr charset leadingChars("0123456789.+-");          // digits, symbols, and letters found at start of numbers
         constexpr  charset pathWsp = chrWspChars + ',';
         
         // always ignore leading whitespace
-        bspan_skip_while(iter.fState.remains, pathWsp);
+        bspan_ltrim(iter.fState.remains, pathWsp);
 
         if (iter.fState.remains.empty())
             return false;
@@ -304,5 +476,6 @@ namespace waavs
 
         return true;
     }
+    */
 }
 

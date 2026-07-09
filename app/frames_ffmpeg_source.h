@@ -37,9 +37,9 @@ extern "C" {
 #include "framesource.h"
 #include "stopwatch.h"
 #include "pixelaccessor.h"
-#include "nametable.h"
-#include "bspan.h"
-#include "charset.h"
+#include "core_nametable.h"
+#include "lang_span.h"
+#include "lang_charset.h"
 
 
 
@@ -422,22 +422,23 @@ namespace waavs {
             fCurrentStruct = fMedia.currentStructure();
 
             // Resolve crop against decoded dimensions
-            fCropX = (int64_t)resolveNumberOrPercent(desc.cropX, (double)fCurrentStruct.width, 0.0);
-            fCropY = (int64_t)resolveNumberOrPercent(desc.cropY, (double)fCurrentStruct.height, 0.0);
-            fCropWidth = (int64_t)resolveNumberOrPercent(desc.cropW, (double)fCurrentStruct.width, (double)fCurrentStruct.width);
-            fCropHeight = (int64_t)resolveNumberOrPercent(desc.cropH, (double)fCurrentStruct.height, (double)fCurrentStruct.height);
+            fCropX = (int64_t)numberOrPercent_resolve(desc.cropX, (double)fCurrentStruct.width, 0.0);
+            fCropY = (int64_t)numberOrPercent_resolve(desc.cropY, (double)fCurrentStruct.height, 0.0);
+            fCropWidth = (int64_t)numberOrPercent_resolve(desc.cropW, (double)fCurrentStruct.width, (double)fCurrentStruct.width);
+            fCropHeight = (int64_t)numberOrPercent_resolve(desc.cropH, (double)fCurrentStruct.height, (double)fCurrentStruct.height);
 
             clampCropToBounds();
             if (fCroppedRect.w <= 0 || fCroppedRect.h <= 0)
                 return false;
 
             // Allocate full buffer to match media size
-            fPixels.reset((size_t)fCurrentStruct.width, (size_t)fCurrentStruct.height);
-            fPixels.clearAll();
+            fPixels = Surface::createOwned((size_t)fCurrentStruct.width, (size_t)fCurrentStruct.height);
+            wg_surface_clear(fPixels);
 
             // Crop buffer is a subregion of the full buffer,
             // possibly the same as the full buffer size
-            if (fPixels.getSubSurface(fCroppedRect, fCroppedPixels) != WG_SUCCESS)
+            fCroppedPixels = fPixels.getView(fCroppedRect);
+            if (fCroppedPixels.empty())
                 return false;
 
 
@@ -478,7 +479,7 @@ namespace waavs {
                 if (!ensureSws(fCurrentStruct.width, fCurrentStruct.height, AV_PIX_FMT_BGRA))
                     return false;
 
-                fPixels.reset(fCurrentStruct.width, fCurrentStruct.height);
+                fPixels = Surface::createOwned(fCurrentStruct.width, fCurrentStruct.height);
             }
             else if (res == FFMpegDecodeResult::FrameReady)
             {

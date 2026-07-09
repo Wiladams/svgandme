@@ -25,7 +25,7 @@
 #include <blend2d/blend2d.h>
 
 #include "wsenum.h"
-#include "bspan.h"
+#include "lang_span.h"
 
 
 namespace waavs {
@@ -62,6 +62,7 @@ namespace waavs {
     };
     
     enum AspectRatioMeetOrSliceKind : uint32_t {
+        SVG_MEET_OR_SLICE_NONE = 0,
         SVG_ASPECT_RATIO_MEET = 10,
         SVG_ASPECT_RATIO_SLICE = 11
     };
@@ -235,20 +236,6 @@ namespace waavs {
         SVG_LENGTHTYPE_PT           = 9,
         SVG_LENGTHTYPE_PC           = 10,
     };
-
-    static WSEnum SVGDimensionEnum = {
-        {"",SVG_LENGTHTYPE_NUMBER },
-        {"px", SVG_LENGTHTYPE_PX},
-        {"pt", SVG_LENGTHTYPE_PT},
-        {"pc", SVG_LENGTHTYPE_PC},
-        {"mm", SVG_LENGTHTYPE_MM},
-        {"cm", SVG_LENGTHTYPE_CM},
-        {"in", SVG_LENGTHTYPE_IN},
-        {"%",  SVG_LENGTHTYPE_PERCENTAGE},
-        {"em", SVG_LENGTHTYPE_EMS},
-        {"ex", SVG_LENGTHTYPE_EXS}
-    };
-
 
 }
 

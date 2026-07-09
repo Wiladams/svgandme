@@ -68,7 +68,7 @@ namespace waavs {
             ByteSpan key{};
             ByteSpan value{};
 
-            while (readNextKeyAttribute(src, key, value))
+            while (xmlattribute_read_next(src, key, value))
             {
                 setAttribute(key, value);
             }

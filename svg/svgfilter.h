@@ -1046,7 +1046,7 @@ namespace waavs
             setIsVisible(false);
         }
 
-        virtual bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept
+        bool emitSelf(FilterProgramStream& out, InternedKey& last) const noexcept override
         {
             //const uint8_t flags = flagsForIO(*this, false);
             //out.ops.push_back(packOp(FOP_GAUSSIAN_BLUR, flags));
@@ -1138,7 +1138,7 @@ namespace waavs
 
             ByteSpan parAttr = getAttribute(svgattr::preserveAspectRatio());
             if (parAttr)
-                parsePreserveAspectRatio(parAttr, fAlign, fMeetOrSlice);
+                preserveAspectRatio_parse(parAttr, fAlign, fMeetOrSlice);
         }
     };
 
@@ -1211,7 +1211,7 @@ namespace waavs
         }
 
         // Generator-like wrt common "in1": ABI says it is unused.
-        InternedKey resolveIn1(InternedKey last) const noexcept
+        InternedKey resolveIn1(InternedKey last) const noexcept override
         {
             (void)last;
             return nullptr;
@@ -1751,7 +1751,7 @@ namespace waavs {
 
             // Use current context info as much as is available.
             const double dpi = groot? groot->dpi() : 96.0;
-            const BLFont* font = ctx ? &ctx->getFont() : nullptr;
+            const BLFont* font = ctx ? &ctx->state().getFont() : nullptr;
 
             // SVG defaults on <filter>:
             //   x="-10%" y="-10%" width="120%" height="120%"
@@ -1813,10 +1813,10 @@ namespace waavs {
 
 
             // filter region (optional)
-            parseLengthValue(getAttribute(svgattr::x()), fX);
-            parseLengthValue(getAttribute(svgattr::y()), fY);
-            parseLengthValue(getAttribute(svgattr::width()), fWidth);
-            parseLengthValue(getAttribute(svgattr::height()), fHeight);
+            lengthValue_parse(getAttribute(svgattr::x()), fX);
+            lengthValue_parse(getAttribute(svgattr::y()), fY);
+            lengthValue_parse(getAttribute(svgattr::width()), fWidth);
+            lengthValue_parse(getAttribute(svgattr::height()), fHeight);
 
             ByteSpan fuA{}, puA{};
             if (getAttribute(svgattr::filterUnits(), fuA)) {

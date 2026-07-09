@@ -10,7 +10,7 @@
 #include "pixeling_composite.h"
 #include "pixeling_blend.h"
 
-#include "membuff.h" // for memset_u32
+#include "lang_memory.h" 
 
 //
 // Drawing routines for Surface_ARGB32.  These are all implemented in terms 
@@ -21,6 +21,35 @@
 //
 namespace waavs
 {
+    // Surface_ARGB32_nearest_pixel()
+// 
+// Given float coordinates, find the nearest pixel to
+// the given coordinates
+    static INLINE uint32_t Surface_ARGB32_nearest_pixel(const Surface_ARGB32& src, float fx, float fy) noexcept
+    {
+        const int sx = iroundf_fast(fx);
+        const int sy = iroundf_fast(fy);
+
+        if ((unsigned)sx >= (unsigned)src.width ||
+            (unsigned)sy >= (unsigned)src.height)
+        {
+            return 0;
+        }
+
+        const uint32_t* row = Surface_ARGB32_row_pointer_const(src, sy);
+        return row[sx];
+    }
+
+    // Surface_ARGB32_sample()
+    // Sample the surface at the given normalized coordinates (u, v), where
+    // u and v are in the range [0, 1].  This function will perform
+    static INLINE uint32_t Surface_ARGB32_sample(const Surface_ARGB32& src, float u, float v, uint32_t mode) noexcept
+    {
+        // For now, just do nearest sampling.  TODO: add bilinear or other filtering modes.
+        const float fx = u * float(src.width);
+        const float fy = v * float(src.height);
+        return Surface_ARGB32_nearest_pixel(src, fx, fy);
+    }
 
     // --------------------------------------
     // wg_fill_hspan_unchecked()
@@ -66,7 +95,7 @@ namespace waavs
         if (clippedLen <= 0)
             return WG_SUCCESS;
 
-        uint32_t* row = Surface_ARGB32_row_pointer(&dst, y);
+        uint32_t* row = Surface_ARGB32_row_pointer(dst, y);
         wg_hspan_fill_unchecked(row + x0, clippedLen, rgbaPremul);
 
         return WG_SUCCESS;
@@ -481,6 +510,16 @@ namespace waavs
         return WG_SUCCESS;
     }
 
+    static INLINE WGResult wg_fill_rect(Surface_ARGB32& s, const WGRectI area, const Pixel_ARGB32 rgbaPremul) noexcept
+    {
+        // get subarea for the rectangle, then fill it.
+        Surface_ARGB32 subarea = Surface_ARGB32_subview(s, area);
+        if (!Surface_ARGB32_is_valid(subarea))
+            return WG_SUCCESS;
+
+        return wg_surface_fill(subarea, rgbaPremul);
+    }
+
 
     // ---------------------------------------
     // wg_surface_clear()
@@ -494,15 +533,7 @@ namespace waavs
 
 
 
-    static INLINE WGResult wg_fill_rect(Surface_ARGB32& s, const WGRectI area, const Pixel_ARGB32 rgbaPremul) noexcept
-    {
-        // get subarea for the rectangle, then fill it.
-        Surface_ARGB32 subarea;
-        if (Surface_ARGB32_get_subarea(s, area, subarea) != WG_SUCCESS)
-            return WG_SUCCESS;
 
-        return wg_surface_fill(subarea, rgbaPremul);
-    }
 
 
 }

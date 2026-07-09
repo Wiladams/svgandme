@@ -44,22 +44,25 @@ namespace waavs
         Surface_ARGB32& dstView,
         Surface_ARGB32& srcView) noexcept
     {
-        if (!dst.data || dst.width <= 0 || dst.height <= 0)
+        if (!Surface_ARGB32_is_valid(dst))
             return WG_ERROR_Invalid_Argument;
 
-        if (!src.data || src.width <= 0 || src.height <= 0)
+        if (!Surface_ARGB32_is_valid(src))
             return WG_ERROR_Invalid_Argument;
 
-        WGRectI clipped = intersection(area, Surface_ARGB32_bounds(&dst));
-        clipped = intersection(clipped, Surface_ARGB32_bounds(&src));
+        WGRectI clipped = intersection(area, Surface_ARGB32_bounds(dst));
+        clipped = intersection(clipped, Surface_ARGB32_bounds(src));
 
         if (clipped.w <= 0 || clipped.h <= 0)
             return WG_SUCCESS;
 
-        if (Surface_ARGB32_get_subarea(dst, clipped, dstView) != WG_SUCCESS)
+        dstView = Surface_ARGB32_subview(dst, clipped);
+        if (!Surface_ARGB32_is_valid(dstView))
             return WG_ERROR_Invalid_Argument;
 
-        if (Surface_ARGB32_get_subarea(src, clipped, srcView) != WG_SUCCESS)
+
+        srcView = Surface_ARGB32_subview(src, clipped);
+        if (!Surface_ARGB32_is_valid(srcView))
             return WG_ERROR_Invalid_Argument;
 
         return WG_SUCCESS;
@@ -105,13 +108,13 @@ namespace waavs
             dstClipped.h
         };
 
-        WGResult res = Surface_ARGB32_get_subarea(src, srcRect, srcView);
-        if (res != WG_SUCCESS)
-            return res;
+        srcView = Surface_ARGB32_subview(src, srcRect);
+        if (!Surface_ARGB32_is_valid(srcView))
+            return WG_ERROR_Invalid_Argument;
 
-        res = Surface_ARGB32_get_subarea(dst, dstClipped, dstView);
-        if (res != WG_SUCCESS)
-            return res;
+        dstView = Surface_ARGB32_subview(dst, dstClipped);
+        if (!Surface_ARGB32_is_valid(dstView))
+            return WG_ERROR_Invalid_Argument;
 
         return WG_SUCCESS;
     }
@@ -198,20 +201,23 @@ namespace waavs
         if (!b.data || b.width <= 0 || b.height <= 0)
             return WG_ERROR_Invalid_Argument;
 
-        WGRectI clipped = intersection(area, Surface_ARGB32_bounds(&dst));
-        clipped = intersection(clipped, Surface_ARGB32_bounds(&a));
-        clipped = intersection(clipped, Surface_ARGB32_bounds(&b));
+        WGRectI clipped = intersection(area, Surface_ARGB32_bounds(dst));
+        clipped = intersection(clipped, Surface_ARGB32_bounds(a));
+        clipped = intersection(clipped, Surface_ARGB32_bounds(b));
 
         if (clipped.w <= 0 || clipped.h <= 0)
             return WG_SUCCESS;
 
-        if (Surface_ARGB32_get_subarea(dst, clipped, dstView) != WG_SUCCESS)
+        dstView = Surface_ARGB32_subview(dst, clipped);
+        if (!Surface_ARGB32_is_valid(dstView))
             return WG_ERROR_Invalid_Argument;
 
-        if (Surface_ARGB32_get_subarea(a, clipped, aView) != WG_SUCCESS)
+        aView = Surface_ARGB32_subview(a, clipped);
+        if (!Surface_ARGB32_is_valid(aView))
             return WG_ERROR_Invalid_Argument;
 
-        if (Surface_ARGB32_get_subarea(b, clipped, bView) != WG_SUCCESS)
+        bView = Surface_ARGB32_subview(b, clipped);
+        if (!Surface_ARGB32_is_valid(bView))
             return WG_ERROR_Invalid_Argument;
 
         return WG_SUCCESS;

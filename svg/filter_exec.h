@@ -5,6 +5,7 @@
 #include "filter_types.h"
 #include "svgenums.h"   // BUGBUG - for SpaceUnitsKind
 #include "surface.h"
+#include "surface_draw.h"
 
 #include <memory>
 
@@ -363,16 +364,13 @@ namespace waavs
 
     static INLINE Surface createSurfaceHolder(size_t w, size_t h) noexcept
     {
-        Surface out;
-        (void)out.reset(w, h);
+        Surface out = Surface::createOwned(w, h);
         return out;
-
     }
 
     static INLINE Surface createLikeSurfaceHolder(const Surface& like) noexcept
     {
-        Surface out;
-        (void)out.reset(like.width(), like.height());
+        Surface out = Surface::createOwned(like.width(), like.height());
         return out;
     }
 
@@ -441,19 +439,19 @@ namespace waavs
         switch (policy.outsidePolicy)
         {
         case FilterOutsidePolicy::ClearOutput:
-            rio.out.clearAll();
+            wg_surface_clear(rio.out);
             break;
 
         case FilterOutsidePolicy::CopyInput:
             if (!rio.in1.empty())
-                rio.out.blit(rio.in1, 0, 0);
+                wg_blit_copy(rio.out,rio.in1, 0, 0);
             else
-                rio.out.clearAll();
+                wg_surface_clear(rio.out);
             break;
 
         case FilterOutsidePolicy::GenerateEverywhere:
             // Usually no clear needed, but clear is safe during migration.
-            rio.out.clearAll();
+            wg_surface_clear(rio.out);
             break;
 
         case FilterOutsidePolicy::PreserveDestination:

@@ -45,7 +45,7 @@ namespace waavs
         if (y < 0) y = 0;
         else if (y >= H) y = H - 1;
 
-        const uint32_t* row = Surface_ARGB32_row_pointer_const(&s, (size_t)y);
+        const uint32_t* row = Surface_ARGB32_row_pointer_const(s, (size_t)y);
         const uint32_t px = row[x];
 
         return argb32_unpack_alpha_norm(px);

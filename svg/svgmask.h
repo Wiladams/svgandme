@@ -69,16 +69,21 @@ namespace waavs
         void fixupSelfStyleAttributes(IAmGroot* groot) override
         {
             // parse length attributes
-            ByteSpan x{}, y{}, w{}, h{};
-            fAttributes.getValue(svgattr::x(), x);
-            fAttributes.getValue(svgattr::y(), y);
-            fAttributes.getValue(svgattr::width(), w);
-            fAttributes.getValue(svgattr::height(), h);
+            //ByteSpan x{}, y{}, w{}, h{};
+            //fAttributes.getValue(svgattr::x(), x);
+            //fAttributes.getValue(svgattr::y(), y);
+            //fAttributes.getValue(svgattr::width(), w);
+            //fAttributes.getValue(svgattr::height(), h);
 
-            fX = parseLengthAttr(x);
-            fY = parseLengthAttr(y);
-            fWidth = parseLengthAttr(w);
-            fHeight = parseLengthAttr(h);
+            lengthValue_parse(getAttribute(svgattr::x()), fX);
+            lengthValue_parse(getAttribute(svgattr::y()), fY);
+            lengthValue_parse(getAttribute(svgattr::width()), fWidth);
+            lengthValue_parse(getAttribute(svgattr::height()), fHeight);
+
+            //fX = parseLengthAttr(x);
+            //fY = parseLengthAttr(y);
+            //fWidth = parseLengthAttr(w);
+            //fHeight = parseLengthAttr(h);
 
             // parse mask-type
             ByteSpan maskTypeAttr{};

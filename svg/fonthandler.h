@@ -13,14 +13,61 @@
 
 #include <blend2d/blend2d.h>
 #include "maths.h"
-#include "bspan.h"
+#include "lang_span.h"
+#include "lang_charset.h"
+#include "lang_grammar.h"
+
+
+namespace waavs 
+{
+
+    static INLINE bool fontFamilyName_read(
+        ByteSpan& src,
+        ByteSpan& outName,
+        bool& outIsGeneric) noexcept
+    {
+        static charset commaSep(",");
+
+        outName.reset();
+        outIsGeneric = false;
+
+        bspan_skip_spaces(src);
+        if (!src)
+            return false;
+
+        if (*src == '"' || *src == '\'')
+        {
+            if (!bspan_read_quoted(src, outName))
+                return false;
+
+            bspan_skip_spaces(src);
+            if (src && *src == ',')
+                ++src;
+
+            return !outName.empty();
+        }
+
+        ByteSpan raw = bspan_read_until(src, commaSep);
+        bspan_trim(raw, chrWspChars);
+
+        if (!raw)
+            return false;
+
+        outName = raw;
+
+        outIsGeneric =
+            raw == "serif" ||
+            raw == "sans-serif" ||
+            raw == "monospace" ||
+            raw == "cursive" ||
+            raw == "fantasy";
+
+        return true;
+    }
 
 
 
 
-namespace waavs {
-
-    
     class FontHandler
     {
     public:
@@ -160,9 +207,9 @@ namespace waavs {
             // is looked up first
             while (!s.empty())
             {
-                s = chunk_ltrim(s, fontWsp);
-                ByteSpan name = chunk_token(s, delims);
-                name = chunk_trim(name, quoteChars);
+                bspan_ltrim(s, fontWsp);
+                ByteSpan name = bspan_read_until(s, delims);
+                bspan_trim(name, quoteChars);
 
                 if (name.empty())
                     break;

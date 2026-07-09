@@ -70,7 +70,7 @@ namespace waavs
                 // the current color from the context.
                 // we still need to apply our specific opacity if
                 // it exists
-                return ctx->getDefaultColor();
+                return ctx->state().getDefaultColor();
             }
             else if (fColor.isInherit())
             {
@@ -81,7 +81,7 @@ namespace waavs
                 // this is a little more tricky, we want to retrieve
                 // the inherited color, depends on whether we are
                 // stroke or fill
-                return ctx->getDefaultColor();
+                return ctx->state().getDefaultColor();
             }
             else if (fColor.isReference())
             {
@@ -109,9 +109,9 @@ namespace waavs
             return BLVar::null();
         }
 
-        virtual void applyPaintToContext(IRenderSVG* ctx, IAmGroot* groot)
-        {
-        }
+        //virtual void applyPaintToContext(IRenderSVG* ctx, IAmGroot* groot)
+        //{
+        //}
 
         // paint usually comes in color/opacity pairs
         // so use SVGColor to read it, if it's not a URL 
@@ -165,18 +165,18 @@ namespace waavs
             setName(svgattr::fill());
         }
 
-        virtual void applyPaintToContext(IRenderSVG* ctx, IAmGroot* groot) override
-        {
-            BLVar aVar = getVariant(ctx, groot);
-            if (aVar.is_null())
-                ctx->noFill();
-            else
-                ctx->fill(aVar);
-        }
+        //virtual void applyPaintToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        //{
+        //    BLVar aVar = getVariant(ctx, groot);
+        //    if (aVar.is_null())
+        //        ctx->noFill();
+        //    else
+        //        ctx->fill(aVar);
+        //}
 
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->setFillPaintServer(this);
+            ctx->state().setFillPaintServer(this);
         }
 
     };
@@ -197,18 +197,18 @@ namespace waavs
             setName(svgattr::stroke());
         }
 
-        void applyPaintToContext(IRenderSVG* ctx, IAmGroot* groot) override
-        {
-            BLVar aVar = getVariant(ctx, groot);
-            if (aVar.is_null())
-                ctx->noStroke();
-            else
-                ctx->stroke(aVar);
-        }
+        //void applyPaintToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        //{
+        //    BLVar aVar = getVariant(ctx, groot);
+        //    if (aVar.is_null())
+        //        ctx->noStroke();
+        //    else
+        //        ctx->stroke(aVar);
+        //}
 
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->setStrokeServer(this);
+            ctx->state().setStrokePaintServer(this);
         }
 
     };
@@ -233,7 +233,7 @@ namespace waavs
 
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->setDefaultColor(getVariant(ctx, groot));
+            ctx->state().setDefaultColor(getVariant(ctx, groot));
         }
 
     };

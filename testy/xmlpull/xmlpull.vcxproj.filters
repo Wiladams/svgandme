@@ -20,7 +20,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\svg\xmlscan.h">
+    <ClInclude Include="..\..\svg\xml_scan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\app\mappedfile.h">
@@ -53,16 +53,28 @@
     <ClInclude Include="..\..\svg\charset.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\xmltoken.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\svg\xmlschema.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\xmltokengen.h">
+    <ClInclude Include="..\..\svg\xmlelementgen.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\xmlelementgen.h">
+    <ClInclude Include="..\..\svg\xml_scan_element.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\ws_table.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\xml_attribute_collection.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\xml_pull.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\definitions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\xml_scan_token.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

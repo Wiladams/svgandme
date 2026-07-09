@@ -4,7 +4,7 @@
 #include <functional>
 #include <unordered_map>
 
-#include "svgb2ddriver.h"
+#include "render_blend2d.h"
 #include "svgattributes.h"
 #include "svggraphicselement.h"
 #include "pixeling_clip.h"

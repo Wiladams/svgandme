@@ -129,7 +129,7 @@ namespace waavs
             return 0;
         }
 
-        const uint32_t* srcRow = Surface_ARGB32_row_pointer_const(p.src, sy);
+        const uint32_t* srcRow = Surface_ARGB32_row_pointer_const(*p.src, sy);
         return srcRow[sx];
     }
 

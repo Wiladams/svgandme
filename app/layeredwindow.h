@@ -15,7 +15,7 @@ https://docs.microsoft.com/en-us/archive/msdn-magazine/2014/june/windows-with-c-
 #define NOMINMAX
 #include <windows.h>
 
-#include "nativewindow.h"
+#include "app_nativewindow.h"
 
 
 class LayeredWindowInfo

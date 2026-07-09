@@ -4,7 +4,7 @@
 #include "definitions.h"
 #include <vector>
 
-#include "wggeometry.h"
+#include "core_geometry.h"
 #include "wg_bezier.h"
 
 // Machinery for a PathProgram

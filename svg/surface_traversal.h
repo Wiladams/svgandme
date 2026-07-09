@@ -178,7 +178,7 @@ namespace waavs
         // sample_zero
         INLINE uint32_t sample_zero_unchecked(int x, int y) const noexcept
         {
-            const uint32_t* row = Surface_ARGB32_row_pointer_const(src, y);
+            const uint32_t* row = Surface_ARGB32_row_pointer_const(*src, y);
             return row[x];
         }
 
@@ -197,7 +197,7 @@ namespace waavs
         // sample_clamp
         INLINE uint32_t sample_clamp_unchecked(int x, int y) const noexcept
         {
-            const uint32_t* row = Surface_ARGB32_row_pointer_const(src, y);
+            const uint32_t* row = Surface_ARGB32_row_pointer_const(*src, y);
             return row[x];
         }
 
@@ -224,7 +224,7 @@ namespace waavs
         //
         INLINE uint32_t sample_wrap_unchecked(int x, int y) const noexcept
         {
-            const uint32_t* row = Surface_ARGB32_row_pointer_const(src, y);
+            const uint32_t* row = Surface_ARGB32_row_pointer_const(*src, y);
             return row[x];
         }
 

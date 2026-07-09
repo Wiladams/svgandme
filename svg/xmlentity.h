@@ -1,11 +1,22 @@
 #pragma once
 
-#include "bspan.h"
-#include "utf8.h"
+
+#include "lang_grammar.h"
+#include "core_utf8.h"
 
 
 namespace waavs 
 {
+    // copyFrom()
+    // 
+    // BUGBUG: This is kind of dangerous, as we're only copying stuff
+    // and not doing any bounds checking
+    static INLINE void bspan_copy_from(ByteSpan& a, const void* src, size_t sz) noexcept
+    {
+        if (sz > 0)
+            std::memcpy(const_cast<uint8_t*>(a.data()), src, sz);
+    }
+
     // expandXmlEntities
     //
     // This function scans the input ByteSpan for XML character entities
@@ -33,7 +44,7 @@ namespace waavs
                 // By taking the token up to the ';', we have already moved
                 // the input cursor to the next character
                 // so we're free to decode the content in isolation
-                auto ent = chunk_token_char(s, ';');
+                auto ent = bspan_read_until(s, ';');
 
                 if (*ent == '#') 
                 {

@@ -24,7 +24,7 @@ namespace waavs
     constexpr auto InvPi = 0.31830988618379067154;
     constexpr auto Inv2Pi = 0.15915494309189533577;
     constexpr auto Inv4Pi = 0.07957747154594766788;      // sqrt(2.0)
-    constexpr auto DegToRad = 0.017453292519943295;      // PI / 180
+    constexpr auto kDegToRad = 0.017453292519943295;      // PI / 180
     constexpr auto RadToDeg = 57.29577951308232;         // 180 / PI
     constexpr auto Sqrt2 = 1.41421356237309504880;
     

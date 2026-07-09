@@ -10,10 +10,11 @@
 #include <cmath>
 #include <cstdint>
 
-#include "viewport.h"
 #include "svggraphicselement.h"
+#include "svg_attribute_transform.h"
+#include "svg_attribute_viewport.h"
 
-#include "svgb2ddriver.h"
+#include "render_blend2d.h"
 
 
 
@@ -232,17 +233,10 @@ namespace waavs
         // 
         void fixupCommonAttributes(IAmGroot* groot)
         {
-            // x,y,w,h
-            ByteSpan xA{}, yA{}, wA{}, hA{};
-            fAttributes.getValue(svgattr::x(), xA);
-            fAttributes.getValue(svgattr::y(), yA);
-            fAttributes.getValue(svgattr::width(), wA);
-            fAttributes.getValue(svgattr::height(), hA);
-
-            fX = parseLengthAttr(xA);
-            fY = parseLengthAttr(yA);
-            fWidth = parseLengthAttr(wA);
-            fHeight = parseLengthAttr(hA);
+            lengthValue_parse(getAttribute(svgattr::x()), fX);
+            lengthValue_parse(getAttribute(svgattr::y()), fY);
+            lengthValue_parse(getAttribute(svgattr::width()), fWidth);
+            lengthValue_parse(getAttribute(svgattr::height()), fHeight);
 
             // patternUnits / patternContentUnits (only if present; otherwise keep defaults)
             ByteSpan puA{}, pcuA{};
@@ -277,7 +271,7 @@ namespace waavs
             // viewBox
             ByteSpan vbA{};
             WGRectD vb{};
-            if (fAttributes.getValue(svgattr::viewBox(), vbA) && parseViewBox(vbA, vb)) {
+            if (fAttributes.getValue(svgattr::viewBox(), vbA) && viewBox_parse(vbA, vb)) {
                 fHasViewBox = true;
                 fViewBox = vb;
             }
@@ -311,10 +305,10 @@ namespace waavs
             }
 
 
-            const WGRectD paintVP = ctx->viewport();
-            const WGRectD objBBox = ctx->getObjectFrame();
+            const WGRectD paintVP = ctx->state().getViewport();
+            const WGRectD objBBox = ctx->state().getObjectFrame();
             const double dpi = groot ? groot->dpi() : 96.0;
-            const BLFont* fontOpt = &ctx->getFont();
+            const BLFont &fontOpt = ctx->state().getFont();
 
 
             const bool puObject = (fPatternUnits == SpaceUnitsKind::SVG_SPACE_OBJECT);
@@ -323,13 +317,13 @@ namespace waavs
             // depending on which patternUnits specified
             LengthResolveCtx cx{}, cy{}, cw{}, ch{};
             if (fPatternUnits == SpaceUnitsKind::SVG_SPACE_OBJECT) {
-                cx = makeLengthCtxUser(objBBox.w, 0.0, dpi, fontOpt, SpaceUnitsKind::SVG_SPACE_OBJECT);
-                cy = makeLengthCtxUser(objBBox.h, 0.0, dpi, fontOpt, SpaceUnitsKind::SVG_SPACE_OBJECT); 
+                cx = makeLengthCtxUser(objBBox.w, 0.0, dpi, &fontOpt, SpaceUnitsKind::SVG_SPACE_OBJECT);
+                cy = makeLengthCtxUser(objBBox.h, 0.0, dpi, &fontOpt, SpaceUnitsKind::SVG_SPACE_OBJECT); 
                 cw = cx; ch = cy;
             }
             else {
-                cx = makeLengthCtxUser(paintVP.w, 0.0, dpi, fontOpt, SpaceUnitsKind::SVG_SPACE_USER);
-                cy = makeLengthCtxUser(paintVP.h, 0.0, dpi, fontOpt, SpaceUnitsKind::SVG_SPACE_USER);
+                cx = makeLengthCtxUser(paintVP.w, 0.0, dpi, &fontOpt, SpaceUnitsKind::SVG_SPACE_USER);
+                cy = makeLengthCtxUser(paintVP.h, 0.0, dpi, &fontOpt, SpaceUnitsKind::SVG_SPACE_USER);
                 cw = cx; ch = cy;
             }
 
@@ -363,7 +357,7 @@ namespace waavs
 
 
             // Now, ensure the bitmap is the size we specified
-            fTileSurface.reset(fTilePxW, fTilePxH);
+            fTileSurface = Surface::createOwned(fTilePxW, fTilePxH);
             if (!renderTile(groot, objBBox))
                 return;
 
@@ -388,15 +382,15 @@ namespace waavs
             ictx.clear();
 
             // Nearest viewport for pattern children is the TILE USER RECT.
-            ictx.setViewport({ 0.0, 0.0, fTileRect.w, fTileRect.h });
+            ictx.state().setViewport({ 0.0, 0.0, fTileRect.w, fTileRect.h });
 
             // Object frame for children:
             // - If patternContentUnits==objectBoundingBox and no viewBox: children content space is 0..1
             // - Otherwise: treat like tile user space
             if (fPatternContentUnits == SpaceUnitsKind::SVG_SPACE_OBJECT && !fHasViewBox)
-                ictx.setObjectFrame({ 0.0, 0.0, 1.0, 1.0 });
+                ictx.state().setObjectFrame({ 0.0, 0.0, 1.0, 1.0 });
             else
-                ictx.setObjectFrame({ 0.0, 0.0, fTileRect.w, fTileRect.h });
+                ictx.state().setObjectFrame({ 0.0, 0.0, fTileRect.w, fTileRect.h });
 
             // Need to construct the matrix that maps from patternContentUnits
             // to the pixel units of the tile bitmap

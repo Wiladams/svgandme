@@ -7,10 +7,10 @@
 #include "framesource.h"
 #include "stopwatch.h"
 #include "surface.h"
-#include "nametable.h"
-#include "charset.h"
-#include "bspan.h"
-#include "app/mappedfile.h"
+#include "core_nametable.h"
+#include "lang_charset.h"
+#include "lang_span.h"
+#include "app_mappedfile.h"
 
 
 namespace waavs 
@@ -107,10 +107,10 @@ namespace waavs
             // If we've gotten to here, we have successfully decoded the image info.  
             // We can use this to determine how many frames there are and what the dimensions are.
             
-            fCropX = (int64_t)resolveNumberOrPercent(desc.cropX, fImageInfo.size.w, 0);
-            fCropY = (int64_t)resolveNumberOrPercent(desc.cropY, fImageInfo.size.h, 0);
-            fCropWidth = (int64_t)resolveNumberOrPercent(desc.cropW, fImageInfo.size.w, fImageInfo.size.w);
-            fCropHeight = (int64_t)resolveNumberOrPercent(desc.cropH, fImageInfo.size.h, fImageInfo.size.h);
+            fCropX = (int64_t)numberOrPercent_resolve(desc.cropX, fImageInfo.size.w, 0);
+            fCropY = (int64_t)numberOrPercent_resolve(desc.cropY, fImageInfo.size.h, 0);
+            fCropWidth = (int64_t)numberOrPercent_resolve(desc.cropW, fImageInfo.size.w, fImageInfo.size.w);
+            fCropHeight = (int64_t)numberOrPercent_resolve(desc.cropH, fImageInfo.size.h, fImageInfo.size.h);
 
             clampCropToImageBounds();
             if (fCropWidth <= 0 || fCropHeight <= 0)
@@ -118,8 +118,7 @@ namespace waavs
 
 
             // Initialize the backing store
-            if (!fPixels.reset(fCropWidth, fCropHeight))
-                return false;
+            fPixels = Surface::createOwned(fCropWidth, fCropHeight);
 
             fIsValild = true;
 
@@ -159,9 +158,8 @@ namespace waavs
             BLResult res = fDecoder.read_frame(fCaptureImage, (const uint8_t*)fMappedFile->data(), fMappedFile->size());
             BLImageData imgData{};
             res = fCaptureImage.get_data(&imgData);
-            fPixels.createFromData((size_t)fCropWidth, (size_t)fCropHeight, 
-                (size_t)imgData.stride, 
-                (uint8_t *)imgData.pixel_data);
+
+            fPixels = Surface::createBorrowed((uint8_t*)imgData.pixel_data, (size_t)fCropWidth, (size_t)fCropHeight, (size_t)imgData.stride);
 
             // make not of current time as last capture time
             fLastCaptureTime = fTimer.seconds();

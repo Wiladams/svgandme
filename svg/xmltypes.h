@@ -3,12 +3,9 @@
 
 
 
-#include <cstdint>
-#include <unordered_map>
+#include "lang_scanner.h"
+#include "core_nametable.h"
 
-
-#include "bspan_utils.h"
-#include "nametable.h"
 
 enum XML_ELEMENT_TYPE {
     XML_ELEMENT_TYPE_INVALID = 0
@@ -41,189 +38,6 @@ namespace waavs
 
 namespace waavs 
 {
-    // readNextCSSKeyValue()
-    // 
-    // Properties are separated by ';'
-    // values are separated from the key with ':'
-    // Ex: <tagname style="stroke:black;fill:white" />
-    // Return
-    //   true - if a valid key/value pair was found
-    //      in this case, key, and value will be populated
-    //   false - if no key/value pair was found, or end of string
-    //      in this case, key, and value will be undefined
-    //
-    static bool readNextCSSKeyValue(ByteSpan& src, ByteSpan& key, ByteSpan& value, const unsigned char fieldDelimeter = ';', const unsigned char keyValueSeparator = ':') noexcept
-    {
-        // Trim leading whitespace to begin
-        bspan_skip_spaces(src);
-
-        // If the string is now blank, return immediately
-        if (!src)
-            return false;
-
-        // peel off a key/value pair by taking a token up to the fieldDelimeter
-        // BUGBUG - should be able to use read_identifier here
-        value = chunk_token_char(src, fieldDelimeter);
-
-        // Now, separate the key from the value using the keyValueSeparator
-        key = chunk_token_char(value, keyValueSeparator);
-
-        // trim the key and value fields of whitespace
-        key = chunk_trim(key, chrWspChars);
-        value = chunk_trim(value, chrWspChars);
-
-        return true;
-    }
-
-    // Efficiently reads the next key-value attribute pair from `src`
-    // Attributes are separated by '=' and values are enclosed in '"' or '\''
-    static bool readNextKeyAttribute(ByteSpan& src, ByteSpan& key, ByteSpan& value) noexcept
-    {
-        key.reset();
-        value.reset();
-
-        // Trim leading whitespace
-        bspan_skip_spaces(src);
-
-        if (!src)
-            return false;
-
-        // Handle end tag scenario (e.g., '/>')
-        if (*src == '/')
-            return false;
-
-        // Capture attribute name up to '='
-        const uint8_t* keyStart = src.begin();
-        const uint8_t* keyEnd = keyStart; // track last non-whitespace char seen
-        while (src.begin() < src.end() && *src.begin() != '=')
-        {
-            if (!chrWspChars(*src.begin()))
-            {
-                keyEnd = src.begin() + 1; // past the last non-space character
-            }
-            src.advance(1);
-        }
-
-        // If no '=' found, return false
-        if (src.empty())
-            return false;
-
-        // Assign key, trimmed to exclude any trailing whitespace
-        key = ByteSpan::fromPointers(keyStart, keyEnd);
-
-        // Move past '='
-        src.advance(1);
-
-        // Skip any whitespace
-        bspan_skip_spaces(src);
-
-        if (src.empty())
-            return false;
-
-        // Ensure we have a quoted value
-        uint8_t quoteChar = *src;
-        if (quoteChar != '"' && quoteChar != '\'')
-            return false;
-
-        // Move past the opening quote
-        src++;
-
-        // Locate the closing quote using `memchr`
-        const uint8_t* endQuote = static_cast<const uint8_t*>(std::memchr(src.begin(), quoteChar, src.size()));
-
-        if (!endQuote)
-            return false; // No closing quote found
-
-        // Assign the attribute value (excluding quotes)
-        value = ByteSpan::fromPointers(src.begin(), endQuote);
-
-        // Move past the closing quote
-        src.resetStart(endQuote + 1);
-        return true;
-    }
-
-
-    // getKeyValue()
-    //
-    // Searches `inChunk` for an attribute `key` and returns its value if found
-    static bool getKeyValue(const ByteSpan& inChunk, const ByteSpan& key, ByteSpan& value) noexcept
-    {
-        ByteSpan src = inChunk;
-        //ByteSpan name{};
-        //bool insideQuotes = false;
-        uint8_t quoteChar = 0;
-
-        while (src)
-        {
-            // Skip leading whitespace
-            bspan_skip_spaces(src);
-
-            if (!src)
-                return false;
-
-            // If we hit a quote, skip the entire quoted section
-            if (*src == '"' || *src == '\'')
-            {
-                quoteChar = *src;
-                src++; // Move past opening quote
-
-                // Use `chunk_find_char` to efficiently skip to closing quote
-                // BUGBUG - this won't handle escaped quotes inside the value, 
-                // but for XML attributes those characters should be 
-                // entity encoded, not escaped.
-                src = chunk_find_char(src, quoteChar);
-                if (!src)
-                    return false;
-
-                src++; // Move past closing quote
-                continue;
-            }
-
-            // Extract the next token as a potential key
-            ByteSpan keyCandidate = chunk_token_char(src, '=');
-            keyCandidate = chunk_trim(keyCandidate, chrWspChars);
-
-            // If this matches the requested key, extract the value
-            if (keyCandidate == key)
-            {
-                // Skip whitespace before value
-                bspan_skip_spaces(src);
-
-                if (!src)
-                    return false;
-
-                // **Only accept quoted values**
-                if (*src == '"' || *src == '\'')
-                {
-                    quoteChar = *src;
-                    src++;
-                    value.resetStart(src.begin());
-
-                    // Find the closing quote **quickly**
-                    src = chunk_find_char(src, quoteChar);
-                    if (!src)
-                        return false;
-
-                    value.resetEnd(src.begin());  // Exclude the closing quote
-                    src++;
-                    return true; // Successfully found key and value
-                }
-
-                // **Reject unquoted values in XML**
-                return false;
-            }
-
-            // If there was no `=`, continue scanning
-            //src = chunk_ltrim(src, chrWspChars);
-            bspan_skip_spaces(src);
-
-            if (src && *src == '=')
-                src++; // Skip past '=' and continue parsing
-        }
-
-        return false; // Key not found
-    }
-
     // XmlElement
     // 
     // This data structure contains the raw scanned information for an XML element.
@@ -249,6 +63,64 @@ namespace waavs
             local = ByteSpan::fromPointers(p + 1, q.end());
         }
     }
+
+    // Efficiently reads the next key-value attribute pair from `src`
+    // Attributes are separated by '=' and values are enclosed in '"' or '\''
+    static INLINE bool xmlattribute_read_next(
+        ByteSpan& src,
+        ByteSpan& key,
+        ByteSpan& value) noexcept
+    {
+        key.reset();
+        value.reset();
+
+        bspan_ltrim_spaces(src);
+
+        if (!src || *src == '/')
+            return false;
+
+        key = bspan_read_until(src, '=');
+        bspan_trim_spaces(key);
+
+        if (!key)
+            return false;
+
+        bspan_ltrim_spaces(src);
+
+        if (!bspan_read_quoted(src, value))
+            return false;
+
+        return true;
+    }
+
+    // getXmlAttributeValue()
+    // Get a specific attribute value from a span of attributes.
+    //
+    static bool getXmlAttributeValue(const ByteSpan& attrSpan,
+        const ByteSpan& wantedKey, ByteSpan& value) noexcept
+    {
+        value.reset();
+
+        ByteSpan src = attrSpan;
+
+        while (src)
+        {
+            ByteSpan key{};
+            ByteSpan val{};
+
+            if (!xmlattribute_read_next(src, key, val))
+                return false;
+
+            if (key == wantedKey)
+            {
+                value = val;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
 
     struct XmlElement
     {
@@ -344,14 +216,21 @@ namespace waavs
         bool getElementAttribute(const ByteSpan& key, ByteSpan& value) const
         {
             value.reset();
+
+            // Only a start tag or self-closing tag can have attributes, 
+            // so if this is not one of those, return false immediately
             if (!isStart() && !isSelfClosing())
                 return false;
 
-            if (getKeyValue(data(), key, value))
-                return true;
-
-            return false;
+            return getXmlAttributeValue(data(), key, value);
         }
+
+        // Get an attribute using an interned string as a key.
+        bool getElementAttribute(const char* key, ByteSpan& value) const
+        {
+            return getElementAttribute(ByteSpan(key), value);
+        }
+
 
         // Convenience for what kind of tag it is
 		constexpr bool isElementKind(uint32_t kind) const { return fElementKind == kind; }
@@ -371,99 +250,4 @@ namespace waavs
 }
 
 
-namespace waavs {
-    //============================================================
-    // XmlAttributeCollection
-    // A collection of the attibutes found on an XmlElement
-    //============================================================
-    using AttrKey = InternedKey;
-    using AttrDictionary = std::unordered_map<AttrKey, ByteSpan, InternedKeyHash, InternedKeyEquivalent>;
-
-    struct XmlAttributeCollection
-    {
-        AttrDictionary fAttributes{};
-
-        XmlAttributeCollection() = default;
-        XmlAttributeCollection(const XmlAttributeCollection& other) noexcept
-            :fAttributes(other.fAttributes)
-        {
-        }
-
-
-        // Return a const attribute collection
-        const AttrDictionary& values() const noexcept { return fAttributes; }
-
-        size_t size() const noexcept { return fAttributes.size(); }
-        void clear() noexcept { fAttributes.clear(); }
-
-        bool hasValue(AttrKey key) const noexcept {return key && (fAttributes.find(key) != fAttributes.end());}
-
-
-        // Add a single attribute to our collection of attributes
-        // if the attribute already exists, replace its value
-        // with the new value
-        void addValue(AttrKey key, const ByteSpan& valueChunk) noexcept
-        {
-            if (!key)
-            {
-                return;
-            }
-            fAttributes[key] = valueChunk;
-        }
-
-        void addValueBySpan(const ByteSpan& name, const ByteSpan& valueChunk) noexcept
-        {
-            AttrKey key = PSNameTable::INTERN(name);
-            return addValue(key, valueChunk);
-        }
-
-        bool getValue(AttrKey key, ByteSpan& value) const noexcept
-        {
-            if (!key)
-            {
-                //printf("XmlAttributeCollection::getValue(), invalid key: %s\n", key);
-                value.reset();
-                return false;
-            }
-            auto it = fAttributes.find(key);
-            if (it != fAttributes.end()) {
-                value = it->second;
-                return true;
-            }
-
-            // Do not explicitly clear value if attribute doesn't exist
-            // That way, the caller can decide to set a value and override
-            // it only if the attribute is found, or leave it alone if not found
-            // This assumes the caller will clear the value before calling getValue() 
-            // if they want it cleared when not found
-            //value.reset(); 
-            return false;
-        }
-
-        // get an attribute from the collection, based on a bytespan name
-        bool getValueBySpan(const ByteSpan& name, ByteSpan& value) const noexcept
-        {
-            AttrKey key = PSNameTable::INTERN(name);
-            return getValue(key, value);
-        }
-
-
-        // mergeAttributes()
-        // 
-        // Combine collections of attributes
-        // If there are duplicates, the new value will replace the old
-        XmlAttributeCollection& mergeAttributes(const XmlAttributeCollection& other) noexcept
-        {
-            for (const auto& attr : other.fAttributes)
-            {
-                fAttributes[attr.first] = attr.second;
-            }
-            return *this;
-        }
-
-
-    };
-}
-
-
-#endif // XMLTYPES_H_INCLUDED
+#endif

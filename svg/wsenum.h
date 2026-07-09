@@ -2,8 +2,10 @@
 
 #include <unordered_map>
 
-#include "nametable.h"
-#include "bspan_utils.h"
+#include "core_nametable.h"
+#include "lang_grammar.h"
+#include "bspan_hash.h"
+
 
 namespace waavs
 {

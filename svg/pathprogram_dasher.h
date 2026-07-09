@@ -5,7 +5,7 @@
 
 #include "definitions.h"
 #include "maths.h"
-#include "wggeometry.h"
+#include "core_geometry.h"
 #include "pathprogram.h"
 #include "pathprogram_builder.h"
 

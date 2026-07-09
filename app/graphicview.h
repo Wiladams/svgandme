@@ -147,7 +147,7 @@ namespace waavs {
             {
                 fCacheContext = std::make_unique<SVGB2DDriver>();
                 fCacheContext->attach(fCachedImage, fDrawingThreads);
-                fCacheContext->setViewport(frame());
+                fCacheContext->state().setViewport(frame());
             }
 
             return fCacheContext.get(); 

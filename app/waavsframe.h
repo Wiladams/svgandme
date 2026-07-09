@@ -8,7 +8,7 @@
 #include "converters.h"
 
 #include "svggraphicselement.h"
-#include "screensnapshot.h"
+#include "app_screensnapshot.h"
 #include "frames_blend2d_source.h"
 #include "frames_ffmpeg_source.h"
 
@@ -248,7 +248,8 @@ namespace waavs
     // - else infer by file extension
     static INLINE FramesSourceKind resolveFrameSourceKind(const ByteSpan &srcAuth, ByteSpan &rest) noexcept
     {
-        ByteSpan src = chunk_trim(srcAuth, chrWspChars);
+        ByteSpan src = srcAuth;
+        bspan_trim_spaces(src);
         if (!src)
             return FramesSourceKind::None;
 
@@ -292,7 +293,7 @@ namespace waavs
         // No explicit scheme: if it contains "://", treat as FFmpeg URL
         // (chunk_find returns a matched span; we don't need it, just the bool)
         ByteSpan found{};
-        if (chunk_find(src, ByteSpan("://"), found))
+        if (bspan_find_span(src, "://", found))
             return FramesSourceKind::FFmpeg;
 
         // Otherwise infer from file extension
@@ -395,10 +396,10 @@ namespace waavs
             if (fSourceKind == FramesSourceKind::None)
                 return;
 
-            parseNumberOrPercent(getAttribute(svgattr::cropX()), fCropXAuth);
-            parseNumberOrPercent(getAttribute(svgattr::cropY()), fCropYAuth);
-            parseNumberOrPercent(getAttribute(svgattr::cropWidth()), fCropWidthAuth);
-            parseNumberOrPercent(getAttribute(svgattr::cropHeight()), fCropHeightAuth);
+            numberOrPercent_parse(getAttribute(svgattr::cropX()), fCropXAuth);
+            numberOrPercent_parse(getAttribute(svgattr::cropY()), fCropYAuth);
+            numberOrPercent_parse(getAttribute(svgattr::cropWidth()), fCropWidthAuth);
+            numberOrPercent_parse(getAttribute(svgattr::cropHeight()), fCropHeightAuth);
 
             
             ByteSpan fpsA;
@@ -506,7 +507,7 @@ namespace waavs
             {
                 // We're drawing in objectFrame units
                 // so get current object frame
-                WGRectD objFrame = ctx->getObjectFrame();
+                WGRectD objFrame = ctx->state().getObjectFrame();
                 w = objFrame.w;
                 h = objFrame.h;
 
@@ -519,15 +520,15 @@ namespace waavs
 
 
             double dpi = groot ? groot->dpi() : 96.0;
-            const BLFont* fontOpt = groot ? &ctx->getFont() : nullptr;
+            const BLFont &fontOpt = ctx->state().getFont();
 
-            LengthResolveCtx wCtx = makeLengthCtxUser(w, 0, dpi, fontOpt);
-            LengthResolveCtx hCtx = makeLengthCtxUser(h, 0, dpi, fontOpt);
+            LengthResolveCtx wCtx = makeLengthCtxUser(w, 0, dpi, &fontOpt);
+            LengthResolveCtx hCtx = makeLengthCtxUser(h, 0, dpi, &fontOpt);
 
-            parseLengthValue(getAttribute(svgattr::x()), fDimX);
-            parseLengthValue(getAttribute(svgattr::y()), fDimY);
-            parseLengthValue(getAttribute(svgattr::width()), fDimWidth);
-            parseLengthValue(getAttribute(svgattr::height()), fDimHeight);
+            lengthValue_parse(getAttribute(svgattr::x()), fDimX);
+            lengthValue_parse(getAttribute(svgattr::y()), fDimY);
+            lengthValue_parse(getAttribute(svgattr::width()), fDimWidth);
+            lengthValue_parse(getAttribute(svgattr::height()), fDimHeight);
 
 
             fX = resolveLengthOr(fDimX, wCtx, 0);

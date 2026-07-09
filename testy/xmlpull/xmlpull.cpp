@@ -1,14 +1,15 @@
 
 
 #include "appmodule.h"
-#include "app/mappedfile.h"
+#include "app_mappedfile.h"
 #include "app/xmlutil.h"
 
 
 #include "wsenum.h"
-#include "xmltokengen.h"
-#include "xmlscan.h"
-
+#include "xml_scan_element.h"
+#include "xml_pull.h"
+#include "svgatoms.h"
+#include "xml_scan_token.h"
 
 using namespace waavs;
 
@@ -84,7 +85,7 @@ static void printXmlElementInfo(const XmlElement& elem)
 
     ByteSpan key{};
     ByteSpan value{};
-    while (readNextKeyAttribute(src, key, value))
+    while (xmlattribute_read_next(src, key, value))
     {
         printf("  ");
         writeChunk(key);
@@ -93,6 +94,7 @@ static void printXmlElementInfo(const XmlElement& elem)
     }
 }
 
+/*
 static void printToken(const XmlToken& tok)
 {
 	ByteSpan kindname{};
@@ -124,18 +126,28 @@ static void testTokenGenerator(const ByteSpan& src)
         printToken(tok);
     }
 }
+*/
 
+static void testXmlPull(const ByteSpan& s)
+{
+    XmlPull iter(s);
+
+    while (iter.next())
+    {
+        waavs::printXmlElement(*iter);
+    }
+}
 
 static void testXmlElementScan(const ByteSpan& s)
 {
-	XmlPull iter( s);
-	//iter.fParams.fAutoScanAttributes = false;
-    //iter.fParams.fSkipWhitespace = true;
+    ByteSpan src = s;
+    XmlIteratorParams params{};
+    XmlElement elem;
 
-	while (iter.next())
-	{
-		waavs::printXmlElement(*iter);
-	}
+    while (read_next_xml_element_direct(params, src, elem))
+    {
+        waavs::printXmlElement(elem);
+    }
 }
 
 
@@ -155,20 +167,187 @@ static void printCommandLine()
 	printf("\n");
 }
 
-static double round_half_up(double x) { return floor(x + 0.49999999999999994); }
 
-void test_round()
+
+static void test_xml_attributes_and_collection()
 {
-    double t1 = round_half_up(2.5); // 3
-    double t2 = round_half_up(2.4); // 2
-    double t3 = round_half_up(-2.5); // -2
-    double t4 = round_half_up(-2.6); // -3
+    printf("\n==== test_xml_attributes_and_collection ====\n");
 
-    printf("round_half_up(2.5) = %f\n", t1);
-    printf("round_half_up(2.4) = %f\n", t2);
-    printf("round_half_up(-2.5) = %f\n", t3);
-    printf("round_half_up(-2.6) = %f\n", t4);
+    static const char* xml = R"||(
+<rect
+    id="r1"
+    class="primary hot"
+    x="10"
+    y="20"
+    width="300"
+    height="150"
+    fill="red"
+    stroke="black"
+    stroke-width="2"
+    opacity="0.5"
+    transform="translate(10,20)"
+    style="fill:blue; opacity:0.75; stroke-width:4"
+/>
+)||";
+
+    XmlPull pull(xml);
+
+    if (!pull.next())
+    {
+        printf("FAIL: could not read first XML element\n");
+        return;
+    }
+
+    const XmlElement& elem = *pull;
+
+    if (!elem.isSelfClosing())
+    {
+        printf("FAIL: expected self-closing element\n");
+        return;
+    }
+
+    printf("Element name: %s\n", elem.nameAtom());
+
+    ByteSpan value{};
+
+    if (elem.getElementAttribute(svgattr::id(), value))
+    {
+        printf("id = ");
+        printChunk(value);
+    }
+    else
+    {
+        printf("FAIL: id not found\n");
+    }
+
+    if (elem.getElementAttribute(svgattr::klass(), value))
+    {
+        printf("class = ");
+        printChunk(value);
+    }
+    else
+    {
+        printf("FAIL: class not found\n");
+    }
+
+    if (elem.getElementAttribute(svgattr::fill(), value))
+    {
+        printf("raw fill = ");
+        printChunk(value);
+    }
+    else
+    {
+        printf("FAIL: fill not found\n");
+    }
+
+    if (elem.getElementAttribute(svgattr::style(), value))
+    {
+        printf("style = ");
+        printChunk(value);
+    }
+    else
+    {
+        printf("FAIL: style not found\n");
+    }
+
+    printf("\n-- scan raw attributes into XmlAttributeCollection --\n");
+
+    XmlAttributeCollection presentationAttrs{};
+
+    ByteSpan src = elem.data();
+    ByteSpan attrName{};
+    ByteSpan attrValue{};
+
+    while (xmlattribute_read_next(src, attrName, attrValue))
+    {
+        if (attrName == "style")
+            continue;
+
+        presentationAttrs.addValueBySpan(attrName, attrValue);
+    }
+
+    printXmlAttributeCollection(presentationAttrs);
+
+    printf("\n-- verify collection lookup --\n");
+
+    value.reset();
+    if (presentationAttrs.getValue(svgattr::width(), value))
+    {
+        printf("width = ");
+        printChunk(value);
+    }
+    else
+    {
+        printf("FAIL: width not found in collection\n");
+    }
+
+    value.reset();
+    if (presentationAttrs.getValue(svgattr::stroke_width(), value))
+    {
+        printf("stroke-width before overwrite = ");
+        printChunk(value);
+    }
+    else
+    {
+        printf("FAIL: stroke-width not found in collection\n");
+    }
+
+    printf("\n-- overwrite existing attribute --\n");
+
+    presentationAttrs.addValue(svgattr::fill(), ByteSpan("green"));
+    presentationAttrs.addValue(svgattr::stroke_width(), ByteSpan("5"));
+
+    value.reset();
+    if (presentationAttrs.getValue(svgattr::fill(), value))
+    {
+        printf("fill after overwrite = ");
+        printChunk(value);
+    }
+
+    value.reset();
+    if (presentationAttrs.getValue(svgattr::stroke_width(), value))
+    {
+        printf("stroke-width after overwrite = ");
+        printChunk(value);
+    }
+
+    printf("\n-- merge CSS/style attributes --\n");
+
+    XmlAttributeCollection styleAttrs{};
+    styleAttrs.addValue(svgattr::fill(), ByteSpan("blue"));
+    styleAttrs.addValue(svgattr::opacity(), ByteSpan("0.75"));
+    styleAttrs.addValue(svgattr::stroke_width(), ByteSpan("4"));
+
+    presentationAttrs.mergeAttributes(styleAttrs);
+
+    printXmlAttributeCollection(presentationAttrs);
+
+    printf("\n-- verify merge precedence --\n");
+
+    value.reset();
+    if (presentationAttrs.getValue(svgattr::fill(), value))
+    {
+        printf("merged fill = ");
+        printChunk(value);
+    }
+
+    value.reset();
+    if (presentationAttrs.getValue(svgattr::opacity(), value))
+    {
+        printf("merged opacity = ");
+        printChunk(value);
+    }
+
+    value.reset();
+    if (presentationAttrs.getValue(svgattr::stroke_width(), value))
+    {
+        printf("merged stroke-width = ");
+        printChunk(value);
+    }
+
+    printf("==== end test_xml_attributes_and_collection ====\n");
 }
+
 
 int main(int argc, char** argv)
 {
@@ -197,11 +376,8 @@ int main(int argc, char** argv)
 
     //testXmlElementScan("<svg><!-- comment --> <rect width='100' height='150' /></svg>");
     testXmlElementScan(s);
-    //testXmlElementGenerator(s);
+    //test_xml_attributes_and_collection();
 
-    //testXmlIter(s);
-	//testElementContainer(s);
-    //testElementFilter(s);
 
 
     // close the mapped file

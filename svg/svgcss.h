@@ -9,8 +9,9 @@
 #include <functional>
 #include <iterator>
 
-#include "xmlscan.h"
+
 #include "svgatoms.h"
+#include "xml_attribute_collection.h"
 
 // Core data structures and types to support CSS parsing
 
@@ -204,7 +205,7 @@ namespace waavs
                 braceDepth == 0)
             {
                 out.resetPointers(start, p);
-                out = chunk_trim(out, chrWspChars);
+                bspan_trim(out, chrWspChars);
                 src.resetStart(p + 1);
                 return true;
             }
@@ -213,7 +214,7 @@ namespace waavs
         }
 
         out.resetPointers(start, end);
-        out = chunk_trim(out, chrWspChars);
+        bspan_trim(out, chrWspChars);
         src.resetStart(end);
 
         return out.size() > 0;
@@ -232,7 +233,7 @@ namespace waavs
                 break;
 
             ByteSpan prop{};
-            if (!bspan_read_identifier(s, prop, cssstartnamechar, cssnamechar))
+            if (!identifier_read(s, prop, cssstartnamechar, cssnamechar))
                 return false;
 
             bspan_skip_spaces(s);
@@ -303,6 +304,14 @@ namespace waavs
             return *this;
         }
 
+        CSSSelector& mergePropertiesFromChunk(const ByteSpan& data)
+        {
+            XmlAttributeCollection attrs;
+            gatherCssAttributes(data, attrs);
+            fAttributes.mergeAttributes(attrs);
+            return *this;
+        }
+
     private:
         void loadFromChunk(const ByteSpan& inChunk) noexcept
         {
@@ -355,46 +364,86 @@ namespace waavs
 
         // Queue up the next selection, skipping past comments
         // and whatnot
+        /*
+        static INLINE ByteSpan css_skip_block_comment(ByteSpan src) noexcept
+        {
+            // src is positioned after the initial /*
+            const uint8_t* cur = src.begin();
+            const uint8_t* end = src.end();
+
+            while (cur < end)
+            {
+                cur = static_cast<const uint8_t*>(
+                    std::memchr(cur, '*', static_cast<size_t>(end - cur)));
+
+                if (!cur)
+                    return ByteSpan::fromPointers(end, end);
+
+                if ((cur + 1) < end && cur[1] == '/')
+                    return ByteSpan::fromPointers(cur + 2, end);
+
+                ++cur;
+            }
+
+            return ByteSpan::fromPointers(end, end);
+        }
+        */
+
         bool advanceSelection()
         {
             // Skip whitespace
-            fSource = chunk_ltrim(fSource, chrWspChars);
+            bspan_ltrim_spaces(fSource);
             fSentinel = fSource;
-
-            if (!fSource)
-                return false;
             
             // skip 'C' style single line, and multi-line comments
             // we do this in a loop, because there can be multiple
             // comment blocks before we get to actual content
             while (fSource)
             {
+                bspan_ltrim_spaces(fSource);
+
+                if (!fSource)
+                    return false;
+
                 if (bspan_starts_with(fSource, "/*"))
                 {
                     // Skip past /* comment */
-                    fSource += 2;
-                    fSource = chunk_skip_until_cstr(fSource, "*/");
-                    if (bspan_starts_with(fSource, "*/"))
-                        fSource += 2;
+                    fSource.advance(2);
+                    ByteSpan found;
+                    if (bspan_find_span(fSource, "*/", found))
+                    {
+                        fSource.resetStart(found.end());
+                    }
+                    else
+                    {
+                        fSource.advanceToEnd();
+                    }
                     continue;
+
                 }
-                else if (bspan_starts_with(fSource, "//"))
+                
+                if (bspan_starts_with(fSource, "//"))
                 {
+                    fSource.advance(2);
+                    fSelectorContent = {};
+                    ByteSpan comment = bspan_read_until(fSource, '\n');
+                    (void)comment;  // don't care about output
+
                     // Skip past // comment
-                    fSource = chunk_find_char(fSource, '\n');
+                    //fSource = chunk_find_char(fSource, '\n');
                     continue;
                 }
 
                 // separate out the select name list from the content
-				fSelectorNames = chunk_token_char(fSource, '{');
-                fSelectorNames = chunk_trim(fSelectorNames, chrWspChars);
+				fSelectorNames = bspan_read_until(fSource, '{');
+                bspan_trim_spaces(fSelectorNames);
 
                 if (!fSelectorNames)
                     return false;
 
                 // Isolate the content portion
-                fSelectorContent = chunk_token_char(fSource, '}');
-                fSelectorContent = chunk_trim(fSelectorContent, chrWspChars);
+                fSelectorContent = bspan_read_until(fSource, '}');
+                bspan_trim_spaces(fSelectorContent);
 
                 break;
             }
@@ -413,8 +462,8 @@ namespace waavs
             fCurrentItem.reset();
 
             // pull off the next name delimeted by a comma
-            ByteSpan selectorName = chunk_token(fSelectorNames, ",");
-			fSelectorNames = chunk_trim(fSelectorNames, chrWspChars);
+            ByteSpan selectorName = bspan_read_until(fSelectorNames, ",");
+			bspan_trim(fSelectorNames, chrWspChars);
             
             // determine what kind of selector we have
             auto selectorKind = parseSimpleSelectorKind(selectorName);
@@ -514,14 +563,15 @@ namespace waavs
 
 		SelectorMap & getSelectorMap(uint32_t kind)
 		{
-			auto it = selectors.find(kind);
-            if (it != selectors.end())
-            {
-                return it->second;
-            }
+			//auto it = selectors.find(kind);
+            //if (it != selectors.end())
+            //{
+            //    return it->second;
+            //}
+            //selectors[kind] = {};
+            //return selectors[kind];
 
-            selectors[kind] = {};
-			return selectors[kind];
+            return selectors.try_emplace(kind).first->second;
 		}
 
         CSSSelector* getSelector(CSSSelectorKind kind, const ByteSpan& name)
@@ -545,7 +595,7 @@ namespace waavs
                 if (!classList)
                     break;
 
-                ByteSpan item = bspan_read_prefix(classList, charset(" \t\r\n"));
+                ByteSpan item = bspan_read_while(classList, charset(" \t\r\n"));
 
                 if (item == name)
                     return true;
@@ -599,20 +649,27 @@ namespace waavs
             }
 
             // Construct selector with the predicate
-            CSSSelector newSelector(info.kind(), info.name(), info.data(), predicate);
+            //CSSSelector newSelector(info.kind(), info.name(), info.data(), predicate);
 
-            //selectors[info.kind()][info.name()] = newSelector;
 
             // Get correct selector map and add/merge
             auto& selectorMap = getSelectorMap(info.kind());
             auto it = selectorMap.find(info.name());
             if (it != selectorMap.end())
             {
-                it->second.mergeProperties(newSelector);
+                it->second.mergePropertiesFromChunk(info.data());
+                //it->second.mergeProperties(newSelector);
             }
             else
             {
-                selectorMap.emplace(info.name(), std::move(newSelector));
+                selectorMap.try_emplace(
+                    info.name(),
+                    info.kind(),
+                    info.name(),
+                    info.data(),
+                    std::move(predicate));
+
+                //selectorMap.emplace(info.name(), std::move(newSelector));
             }
         }
 

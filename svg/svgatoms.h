@@ -3,7 +3,7 @@
 
 #include <functional>
 
-#include "nametable.h"
+#include "core_nametable.h"
 
 
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "definitions.h"
-#include "wggeometry.h"
+#include "core_geometry.h"
 #include "maths_bezier.h"
 
 //

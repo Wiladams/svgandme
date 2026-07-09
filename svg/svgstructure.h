@@ -14,7 +14,7 @@
 #include <functional>
 
 #include "svggraphicselement.h"
-#include "viewport.h"
+#include "svg_attribute_viewport.h"
 
 
 namespace waavs {
@@ -109,7 +109,7 @@ namespace waavs {
         {
             if (!fViewportState.fResolved)
             {
-                const WGRectD containingVP = ctx->viewport();
+                const WGRectD containingVP = ctx->state().getViewport();
                 const double dpi = groot ? groot->dpi() : 96.0;
                 resolveViewState(containingVP, fDocViewport, false, dpi, nullptr, fViewportState);
             }
@@ -133,7 +133,7 @@ namespace waavs {
             // Establish the 'nearest viewport' for children, in THIS
             // svg's user space.  This is what percentage lengths should
             // use as their reference.
-            ctx->setViewport(fViewportState.fViewBox);
+            ctx->state().setViewport(fViewportState.fViewBox);
 
             // Object frame for <svg> isn't a true geometry bbox; we'll
             // keep it simple, just so there is something.

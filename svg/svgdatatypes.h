@@ -7,17 +7,20 @@
 
 #include <blend2d/blend2d.h>
 
-#include "bspan.h"
-#include "membuff.h"
-#include "base64.h"
+#include "xml_scan.h"
+#include "xml_attribute_collection.h"
+
+#include "lang_memory.h"
+#include "core_base64.h"
+#include "core_geometry.h"
+#include "wg_matrix3x3.h"
 #include "converters.h"
 #include "svgenums.h"
 #include "maths.h"
 #include "svgatoms.h"
 #include "svgunits.h"
-#include "xmlscan.h"
-#include "wggeometry.h"
-#include "svgtransform.h"
+
+
 
 //
 // Parsing routines for the core SVG data types
@@ -27,7 +30,6 @@
 //
 // Data types:
 //   SVGLength
-//   SVGDimension
 //   SVGVariableSize
 // 
 // Parsing routines:
@@ -88,7 +90,7 @@ namespace waavs
 {
     // Turn a units indicator into an enum
     // Instead of using WSEnum for this, we just do a direct comparison
-    static INLINE uint32_t lengthUnitToEnum(InternedKey u) noexcept
+    static INLINE uint32_t lengthUnit_to_enum(InternedKey u) noexcept
     {
         if (!u || u == svgunits::none()) return SVG_LENGTHTYPE_NUMBER;
 
@@ -105,7 +107,8 @@ namespace waavs
         return SVG_LENGTHTYPE_UNKNOWN;
     }
 
-    static bool parseDimensionUnits(const ByteSpan& inChunk, uint32_t& units)
+
+    static bool dimensionUnits_parse(const ByteSpan& inChunk, uint32_t& units) noexcept
     {
         if (inChunk.empty())
         {
@@ -114,9 +117,13 @@ namespace waavs
         }
 
         InternedKey ukey = waavs::svgunits::internUnit(inChunk);
-        units = lengthUnitToEnum(ukey);
+        uint32_t parsed = lengthUnit_to_enum(ukey);
 
-        return units != SVG_LENGTHTYPE_UNKNOWN;
+        if (parsed == SVG_LENGTHTYPE_UNKNOWN)
+            return false;
+
+        units = parsed;
+        return true;
     }
 }
 
@@ -138,7 +145,14 @@ namespace waavs
         bool isPercent() const noexcept { return fIsPercent; }
         double value() const noexcept { return fValue; }
 
-        double calculatedValue() const noexcept
+        void reset() noexcept
+        {
+            fValue = 0.0;
+            fIsPercent = false;
+            fIsSet = false;
+        }
+
+        double normalizedValue() const noexcept
         {
             if (fIsPercent)
                 return fValue / 100.0;
@@ -147,55 +161,79 @@ namespace waavs
         }
     };
 
-    static INLINE bool readSVGNumberOrPercent(ByteSpan& s, SVGNumberOrPercent& out) noexcept
+
+    static INLINE bool numberOrPercent_read(ByteSpan& s, SVGNumberOrPercent& out) noexcept
     {
-        // leading wsp
-        s = chunk_ltrim(s, chrWspChars);
-        if (!s)
+        ByteSpan src = bspan_ltrim_spaces(s);
+        if (!src)
             return false;
 
-        // number
         double v = 0.0;
-
-        if (!readNumber(s, v))
+        if (!number_read(src, v))
             return false;
 
-        // optional '%'
         bool isPct = false;
-        if (!s.empty() && *s == '%') {
+        if (!src.empty() && *src == '%') {
             isPct = true;
-            ++s;
+            ++src;
         }
 
-        out.fValue = v;
-        out.fIsPercent = isPct;
-        out.fIsSet = true;
-
+        out = SVGNumberOrPercent{ v, isPct, true };
+        s = src;
         return true;
     }
 
-    static INLINE bool parseNumberOrPercent(const ByteSpan& inChunk, SVGNumberOrPercent& out) noexcept
+
+
+    static INLINE bool numberOrPercent_parse(const ByteSpan& inChunk, SVGNumberOrPercent& out) noexcept
     {
-        SVGNumberOrPercent tmp = out;
+        SVGNumberOrPercent tmp{};
         ByteSpan s = inChunk;
-        if (!readSVGNumberOrPercent(s, tmp))
+
+        if (!numberOrPercent_read(s, tmp))
             return false;
+
+        bspan_skip_spaces(s);
+        if (!s.empty())
+            return false; // trailing garbage
 
         out = tmp;
         return true;
     }
 
-    static INLINE double resolveNumberOrPercent(const SVGNumberOrPercent& norp, const double range, const double fallback) noexcept
+    // resolveNumberOrPercent
+    // Given a number or percent, and a range, return the resolved value.
+    // If the number is a percent, it is multiplied by the range.
+    // If the number is a number, it is returned as-is.
+    // If the number is not set, the fallback value is returned.
+    //
+    static INLINE double numberOrPercent_resolve(const SVGNumberOrPercent& norp, const double range, const double fallback) noexcept
     {
         if (norp.isSet())
         {
             if (norp.isPercent())
-                return norp.calculatedValue() * range;
+                return norp.normalizedValue() * range;
 
-            return norp.calculatedValue();
+            return norp.normalizedValue();
         }
 
         return fallback;
+    }
+
+
+    static INLINE double numberOrPercent_resolveRange(const SVGNumberOrPercent& v,
+        double range,
+        double fallback = 0.0) noexcept
+    {
+        return numberOrPercent_resolve(v, range, fallback);
+    }
+
+    static INLINE double numberOrPercent_resolvePosition(const SVGNumberOrPercent& v,
+        double origin,
+        double range,
+        double fallback = 0.0) noexcept
+    {
+        return origin + numberOrPercent_resolve(v, range, fallback);
     }
 }
 
@@ -224,6 +262,108 @@ namespace waavs
         bool isSet() const noexcept { return fIsSet; }
         bool isPercentage() const noexcept { return fUnitType == SVG_LENGTHTYPE_PERCENTAGE; }
     };
+
+    static constexpr charset chrNotAlpha = ~chrAlphaChars;
+
+    //==============================================================================
+    // lengthValue_read()
+    //
+    // Reads a single <length> or <percentage> from the current cursor.
+    //
+    // On success:
+    //   - advances 's' to the byte immediately following the token
+    //   - fills 'out'
+    //   - returns true
+    //
+    // On failure:
+    //   - leaves 'out' unchanged
+    //   - returns false
+    //==============================================================================
+
+    static INLINE bool lengthValue_read(ByteSpan& s, SVGLengthValue& out) noexcept
+    {
+        SVGLengthValue tmp = {};
+
+        ByteSpan cur = s;
+        bspan_ltrim_spaces(cur);
+        if (!cur)
+            return false;
+
+        double value = 0.0;
+        if (!number_read(cur, value))
+            return false;
+
+        uint32_t units = SVG_LENGTHTYPE_NUMBER;
+
+        if (cur)
+        {
+            if (*cur == '%')
+            {
+                units = SVG_LENGTHTYPE_PERCENTAGE;
+                ++cur;
+            }
+            else if (chrAlphaChars(*cur))
+            {
+                ByteSpan unitTok = bspan_read_while(cur, chrAlphaChars);
+
+                if (!dimensionUnits_parse(unitTok, units))
+                    return false;
+            }
+        }
+
+        tmp.fValue = value;
+        tmp.fUnitType = units;
+        tmp.fIsSet = true;
+
+        out = tmp;
+        s = cur;
+
+        return true;
+    }
+
+    // parseLengthValue()
+    //
+    // Parses a single <length> or <percentage> token:
+    //   - optional leading whitespace
+    //   - number (WAAVS readNumber grammar)
+    //   - optional unit suffix:
+    //       '%' OR [A-Za-z]+ OR nothing
+    //   - optional trailing whitespace
+    //
+    // On success:
+    //   - out.v, out.unit, out.set=true
+    //   - 's' is advanced to the first byte after the token (including suffix),
+    //     but not beyond trailing whitespace (we do trim the whitespace at end).
+    //
+    // On failure:
+    //   - out is left unchanged
+    //   - 's' is left in an unspecified advanced position (typical parser behavior).
+    //
+
+    //==============================================================================
+    // lengthValue_parse()
+    //
+    // Parses an entire SVG length value.
+    // Leading/trailing whitespace is permitted.
+    // Any trailing non-whitespace causes failure.
+    //==============================================================================
+    static INLINE bool lengthValue_parse(const ByteSpan& inChunk, SVGLengthValue& out) noexcept
+    {
+        SVGLengthValue tmp = {};
+        ByteSpan s = inChunk;
+
+        if (!lengthValue_read(s, tmp))
+            return false;
+
+        bspan_ltrim_spaces(s);
+
+        if (!s.empty())
+            return false;
+
+        out = tmp;
+        return true;
+    }
+
 
     // This context is used when resolving length values
     struct LengthResolveCtx
@@ -258,7 +398,9 @@ namespace waavs
     // - em/ex depend on font metrics; if ctx.font is null, you must choose a fallback
     //   Recommend: treat em/ex as unresolved -> return raw number, or use a default em.
     //
-    static double resolveLengthUserUnits(const SVGLengthValue& L, const LengthResolveCtx& ctx) noexcept
+    static double resolveLengthUserUnits(const SVGLengthValue& L, const LengthResolveCtx& ctx) noexcept = delete;
+
+    static double lengthValue_resolve(const SVGLengthValue& L, const LengthResolveCtx& ctx) noexcept
     {
         if (!L.isSet())
             return ctx.origin;
@@ -322,88 +464,27 @@ namespace waavs
     // Resolve length if set; otherwise return fallback value.
     static INLINE double resolveLengthOr(const SVGLengthValue& L, const LengthResolveCtx& ctx, double fallback) noexcept
     {
-        return L.isSet() ? resolveLengthUserUnits(L, ctx) : fallback;
+        return L.isSet() ? lengthValue_resolve(L, ctx) : fallback;
     }
 
-}
-
-namespace waavs
-{
-
-    // parseLengthValue()
- //
- // Parses a single <length> or <percentage> token:
- //   - optional leading whitespace
- //   - number (WAAVS readNumber grammar)
- //   - optional unit suffix:
- //       '%' OR [A-Za-z]+ OR nothing
- //   - optional trailing whitespace
- //
- // On success:
- //   - out.v, out.unit, out.set=true
- //   - 's' is advanced to the first byte after the token (including suffix),
- //     but not beyond trailing whitespace (we do trim the whitespace at end).
- //
- // On failure:
- //   - out is left unchanged
- //   - 's' is left in an unspecified advanced position (typical parser behavior).
- //
-    static constexpr charset chrNotAlpha = ~chrAlphaChars;
-
-    static INLINE bool parseLengthValue(const ByteSpan& inChunk, SVGLengthValue& out) noexcept
+    // Resolve helper: resolve L against given ref and origin in USER space
+    static INLINE bool resolveIfSet(const SVGLengthValue& L,
+        double& ioValue,
+        double ref,
+        double origin,
+        double dpi,
+        const BLFont* font) noexcept
     {
-        // Preserve 'out' on failure
-        SVGLengthValue tmp = out;
-        ByteSpan s = inChunk;
-
-        // 1) Trim leading whitespace
-        s = chunk_ltrim(s, chrWspChars);
-        if (!s)
+        
+        if (!L.isSet())
             return false;
 
-        // 2) Parse number
-        double v = 0.0;
-        ByteSpan cur = s;
-        if (!readNumber(cur, v))
-            return false;
-
-        // 3) Optional unit suffix
-        uint32_t units = SVG_LENGTHTYPE_NUMBER;
-
-        if (cur)
-        {
-            const uint8_t c = *cur;
-
-            if (c == '%')
-            {
-                units = SVG_LENGTHTYPE_PERCENTAGE;
-                ++cur;
-            }
-            else if (chrAlphaChars(c))
-            {
-                // consume alpha run without consuming the delimiter after it
-                const uint8_t* uStart = cur.begin();
-                bspan_skip_while(cur, chrAlphaChars);
-                ByteSpan unitTok( uStart, cur.begin() );
-
-                if (!parseDimensionUnits(unitTok, units))
-                    return false; // unknown unit => reject
-            }
-            // else: no suffix => NUMBER
-        }
-
-        // 4) Commit cursor to end-of-token and trim trailing whitespace
-        s = cur;
-        s = chunk_ltrim(s, chrWspChars);
-
-        // 5) Commit output
-        tmp.fValue = v;
-        tmp.fUnitType = units;
-        tmp.fIsSet = true;
-
-        out = tmp;
+        LengthResolveCtx ctx = makeLengthCtxUser(ref, origin, dpi, font);
+        ioValue = lengthValue_resolve(L, ctx);
         return true;
     }
+
+
 }
 
 namespace waavs
@@ -536,7 +617,7 @@ namespace waavs
     };
 
 
-    static SVGAngleUnits parseAngleUnits(InternedKey u)
+    static SVGAngleUnits angleUnits_parse(InternedKey u)
     {
         if (!u)
             return SVG_ANGLETYPE_UNSPECIFIED;
@@ -549,26 +630,85 @@ namespace waavs
 
         return SVG_ANGLETYPE_UNKNOWN;
     }
+
+    // parseAngle()
+// 
+// returns in radians
+    static bool parseAngle(ByteSpan& s, double& value, SVGAngleUnits& units)
+    {
+        static charset chrNotAlpha = ~chrAlphaChars;
+
+        bspan_skip_spaces(s);
+
+        if (s.empty())
+            return false;
+
+        if (!number_read(s, value))
+            return false;
+
+        // After readNumber, s points to the suffix 
+        // (could be unit, whitespace, comma, ')', etc.)
+        bspan_ltrim_spaces(s);
+
+        // Capture unit identifier (deg, rad, grad, turn) if present
+        ByteSpan unitSpan = bspan_read_until(s, chrNotAlpha);
+
+        InternedKey ukey = unitSpan ? waavs::svgunits::internUnit(unitSpan) : InternedKey{};
+        units = angleUnits_parse(ukey);
+
+        // the angle value is returned as radians
+        // we use the units to perform a conversion if necessary
+        switch (units)
+        {
+            // If degrees or unspecified, convert degress to radians
+        case SVG_ANGLETYPE_UNSPECIFIED:
+        case SVG_ANGLETYPE_DEG:
+            value = value * (kDegToRad);
+            break;
+
+            // If radians, do nothing, already in radians
+        case SVG_ANGLETYPE_RAD:
+            // already radians
+            break;
+
+            // If gradians specified, convert to radians
+            // Gradians are a unit where 100 gradians = 90 degrees = pi/2 radians
+        case SVG_ANGLETYPE_GRAD:
+            value = value * (kPi / 200.0);
+            break;
+
+            // Turns are a percentage of a full rotation
+        case SVG_ANGLETYPE_TURN:
+            value = value * (Pi2);
+            break;
+
+        default:
+            return false;
+        }
+
+        return true;
+    }
 }
+
 
 namespace waavs 
 {
-//
-// SVGTokenListView
-//
-// A zero-allocation forward iterator over SVG "list" attributes.
-// Typical separators: whitespace and/or ','.
-//
-// This view can produce:
-//  - number tokens (numeric lexeme only)
-//  - length tokens (numeric lexeme + optional unit suffix or '%')
-//
-// Design goals:
-//  - No allocation
-//  - No copying of token text
-//  - Compatible numeric grammar with WAAVS readNumber()
-//  - Cursor is a ByteSpan (WAAVS idiom)
-//
+    //
+    // SVGTokenListView
+    //
+    // A zero-allocation forward iterator over SVG "list" attributes.
+    // Typical separators: whitespace and/or ','.
+    //
+    // This view can produce:
+    //  - number tokens (numeric lexeme only)
+    //  - length tokens (numeric lexeme + optional unit suffix or '%')
+    //
+    // Design goals:
+    //  - No allocation
+    //  - No copying of token text
+    //  - Compatible numeric grammar with WAAVS readNumber()
+    //  - Cursor is a ByteSpan (WAAVS idiom)
+    //
     struct SVGTokenListView final
     {
         ByteSpan fSrc{};    // The original source span (optional, for debugging)
@@ -607,7 +747,7 @@ namespace waavs
         //
         INLINE void skipSeparators() noexcept
         {
-            bspan_skip_while(fCur, sepChars());
+            bspan_ltrim(fCur, sepChars());
         }
 
 
@@ -630,7 +770,7 @@ namespace waavs
             ByteSpan start = fCur;   // keep original start pointer
             double dummy = 0.0;
 
-            if (!readNumber(fCur, dummy))
+            if (!number_read(fCur, dummy))
                 return false;
 
             // fCur advanced to first byte after the number lexeme
@@ -662,7 +802,7 @@ namespace waavs
             double dummy = 0.0;
 
             // Parse number portion (your readNumber leaves 'e' for em/ex)
-            if (!readNumber(fCur, dummy))
+            if (!number_read(fCur, dummy))
                 return false;
 
             // Parse optional unit suffix
@@ -750,24 +890,6 @@ namespace waavs
             return fCur.begin() != before;
         }
 
-        // peekHasMoreNumber()
-        // 
-        // Returns true if a number token exists ahead (after separators).
-        // Does not advance the cursor.
-        //
-        bool peekHasMoreNumber() const noexcept
-        {
-            ByteSpan tmp = fCur;
-            bspan_skip_while(tmp, sepChars());
-            if (!tmp) 
-                return false;
-
-            double dummy = 0.0;
-            ByteSpan t2 = tmp;
-            return waavs::readNumber(t2, dummy);
-        }
-
-
         //
         // isListOfNumbers()
         // 
@@ -777,18 +899,18 @@ namespace waavs
         bool isListOfNumbers() const noexcept
         {
             ByteSpan tmp = fCur;
-            bspan_skip_while(tmp,sepChars());
+            bspan_ltrim(tmp,sepChars());
             if (!tmp) return false;
 
             double dummy = 0.0;
-            if (!readNumber(tmp, dummy)) return false;
+            if (!number_read(tmp, dummy)) return false;
 
-            bspan_skip_while(tmp, sepChars());
+            bspan_ltrim(tmp, sepChars());
             if (!tmp) return false;
 
             // second number?
             ByteSpan t2 = tmp;
-            return readNumber(t2, dummy);
+            return number_read(t2, dummy);
         }
 
 
@@ -799,210 +921,112 @@ namespace waavs
             ByteSpan tok;
             if (!nextNumberToken(tok))
                 return false;
-            return readNumber(tok, out);
+            return number_read(tok, out);
         }
 
-        bool readAFlag(int& out) noexcept
-        {
-            skipSeparators();
-            if (fCur.empty())
-                return false;
-            return readNextFlag(fCur, out);
-        }
     };
 
+    // Listview helpers for reading numeric arguments from SVG lists.
+    static INLINE void svgList_skipSeparators(ByteSpan& s) noexcept
+    {
+        static charset sep = chrWspChars + ",";
+        bspan_ltrim(s, sep);
+    }
+
+    static INLINE bool svgList_readNumber(ByteSpan& s, double& out) noexcept
+    {
+        ByteSpan cur = s;
+        svgList_skipSeparators(cur);
+
+        if (!number_read(cur, out))
+            return false;
+
+        s = cur;
+        return true;
+    }
+
+    /*
+    static INLINE bool svgList_readLength(ByteSpan& s, SVGLengthValue& out) noexcept
+    {
+        ByteSpan cur = s;
+        svgList_skipSeparators(cur);
+
+        if (!lengthValue_read(cur, out))
+            return false;
+
+        s = cur;
+        return true;
+    }
+    */
+
+    /*
+    static INLINE bool svgList_readFlag(ByteSpan& s, int& out) noexcept
+    {
+        ByteSpan cur = s;
+        svgList_skipSeparators(cur);
+
+        if (!readNextFlag(cur, out))
+            return false;
+
+        s = cur;
+        return true;
+    }
+    */
+
+    /*
+    // Read a sequence of numeric arguments from a list, 
+    // given a format string.
     static int readNumericArguments(ByteSpan& s, const char* argTypes, double* outArgs) noexcept
     {
-        SVGTokenListView listView(s);
+        ByteSpan cur = s;
 
         int i = 0;
         for (; argTypes[i]; ++i)
         {
             switch (argTypes[i])
             {
-            case 'c':		// read a coordinate
-            case 'r':		// read a radius
+            case 'c':
+            case 'r':
             {
-                if (!listView.readANumber(outArgs[i])) {
-                    s = listView.remaining();
+                if (!svgList_readNumber(cur, outArgs[i])) {
+                    s = cur;
+                    return i;
                 }
             } break;
 
-            case 'f':		// read a flag
+            case 'f':
             {
-                int aflag = 0;
-                if (!listView.readAFlag(aflag)) {
-                    s = listView.remaining();
+                int flag = 0;
+                if (!svgList_readFlag(cur, flag)) {
+                    s = cur;
                     return i;
                 }
 
-                outArgs[i] = double(aflag);
-
+                outArgs[i] = double(flag);
             } break;
 
             default:
-            {
-                s = listView.remaining();
+                s = cur;
                 return 0;
-            }
             }
         }
 
+        s = cur;
         return i;
     }
+    */
+
 }
 
 
 namespace waavs
 {
-    // parseAngle()
-    // 
-    // returns in radians
-    static bool parseAngle(ByteSpan &s, double& value, SVGAngleUnits& units)
-    {
-        static charset chrNotAlpha = ~chrAlphaChars;
-
-        bspan_skip_spaces(s);
-        
-        if (s.empty())
-            return false;
-
-        if (!readNumber(s, value))
-            return false;
-        
-        // After readNumber, s points to the suffix 
-        // (could be unit, whitespace, comma, ')', etc.)
-        s = chunk_ltrim(s, chrWspChars);
-
-        // Capture unit identifier (deg, rad, grad, turn) if present
-        ByteSpan unitSpan = chunk_token(s, chrNotAlpha);
-
-        InternedKey ukey = unitSpan ? waavs::svgunits::internUnit(unitSpan) : InternedKey{};
-        units = parseAngleUnits(ukey);
-
-        // the angle value is returned as radians
-        // we use the units to perform a conversion if necessary
-        switch (units)
-        {
-            // If degrees or unspecified, convert degress to radians
-            case SVG_ANGLETYPE_UNSPECIFIED:
-            case SVG_ANGLETYPE_DEG:
-                value = value * (3.14159265358979323846 / 180.0);
-            break;
-            
-            // If radians, do nothing, already in radians
-            case SVG_ANGLETYPE_RAD:
-                // already radians
-            break;
-            
-            // If gradians specified, convert to radians
-            // Gradians are a unit where 100 gradians = 90 degrees = pi/2 radians
-            case SVG_ANGLETYPE_GRAD:
-                value = value * (3.14159265358979323846 / 200.0);
-            break;
-            
-            // Turns are a percentage of a full rotation
-            case SVG_ANGLETYPE_TURN:
-                value = value * (2.0 * 3.14159265358979323846);
-            break;
-                
-            default:
-                return false;
-        }
-
-        return true;
-    }
-    
-
-    
 
 
-    
-    //==============================================================================
-    // SVGDimension
-    // used for length, time, frequency, resolution, location
-    //==============================================================================
-    ///*
-    struct SVGDimension 
-    {
-        double fValue{ 0.0 };
-        uint32_t fUnits{ SVG_LENGTHTYPE_NUMBER };
-        bool fHasValue{ false };
-
-        SVGDimension(const SVGDimension& other) = default;
-        SVGDimension() = default;
-        SVGDimension(double value, unsigned short units, bool setValue = true)
-            : fValue(value)
-            , fUnits(units)
-            , fHasValue(setValue)
-        {
-        }
-
-        SVGDimension& operator=(const SVGDimension& rhs)
-        {
-            fValue = rhs.fValue;
-            fUnits = rhs.fUnits;
-            fHasValue = rhs.fHasValue;
-            
-            return *this;
-        }
-
-        bool isSet() const { return fHasValue; }
-        double value() const { return fValue; }
-        unsigned short units() const { return fUnits; }
-        
-        bool isPercentage() const { return fUnits == SVG_LENGTHTYPE_PERCENTAGE; }
-        bool isNumber() const { return fUnits == SVG_LENGTHTYPE_NUMBER; }
-        
-        // Using the units and other information, calculate the actual value
-        double calculatePixels(double length = 1.0, double orig = 0, double dpi = 96) const
-        {
-            switch (fUnits) {
-            case SVG_LENGTHTYPE_UNKNOWN:     return fValue;
-            case SVG_LENGTHTYPE_NUMBER:		return fValue;                  // User units and PX units are the same
-            case SVG_LENGTHTYPE_PX:			return fValue;                  // User units and px units are the same
-            case SVG_LENGTHTYPE_PT:			return fValue / 72.0f * dpi;
-            case SVG_LENGTHTYPE_PC:			return fValue / 6.0f * dpi;
-            case SVG_LENGTHTYPE_MM:			return fValue / 25.4f * dpi;
-            case SVG_LENGTHTYPE_CM:			return fValue / 2.54f * dpi;
-            case SVG_LENGTHTYPE_IN:			return fValue * dpi;
-            case SVG_LENGTHTYPE_EMS:			return fValue * length;                 // length should represent 'em' height of font                 
-            case SVG_LENGTHTYPE_EXS:		    return fValue * length * 0.52f;          // x-height, fontHeight * 0.52., assuming length is font height
-            case SVG_LENGTHTYPE_PERCENTAGE:
-                //double clampedVal = waavs::clamp(fValue, 0.0, 100.0);
-                //return orig + ((clampedVal / 100.0f) * length);
-                return orig + (fValue / 100.0f) * length;
-            }
-
-            return fValue;
-        }
-
-        bool loadFromChunk(const ByteSpan& inChunk)
-        {
-            ByteSpan s = chunk_ltrim(inChunk, chrWspChars);
-            
-            // don't change the state of 'hasValue'
-            // if we previously parsed something, and now
-            // we're being asked to parse again, just leave
-            // the old state if there's nothing new
-            if (s.empty())
-                return false;
-
-            
-            if (!readNumber(s, fValue))
-                return false;
-            
-
-            fHasValue = parseDimensionUnits(s, fUnits);
-            
-            return fHasValue;
-        }
-    };
-    //*/
 
     // This is meanto to represent the many different ways
     // a size can be specified
-       //
+    //
     // SVGFontSize (font-size)
     //
     // This is fairly complex.  There are several categories of sizes
@@ -1046,13 +1070,13 @@ namespace waavs
     {
         ByteSpan fSpanValue{};
         SVGSizeKind fKindOfSize{ SVG_SIZE_KIND_INVALID };
-        
+        SVGLengthValue fLength{};
+        uint32_t fKeyword{ 0 };
+        bool fHasValue{ false };
+
         uint32_t fUnits{ SVG_LENGTHTYPE_NUMBER };
         double fValue{ 0.0 };
 
-        bool fHasValue{ false };
-
- 
         SVGVariableSize() = default;
         SVGVariableSize(const SVGVariableSize& other) = delete;
 
@@ -1096,34 +1120,9 @@ namespace waavs
                 }break;
 
                 case SVG_SIZE_KIND_LENGTH: {
-                    if (!isSet())
-                        return fValue;
-                    
-                    switch (fUnits) {
-                        case SVG_LENGTHTYPE_UNKNOWN:     return fValue;
-                        case SVG_LENGTHTYPE_NUMBER:
-                            // User units and PX units are the same
-                            if (units == SpaceUnitsKind::SVG_SPACE_OBJECT) {
-                                if (fValue <= 1.0) {
-                                    return orig + (fValue * length);
-                                }
-                                return orig + fValue;
-                            }
+                    LengthResolveCtx ctx = makeLengthCtxUser(length, orig, dpi, &font, units);
+                    return lengthValue_resolve(fLength, ctx);
 
-                            return orig+fValue;
-
-                        case SVG_LENGTHTYPE_PX:			return orig+fValue;                  // User units and px units are the same
-                        case SVG_LENGTHTYPE_PT:			return orig+((fValue / 72.0f) * dpi);
-                        case SVG_LENGTHTYPE_PC:			return ((fValue / 6.0f) * dpi);
-                        case SVG_LENGTHTYPE_MM:			return ((fValue / 25.4f) * dpi);
-                        case SVG_LENGTHTYPE_CM:			return ((fValue / 2.54f) * dpi);
-                        case SVG_LENGTHTYPE_IN:			return (fValue * dpi);
-                        case SVG_LENGTHTYPE_EMS:		return (fValue * emHeight);                 // length should represent 'em' height of font                 
-                        case SVG_LENGTHTYPE_EXS:		return (fValue * fm.x_height);          // x-height, fontHeight * 0.52., assuming length is font height
-                        case SVG_LENGTHTYPE_PERCENTAGE:
-                            return orig + ((fValue / 100.0f) * length);
-                            break;
-                    }
                 }
 
                 default:
@@ -1135,7 +1134,8 @@ namespace waavs
 
         bool loadFromChunk(const ByteSpan& inChunk)
         {
-            fSpanValue = chunk_trim(inChunk, chrWspChars);
+            fSpanValue = inChunk;
+            bspan_trim(fSpanValue, chrWspChars);
 
             // don't change the state of 'hasValue'
             // if we previously parsed something, and now
@@ -1167,11 +1167,14 @@ namespace waavs
 
             }
             else {
-                ByteSpan numValue = fSpanValue;
-                if (!readNumber(numValue, fValue))
+                SVGLengthValue L{};
+                if (!lengthValue_parse(fSpanValue, L))
                     return false;
+
                 fKindOfSize = SVG_SIZE_KIND_LENGTH;
-                fHasValue = parseDimensionUnits(numValue, fUnits);
+                fLength = L;
+                fHasValue = true;
+
             }
             
             return true;
@@ -1182,13 +1185,58 @@ namespace waavs
 
 
 namespace waavs {
-    
+    // readNextCSSKeyValue()
+    // 
+    // Properties are separated by ';'
+    // values are separated from the key with ':'
+    // Ex: <tagname style="stroke:black;fill:white" />
+    // Return
+    //   true - if a valid key/value pair was found
+    //      in this case, key, and value will be populated
+    //   false - if no key/value pair was found, or end of string
+    //      in this case, key, and value will be undefined
+    //
+    static INLINE bool readNextCSSKeyValue(
+        ByteSpan& src,
+        ByteSpan& key,
+        ByteSpan& value) noexcept
+    {
+        return parameter_read_next(src, key, value, ';', ':');
+    }
+
+    /*
+    static bool readNextCSSKeyValue(ByteSpan& src, ByteSpan& key, ByteSpan& value, const unsigned char fieldDelimeter = ';', const unsigned char keyValueSeparator = ':') noexcept
+    {
+
+        // Trim leading whitespace to begin
+        bspan_skip_spaces(src);
+
+        // If the string is now blank, return immediately
+        if (!src)
+            return false;
+
+        // peel off a key/value pair by taking a token up to the fieldDelimeter
+        // BUGBUG - should be able to use read_identifier here
+        value = bspan_read_until(src, fieldDelimeter);
+
+        // Now, separate the key from the value using the keyValueSeparator
+        key = bspan_read_until(value, keyValueSeparator);
+
+        // trim the key and value fields of whitespace
+        bspan_trim(key, chrWspChars);
+        bspan_trim(value, chrWspChars);
+
+        return true;
+    }
+    */
+
     static bool parseStyleAttribute(const ByteSpan & inChunk, XmlAttributeCollection &styleAttributes) noexcept
     {   
         // Turn the style element into attributes of an XmlElement, 
         // then, the caller can use that to more easily parse whatever they're
         // looking for.
-        ByteSpan styleChunk = chunk_ltrim(inChunk, chrWspChars);
+        ByteSpan styleChunk = inChunk;
+        bspan_ltrim_spaces(styleChunk);
 
         if (styleChunk.empty())
             return false;
@@ -1200,24 +1248,15 @@ namespace waavs {
             styleAttributes.addValueBySpan(name, value);
         }
 
-
         return true;
     }
 }
-
-
-
-
-
 
 
 //
 // These are various routines that help manipulate the WGRectD
 // structure.  Finding corners, moving, query containment
 // scaling, merging, expanding, and the like
-
-
-
 
 namespace waavs {
     // State that represents the stroke-dasharray and stroke-dashoffset
@@ -1254,7 +1293,9 @@ namespace waavs {
         outArray.clear();
         outIsNone = false;
 
-        ByteSpan s = chunk_trim(inChunk, chrWspChars);
+
+        ByteSpan s = inChunk;
+        bspan_trim(s, chrWspChars);
         if (!s) {
             // empty attribute -> treat as "none" (no dash array set)
             outIsNone = true;
@@ -1267,14 +1308,14 @@ namespace waavs {
             return true;
         }
 
-        float dummy = 0.0f;
-        while (readNextFloat(s, dummy))
+        double dummy = 0.0f;
+        while (number_list_read_next(s, dummy))
         {
             // SVG disallows negative dash lengths
             if (dummy < 0.0)
                 return false;
 
-            outArray.push_back(dummy);
+            outArray.push_back(static_cast<float>(dummy));
         }
 
         // If we got no tokens, treat as none-ish
@@ -1288,7 +1329,8 @@ namespace waavs {
 
     static bool parseStrokeDashOffset(const ByteSpan& inChunk, SVGLengthValue& outOffset) noexcept
     {
-        ByteSpan s = chunk_trim(inChunk, chrWspChars);
+        ByteSpan s = inChunk;
+        bspan_trim(s, chrWspChars);
         if (!s) {
             // empty -> treat as not set
             outOffset = SVGLengthValue{};
@@ -1296,7 +1338,7 @@ namespace waavs {
         }
 
         SVGLengthValue dim{};
-        if (!parseLengthValue(s, dim))
+        if (!lengthValue_parse(s, dim))
             return false;
 
         // dashoffset may be negative; keep as-is.
@@ -1307,33 +1349,3 @@ namespace waavs {
 
 }
 
-// More helpers
-namespace waavs
-{
-    // Parse helper for attributes into SVGLengthValue (permissive single-token)
-    static INLINE SVGLengthValue parseLengthAttr(const ByteSpan& attr) noexcept
-    {
-        SVGLengthValue out{};
-        ByteSpan s = chunk_trim(attr, chrWspChars);
-        if (!s) return out;
-
-        (void)parseLengthValue(s, out);
-        return out;
-    }
-
-    // Resolve helper: resolve L against given ref and origin in USER space
-    static INLINE bool resolveIfSet(const SVGLengthValue& L,
-        double& ioValue,
-        double ref,
-        double origin,
-        double dpi,
-        const BLFont* font) noexcept
-    {
-        if (!L.isSet())
-            return false;
-
-        LengthResolveCtx ctx = makeLengthCtxUser(ref, origin, dpi, font);
-        ioValue = resolveLengthUserUnits(L, ctx);
-        return true;
-    }
-}

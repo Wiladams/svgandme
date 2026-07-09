@@ -15,10 +15,13 @@
 
 #include <cstdint>		// uint8_t, etc
 #include <cstddef>		// nullptr_t, ptrdiff_t, size_t
+#include <climits>
 #include <cstring>
 #include <cctype>
 #include <type_traits>
 #include <cmath>        // for fmaf
+#include <atomic>
+#include <new>
 
 #define WAAVS_NOMINMAX 1
 

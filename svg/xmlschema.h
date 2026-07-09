@@ -1,20 +1,20 @@
 #pragma once
 
+#include "lang_grammar.h"
 
-#include "xmltoken.h"
 
 // Forward declarations for convenience
 namespace waavs 
 {
-	static bool isXsdName(const ByteSpan& inChunk) noexcept;
-	static bool isXsdNCName(const ByteSpan& inChunk) noexcept;
-	static bool isXsdNMToken(const ByteSpan& inChunk) noexcept;
+    static bool isXsdName(const ByteSpan& inChunk) noexcept;
+    static bool isXsdNCName(const ByteSpan& inChunk) noexcept;
+    static bool isXsdNMToken(const ByteSpan& inChunk) noexcept;
 
-	static bool parseXsdNmtoken(const ByteSpan& inChunk, ByteSpan& outValue) noexcept;
-	static bool parseXsdName(const ByteSpan& inChunk, ByteSpan& outValue) noexcept;
-	static bool parseXsdNCName(const ByteSpan& inChunk, ByteSpan& outValue) noexcept;
+    static bool parseXsdNmtoken(const ByteSpan& inChunk, ByteSpan& outValue) noexcept;
+    static bool parseXsdName(const ByteSpan& inChunk, ByteSpan& outValue) noexcept;
+    static bool parseXsdNCName(const ByteSpan& inChunk, ByteSpan& outValue) noexcept;
 
-	static bool readXsdName(ByteSpan& src, ByteSpan& name) noexcept;
+    static bool readXsdName(ByteSpan& src, ByteSpan& name) noexcept;
 
 }
 
@@ -23,65 +23,74 @@ namespace waavs
 //
 namespace waavs
 {
+    // Valid starting chars for xsd:Name / xsd:NCName (ASCII subset)
+    static constexpr charset xmlNameStartChars = chrAlphaChars + "_";
 
-	// Check if input is a valid ASCII xsd:Name (input already trimmed)
-	static bool isXsdName(const ByteSpan& inChunk) noexcept
-	{
-		if (inChunk.size() == 0)
-			return false;
+    // Valid trailing chars for xsd:Name
+    static constexpr charset xmlNameChars = chrAlphaChars + chrDecDigits + ".-_:";
 
-		const uint8_t* c = inChunk.begin();
-		const uint8_t* end = inChunk.end();
-
-		if (!xmlNameStartChars(*c))
-			return false;
-		++c;
-
-		while (c < end)
-		{
-			if (!xmlNameChars(*c))
-				return false;
-			++c;
-		}
-
-		return true;
-	}
+    // Valid trailing chars for xsd:NCName
+    static constexpr charset xmlNcnameChars = chrAlphaChars + chrDecDigits + ".-_";
 
 
+    // Check if input is a valid ASCII xsd:Name (input already trimmed)
+    static bool isXsdName(const ByteSpan& inChunk) noexcept
+    {
+        if (inChunk.size() == 0)
+            return false;
+
+        const uint8_t* c = inChunk.begin();
+        const uint8_t* end = inChunk.end();
+
+        if (!xmlNameStartChars(*c))
+            return false;
+        ++c;
+
+        while (c < end)
+        {
+            if (!xmlNameChars(*c))
+                return false;
+            ++c;
+        }
+
+        return true;
+    }
 
 
-	// Check if input is a valid ASCII xsd:NCName (trimmed input)
-	static bool isXsdNCName(const ByteSpan& inChunk) noexcept
-	{
-		if (inChunk.size() == 0)
-			return false;
 
-		const uint8_t* c = inChunk.begin();
-		const uint8_t* end = inChunk.end();
 
-		if (!xmlNameStartChars(*c))
-			return false;
-		++c;
+    // Check if input is a valid ASCII xsd:NCName (trimmed input)
+    static bool isXsdNCName(const ByteSpan& inChunk) noexcept
+    {
+        if (inChunk.size() == 0)
+            return false;
 
-		while (c < end)
-		{
-			if (!xmlNcnameChars(*c))
-				return false;
-			++c;
-		}
+        const uint8_t* c = inChunk.begin();
+        const uint8_t* end = inChunk.end();
 
-		return true;
-	}
+        if (!xmlNameStartChars(*c))
+            return false;
+        ++c;
 
-	/*
+        while (c < end)
+        {
+            if (!xmlNcnameChars(*c))
+                return false;
+            ++c;
+        }
+
+        return true;
+    }
+
+    /*
 The type xsd:NMTOKEN represents a single string token.
 xsd:NMTOKEN values may consist of
-	letters,
-	digits,
-	periods (.),
-	hyphens (-),
-	underscores (_),
-	and colons (:).
+    letters,
+    digits,
+    periods (.),
+    hyphens (-),
+    underscores (_),
+    and colons (:).
 
 They may start with any of these characters.
 xsd:NMTOKEN has a whiteSpace facet value of collapse, so any leading or trailing
@@ -90,93 +99,96 @@ itself.
 
 */
 
-	// A NMTOKEN differs from Xsd:name in that the xsd:name has a restriction
-	// on which characters can start the token.
-	// Xsd:NMTOKEN is more generic as any of the namechars can be at the
-	// beginning of the token as well.
+    // A NMTOKEN differs from Xsd:name in that the xsd:name has a restriction
+    // on which characters can start the token.
+    // Xsd:NMTOKEN is more generic as any of the namechars can be at the
+    // beginning of the token as well.
 
-	static bool isXsdNMToken(const ByteSpan& inChunk) noexcept
-	{
-		const uint8_t* c = inChunk.begin();
-		const uint8_t* end = inChunk.end();
+    static bool isXsdNMToken(const ByteSpan& inChunk) noexcept
+    {
+        const uint8_t* c = inChunk.begin();
+        const uint8_t* end = inChunk.end();
 
-		for (; c < end; ++c)
-		{
-			if (!xmlNameChars(*c))
-				return false;
-		}
+        for (; c < end; ++c)
+        {
+            if (!xmlNameChars(*c))
+                return false;
+        }
 
-		return true;
-	}
+        return true;
+    }
 }
 
 
 // Some things from XSD
 namespace waavs 
 {
-	static bool parseXsdNmtoken(const ByteSpan& inChunk, ByteSpan& outValue) noexcept
-	{
-		outValue = chunk_trim(inChunk, chrWspChars);
-		if (outValue.size() == 0)
-			return false;
+    static bool parseXsdNmtoken(const ByteSpan& inChunk, ByteSpan& outValue) noexcept
+    {
+        outValue = inChunk;
+        bspan_trim(outValue, chrWspChars);
+        if (!outValue)
+            return false;
 
-		return isXsdNMToken(outValue);
-	}
+        return isXsdNMToken(outValue);
+    }
 
-	// Main entry for xsd:Name parser
-	static bool parseXsdName(const ByteSpan& inChunk, ByteSpan& outValue) noexcept
-	{
-		outValue = chunk_trim(inChunk, chrWspChars);
-		if (outValue.size() == 0)
-			return false;
+    // Main entry for xsd:Name parser
+    static bool parseXsdName(const ByteSpan& inChunk, ByteSpan& outValue) noexcept
+    {
+        outValue = inChunk;
+        bspan_trim(outValue, chrWspChars);
+        if (!outValue)
+            return false;
 
-		return isXsdName(outValue);
-	}
+        return isXsdName(outValue);
+    }
 
-	// Main entry for xsd:NCName parser
-	static bool parseXsdNCName(const ByteSpan& inChunk, ByteSpan& outValue) noexcept
-	{
-		outValue = chunk_trim(inChunk, chrWspChars);
-		if (outValue.size() == 0)
-			return false;
+    // Main entry for xsd:NCName parser
+    static bool parseXsdNCName(const ByteSpan& inChunk, ByteSpan& outValue) noexcept
+    {
+        outValue = inChunk;
+        bspan_trim(outValue, chrWspChars);
+        if (!outValue)
+            return false;
 
-		return isXsdNCName(outValue);
-	}
+        return isXsdNCName(outValue);
+    }
 
 }
 
 namespace waavs {
 
-	// readXsdName()
-	//
-	// Read an Xsd name from a source, altering the source
-	// to start right after the name.
-	// Return the name
-	// Return false, if there's an error
-	//
-	static bool readXsdName(ByteSpan& src, ByteSpan& name) noexcept
-	{
-		if (src.empty())
-			return false;
+    // readXsdName()
+    //
+    // Read an Xsd name from a source, altering the source
+    // to start right after the name.
+    // Return the name
+    // Return false, if there's an error
+    //
+    static bool readXsdName(ByteSpan& src, ByteSpan& name) noexcept
+    {
+        if (src.empty())
+            return false;
 
-		const uint8_t* c = src.begin();
-		const uint8_t* end = src.end();
+        const uint8_t* c = src.begin();
+        const uint8_t* end = src.end();
 
-		if (!xmlNameStartChars(*c))
-			return false;
+        if (!xmlNameStartChars(*c))
+            return false;
 
-		name.resetStart(c);
-		++c;
+        name.resetStart(c);
+        ++c;
 
-		while (c < end)
-		{
-			if (!xmlNameChars(*c))
-				break;
-			++c;
-		}
-		name.resetEnd(c);
-		src.resetStart(c);
+        while (c < end)
+        {
+            if (!xmlNameChars(*c))
+                break;
+            ++c;
+        }
+        name.resetEnd(c);
+        src.resetStart(c);
 
-		return true;
-	}
+        return true;
+    }
 }

@@ -6,7 +6,9 @@
 
 #include <blend2d/blend2d.h>
 
-#include "wggeometry.h"
+#include "core_geometry.h"
+#include "wg_matrix3x3.h"
+
 #include "surface.h"
 #include "coloring.h"
 
@@ -121,8 +123,10 @@ namespace waavs
         BLImageData imgData{};
         img.get_data(&imgData);
 
-        Surface surf{};
-        surf.createFromData((size_t)img.width(), (size_t)img.height(), imgData.stride, (uint8_t*)imgData.pixel_data);
+        Surface surf = Surface::createBorrowed(
+            (uint8_t*)imgData.pixel_data,
+            (size_t)img.width(), (size_t)img.height(),
+            imgData.stride);
 
         return surf;
     }

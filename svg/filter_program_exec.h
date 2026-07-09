@@ -110,7 +110,7 @@ namespace waavs
 
             // Non-owning access to registry contents (valid while registry holds it)
             virtual ImageT getImage(InternedKey key) noexcept = 0;
-            virtual const ImageT getImage(InternedKey key) const noexcept = 0;
+            //virtual const ImageT getImage_const(InternedKey key) const noexcept = 0;
 
             // Transfer ownership into the registry.
             virtual bool putImage(InternedKey key, ImageT img) noexcept = 0;
@@ -119,8 +119,8 @@ namespace waavs
             virtual void clearSurfaces() noexcept = 0;
 
             // "implicit last" bookkeeping (executor uses this for missing 'out')
-            virtual InternedKey lastKey() const noexcept = 0;
-            virtual void setLastKey(InternedKey k) noexcept = 0;
+            //virtual InternedKey lastKey() const noexcept = 0;
+            //virtual void setLastKey(InternedKey k) noexcept = 0;
 
             // Image allocation helpers (backend decides pixel format, alignment, etc.)
             virtual ImageT createSurfaceHandle(size_t w, size_t h) noexcept = 0;

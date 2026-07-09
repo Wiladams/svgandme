@@ -5,51 +5,41 @@
 // 
 
 
-#include "app/mappedfile.h"
-#include "bspan.h"
+#include "app_mappedfile.h"
+#include "lang_span.h"
 #include "svgtransform.h"
 #include "svg/xmlscan.h"
 #include "svg/svgcss.h"
 
-//#pragma comment(lib, "blend2d.lib")
+#include "wg_matrix3x3.h"
+
 
 using namespace waavs;
 
-#if defined(_M_ARM64)
-# pragma message("_M_ARM64 defined")
-#endif
 
-#if defined(__aarch64__)
-# pragma message("__aarch64__ defined")
-#endif
-
-#if defined(_M_X64)
-# pragma message("_M_X64 defined")
-#endif
-
-#if defined(__x86_64__)
-# pragma message("__x86_64__ defined")
-#endif
-
-#if defined(__SSE2__)
-# pragma message("__SSE2__ defined")
-#endif
-
-#if defined(__SSSE3__)
-# pragma message("__SSSE3__ defined")
-#endif
-
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
-# pragma message("__ARM_NEON defined")
-#endif
-
-#if WAAVS_HAS_NEON
-#pragma message("WAAVS_HAS_NEON")
-#endif
 
 
 #include <cstdio>
 #include <cmath>
+
+
+
+static double round_half_up(double x) { return floor(x + 0.49999999999999994); }
+
+static void test_round()
+{
+    double t1 = round_half_up(2.5); // 3
+    double t2 = round_half_up(2.4); // 2
+    double t3 = round_half_up(-2.5); // -2
+    double t4 = round_half_up(-2.6); // -3
+
+    printf("round_half_up(2.5) = %f\n", t1);
+    printf("round_half_up(2.4) = %f\n", t2);
+    printf("round_half_up(-2.5) = %f\n", t3);
+    printf("round_half_up(-2.6) = %f\n", t4);
+}
+
+
 
 namespace waavs
 {
@@ -203,16 +193,13 @@ namespace waavs
 
 static void dumpCssAttributes(const XmlAttributeCollection& attrs) noexcept
 {
-    for (const auto& attr : attrs.values())
-    {
-        const char* name = attr.first;
-        const ByteSpan& value = attr.second;
-
-        printf("[%s] = [%.*s]\n",
-            name ? name : "",
-            (int)value.size(),
-            value.data());
-    }
+    attrs.fAttributes.forEach([](InternedKey name, const ByteSpan& value)
+        {
+            printf("[%s] = [%.*s]\n",
+                name ? name : "",
+                (int)value.size(),
+                value.data());
+        });
 }
 
 void test_css_parse()

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "bspan.h"
+#include "lang_span.h"
 #include "surface.h"
 #include "svgdatatypes.h"
 #include "stopwatch.h"

@@ -32,13 +32,10 @@
     <ClInclude Include="..\..\svg\fonthandler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\svgdrawingcontext.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\app\user32pixelmap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\irendersvg.h">
+    <ClInclude Include="..\..\svg\render_interface.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\svgshapes.h">
@@ -62,7 +59,7 @@
     <ClInclude Include="..\..\svg\svgdatatypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\base64.h">
+    <ClInclude Include="..\..\svg\core_base64.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\svgcss.h">
@@ -77,31 +74,28 @@
     <ClInclude Include="..\..\svg\svgfont.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\app\mappedfile.h">
+    <ClInclude Include="..\..\app\app_mappedfile.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\bspan.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\svg\xmlscan.h">
+    <ClInclude Include="..\..\svg\lang_span.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\bit_hacks.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\svgtext.h">
+    <ClInclude Include="..\..\svg\svg_element_text.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\app\recorder.h">
+    <ClInclude Include="..\..\app\app_recorder.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\viewport.h">
+    <ClInclude Include="..\..\svg\svg_attribute_viewport.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\app\svguiapp.h">
+    <ClInclude Include="..\..\app\app_svguiapp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\app\screensnapshot.h">
+    <ClInclude Include="..\..\app\app_screensnapshot.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\app\svgwaavs.h">
@@ -113,13 +107,13 @@
     <ClInclude Include="..\..\svg\svgpattern.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\svggradient.h">
+    <ClInclude Include="..\..\svg\svg_element_gradient.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\svgstyle.h">
+    <ClInclude Include="..\..\svg\svg_element_style.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\svgimage.h">
+    <ClInclude Include="..\..\svg\svg_element_image.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\svgconditional.h">
@@ -129,9 +123,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\svgmask.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\svg\svgextensibility.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\svgclip.h">
@@ -146,16 +137,13 @@
     <ClInclude Include="..\..\svg\maths.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\utf8.h">
+    <ClInclude Include="..\..\svg\core_utf8.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\xmlentity.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\membuff.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\svg\charset.h">
+    <ClInclude Include="..\..\svg\lang_charset.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\svgenums.h">
@@ -173,16 +161,13 @@
     <ClInclude Include="..\..\svg\wsenum.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\svgsymbol.h">
+    <ClInclude Include="..\..\svg\svg_element_symbol.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\app\viewnavigator.h">
+    <ClInclude Include="..\..\app\app_viewnavigator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\app\nativewindow.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\svg\imanagesvgstate.h">
+    <ClInclude Include="..\..\app\app_nativewindow.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\pathsegment.h">
@@ -191,13 +176,10 @@
     <ClInclude Include="..\..\app\appmodule.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\svgdrawingstate.h">
+    <ClInclude Include="..\..\svg\render_state.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\pubsub.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\svg\svgb2ddriver.h">
+    <ClInclude Include="..\..\svg\render_blend2d.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\smildatatypes.h">
@@ -212,7 +194,7 @@
     <ClInclude Include="..\..\app\waavsdisplaycapture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\nametable.h">
+    <ClInclude Include="..\..\svg\core_nametable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\svgatoms.h">
@@ -221,7 +203,7 @@
     <ClInclude Include="..\..\svg\svgunits.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\svgflowroot.h">
+    <ClInclude Include="..\..\svg\svg_element_flowroot.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\twobitpu.h">
@@ -230,10 +212,7 @@
     <ClInclude Include="..\..\svg\pathprogram_exec.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\svgcamera.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\svg\svguse.h">
+    <ClInclude Include="..\..\svg\svg_element_use.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\svgdefs.h">
@@ -284,7 +263,7 @@
     <ClInclude Include="..\..\svg\coloring.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\wggeometry.h">
+    <ClInclude Include="..\..\svg\core_geometry.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\surface.h">
@@ -342,9 +321,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\scanning.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\svg\xmltoken.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\filter_fespecularlight.h">
@@ -431,7 +407,7 @@
     <ClInclude Include="..\..\svg\pixel_program.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\bspan_utils.h">
+    <ClInclude Include="..\..\svg\lang_grammar.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\svgcontext.h">
@@ -440,7 +416,7 @@
     <ClInclude Include="..\..\svg\svgpaintserver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\svgtransform.h">
+    <ClInclude Include="..\..\svg\svg_attribute_transform.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\wg_matrix3x3.h">
@@ -453,6 +429,54 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\svgscan.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\svg_attribute_paintorder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\svg_attribute_stroke.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\svg_attribute_fill.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\svg_attribute_text.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\svg_attribute_font.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\svg_attribute_marker.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\bspan_hash.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\bspan_print.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\xml_attribute_collection.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\xml_pull.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\xml_scan.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\xml_scan_element.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\lang_memory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\lang_scanner.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\render_state_manager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\core_table.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

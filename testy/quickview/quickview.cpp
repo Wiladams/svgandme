@@ -1,14 +1,15 @@
 // Put up a minimal UI drawing interaction environment
 // allows you to test out drawing, with minimal framework overhead.
 #include "apphost.h"
+#include "surface_draw.h"
 
 using namespace waavs;
 
 static void drawStuff()
 {
 	Surface newSurf(100, 100);
-	newSurf.fillAll(0xFF00ffff);	// clear to blue
-	getAppSurface()->blit(newSurf, 10, 10);
+	wg_surface_fill(newSurf, 0xFF00ffff);	// clear to blue
+	wg_blit_copy(*getAppSurface(), newSurf, 10, 10);
 
     refreshScreenNow();
 }

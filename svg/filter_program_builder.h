@@ -3,7 +3,7 @@
 #pragma once
 
 #include "filter_program.h"
-#include "nametable.h"
+#include "core_nametable.h"
 #include "svgdatatypes.h"
 
 

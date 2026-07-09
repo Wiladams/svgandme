@@ -6,10 +6,12 @@
 #include <string>
 
 #include <blend2d/blend2d.h>
-#include "bspan.h"
+#include "lang_span.h"
 #include "coloring.h"
 #include "svgscan.h"
-
+#include "svgatoms.h"
+#include "svgdatatypes.h"
+#include "lang_charset.h"
 
 namespace waavs
 {
@@ -251,14 +253,26 @@ namespace waavs
 
 
 
-namespace waavs {
+namespace waavs 
+{
+    static INLINE bool is_rgb_func(InternedKey key) noexcept
+    {
+        return key == svgfunc::rgb() || key == svgfunc::rgba();
+    }
+
+    static INLINE bool is_hsl_func(InternedKey key) noexcept
+    {
+        return key == svgfunc::hsl() || key == svgfunc::hsla();
+    }
 
     // Scan a bytespan for a sequence of hex digits
     // without using scanf. return 'true' upon success
     // false for any error.
     // The format is either
     // 
+    // #RRGGBBAA
     // #RRGGBB
+    // #RGBA
     // #RGB
     // 
     // Anything else is an error
@@ -344,11 +358,7 @@ namespace waavs {
     // BUGBUG - maybe a more obvious color should be returned
     static WGResult parse_colorsrgb_from_hex(const ByteSpan& chunk, ColorSRGB & srgb) noexcept
     {
-        WGResult res = parseHexToColor(chunk, srgb);
-        if (res != WG_SUCCESS)
-            return res;
-
-        return WG_SUCCESS;
+        return parseHexToColor(chunk, srgb);
     }
 
 
@@ -416,78 +426,105 @@ namespace waavs {
     // Updated parseColorHsl() that does NOT advance the caller's cursor:
     // (per your convention: parse takes const ByteSpan&)
     // ------------------------------------------------------------
-    static BLRgba32 parseColorHsl(const ByteSpan& inChunk) noexcept
+    static WGResult parse_colorsrgb_from_hsl_invocation(
+        const Invocation& inv,
+        ColorSRGB& cSRGB) noexcept
     {
-        BLRgba32 defaultColor(0, 0, 0);
+        colorsrgb_reset(cSRGB, 0, 0, 0, 0);
 
-        // Work on local cursor only (parse => does not mutate caller input)
-        ByteSpan str = inChunk;
+        if (!is_hsl_func(inv.nameKey))
+            return WG_ERROR_Invalid_Argument;
 
-        // Split at '('
-        (void)chunk_token(str, "(");
+        ByteSpan nums = inv.payload;
 
-        // Pull the substring up to ')'
-        ByteSpan nums = chunk_token(str, ")");
-
-        // h can be <number> (treated as degrees in hsl()).
-        // s and l are typically percentages; CSS allows numbers too.
-        // alpha (optional) is number|percent (0..1 or 0..100%).
         SVGNumberOrPercent hNP{};
         SVGNumberOrPercent sNP{};
         SVGNumberOrPercent lNP{};
         SVGNumberOrPercent aNP{};
 
+        charset delims = chrWspChars + ',';
+
         // h
-        ByteSpan tok = chunk_token(nums, ",");
+        bspan_skip_spaces(nums);
+        ByteSpan tok = bspan_read_until(nums, delims);
+        if (!tok)
+            return WG_ERROR_Invalid_Argument;
+
         {
             ByteSpan t = tok;
-            if (!readSVGNumberOrPercent(t, hNP) || !hNP.isSet())
-                return defaultColor;
+            if (!numberOrPercent_read(t, hNP) || !hNP.isSet())
+                return WG_ERROR_Invalid_Argument;
         }
 
         // s
-        tok = chunk_token(nums, ",");
+        bspan_skip_spaces(nums);
+        tok = bspan_read_until(nums, delims);
+        if (!tok)
+            return WG_ERROR_Invalid_Argument;
+
         {
             ByteSpan t = tok;
-            if (!readSVGNumberOrPercent(t, sNP) || !sNP.isSet())
-                return defaultColor;
+            if (!numberOrPercent_read(t, sNP) || !sNP.isSet())
+                return WG_ERROR_Invalid_Argument;
         }
 
         // l
-        tok = chunk_token(nums, ",");
+        bspan_skip_spaces(nums);
+        tok = bspan_read_until(nums, delims);
+        if (!tok)
+            return WG_ERROR_Invalid_Argument;
+
         {
             ByteSpan t = tok;
-            if (!readSVGNumberOrPercent(t, lNP) || !lNP.isSet())
-                return defaultColor;
+            if (!numberOrPercent_read(t, lNP) || !lNP.isSet())
+                return WG_ERROR_Invalid_Argument;
         }
 
-        // optional alpha
+        // Optional alpha: comma-separated legacy form or modern slash form.
+        delims += '/';
+        bspan_ltrim(nums, delims);
+
         double alpha01 = 1.0;
-        tok = chunk_token(nums, ",");
-        if (tok) {
-            ByteSpan t = tok;
-            if (readSVGNumberOrPercent(t, aNP) && aNP.isSet()) {
-                alpha01 = aNP.isPercent() ? (aNP.value() / 100.0) : aNP.value();
-                alpha01 = waavs::clamp(alpha01, 0.0, 1.0);
-            }
+
+        if (nums)
+        {
+            bspan_skip_spaces(nums);
+
+            if (!numberOrPercent_read(nums, aNP) || !aNP.isSet())
+                return WG_ERROR_Invalid_Argument;
+
+            alpha01 = aNP.isPercent()
+                ? aNP.value() / 100.0
+                : aNP.value();
+
+            alpha01 = waavs::clamp(alpha01, 0.0, 1.0);
         }
 
-        // ---- Normalize / clamp per CSS/SVG behavior ----
-        // Hue is cyclic: normalize modulo 360deg, then to [0,1).
-        double h01 = normalizeHue01FromDegrees(hNP.value());
+        const double h01 = normalizeHue01FromDegrees(hNP.value());
 
-        // Saturation & lightness are linear factors. If authored as percent:
-        //   0..100% => 0..1
-        // If authored as number: treat as already 0..1 (then clamp).
-        double s01 = sNP.isPercent() ? (sNP.value() / 100.0) : sNP.value();
-        double l01 = lNP.isPercent() ? (lNP.value() / 100.0) : lNP.value();
+        double s01 = sNP.isPercent()
+            ? sNP.value() / 100.0
+            : sNP.value();
+
+        double l01 = lNP.isPercent()
+            ? lNP.value() / 100.0
+            : lNP.value();
+
         s01 = waavs::clamp(s01, 0.0, 1.0);
         l01 = waavs::clamp(l01, 0.0, 1.0);
 
-        BLRgba32 res = hsl_to_rgb(h01, s01, l01);
-        res.setA((uint32_t)std::lround(alpha01 * 255.0));
-        return res;
+        BLRgba32 rgba = hsl_to_rgb(h01, s01, l01);
+        rgba.setA(static_cast<uint32_t>(std::lround(alpha01 * 255.0)));
+
+        cSRGB = colorSRGB_from_straight_components0_255(
+            rgba.r(),
+            rgba.g(),
+            rgba.b(),
+            rgba.a());
+
+        return WG_SUCCESS;
     }
+
 
 
     // Parse rgb color. The pointer 'str' must point at "rgb(" (4+ characters).
@@ -495,20 +532,33 @@ namespace waavs {
     //      This function returns gray (rgb(128, 128, 128) == '#808080') on parse errors
     //      for backwards compatibility. 
     // Note: some image viewers return black instead.
+    static INLINE bool readCSSComponentToken(ByteSpan& src, ByteSpan& tok) noexcept
+    {
+        static charset tokenChars = chrDecDigits + chrSignChars + '.';
+
+        bspan_skip_spaces(src);
+
+        tok = bspan_read_while(src, tokenChars + '%');
+
+        bspan_skip_spaces(src);
+
+        return tok.size() > 0;
+    }
+
     static INLINE bool readCSSRGBChannel(ByteSpan& s, uint8_t& outC) noexcept
     {
         SVGNumberOrPercent c{};
-        if (!readSVGNumberOrPercent(s, c))
+        if (!numberOrPercent_read(s, c))
             return false;
 
         double v = 0.0;
         if (c.isPercent()) {
             // 0..100% -> 0..255
-            v = (waavs::clamp(c.value(), 0.0, 100.0) * 255.0) / 100.0;
+            v = (clamp(c.value(), 0.0, 100.0) * 255.0) / 100.0;
         }
         else {
             // 0..255
-            v = std::clamp(c.value(), 0.0, 255.0);
+            v = clamp(c.value(), 0.0, 255.0);
         }
 
         outC = (uint8_t)std::lround(v);
@@ -518,10 +568,10 @@ namespace waavs {
     static INLINE bool readCSSAlphaValue(ByteSpan& s, double& outA) noexcept
     {
         SVGNumberOrPercent a{};
-        if (!readSVGNumberOrPercent(s, a))
+        if (!numberOrPercent_read(s, a))
             return false;
 
-        outA = clamp01(a.calculatedValue());
+        outA = clamp01(a.normalizedValue());
 
         return true;
     }
@@ -531,117 +581,141 @@ namespace waavs {
     // rgb(100%, 0%, 0%)
     // rgb(255 0 0 / 0.5)
     // 
-    static WGResult parse_colorsrgb_from_func(const ByteSpan& inChunk, ColorSRGB& cSRGB)
+    static WGResult parse_colorsrgb_from_rgb_invocation(
+        const Invocation& inv,
+        ColorSRGB& cSRGB) noexcept
     {
-        // set a default color in case of parse failure.  
-        // we'll return transparent black
-        // we need to check the spec to see what this 
-        // should really be
         colorsrgb_reset(cSRGB, 0, 0, 0, 0);
 
-        // skip past the leading "rgb("
-        ByteSpan s = inChunk;
-        auto leading = chunk_token_char(s, '(');
+        if (!is_rgb_func(inv.nameKey))
+            return WG_ERROR_Invalid_Argument;
 
-        // s should now point to the first number
-        // and 'leading' should contain 'rgb'
-        // BUGBUG - we can check 'leading' to see if it's actually 'rgb'
-        // but we'll just assume it is for now
-
-        // get the numbers by separating at the ')'
-        auto nums = chunk_token_char(s, ')');
-
-        // So, now nums contains the individual numeric values, 
-		// separated by ',' or spaces or '/' (for alpha).  
-
-        // The individual numeric values are 'number | percent' (50, 50%)
-        // 50 - an absolute value in the range [0..255]
-        // 50% - a percentage of 255 (for the color components)
-		// for alpha, 50% is a percentage of 1.0 (not 255)
+        ByteSpan s = inv.payload;
 
         uint8_t rgba[4]{};
-        rgba[3] = 255;  // default alpha value is 255 (fully opaque)
+        rgba[3] = 255;
 
-
-
-        // Get the rgb values
-        charset delims = chrWspChars + ',';
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < 3; ++i)
         {
-            bspan_skip_spaces(nums);
-            // get a component, separated by space or ','
-            auto num = chunk_token(nums, delims);
-
-            if (!num)
+            ByteSpan tok{};
+            if (!readCSSComponentToken(s, tok))
                 return WG_ERROR_Invalid_Argument;
 
-            if (!readCSSRGBChannel(num, rgba[i]))
+            ByteSpan t = tok;
+            if (!readCSSRGBChannel(t, rgba[i]))
                 return WG_ERROR_Invalid_Argument;
+
+            bspan_skip_spaces(t);
+            if (t)
+                return WG_ERROR_Invalid_Argument;
+
+            bspan_skip_spaces(s);
+
+            if (i < 2)
+            {
+                if (s && *s == ',')
+                    ++s;
+
+                bspan_skip_spaces(s);
+            }
         }
 
-        // assuming we've read the three color components
-        // let's see if there's an alpha remaining.
-        // it can be delimited by the previous delimiters
-        // or the '/' character
-        delims += '/';
-        bspan_skip_while(nums, delims);
+        bspan_skip_spaces(s);
 
-        if (nums)
+        if (s)
         {
-            bspan_skip_spaces(nums);
+            if (*s == ',' || *s == '/')
+                ++s;
+            else
+                return WG_ERROR_Invalid_Argument;
+
+            ByteSpan tok{};
+            if (!readCSSComponentToken(s, tok))
+                return WG_ERROR_Invalid_Argument;
+
+            ByteSpan t = tok;
             double a = 1.0;
-            if (!readCSSAlphaValue(nums, a))
+
+            if (!readCSSAlphaValue(t, a))
                 return WG_ERROR_Invalid_Argument;
+
+            bspan_skip_spaces(t);
+            if (t)
+                return WG_ERROR_Invalid_Argument;
+
             rgba[3] = quantize0_255(a);
+
+            bspan_skip_spaces(s);
+            if (s)
+                return WG_ERROR_Invalid_Argument;
         }
 
-        cSRGB = colorSRGB_from_straight_components0_255(rgba[0], rgba[1], rgba[2], rgba[3]);
+        cSRGB = colorSRGB_from_straight_components0_255(
+            rgba[0], rgba[1], rgba[2], rgba[3]);
 
         return WG_SUCCESS;
     }
 
+
+
+    static WGResult parse_colorsrgb_from_color_invocation(const Invocation& inv,
+        ColorSRGB& out) noexcept
+    {
+        colorsrgb_reset(out, 0, 0, 0, 0);
+
+        if (is_rgb_func(inv.nameKey))
+            return parse_colorsrgb_from_rgb_invocation(inv, out);
+
+        if (is_hsl_func(inv.nameKey))
+            return parse_colorsrgb_from_hsl_invocation(inv, out);
+
+        return WG_ERROR_Invalid_Argument;
+    }
+
+
+
     // Parse only the color portion of a color specification
-// not concerned with a separate opacity value
+    // not concerned with a separate opacity value
+    // Parse only the color portion of a color specification.
+// Not concerned with a separate opacity value.
     static WGResult parseColor(const ByteSpan& colorSpan, ColorSRGB& cSRGB) noexcept
     {
-        static const char* rgbStr = "rgb(";
-        static const char* rgbaStr = "rgba(";
-        static const char* rgbStrCaps = "RGB(";
-        static const char* rgbaStrCaps = "RGBA(";
-        static const char* hslStr = "hsl(";
-        static const char* hslaStr = "hsla(";
-
-        float opacity = 1.0f;
-
-        colorsrgb_reset(cSRGB, 0, 0, 0, opacity);
+        colorsrgb_reset(cSRGB, 0, 0, 0, 1.0f);
 
         ByteSpan cSpan = colorSpan;
-        size_t len = 0;
-        len = cSpan.size();
-        if ((len >= 1) && (*cSpan == '#'))
+        bspan_skip_spaces(cSpan);
+
+        if (!cSpan)
+            return WG_ERROR_Invalid_Argument;
+
+        // Hex color: #RGB, #RGBA, #RRGGBB, #RRGGBBAA
+        if (*cSpan == '#')
         {
-            return parse_colorsrgb_from_hex(cSpan, cSRGB);
+            WGResult res = parse_colorsrgb_from_hex(cSpan, cSRGB);
+            return res;
         }
-        else if (bspan_starts_with(cSpan, rgbStr) ||
-            bspan_starts_with(cSpan, rgbaStr) ||
-            bspan_starts_with(cSpan, rgbaStrCaps) ||
-            bspan_starts_with(cSpan, rgbStrCaps))
+
+        // Functional color: rgb(), rgba(), hsl(), hsla()
         {
-            return parse_colorsrgb_from_func(cSpan, cSRGB);
+            ByteSpan s = cSpan;
+            Invocation inv{};
+
+            if (readInvocation(s, inv, true))
+            {
+                bspan_skip_spaces(s);
+
+                // Do not accept trailing junk after the function call.
+                if (s)
+                    return WG_ERROR_Invalid_Argument;
+
+                return parse_colorsrgb_from_color_invocation(inv, cSRGB);
+            }
         }
-        else if (bspan_starts_with(cSpan, hslStr) ||
-            bspan_starts_with(cSpan, hslaStr))
-        {
-            // BUGBUG - need to modernize Hsl to fill
-            // in ColorSRGB
-            //c = parseColorHsl(str);
-            return WGErrorCode::WG_ERROR_NotImplemented;
-        }
-        else {
-            // so we can detect failure and return false from this function
-            return get_color_by_name_as_srgb(cSpan, cSRGB);
-        }
+
+        // Named color, including transparent.
+        return get_color_by_name_as_srgb(cSpan, cSRGB);
     }
+
 }
 
 namespace waavs {
@@ -704,8 +778,6 @@ namespace waavs {
         a = a | b;
         return a;
     }
-
-
 
 
     struct SVGColor
@@ -790,169 +862,108 @@ namespace waavs {
         //  the current color at time of render, probably taking it from 
         //  the drawing context at the site of call.
         //
+
         bool loadFromAttributes(const XmlAttributeCollection& attrs)
         {
-            static const char* rgbStr = "rgb(";
-            static const char* rgbaStr = "rgba(";
-            static const char* rgbStrCaps = "RGB(";
-            static const char* rgbaStrCaps = "RGBA(";
-            static const char* hslStr = "hsl(";
-            static const char* hslaStr = "hsla(";
+            fValue = {};
+            fSemantics = COLOR_SEMANTIC_UNKNOWN;
+            fColorSpan.reset();
 
-            //ByteSpan colorSpan{};
             ByteSpan opacitySpan{};
 
-            // You can still have a valid color if only 
-            // opacity is specified.
             attrs.getValue(fColorField, fColorSpan);
             attrs.getValue(fOpacityField, opacitySpan);
 
-            // only return early if neither color nor opacity is specified
-            if (!fColorSpan)
-            {
-                if (!opacitySpan)
-                    return false;
-            }
+            if (!fColorSpan && !opacitySpan)
+                return false;
 
-            // temporary values
             ColorSRGB cSRGB{};
+            colorsrgb_reset(cSRGB, 0, 0, 0, 1.0f);
+
             double opacity = 1.0;
-            colorsrgb_reset(cSRGB, 0, 0, 0, opacity);
 
-
-            // Capture opacity early, because even if it ends up being
-            // a reference, we still might want to apply the opacity
-
-            // Check the opacity first, as it is valid to just
-            // specify an opacity, without a color value.  The default
-            // color value might be context specific, but we'll go
-            // with black for the moment.
-            // 
-            // If there is an opacity field, the value should be
-            // between [0..1], or a percentage.
-            // Include the opacity with the color, but since the 
-            // color is sRGB, DO NOT PREMULTIPLY 
-            // 
             if (opacitySpan)
             {
                 SVGNumberOrPercent op{};
                 ByteSpan s = opacitySpan;
-                if (readSVGNumberOrPercent(s, op))
+
+                if (numberOrPercent_read(s, op) && op.isSet())
                 {
-                    opacity = clamp01f((float)op.calculatedValue());
-                    fSemantics = COLOR_SEMANTIC_OPACITY;
+                    opacity = clamp01(op.normalizedValue());
+                    fSemantics |= COLOR_SEMANTIC_OPACITY;
                 }
             }
 
-            // Quick success if we have a URL reference
-            if (bspan_starts_with(fColorSpan, "url("))
-            {
-                fSemantics = COLOR_SEMANTIC_REFERENCE;
-
-                return true;
-            }
-
-
-
-
-            // Finally, if we have a color value, we need to 
-            // parse it.  
             if (fColorSpan)
             {
-                // Before we try to parse the color, check 
-                // to see if the value is 'currentColor'.
-                // If it is, then we need to check if there 
-                // is a 'color' attribute in the current set of attributes.
-                if (fColorSpan == "currentColor")
+                ByteSpan cSpan = fColorSpan;
+                bspan_skip_spaces(cSpan);
+
+                if (cSpan == "currentColor")
                 {
                     ByteSpan currentColorValue{};
+
                     if (attrs.getValue(svgattr::color(), currentColorValue))
                     {
                         fColorSpan = currentColorValue;
+                        cSpan = currentColorValue;
+                        bspan_skip_spaces(cSpan);
                     }
-                    else {
-                        fSemantics = COLOR_SEMANTIC_CURRENT;
+                    else
+                    {
+                        fSemantics |= COLOR_SEMANTIC_CURRENT;
                         return true;
                     }
                 }
 
+                Invocation inv{};
+                ByteSpan invSpan = cSpan;
 
-                ByteSpan cSpan = fColorSpan;
-                size_t len = 0;
-                len = cSpan.size();
-                if ((len >= 1) && (*cSpan == '#'))
+                if (readInvocation(invSpan, inv))
                 {
-                    if (parse_colorsrgb_from_hex(cSpan, cSRGB) == WG_SUCCESS)
-                    {
-                        fSemantics = COLOR_SEMANTIC_COLOR;
-                    }
-                    else {
-                        return false;
-                    }
-                }
-                else if (bspan_starts_with(cSpan, rgbStr) ||
-                    bspan_starts_with(cSpan, rgbaStr) ||
-                    bspan_starts_with(cSpan, rgbaStrCaps) ||
-                    bspan_starts_with(cSpan, rgbStrCaps))
-                {
-                    if (parse_colorsrgb_from_func(cSpan, cSRGB) == WG_SUCCESS)
-                    {
-                        fSemantics = COLOR_SEMANTIC_COLOR;
-                    }
-                    else {
-                        return false;
-                    }
-                }
-                else if (bspan_starts_with(cSpan, hslStr) ||
-                    bspan_starts_with(cSpan, hslaStr))
-                {
-                    // BUGBUG - need to modernize Hsl to fill
-                    // in ColorSRGB
-                    //c = parseColorHsl(str);
+                    bspan_skip_spaces(invSpan);
 
-                    fSemantics = COLOR_SEMANTIC_COLOR;
+                    if (invSpan)
+                        return false;
+
+                    if (inv.nameKey == svgfunc::url())
+                    {
+                        fSemantics |= COLOR_SEMANTIC_REFERENCE;
+                        return true;
+                    }
                 }
-                else {
-                    if (cSpan == svgval::none()) {
-                        fSemantics = COLOR_SEMANTIC_NONE;
-                    }
-                    else if (cSpan == "context-stroke")
-                    {
-                        fSemantics = COLOR_SEMANTIC_CONTEXT_STROKE;
-                    }
-                    else if (cSpan == "context-fill")
-                    {
-                        fSemantics = COLOR_SEMANTIC_CONTEXT_FILL;
-                    }
-                    else if ((cSpan == "inherit"))
-                    {
-                        fSemantics = COLOR_SEMANTIC_INHERIT;
-                    }
-                    else if (cSpan == "currentColor")
-                    {
-                        // Take on whatever color was set in the 'color'
-                        // attribute of this node, or whatever is the 
-                        // currently Active color at the time of render
-                        fSemantics = COLOR_SEMANTIC_CURRENT;
-                    }
-                    else {
-                        if (get_color_by_name_as_srgb(cSpan, cSRGB) == WG_SUCCESS)
-                        {
-                            fSemantics = COLOR_SEMANTIC_COLOR;
-                        }
-                    }
+
+                if (cSpan == svgval::none())
+                {
+                    fSemantics |= COLOR_SEMANTIC_NONE;
+                }
+                else if (cSpan == "context-stroke")
+                {
+                    fSemantics |= COLOR_SEMANTIC_CONTEXT_STROKE;
+                }
+                else if (cSpan == "context-fill")
+                {
+                    fSemantics |= COLOR_SEMANTIC_CONTEXT_FILL;
+                }
+                else if (cSpan == "inherit")
+                {
+                    fSemantics |= COLOR_SEMANTIC_INHERIT;
+                }
+                else
+                {
+                    if (parseColor(cSpan, cSRGB) != WG_SUCCESS)
+                        return false;
+
+                    fSemantics |= COLOR_SEMANTIC_COLOR;
                 }
             }
 
-            // Finally, assign the color value.  
-            // Since we are not premultiplying, 
-            // we apply (multiply) the opacity against the alpha
-            // channel, but we don't modify the r,g,b values.
             fValue = cSRGB;
-            fValue.a = clamp01f(fValue.a * opacity);
+            fValue.a = clamp01f(fValue.a * static_cast<float>(opacity));
 
             return true;
         }
+
     };
 
 }

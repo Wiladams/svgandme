@@ -3,9 +3,9 @@
 
 #include <memory>
 
-#include "definitions.h"
+
 #include "coloring.h"
-#include "wggeometry.h"
+#include "core_geometry.h"
 #include "surface.h"
 
 namespace waavs

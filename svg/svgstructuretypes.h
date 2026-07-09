@@ -1,28 +1,21 @@
+#pragma once
 
 #ifndef SVGSTRUCTURETYPES_H
 #define SVGSTRUCTURETYPES_H
 
-#include <memory>
-#include <vector>
-#include <map>
-#include <unordered_map>
-#include <cstdint>		// uint8_t, etc
-#include <cstddef>		// nullptr_t, ptrdiff_t, size_t
-
 #include "maths.h"
 
-#include "xmlscan.h"
 
-#include "svgobject.h"
-#include "svgdatatypes.h"
-#include "svgcss.h"
-#include "irendersvg.h"
-#include "uievent.h"
+#include "core_nametable.h"
+#include "xml_pull.h"
+#include "render_interface.h"
 #include "stopwatch.h"
 
 #include "svgatoms.h"
-
-
+#include "svgobject.h"
+#include "svgdatatypes.h"
+#include "svgcss.h"
+#include "svgscan.h"
 
 
 namespace waavs {
@@ -180,7 +173,8 @@ namespace waavs
 
         bool loadFromChunk(const ByteSpan& inChunk)
         {
-            auto s = chunk_trim(inChunk, chrWspChars);
+            auto s = inChunk;
+            bspan_trim_spaces(s);
 
             if (!s)
                 return false;
@@ -231,7 +225,8 @@ namespace waavs
     // ================================================
     // Collection of property constructors
     using SVGAttributeToPropertyConverter = std::function<std::shared_ptr<SVGVisualProperty>(const XmlAttributeCollection& attrs)>;    
-    using SVGPropertyConstructorMap = std::unordered_map<InternedKey, SVGAttributeToPropertyConverter, InternedKeyHash, InternedKeyEquivalent>;
+    using SVGPropertyConstructorMap = WSOpenHashTable<InternedKey, SVGAttributeToPropertyConverter>;
+    //using SVGPropertyConstructorMap = std::unordered_map<InternedKey, SVGAttributeToPropertyConverter, InternedKeyHash, InternedKeyEquivalent>;
 
 
     static SVGPropertyConstructorMap & getPropertyConstructionMap()
@@ -246,13 +241,9 @@ namespace waavs
         if (!key)
             return false;
 
-        auto& pmap = getPropertyConstructionMap();
-        pmap[key] = std::move(func);
-
-        return true;
+        return getPropertyConstructionMap().put(key, std::move(func));
     }
     
-
     static bool registerSVGAttributeByName(const char* name, SVGAttributeToPropertyConverter func)
     {
         InternedKey k = PSNameTable::INTERN(name);
@@ -261,16 +252,17 @@ namespace waavs
 
     static SVGAttributeToPropertyConverter getAttributeConverter(InternedKey k)
     {
-        if (!k) 
+        if (!k)
             return nullptr;
 
         auto& mapper = getPropertyConstructionMap();
-        auto it = mapper.find(k);
-        if (it != mapper.end())
-            return it->second;
+
+        if (auto converter = mapper.getRef(k))
+            return *converter;
 
         return nullptr;
     }
+
 }
 
 
@@ -289,33 +281,58 @@ namespace waavs
 
     struct IAmGroot
     {
-        std::unordered_map<ByteSpan, std::shared_ptr<IViewable>, ByteSpanHash, ByteSpanEquivalent> fDefinitions{};
+        PSNameTable fIdNameTable{};
+        WSOpenHashTable<InternedKey, std::shared_ptr<IViewable>> fDefinitions{};
+
+        //std::unordered_map<ByteSpan, std::shared_ptr<IViewable>, ByteSpanHash, ByteSpanEquivalent> fDefinitions{};
         std::unordered_map<ByteSpan, ByteSpan, ByteSpanHash, ByteSpanEquivalent> fEntities{};
         StopWatch fDocClock{};
 
-
-
         virtual void addElementReference(const ByteSpan& name, std::shared_ptr<IViewable> obj)
         {
-            fDefinitions[name] = obj;
+            ByteSpan keySpan = name;
+            bspan_trim_spaces(keySpan);
+
+            if (!keySpan || !obj)
+                return;
+
+            InternedKey key = fIdNameTable.intern(keySpan);
+            fDefinitions.put(key, std::move(obj));
         }
+
+        //virtual std::shared_ptr<IViewable> getElementById(const ByteSpan& name)
+
 
         virtual std::shared_ptr<IViewable> getElementById(const ByteSpan& name)
         {
-            auto it = fDefinitions.find(name);
-            if (it != fDefinitions.end())
-                return it->second;
+            ByteSpan keySpan = name;
+            bspan_trim_spaces(keySpan);
+
+            if (!keySpan)
+                return {};
+
+            InternedKey key = fIdNameTable.intern(keySpan);
+
+            if (auto obj = fDefinitions.getRef(key))
+                return *obj;
 
             return {};
         }
-        
 
         // Load a URL Reference
+        // BUGBUG - This needs to be more sophisticated.  Right now
+        // it only finds an already existent element with the given ID
+        // But, the URL could be pointing to an external file, in which
+        // case we need to actually load that file.
+        // the Image element does this, either loading from inline base64
+        // or loading from a file.
+        // We need to generalize that here as well.  Filtering also has this
+        // proision implemented for image references
         virtual std::shared_ptr<IViewable> findNodeByHref(const ByteSpan& inChunk)
         {
-            //ByteSpan str = inChunk;
+            ByteSpan id = inChunk;
 
-            auto id = chunk_trim(inChunk, chrWspChars);
+            bspan_trim_spaces(id);
 
             // The first character could be '.' or '#'
             // so we need to skip past that
@@ -334,27 +351,27 @@ namespace waavs
         {
             ByteSpan str = inChunk;
 
+            // do a 'parse invocation' of the url() function, 
+            // and extract the id from it
             // the id we want should look like this
             // url(#id)
             // so we need to skip past the 'url(#'
             // and then find the closing ')'
             // and then we have the id
-            auto url = chunk_token(str, "(");
-            auto nodeId = chunk_trim(chunk_token(str, ")"), chrWspChars);
+            Invocation invoc{};
+            readInvocation(str, invoc);
+            bspan_trim_spaces(invoc.payload);
+            bspan_trim_matching_quotes(invoc.payload);
 
-            // sometimes the id is quoted
-            // so trim that as well
-            nodeId = chunk_trim(nodeId, "\"");
-            nodeId = chunk_trim(nodeId, "'");
-
-            return this->findNodeByHref(nodeId);
+            return this->findNodeByHref(invoc.payload);
         }
         
 
         // Entities for entity expansion
         virtual void addXmlEntity(const ByteSpan& name, ByteSpan expansion)
         {
-            ByteSpan key = chunk_trim(name, chrWspChars);
+            ByteSpan key = name;
+            bspan_trim_spaces(key);
             fEntities[key] = expansion;
         }
         
@@ -409,15 +426,16 @@ namespace waavs {
     };
 }
 
-namespace waavs {
-
+namespace waavs 
+{
 
     // node creation dispatch
     // Creating from a singular element, typically a self-closing tag
-    using ShapeCreationMap =
-        std::unordered_map<InternedKey,
-        std::function<std::shared_ptr<ISVGElement>(IAmGroot*, const XmlElement&)>,
-        InternedKeyHash, InternedKeyEquivalent>;
+    using SVGSingularCreator = std::function<std::shared_ptr<ISVGElement>(IAmGroot*, const XmlElement&)>;
+    using ShapeCreationMap = WSOpenHashTable<InternedKey, SVGSingularCreator>;
+//        std::unordered_map<InternedKey,
+//        std::function<std::shared_ptr<ISVGElement>(IAmGroot*, const XmlElement&)>,
+//        InternedKeyHash, InternedKeyEquivalent>;
 
     // compound node creation dispatch - 
     // 'g', 'symbol', 'pattern', 'linearGradient', 'radialGradient', 'conicGradient', 
@@ -429,10 +447,14 @@ namespace waavs {
     //
     // And probably some others.  Basically, anything that has a start tag should 
     // register a routine here.
-    using SVGContainerCreationMap =
-        std::unordered_map<InternedKey,
-        std::function<std::shared_ptr<ISVGElement>(IAmGroot*, XmlPull&)>,
-        InternedKeyHash, InternedKeyEquivalent>;
+    using SVGContainerCreator = std::function<std::shared_ptr<ISVGElement>(IAmGroot*, XmlPull&)>;
+    using SVGContainerCreationMap = WSOpenHashTable<InternedKey,SVGContainerCreator>;
+
+
+    //using SVGContainerCreationMap =
+    //    std::unordered_map<InternedKey,
+    //    std::function<std::shared_ptr<ISVGElement>(IAmGroot*, XmlPull&)>,
+    //    InternedKeyHash, InternedKeyEquivalent>;
 
 
 
@@ -451,25 +473,28 @@ namespace waavs {
     }
 
 
-    // Register named creation routines
-    static void registerSVGSingularNode(const char* name, std::function<std::shared_ptr<ISVGElement>(IAmGroot*, const XmlElement&)> func) = delete;
-
-    static void registerSVGSingularNodeByName(const char* name,
-        std::function<std::shared_ptr<ISVGElement>(IAmGroot*, const XmlElement&)> func)
+    // Register named creation routines for singular nodes
+    static void registerSVGSingularNode(InternedKey key, SVGSingularCreator func)
     {
-        InternedKey k = PSNameTable::INTERN(name);
-        getSVGSingularCreationMap()[k] = std::move(func);
+        getSVGSingularCreationMap().put(key, std::move(func));
     }
 
+    static void registerSVGSingularNodeByName(const char* name, SVGSingularCreator func)
+    {
+        InternedKey k = PSNameTable::INTERN(name);
+        registerSVGSingularNode(k, std::move(func));
+    }
+
+    // Register named creation routines for container nodes
     static void registerContainerNode(InternedKey key, std::function<std::shared_ptr<ISVGElement>(IAmGroot*, XmlPull&)> creator)
     {
-        getSVGContainerCreationMap()[key] = std::move(creator);
+        getSVGContainerCreationMap().put(key, std::move(creator));
     }
 
     static void registerContainerNodeByName(const char* name, std::function<std::shared_ptr<ISVGElement>(IAmGroot*, XmlPull&)> creator)
     {
         InternedKey key = PSNameTable::INTERN(name);
-        return registerContainerNode(key, std::move(creator));
+        registerContainerNode(key, std::move(creator));
     }
 
 
@@ -482,9 +507,10 @@ namespace waavs {
             return nullptr;
 
         auto& m = getSVGSingularCreationMap();
-        auto it = m.find(k);
-        if (it != m.end())
-            return it->second(root, elem);
+        
+        if (auto creator = m.getRef(k))
+            return (*creator)(root, elem);
+
         return nullptr;
     }
 
@@ -496,9 +522,10 @@ namespace waavs {
             return nullptr;
         
         auto& m = getSVGContainerCreationMap();
-        auto it = m.find(k);
-        if (it != m.end())
-            return it->second(root, iter);
+
+        if (auto creator = m.getRef(k))
+            return (*creator)(root, iter);
+
         return nullptr;
     }
 }

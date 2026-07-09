@@ -168,13 +168,13 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>..\;..\..\;..\..\blend2d;..\..\svg;..\..\app;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\;..\..\;..\..\3rdparty;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;..\;..\..\;..\..\3rdparty;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\lib\ARM64\Debug</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\3rdparty\blend2d\lib\ARM64\Debug;..\..\3rdparty\ffmpeg\lib\Release;</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
@@ -185,7 +185,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\;..\..\;..\..\blend2d;..\..\svg;..\..\app;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\;..\..\;..\..\3rdparty;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;..\;..\..\;..\..\3rdparty;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
@@ -194,7 +194,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\lib\ARM64\Release</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\3rdparty\blend2d\lib\ARM64\Release;..\..\3rdparty\ffmpeg\lib\Release;</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

@@ -4,12 +4,12 @@
 #include <filesystem>
 
 
-#include "mappedfile.h"
-#include "svguiapp.h"
+#include "app_mappedfile.h"
+#include "app_viewnavigator.h"
+#include "app_svguiapp.h"
 #include "svgwaavs.h"
 #include "svgicons.h"
-#include "viewnavigator.h"
-#include "svgb2ddriver.h"
+#include "render_blend2d.h"
 
 
 using namespace waavs;
@@ -88,7 +88,7 @@ static std::shared_ptr<SVGDocument> docFromFilename(const char* filename)
 static void drawBackground()
 {
     // We need to clear the context first
-    getAppSurface()->clearAll();
+    wg_surface_clear(*getAppSurface());
     getDrawingContext()->renew();
     getDrawingContext()->background(BLRgba32(0xffffffff));
     getDrawingContext()->clearToBackground();

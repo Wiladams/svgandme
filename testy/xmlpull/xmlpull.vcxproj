@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|ARM64">
@@ -208,15 +208,19 @@
     <ClInclude Include="..\..\svg\bspan.h" />
     <ClInclude Include="..\..\svg\charset.h" />
     <ClInclude Include="..\..\svg\collections.h" />
+    <ClInclude Include="..\..\svg\definitions.h" />
     <ClInclude Include="..\..\svg\ocspan.h" />
     <ClInclude Include="..\..\svg\svgcss.h" />
+    <ClInclude Include="..\..\svg\ws_table.h" />
     <ClInclude Include="..\..\svg\xmlelementgen.h" />
-    <ClInclude Include="..\..\svg\xmltokengen.h" />
     <ClInclude Include="..\..\svg\xmliter.h" />
-    <ClInclude Include="..\..\svg\xmlscan.h" />
+    <ClInclude Include="..\..\svg\xml_scan.h" />
     <ClInclude Include="..\..\svg\xmlschema.h" />
-    <ClInclude Include="..\..\svg\xmltoken.h" />
     <ClInclude Include="..\..\svg\xmltypes.h" />
+    <ClInclude Include="..\..\svg\xml_attribute_collection.h" />
+    <ClInclude Include="..\..\svg\xml_scan_element.h" />
+    <ClInclude Include="..\..\svg\xml_pull.h" />
+    <ClInclude Include="..\..\svg\xml_scan_token.h" />
     <ClInclude Include="..\..\svg\xpath.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

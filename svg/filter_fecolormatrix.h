@@ -761,16 +761,18 @@ namespace waavs
         Surface_ARGB32 dstView{};
         Surface_ARGB32 srcView{};
 
-        WGRectI clipped = intersection(area, Surface_ARGB32_bounds(&dstInfo));
-        clipped = intersection(clipped, Surface_ARGB32_bounds(&srcInfo));
+        WGRectI clipped = intersection(area, Surface_ARGB32_bounds(dstInfo));
+        clipped = intersection(clipped, Surface_ARGB32_bounds(srcInfo));
 
         if (clipped.w <= 0 || clipped.h <= 0)
             return WG_SUCCESS;
 
-        if (Surface_ARGB32_get_subarea(dstInfo, clipped, dstView) != WG_SUCCESS)
+        dstView = Surface_ARGB32_subview(dstInfo, clipped);
+        if (!Surface_ARGB32_is_valid(dstView))
             return WG_ERROR_Invalid_Argument;
 
-        if (Surface_ARGB32_get_subarea(srcInfo, clipped, srcView) != WG_SUCCESS)
+        srcView = Surface_ARGB32_subview(srcInfo, clipped);
+        if (!Surface_ARGB32_is_valid(srcView))
             return WG_ERROR_Invalid_Argument;
 
         return wg_surface_rows_apply_unary_unchecked(

@@ -1122,7 +1122,8 @@ bool setAppFrameSize(long aWidth, long aHeight)
         return false;
     }
 
-    s->reset(aWidth, aHeight);
+    *s = Surface::createOwned(aWidth, aHeight);
+    //s->reset(aWidth, aHeight);
 
     appFrameWidth = aWidth;
     appFrameHeight = aHeight;

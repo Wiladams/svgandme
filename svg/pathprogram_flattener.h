@@ -2,7 +2,7 @@
 
 #include "definitions.h"
 #include "maths.h"
-#include "wggeometry.h"
+#include "core_geometry.h"
 #include "pathprogram.h"
 #include "pathprogram_builder.h"
 
@@ -192,7 +192,7 @@ namespace waavs
             rx = abs(rx);
             ry = abs(ry);
 
-            const double phi = xAxisRotation * DegToRad;
+            const double phi = xAxisRotation * kDegToRad;
             const double cosPhi = cos(phi);
             const double sinPhi = sin(phi);
 

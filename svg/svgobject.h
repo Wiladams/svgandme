@@ -63,34 +63,3 @@ namespace waavs
 
 }
 
-namespace waavs
-{
-    struct SolidColorPaint : public IServePaint
-    {
-        BLRgba32 fColorValue;
-        bool isNone{ false };
-
-        SolidColorPaint()
-        {
-            fColorValue.value = 0; // default to transparent black
-            isNone = true;
-        }
-
-        SolidColorPaint(const uint32_t r, const uint32_t g, const uint32_t b, const uint32_t a = 255)
-        {
-            fColorValue.reset(r, g, b, a);
-        }
-
-        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
-        {
-            if (isNone)
-                return BLVar::null();
-
-            BLVar tmpVar{};
-            tmpVar = fColorValue;
-            return tmpVar;
-        }
-
-
-    };
-}

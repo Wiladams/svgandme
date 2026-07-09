@@ -24,7 +24,7 @@ namespace waavs
         SVGSegmentIterator iter(inSpan);
         PathSegment seg{};
 
-        while (readNextSegmentCommand(iter, seg)) {
+        while (svgPathSegment_read(iter, seg)) {
             normalizer.consume(seg);
         }
 

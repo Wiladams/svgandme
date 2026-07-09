@@ -1,6 +1,6 @@
 #pragma once
 
-#include "wggeometry.h"
+#include "core_geometry.h"
 
 namespace waavs {
 

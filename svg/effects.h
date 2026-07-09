@@ -1,6 +1,6 @@
 #pragma once
 
-#include "wggeometry.h"
+#include "core_geometry.h"
 #include "blend2d_connect.h"
 #include "svgenums.h"
 

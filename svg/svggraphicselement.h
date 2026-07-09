@@ -20,7 +20,7 @@ namespace waavs
 
         plan = {};
         plan.objectBBoxUS = objectBBoxUS;
-        plan.ctm = ctx->getTransform();
+        plan.ctm = ctx->state().getTransform();
         plan.invCtm = plan.ctm;
         (void)plan.invCtm.invert();
 
@@ -112,9 +112,7 @@ namespace waavs
         //
         if (outSurface.width() != uint32_t(req.pixelRect.w) || outSurface.height() != uint32_t(req.pixelRect.h))
         {
-            outSurface.reset(
-                uint32_t(req.pixelRect.w),
-                uint32_t(req.pixelRect.h));
+            outSurface = Surface::createOwned( req.pixelRect.w, req.pixelRect.h);
         }
 
         if (outSurface.empty())
@@ -136,8 +134,8 @@ namespace waavs
             tmp.clear();
 
         tmp.transform(off);
-        tmp.setObjectFrame(req.objectBBoxUS);
-        tmp.setViewport(req.objectBBoxUS);
+        tmp.state().setObjectFrame(req.objectBBoxUS);
+        tmp.state().setViewport(req.objectBBoxUS);
 
         if (req.renderMode.has(RenderFeature::RF_Content))
         {
@@ -189,7 +187,7 @@ namespace waavs {
         // We have this separate for those cases where you want to traverse
         // the tree asking for bounding boxes, but you don't want to do it all the 
         // time.
-        const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot) noexcept
+        const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot) noexcept override
         {
             WGRectD bbox{};
             for (auto& node : fRenderNodes)
@@ -613,7 +611,7 @@ namespace waavs {
             // skip the id field, and hold out the style and class attributes
             // for later processing, since they have special handling.
     
-            // since the readNextKeyAttribute() function is destructive of the span
+            // since the xmlattribute_read_next() function is destructive of the span
             // we need to make a copy of the span to work with
             ByteSpan src = fAttributeSpan;
 
@@ -622,7 +620,7 @@ namespace waavs {
             ByteSpan attrName{};
             ByteSpan attrValue{};
 
-            while (readNextKeyAttribute(src, attrName, attrValue))
+            while (xmlattribute_read_next(src, attrName, attrValue))
             {
                 InternedKey attrKey = PSNameTable::INTERN(attrName);
 
@@ -634,7 +632,7 @@ namespace waavs {
                 else if (attrKey == svgattr::style() && !attrValue.empty())
                 {
                     ByteSpan styleValue = attrValue;
-                    styleValue = chunk_trim(styleValue, chrWspChars);
+                    bspan_trim_spaces(styleValue);
 
                     if (styleValue && *styleValue == '&')
                     {
@@ -642,8 +640,7 @@ namespace waavs {
                         styleValue.advance(1);
 
                         // remove the trailing ';' if it exists
-                        styleValue = chunk_rtrim(styleValue,";");
-
+                        bspan_rtrim(styleValue,";");
                         
                         // check to see if there's an entity reference at the beginning
                         styleValue = groot->findXmlEntity(styleValue);
@@ -695,7 +692,7 @@ namespace waavs {
                 while (classChunk)
                 {
                     // peel a word off the front
-                    auto classId = chunk_token(classChunk, chrWspChars);
+                    auto classId = bspan_read_until(classChunk, chrWspChars);
                     auto csel = groot->styleSheet().getSelector(CSS_SELECTOR_CLASS, classId);
                     if (csel != nullptr)
                     {
@@ -735,7 +732,7 @@ namespace waavs {
             ByteSpan displayAttr{};
             if (fAttributes.getValue(svgattr::display(), displayAttr))
             {
-                displayAttr = chunk_trim(displayAttr, chrWspChars);
+                bspan_trim_spaces(displayAttr);
                 InternedKey dv = PSNameTable::INTERN(displayAttr);
 
                 if (dv == svgval::none())
@@ -756,6 +753,8 @@ namespace waavs {
             fixupStyleAttributes(groot);
             fStyleResolved = true;
 
+            // Convert the attributes that have a property registration 
+            // into VisualProperty objects
             convertAttributesToProperties(nullptr, groot);
         }
 
@@ -827,6 +826,16 @@ namespace waavs {
         // exists for it.
         void convertAttributesToProperties(IRenderSVG* ctx, IAmGroot* groot)
         {
+            fAttributes.values().forEach([this, &groot](InternedKey key, const ByteSpan& value) {
+                auto propertyMapper = getAttributeConverter(key);
+                if (propertyMapper)
+                {
+                    auto prop = propertyMapper(fAttributes);
+                    if (prop)
+                        addVisualProperty(key, prop);
+                }
+                });
+            /*
             //
             for (auto& attr : fAttributes.values())
             {
@@ -839,6 +848,7 @@ namespace waavs {
                         addVisualProperty(attr.first, prop);
                 }
             }
+            */
         }
 
         virtual void bindSelfToContext(IRenderSVG*, IAmGroot*) { ; }
@@ -859,9 +869,7 @@ namespace waavs {
             if (!fStyleResolved)
                 this->resolveStyleAttributes(groot);
 
-            // Convert the attributes that have a property registration 
-            // into VisualProperty objects
-            //convertAttributesToProperties(ctx, groot);
+
 
             // Tell the structure to bind the rest of its stuff
             bindSelfToContext(ctx, groot);
@@ -893,7 +901,8 @@ namespace waavs {
 
             while (s)
             {
-                ByteSpan name = chunk_trim(chunk_token(s, ","), chrWspChars);
+                ByteSpan name = bspan_read_until(s, ",");
+                bspan_trim_spaces(name);
 
                 if (!name)
                     continue;
@@ -907,8 +916,8 @@ namespace waavs {
             if (!ctx)
                 return;
 
-            IServePaint* fillServer = ctx->getFillPaintServer();
-            IServePaint* strokeServer = ctx->getStrokeServer();
+            IServePaint* fillServer = ctx->state().getFillPaintServer();
+            IServePaint* strokeServer = ctx->state().getStrokePaintServer();
         
             if (fillServer)
             {
@@ -916,7 +925,7 @@ namespace waavs {
                 if (aVar.is_null())
                     ctx->noFill();
                 else
-                    ctx->fill(aVar);
+                    ctx->applyFillPaint(aVar);
             }
 
             if (strokeServer)
@@ -925,7 +934,7 @@ namespace waavs {
                 if (aVar.is_null())
                     ctx->noStroke();
                 else
-                    ctx->stroke(aVar);
+                    ctx->applyStrokePaint(aVar);
             }
         }
 
@@ -948,6 +957,54 @@ namespace waavs {
         //        }
         //    }
         //}
+
+        void applyPaintSelectionProperties(IRenderSVG* ctx, IAmGroot* groot)
+        {
+            applyProperty(ctx, groot, svgattr::color());
+            applyProperty(ctx, groot, svgattr::fill());
+            applyProperty(ctx, groot, svgattr::stroke());
+            applyProperty(ctx, groot, svgattr::fill_rule());
+            //applyProperty(ctx, groot, svgattr::clip_rule());
+
+            applyProperty(ctx, groot, svgattr::stroke_width());
+            applyProperty(ctx, groot, svgattr::stroke_linecap());
+            applyProperty(ctx, groot, svgattr::stroke_linejoin());
+            applyProperty(ctx, groot, svgattr::stroke_miterlimit());
+            applyProperty(ctx, groot, svgattr::stroke_dasharray());
+            applyProperty(ctx, groot, svgattr::stroke_dashoffset());
+
+            applyProperty(ctx, groot, svgattr::marker());
+            applyProperty(ctx, groot, svgattr::marker_start());
+            applyProperty(ctx, groot, svgattr::marker_mid());
+            applyProperty(ctx, groot, svgattr::marker_end());
+        }
+
+        void applyTextProperties(IRenderSVG* ctx, IAmGroot* groot)
+        {
+            static ByteSpan kTextProperties =
+                "font-family,"
+                "font-size,"
+                "font-size-adjust,"
+                "font-stretch,"
+                "font-style,"
+                "font-variant,"
+                "font-weight,"
+                "direction,"
+                "unicode-bidi,"
+                "writing-mode,"
+                "glyph-orientation-horizontal,"
+                "glyph-orientation-vertical,"
+                "text-anchor,"
+                "dominant-baseline,"
+                "alignment-baseline,"
+                "baseline-shift,"
+                "kerning,"
+                "letter-spacing,"
+                "word-spacing,"
+                "text-rendering";
+
+            applyProperties(ctx, groot, kTextProperties);
+        }
 
         virtual void drawRenderSubtree(IRenderSVG* ctx, IAmGroot* groot)
         {
@@ -981,58 +1038,22 @@ namespace waavs {
 
         WGRectD drawBegin(IRenderSVG* ctx, IAmGroot* groot) 
         {
-            static ByteSpan kPreGeometryProperties =
-                "font-family,font-size,font-style,font-weight,"
-                "stroke-width,stroke-linecap,stroke-linejoin,stroke-miterlimit,"
-                "stroke-dasharray,stroke-dashoffset,vector-effect,"
-                "fill-rule,clip-rule,"
-                "marker,marker-start,marker-mid,marker-end,"
-                "fill, stroke, color";
-
-            static ByteSpan kGeometryProperties =
-                "transform";
-
-            static ByteSpan kPaintServerProperties =
-                "fill,fill-opacity,"
-                "stroke,stroke-opacity";
-
-            static ByteSpan kIsolationProperties =
-                "opacity,"
-                "filter,"
-                "mask,"
-                "clip-path,"
-                "paint-order,"
-                "visibility,"
-                "display,"
-                "shape-rendering,"
-                "image-rendering,"
-                "color-interpolation,"
-                "color-interpolation-filters,"
-                "mix-blend-mode,"
-                "isolation";
-
-
 
             ctx->push();
-
-            // apply early properties
-            // BUGBUG - need to examine what goes on in bindToContext
-            //applyProperties(ctx, groot, kPreGeometryProperties);
 
             if (needsBinding())
                 this->bindToContext(ctx, groot);
 
-            applyProperties(ctx, groot, kPreGeometryProperties);
+            applyTextProperties(ctx, groot);
+            applyPaintSelectionProperties(ctx, groot);
             applyTransform(ctx, groot);
 
             bindGeometryToContext(ctx, groot);
+
             WGRectD bbox = getObjectBoundingBox(ctx, groot);
-            ctx->setObjectFrame(bbox);
+            ctx->state().setObjectFrame(bbox);
 
-            // apply late properties
             resolvePaintServers(ctx, groot);
-            //applyProperties(ctx, groot, kPaintServerProperties);
-
 
             return bbox;
         }
@@ -1094,9 +1115,9 @@ namespace waavs {
             }
             else {
                 IsolatedSubtreeRequest req{};
-                SVGDrawingState* ds = ctx->getDrawingState();
-                if (ds)
-                    req.drawingState = *ds;
+                SVGDrawingState &ds = ctx->state();
+                //if (ds)
+                //    req.drawingState = *ds;
                 req.userRect = plan.effectRectUS;
                 req.pixelRect = plan.pixelRect;
                 req.ctm = plan.ctm;
@@ -1135,9 +1156,9 @@ namespace waavs {
                     if (getAttribute(svgattr::opacity(), opacityAttr))
                     {
                         SVGNumberOrPercent op{};
-                        if (readSVGNumberOrPercent(opacityAttr, op))
+                        if (numberOrPercent_read(opacityAttr, op))
                         {
-                            double opacityValue = op.calculatedValue();
+                            double opacityValue = op.normalizedValue();
                             ctx->globalOpacity(opacityValue);
                         }
                     }

@@ -66,7 +66,7 @@ namespace waavs {
         void drawForeground(IRenderSVG* ctx) override
         {
             ctx->strokeWidth(4);
-            ctx->stroke(BLRgba32(0xffA000A0));
+            ctx->state().stroke(BLVar(BLRgba32(0xffA000A0)));
             BLPath apath;
             apath.add_rect(0, 0, frame().w, frame().h);
             ctx->strokeShape(apath);

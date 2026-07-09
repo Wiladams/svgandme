@@ -2,11 +2,12 @@
 #pragma once
 
 #include "definitions.h"
-#include "wggeometry.h"
+#include "core_geometry.h"
 
 
 namespace waavs
 {
+
     // ----------------------------------------------------
     // Surface type + rows + basic fills/blends for ARGB32 
     // ----------------------------------------------------
@@ -15,15 +16,30 @@ namespace waavs
         uint8_t* data;          // base pointer
         int32_t  width;         // in pixels
         int32_t  height;        // in pixels
-        ptrdiff_t stride;        // in bytes between rows
+        ptrdiff_t stride;       // in bytes between rows
         bool     contiguous;    // whether the memory is contiguous (no gap between rows)
     } ;
 
+    ASSERT_MEMCPY_SAFE(Surface_ARGB32);
+
+    // Report on the validity of the surface structure.  
+    static INLINE bool Surface_ARGB32_is_valid(const Surface_ARGB32 & s) noexcept
+    {
+        if (!s.data || s.width <= 0 || s.height <= 0 || s.stride <= 0)
+            return false;
+
+        const size_t minStride = (size_t)s.width * sizeof(uint32_t);
+
+        return (size_t)s.stride >= minStride;
+    }
 
     // rectangle convenience
-    static INLINE WGRectI Surface_ARGB32_bounds(const Surface_ARGB32* s) noexcept
+    static INLINE WGRectI Surface_ARGB32_bounds(const Surface_ARGB32& s) noexcept
     {
-        return WGRectI{ 0, 0, s->width, s->height };
+        if (!Surface_ARGB32_is_valid(s))
+            return WGRectI{ 0, 0, 0, 0 };
+
+        return WGRectI{ 0, 0, s.width, s.height };
     }
 
     //
@@ -39,18 +55,56 @@ namespace waavs
     // Returns a pointer to the start of the specified row.  
     // The caller is responsible for ensuring that the preconditions are met.
 
-    static  INLINE uint32_t* Surface_ARGB32_row_pointer_unchecked(const Surface_ARGB32* s, int y) 
+    static  INLINE uint32_t* Surface_ARGB32_row_pointer_unchecked(const Surface_ARGB32& s, int y) 
     {
-        return (uint32_t*)(s->data + ((size_t)y * (size_t)s->stride));
+        return (uint32_t*)(s.data + ((size_t)y * (size_t)s.stride));
     }
     
-    static  INLINE uint32_t* Surface_ARGB32_row_pointer(const Surface_ARGB32* s, int y)
+    static INLINE uint32_t* Surface_ARGB32_row_pointer(const Surface_ARGB32& s, int y) noexcept
     {
-        return (uint32_t*)(s->data + ((size_t)y * (size_t)s->stride));
+        if (!Surface_ARGB32_is_valid(s))
+            return nullptr;
+
+        if (y < 0 || y >= s.height)
+            return nullptr;
+
+        return Surface_ARGB32_row_pointer_unchecked(s, y);
     }
 
-    static  INLINE const uint32_t* Surface_ARGB32_row_pointer_const(const Surface_ARGB32* s, int y) {
-        return (const uint32_t*)(s->data + (size_t)y * (size_t)s->stride);
+    static INLINE const uint32_t* Surface_ARGB32_row_pointer_const(const Surface_ARGB32& s, int y) noexcept
+    {
+        return Surface_ARGB32_row_pointer(s, y);
+    }
+
+
+    static INLINE Surface_ARGB32 Surface_ARGB32_subview(const Surface_ARGB32& src, const WGRectI& area) noexcept
+    {
+        Surface_ARGB32 subarea{};
+
+        if (!Surface_ARGB32_is_valid(src))
+            return subarea;
+
+        const WGRectI clippedArea =
+            intersection(Surface_ARGB32_bounds(src), area);
+
+        if (clippedArea.w <= 0 || clippedArea.h <= 0)
+            return subarea;
+
+        subarea.data =
+            src.data +
+            (size_t)clippedArea.y * (size_t)src.stride +
+            (size_t)clippedArea.x * sizeof(uint32_t);
+
+        subarea.width = clippedArea.w;
+        subarea.height = clippedArea.h;
+        subarea.stride = src.stride;
+
+        subarea.contiguous =
+            src.contiguous &&
+            clippedArea.x == 0 &&
+            clippedArea.w == src.width;
+
+        return subarea;
     }
 
     // wg_get_subarea()
@@ -65,7 +119,8 @@ namespace waavs
     // This routine will perform boundary clipping and return a subarea
     // that actually fits within the source surface.
     //
-    static  WGResult Surface_ARGB32_get_subarea(const Surface_ARGB32& src, const WGRectI& area, Surface_ARGB32& subarea) noexcept
+    static  WGResult Surface_ARGB32_get_subarea(const Surface_ARGB32& src, const WGRectI& area, Surface_ARGB32& subarea) noexcept = delete;
+    /*
     {
         // If there's not associated data in the source
         // then return an early error
@@ -75,7 +130,7 @@ namespace waavs
         // Get the intersection of the requested area with 
         // the source bounds, and use that as the actual area 
         // for the subarea.
-        WGRectI srcBounds = Surface_ARGB32_bounds(&src);
+        WGRectI srcBounds = Surface_ARGB32_bounds(src);
         WGRectI clippedArea = intersection(srcBounds, area);
 
         // early return if no intersection
@@ -93,34 +148,6 @@ namespace waavs
 
         return WG_SUCCESS;
     }
+    */
 
-    // Surface_ARGB32_nearest_pixel()
-    // 
-    // Given float coordinates, find the nearest pixel to
-    // the given coordinates
-    static INLINE uint32_t Surface_ARGB32_nearest_pixel(const Surface_ARGB32* src, float fx, float fy) noexcept
-    {
-        const int sx = iroundf_fast(fx);
-        const int sy = iroundf_fast(fy);
-
-        if ((unsigned)sx >= (unsigned)src->width ||
-            (unsigned)sy >= (unsigned)src->height)
-        {
-            return 0;
-        }
-
-        const uint32_t* row = Surface_ARGB32_row_pointer_const(src, sy);
-        return row[sx];
-    }
-
-    // Surface_ARGB32_sample()
-    // Sample the surface at the given normalized coordinates (u, v), where
-    // u and v are in the range [0, 1].  This function will perform
-    static INLINE uint32_t Surface_ARGB32_sample(const Surface_ARGB32* src, float u, float v, uint32_t mode) noexcept
-    {
-        // For now, just do nearest sampling.  TODO: add bilinear or other filtering modes.
-        const float fx = u * float(src->width);
-        const float fy = v * float(src->height);
-        return Surface_ARGB32_nearest_pixel(src, fx, fy);
-    }
 }

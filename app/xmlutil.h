@@ -6,7 +6,9 @@
 
 #include <map>
 
-#include "xmlscan.h"
+#include "xml_scan.h"
+#include "xml_attribute_collection.h"
+#include "bspan_print.h"
 
 // Forward declarations
 namespace waavs 
@@ -29,7 +31,7 @@ namespace waavs {
         printf("ATTRIBUTES:\n");
         //printChunk(elem.data());
 
-        while (readNextKeyAttribute(src, key, value))
+        while (xmlattribute_read_next(src, key, value))
         {
             printf("  ");
             writeChunk(key);
@@ -40,14 +42,14 @@ namespace waavs {
 
     static void printXmlAttributeCollection(const XmlAttributeCollection& attrColl)
     {
-
-        for (const auto& attr : attrColl.values())
-        {
-            printf("  ");
-            writeChunk(attr.first);
-            printf("   = ");
-            printChunk(attr.second);
-        }
+        attrColl.values().forEach(
+            [](InternedKey key, const ByteSpan& value)
+            {
+                printf("  ");
+                writeChunk(key);
+                printf("   = ");
+                printChunk(value);
+            });
     }
 
     // printXmlElement

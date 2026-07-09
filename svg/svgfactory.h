@@ -1,9 +1,11 @@
 #pragma once
 
 #include "svgdocument.h"
-#include "nametable.h"
+#include "core_nametable.h"
 
-namespace waavs {
+namespace waavs 
+{
+
     struct SVGFactory
     {
         PSNameTable fFeatureNames{};
@@ -29,7 +31,7 @@ namespace waavs {
 
         bool hasFeature(const char* feature) const
         {
-            return fFeatureNames.hasName(feature);
+            return fFeatureNames.findInterned(feature) != nullptr;
         }
 
         void registerFeatures()
@@ -104,8 +106,8 @@ namespace waavs {
             //SVGStrokeDashOffset::registerFactory();
 
             // Clipping
-            //SVGClipPathAttribute::registerFactory();        // 'clip-path' attribute
-            SVGClipPathElement::registerFactory();        // 'clipPath' element
+            //SVGClipPathAttribute::registerFactory();          // 'clip-path' attribute
+            SVGClipPathElement::registerFactory();              // 'clipPath' element
 
             // Masking
             SVGMaskElement::registerFactory();                  // 'mask' element

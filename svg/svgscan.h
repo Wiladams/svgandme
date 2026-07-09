@@ -1,6 +1,7 @@
 #pragma once
 
-#include "bspan_utils.h"
+#include "lang_grammar.h"
+#include "core_nametable.h"
 
 namespace waavs
 {
@@ -10,6 +11,7 @@ namespace waavs
     struct Invocation
     {
         ByteSpan name;
+        InternedKey nameKey;
         ByteSpan payload;
     };
 
@@ -22,15 +24,20 @@ namespace waavs
     // followed by a parenthesized body, which 
     // may contain nested parentheses.
     //
-    static INLINE bool readInvocation(ByteSpan& src, Invocation& out) noexcept
+    static INLINE bool readInvocation(ByteSpan& src, Invocation& out, bool ignoreCase=false) noexcept
     {
         out.name.reset();
         out.payload.reset();
 
         bspan_skip_spaces(src);
 
-        if (!bspan_read_identifier(src, out.name, chrAlphaChars, chrAlphaChars))
+        if (!identifier_read(src, out.name, chrAlphaChars, chrAlphaChars))
             return false;
+        
+        if (ignoreCase)
+            out.nameKey = PSNameTable::INTERN_CI(out.name);
+        else
+            out.nameKey = PSNameTable::INTERN(out.name);
 
         bspan_skip_spaces(src);
 

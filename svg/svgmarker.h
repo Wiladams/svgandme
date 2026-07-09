@@ -5,10 +5,9 @@
 //
 
 
-#include "viewport.h"
-
 #include "svgattributes.h"
 #include "svggraphicselement.h"
+
 
 namespace waavs
 {
@@ -463,14 +462,16 @@ namespace waavs {
                 orient.loadFromChunk(o);
 
             // markerWidth/markerHeight (defaults already in d)
-            ByteSpan mw{}, mh{};
-            if (fAttributes.getValue(svgattr::markerWidth(), mw))  markerWidth = parseLengthAttr(mw);
-            if (fAttributes.getValue(svgattr::markerHeight(), mh)) markerHeight = parseLengthAttr(mh);
+            //ByteSpan mw{}, mh{};
+            lengthValue_parse(getAttribute(svgattr::markerWidth()), markerWidth);
+            lengthValue_parse(getAttribute(svgattr::markerHeight()), markerHeight);
+
 
             // refX/refY (defaults already in d)
             ByteSpan rx{}, ry{};
-            if (fAttributes.getValue(svgattr::refX(), rx)) refXL = parseLengthAttr(rx);
-            if (fAttributes.getValue(svgattr::refY(), ry)) refYL = parseLengthAttr(ry);
+            lengthValue_parse(getAttribute(svgattr::refX()), refXL);
+            lengthValue_parse(getAttribute(svgattr::refY()), refYL);
+
 
             // viewBox/par
             loadDocViewportState(vp, fAttributes);
@@ -480,7 +481,7 @@ namespace waavs {
             fHasResolved = false;
             fResStrokeWidth = -1.0;
             fResDpi = -1.0;
-            wg_rectD_reset(fResNearestVP);
+            rectD_reset(fResNearestVP);
         }
 
 
@@ -492,10 +493,10 @@ namespace waavs {
 
 
             const double dpi = groot ? groot->dpi() : 96.0;
-            const BLFont* fontOpt = &ctx->getFont();
+            const BLFont* fontOpt = &ctx->state().getFont();
 
-            const double sw = ctx->getStrokeWidth();
-            const WGRectD nearestVP = ctx->viewport();
+            const double sw = ctx->state().getStrokeWidth();
+            const WGRectD nearestVP = ctx->state().getViewport();
 
             // Tiny cache: reuse if same parameters
             if (fHasResolved &&
@@ -537,7 +538,7 @@ namespace waavs {
 
             // Establish nearest viewport for marker children (percent lengths inside marker)
             // Use the marker's content user space viewport (viewBox).
-            ctx->setViewport(fRes.viewBox);
+            ctx->state().setViewport(fRes.viewBox);
             //ctx->setViewport(fRes.viewport);
         }
 
@@ -547,7 +548,7 @@ namespace waavs {
             ctx->push();
 
             ctx->blendMode(BL_COMP_OP_SRC_OVER);
-            ctx->fill(BLRgba32(0, 0, 0));
+            //ctx->fill(BLRgba32(0, 0, 0));
             ctx->noStroke();
             ctx->strokeWidth(1.0);
             ctx->lineJoin(BLStrokeJoin::BL_STROKE_JOIN_MITER_BEVEL);
@@ -675,7 +676,7 @@ namespace waavs
             const double rads = m->orientation().calcRadians(pos, p1, p2, p3);
 
             ctx->push();
-            ctx->translate(pt);
+            ctx->translate(pt.x, pt.y);
             ctx->rotate(rads);
             m->draw(ctx, groot);
             ctx->pop();

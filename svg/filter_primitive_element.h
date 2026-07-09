@@ -172,10 +172,10 @@ namespace waavs
             SVGLengthValue w{};
             SVGLengthValue h{};
 
-            parseLengthValue(getAttribute(svgattr::x()), x);
-            parseLengthValue(getAttribute(svgattr::y()), y);
-            parseLengthValue(getAttribute(svgattr::width()), w);
-            parseLengthValue(getAttribute(svgattr::height()), h);
+            lengthValue_parse(getAttribute(svgattr::x()), x);
+            lengthValue_parse(getAttribute(svgattr::y()), y);
+            lengthValue_parse(getAttribute(svgattr::width()), w);
+            lengthValue_parse(getAttribute(svgattr::height()), h);
 
             lengthValueToNumberOrPercent(x, fX, dpi, fontOpt, true);
             lengthValueToNumberOrPercent(y, fY, dpi, fontOpt, true);

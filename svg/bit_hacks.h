@@ -63,7 +63,7 @@ namespace waavs
     static INLINE uint64_t conv_f64_to_u64(double d) noexcept
     {
         uint64_t u{};
-        static_assert(sizeof(double) == 8, "double must be 64-bit");
+        static_assert(sizeof(double) == sizeof(uint64_t), "double must be 64-bit");
         memcpy(&u, &d, sizeof(double));
 
         return u;
@@ -118,7 +118,7 @@ namespace waavs
         return ((static_cast<uint64_t>(1) << width) - static_cast<uint64_t>(1)) << low;
     }
 
-    static constexpr uint32_t bit_range_mask_u32(size_t low, size_t high) noexcept
+    static constexpr uint32_t bit_range_mask_u32(const size_t low, const size_t high) noexcept
     {
         if (high >= 32)
             return 0;
@@ -148,6 +148,11 @@ namespace waavs
     //
     // core routine for the rest of the bit range value routines
     // is essentially the reverse of what the masking does
+    static constexpr uint32_t bit_range_get_value_u32(const uint32_t src, const size_t lowbit, const size_t highbit) noexcept
+    {
+        return (src & bit_range_mask_u32(lowbit, highbit)) >> lowbit;
+    }
+
     static constexpr uint64_t bit_range_get_value_u64(uint64_t src, size_t lowbit, size_t highbit) noexcept
     {
         return (src & bit_range_mask_u64(lowbit, highbit)) >> lowbit;

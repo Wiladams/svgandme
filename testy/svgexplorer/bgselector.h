@@ -22,7 +22,7 @@ namespace waavs {
                 BLRgba32 bgcolor = BLRgba32_premultiplied_from_ColorSRGB(srgb);
                 BLPath apath;
                 apath.add_rect(0, 0, frame().w, frame().h);
-                ctx->fill(bgcolor);
+                ctx->fill(BLVar(bgcolor));
                 ctx->fillShape(apath);
             }
         }
@@ -32,7 +32,7 @@ namespace waavs {
             ctx->strokeWidth(3);
             BLPath apath;
             apath.add_rect(1, 1, frame().w - 2, frame().h - 2);
-            ctx->stroke(BLRgba32(0xff7fA0A0));
+            ctx->stroke(BLVar(BLRgba32(0xff7fA0A0)));
             ctx->strokeShape(apath);
         }
 

@@ -14,8 +14,8 @@
 #include "definitions.h"
 
 #include "bit_hacks.h"
-#include "wggeometry.h"
-#include "nametable.h"
+#include "core_geometry.h"
+#include "core_nametable.h"
 #include "coloring.h"
 #include "svgdatatypes.h"
 
@@ -307,10 +307,10 @@ namespace waavs
         if (!s) { out.set(0.0f); return false; }
 
         double x = 0.0;
-        if (!readNextNumber(s, x)) { out.set(0.0f); return false; }
+        if (!number_list_read_next(s, x)) { out.set(0.0f); return false; }
 
         double y = 0.0;
-        if (readNextNumber(s, y)) {
+        if (number_list_read_next(s, y)) {
             out.a = (float)x;
             out.b = (float)y;
             out.hasB = true;

@@ -1,9 +1,9 @@
 #include <filesystem>
 
-#include "mappedfile.h"
+#include "app_mappedfile.h"
 #include "svg.h"
 #include "viewport.h"
-#include "svgb2ddriver.h"
+#include "render_blend2d.h"
 #include "surface.h"
 #include "nametable.h"
 #include "svgatoms.h"
@@ -104,9 +104,12 @@ static INLINE bool requireArgValue(int argc, char** argv, int i) noexcept
 static INLINE bool parseCliInt(const char* text, int& out) noexcept
 {
     int64_t v = 0;
-
-    if (!parse64i(text, v))
+    ByteSpan s(text);
+    if (!integer_read(s, v))
         return false;
+
+    //if (!parse64i(text, v))
+    //    return false;
 
     out = (int)v;
     return true;

@@ -65,8 +65,8 @@
 
 
 #include "maths.h"
-#include "pubsub.h"
-#include "nativewindow.h"
+#include "app_pubsub.h"
+#include "app_nativewindow.h"
 #include "uievent.h"
 #include "joystick.h"
 #include "network.h"

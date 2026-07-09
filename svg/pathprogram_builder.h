@@ -3,7 +3,7 @@
 #pragma once
 
 #include "pathprogram.h"
-#include "bspan.h"
+#include "lang_span.h"
 
 namespace waavs
 {

@@ -7,15 +7,15 @@
 #include <cstdint>
 #include <cmath>
 
-#include "nametable.h"
-#include "svgb2ddriver.h"
+#include "core_nametable.h"
+#include "render_blend2d.h"
 
 #include "svgstructuretypes.h"
 
 #include "filter_types.h"
 #include "filter_program_exec.h"   
 #include "filter_noise.h"
-#include "viewport.h"
+#include "svg_attribute_viewport.h"
 
 
 #include "filter_feblend.h"
@@ -173,7 +173,7 @@ namespace waavs
             auto out = createFilterSurface(runState);
             if (out.empty())
                 return {};
-            out.clearAll();
+            wg_surface_clear(out);
 
             //PreserveAspectRatio par = makePAR(align, meetOrSlice);
             WGMatrix3x3 fit = WGMatrix3x3::makeIdentity();
@@ -303,15 +303,16 @@ namespace waavs {
                 return getOrCreateAlphaImage(filter::BackgroundAlpha(), filter::BackgroundImage());
 
             // Last chance, return the image related to last key
-            return getImage(lastKey());
+            return getStoredImage(lastKey());
 
         }
 
-        const Surface getImage(InternedKey inKey) const noexcept override
-        {
-            return getImage(inKey);
-        }
-
+        
+        //const Surface getImage_const(InternedKey inKey) const noexcept override
+        //{
+        //    return getImage(inKey);
+        //}
+        
 
 
 
@@ -336,17 +337,13 @@ namespace waavs {
 
         Surface createSurfaceHandle(size_t w, size_t h) noexcept override
         {
-            Surface img{};
-
-            if (!img.reset((int)w, (int)h))
-                return {};
-
+            Surface img = Surface::createOwned(w, h);
             return img;
         }
 
         Surface createLikeSurfaceHandle(const Surface& like) noexcept override
         {
-            auto img = createSurfaceHandle(like.width(), like.height());
+            auto img = Surface::createOwned(like.width(), like.height());
             return img;
         }
 
@@ -357,7 +354,7 @@ namespace waavs {
             if (img.empty())
                 return {};
 
-            img.blit(src, 0, 0);
+            wg_blit_copy(img, src, 0, 0);
 
             return img;
         }
@@ -385,52 +382,32 @@ namespace waavs {
 
                 switch (fRunState.primitiveUnits)
                 {
-                default:
-                case SpaceUnitsKind::SVG_SPACE_USER:
-                {
-                    const double fx = x.isPercent()
-                        ? fRunState.filterRectUS.x + x.calculatedValue() * fRunState.filterRectUS.w
-                        : x.value();
 
-                    const double fy = y.isPercent()
-                        ? fRunState.filterRectUS.y + y.calculatedValue() * fRunState.filterRectUS.h
-                        : y.value();
-
-                    const double fw = w.isPercent()
-                        ? w.calculatedValue() * fRunState.filterRectUS.w
-                        : w.value();
-
-                    const double fh = h.isPercent()
-                        ? h.calculatedValue() * fRunState.filterRectUS.h
-                        : h.value();
-
-                    ur = WGRectD(fx, fy, fw, fh);
-                    break;
-                }
 
                 case SpaceUnitsKind::SVG_SPACE_OBJECT:
                 {
-                    const double bx = fRunState.objectBBoxUS.x;
-                    const double by = fRunState.objectBBoxUS.y;
-                    const double bw = fRunState.objectBBoxUS.w;
-                    const double bh = fRunState.objectBBoxUS.h;
+                    const WGRectD& bb = fRunState.objectBBoxUS;
 
-                    const double fx = bx + x.calculatedValue() * bw;
-                    const double fy = by + y.calculatedValue() * bh;
-                    const double fw = w.calculatedValue() * bw;
-                    const double fh = h.calculatedValue() * bh;
+                    const double fx = numberOrPercent_resolvePosition(x, bb.x, bb.w);
+                    const double fy = numberOrPercent_resolvePosition(y, bb.y, bb.h);
+                    const double fw = numberOrPercent_resolveRange(w, bb.w);
+                    const double fh = numberOrPercent_resolveRange(h, bb.h);
 
                     ur = WGRectD(fx, fy, fw, fh);
                     break;
                 }
 
-                case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
+                default:
+                case SpaceUnitsKind::SVG_SPACE_USER:
                 {
-                    ur = WGRectD(
-                        x.calculatedValue(),
-                        y.calculatedValue(),
-                        w.calculatedValue(),
-                        h.calculatedValue());
+                    const WGRectD& fr = fRunState.filterRectUS;
+
+                    const double fx = numberOrPercent_resolvePosition(x, fr.x, fr.w);
+                    const double fy = numberOrPercent_resolvePosition(y, fr.y, fr.h);
+                    const double fw = numberOrPercent_resolveRange(w, fr.w);
+                    const double fh = numberOrPercent_resolveRange(h, fr.h);
+
+                    ur = WGRectD(fx, fy, fw, fh);
                     break;
                 }
                 }
@@ -449,6 +426,93 @@ namespace waavs {
 
             return ur;
         }
+
+        /*
+        WGRectD resolveSubregionUS(
+            const FilterPrimitiveSubregion& subr,
+            double padUserX = 0.0,
+            double padUserY = 0.0) const noexcept
+        {
+            WGRectD ur{};
+
+            if (!subr.isValid)
+            {
+                ur = fRunState.filterRectUS;
+            }
+            else
+            {
+                const auto& x = subr.x;
+                const auto& y = subr.y;
+                const auto& w = subr.w;
+                const auto& h = subr.h;
+
+                switch (fRunState.primitiveUnits)
+                {
+                default:
+                case SpaceUnitsKind::SVG_SPACE_USER:
+                {
+                    const double fx = x.isPercent()
+                        ? fRunState.filterRectUS.x + x.normalizedValue() * fRunState.filterRectUS.w
+                        : x.value();
+
+                    const double fy = y.isPercent()
+                        ? fRunState.filterRectUS.y + y.normalizedValue() * fRunState.filterRectUS.h
+                        : y.value();
+
+                    const double fw = w.isPercent()
+                        ? w.normalizedValue() * fRunState.filterRectUS.w
+                        : w.value();
+
+                    const double fh = h.isPercent()
+                        ? h.normalizedValue() * fRunState.filterRectUS.h
+                        : h.value();
+
+                    ur = WGRectD(fx, fy, fw, fh);
+                    break;
+                }
+
+                case SpaceUnitsKind::SVG_SPACE_OBJECT:
+                {
+                    const double bx = fRunState.objectBBoxUS.x;
+                    const double by = fRunState.objectBBoxUS.y;
+                    const double bw = fRunState.objectBBoxUS.w;
+                    const double bh = fRunState.objectBBoxUS.h;
+
+                    const double fx = bx + x.normalizedValue() * bw;
+                    const double fy = by + y.normalizedValue() * bh;
+                    const double fw = w.normalizedValue() * bw;
+                    const double fh = h.normalizedValue() * bh;
+
+                    ur = WGRectD(fx, fy, fw, fh);
+                    break;
+                }
+
+                case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
+                {
+                    ur = WGRectD(
+                        x.normalizedValue(),
+                        y.normalizedValue(),
+                        w.normalizedValue(),
+                        h.normalizedValue());
+                    break;
+                }
+                }
+            }
+
+            if (!(ur.w > 0.0) || !(ur.h > 0.0))
+                return WGRectD{};
+
+            if (padUserX > 0.0 || padUserY > 0.0)
+            {
+                ur.x -= padUserX;
+                ur.y -= padUserY;
+                ur.w += 2.0 * padUserX;
+                ur.h += 2.0 * padUserY;
+            }
+
+            return ur;
+        }
+        */
 
         WGRectI resolveSubregionPx(
             const FilterPrimitiveSubregion& subr,
@@ -577,10 +641,9 @@ namespace waavs {
             if (filterRectPX.w <= 0 || filterRectPX.h <= 0)
                 return false;
 
-            if (!out.reset(filterRectPX.w, filterRectPX.h))
-                return false;
+            out = Surface::createOwned(filterRectPX.w, filterRectPX.h);
 
-            out.clearAll();
+            wg_surface_clear(out);
 
             // Make sure pending renderer work is visible before reading the target.
             ctx->flush();
@@ -599,14 +662,14 @@ namespace waavs {
             if (clippedSrc.w <= 0 || clippedSrc.h <= 0)
                 return true; // Filter tile lies outside current target.
 
-            Surface srcView;
-            if (bkgSurf.getSubSurface(clippedSrc, srcView) != WG_SUCCESS)
+            Surface srcView = bkgSurf.getView(clippedSrc);
+            if (srcView.empty())
                 return true;
 
             const int dstX = clippedSrc.x - filterRectPX.x;
             const int dstY = clippedSrc.y - filterRectPX.y;
 
-            out.blit(srcView, dstX, dstY);
+            wg_blit_copy(out, srcView, dstX, dstY);
 
             return true;
         }
@@ -645,7 +708,7 @@ namespace waavs {
             if (filterRectPX.w <= 0 || filterRectPX.h <= 0)
                 return WGErrorCode::WG_ERROR_Invalid_Argument;
 
-            const WGMatrix3x3 ctm = ctx->getTransform();
+            const WGMatrix3x3 ctm = ctx->state().getTransform();
 
             // --------------------------------------------------
             // Reset executor state
@@ -714,9 +777,9 @@ namespace waavs {
             //Surface srcGraphic{};
 
             IsolatedSubtreeRequest req{};
-            SVGDrawingState* ds = ctx->getDrawingState();
-            if (ds)
-                req.drawingState = *ds;
+            SVGDrawingState & ds = ctx->state();
+            //if (ds)
+                req.drawingState = ds;
             req.userRect = filterRectUS;
             req.pixelRect = filterRectPX;
             req.ctm = ctm;
@@ -807,7 +870,7 @@ namespace waavs {
             if (out.empty())
                 return false;
 
-            out.clearAll();
+            wg_surface_clear(out);
 
             const WGRectI area = resolveSubregionPx(subr, in1);
             if (area.w <= 0 || area.h <= 0)
@@ -874,13 +937,13 @@ namespace waavs {
             if (out.empty())
                 return false;
 
-            Surface_ARGB32 outInfo = out.info();
-            Surface_ARGB32 inInfo = in.info();
+            //Surface_ARGB32 outInfo = out.info();
+            //Surface_ARGB32 inInfo = in.info();
 
             // Preserve behavior: copy full input first
             //if (wg_blit_copy(outInfo, inInfo, 0, 0) != WG_SUCCESS)
             //  return false;
-            out.clearAll();
+            wg_surface_clear(out);
 
             const WGRectI area = resolveSubregionPx(subr, in);
             if (area.w <= 0 || area.h <= 0)
@@ -939,13 +1002,13 @@ namespace waavs {
             if (out.empty())
                 return false;
 
-            Surface_ARGB32 outInfo = out.info();
-            Surface_ARGB32 inInfo = in.info();
+            //Surface_ARGB32 outInfo = out.info();
+            //Surface_ARGB32 inInfo = in.info();
 
             // Preserve input, modify only the primitive subregion.
             //if (wg_blit_copy(outInfo, inInfo, 0, 0) != WG_SUCCESS)
             //    return false;
-            out.clearAll();
+            wg_surface_clear(out);
 
 
             const WGRectI area = resolveSubregionPx(subr, in);
@@ -1029,7 +1092,7 @@ namespace waavs {
             if (out.empty())
                 return false;
 
-            out.clearAll();
+            wg_surface_clear(out);
 
             WGRectI area = resolveSubregionPx(subr, in1);
             if (area.w <= 0 || area.h <= 0)
@@ -1223,7 +1286,7 @@ namespace waavs {
             if (out.empty())
                 return false;
 
-            out.clearAll();
+            wg_surface_clear(out);
 
             const WGRectI area = resolveSubregionPx(subr, in);
             if (area.w <= 0 || area.h <= 0)
@@ -1419,7 +1482,7 @@ namespace waavs {
             if (out.empty())
                 return false;
 
-            out.clearAll();
+            wg_surface_clear(out);
 
             WGRectI area = resolveSubregionPx(subr, in);
             if (area.w <= 0 || area.h <= 0)
@@ -1539,7 +1602,7 @@ namespace waavs {
             if (out.empty())
                 return false;
 
-            out.clearAll();
+            wg_surface_clear(out);
 
             double scaleUS = double(scale);
 
@@ -1565,18 +1628,20 @@ namespace waavs {
             Surface_ARGB32 outInfo = out.info();
 
             WGRectI area = resolveSubregionPx(subr, in1);
-            area = intersection(area, Surface_ARGB32_bounds(&outInfo));
-            area = intersection(area, Surface_ARGB32_bounds(&mapInfo));
+            area = intersection(area, Surface_ARGB32_bounds(outInfo));
+            area = intersection(area, Surface_ARGB32_bounds(mapInfo));
 
             if (area.w > 0 && area.h > 0)
             {
                 Surface_ARGB32 outView{};
                 Surface_ARGB32 mapView{};
 
-                if (Surface_ARGB32_get_subarea(outInfo, area, outView) != WG_SUCCESS)
+                outView = Surface_ARGB32_subview(outInfo, area);
+                if (!Surface_ARGB32_is_valid(outView))
                     return false;
 
-                if (Surface_ARGB32_get_subarea(mapInfo, area, mapView) != WG_SUCCESS)
+                mapView = Surface_ARGB32_subview(mapInfo, area);
+                if (!Surface_ARGB32_is_valid(mapView))
                     return false;
 
                 DisplacementMapProgram prog{};
@@ -1593,10 +1658,10 @@ namespace waavs {
                 for (int row = 0; row < area.h; ++row)
                 {
                     uint32_t* dstRow =
-                        Surface_ARGB32_row_pointer(&outView, row);
+                        Surface_ARGB32_row_pointer(outView, row);
 
                     const uint32_t* mapRow =
-                        Surface_ARGB32_row_pointer_const(&mapView, row);
+                        Surface_ARGB32_row_pointer_const(mapView, row);
 
                     displacementmap_prgb32_row_scalar(
                         dstRow,
@@ -1649,9 +1714,9 @@ namespace waavs {
             if (shadow1.empty())
                 return false;
 
-            out.clearAll();
-            shadow0.clearAll();
-            shadow1.clearAll();
+            wg_surface_clear(out);
+            wg_surface_clear(shadow0);
+            wg_surface_clear(shadow1);
 
             // -------------------------------------------------
             // Resolve subregion (ONLY authority)
@@ -1666,8 +1731,8 @@ namespace waavs {
                 return true;
             }
 
-            const int W = int(in.width());
-            const int H = int(in.height());
+            //const int W = int(in.width());
+            //const int H = int(in.height());
 
             // -------------------------------------------------
             // Build shadow from alpha
@@ -1761,7 +1826,7 @@ namespace waavs {
 
                         if (rx > 0)
                         {
-                            curDst.clearAll();
+                            wg_surface_clear(curDst);
                             boxBlurH_PRGB32(curDst, curSrc, rx, sampleArea);
                             curSrc = curDst;
                             curDst = (curDst == shadow0) ? shadow1 : shadow0;
@@ -1769,7 +1834,7 @@ namespace waavs {
 
                         if (ry > 0)
                         {
-                            curDst.clearAll();
+                            wg_surface_clear(curDst);
                             boxBlurV_PRGB32(curDst, curSrc, ry, sampleArea);
                             curSrc = curDst;
                             curDst = (curDst == shadow0) ? shadow1 : shadow0;
@@ -1894,9 +1959,8 @@ namespace waavs {
 
             if (area.w > 0 && area.h > 0)
             {
-                Surface_ARGB32 areaView{};
-
-                if (Surface_ARGB32_get_subarea(outInfo, area, areaView) == WG_SUCCESS)
+                Surface_ARGB32 areaView = Surface_ARGB32_subview(outInfo, area);;
+                if (Surface_ARGB32_is_valid(areaView))
                 {
                     if (wg_surface_fill(areaView, px) != WG_SUCCESS)
                         return false;
@@ -1935,7 +1999,7 @@ namespace waavs {
             auto out = createLikeSurfaceHandle(in);
             if (out.empty())
                 return false;
-            out.clearAll();
+            wg_surface_clear(out);
 
             auto primLenToUser = [&](double v, double range) noexcept -> double
                 {
@@ -1983,13 +2047,13 @@ namespace waavs {
                     Surface_ARGB32 dstInfo = out.info();
                     Surface_ARGB32 srcInfo = src.info();
 
-                    Surface_ARGB32 dstView{};
-                    Surface_ARGB32 srcView{};
+                    Surface_ARGB32 dstView = Surface_ARGB32_subview(dstInfo, writeArea);;
+                    Surface_ARGB32 srcView = Surface_ARGB32_subview(srcInfo, writeArea);
 
-                    if (Surface_ARGB32_get_subarea(dstInfo, writeArea, dstView) != WG_SUCCESS)
+                    if (!Surface_ARGB32_is_valid(dstView))
                         return false;
 
-                    if (Surface_ARGB32_get_subarea(srcInfo, writeArea, srcView) != WG_SUCCESS)
+                    if (!Surface_ARGB32_is_valid(srcView))
                         return false;
 
                     return wg_blit_copy_unchecked(dstView, srcView) == WG_SUCCESS;
@@ -2056,17 +2120,12 @@ namespace waavs {
                 return true;
             }
 
-            Surface tmp0;
-            Surface tmp1;
+            Surface tmp0 = Surface::createOwned(in.width(), in.height());
+            Surface tmp1 = Surface::createOwned(in.width(), in.height());
 
-            if (!tmp0.reset(in.width(), in.height()))
-                return false;
 
-            if (!tmp1.reset(in.width(), in.height()))
-                return false;
-
-            tmp0.clearAll();
-            tmp1.clearAll();
+            wg_surface_clear(tmp0);
+            wg_surface_clear(tmp1);
 
             Surface curSrc = in;
             Surface curDst = tmp0;
@@ -2222,7 +2281,7 @@ namespace waavs {
             if (out.empty())
                 return false;
 
-            out.clearAll();
+            wg_surface_clear(out);
 
             const WGRectI area = resolveSubregionPx(subr, base);
             if (area.w <= 0 || area.h <= 0)
@@ -2236,8 +2295,8 @@ namespace waavs {
 
             Surface_ARGB32 outInfo = out.info();
 
-            Surface_ARGB32 outView{};
-            if (Surface_ARGB32_get_subarea(outInfo, area, outView) != WG_SUCCESS)
+            Surface_ARGB32 outView = Surface_ARGB32_subview(outInfo, area);
+            if (!Surface_ARGB32_is_valid(outView))
                 return false;
 
             for (uint32_t i = 0; i < inputs.n; ++i)
@@ -2249,8 +2308,8 @@ namespace waavs {
 
                 Surface_ARGB32 imgInfo = img.info();
 
-                Surface_ARGB32 imgView{};
-                if (Surface_ARGB32_get_subarea(imgInfo, area, imgView) != WG_SUCCESS)
+                Surface_ARGB32 imgView = Surface_ARGB32_subview(imgInfo, area);
+                if (!Surface_ARGB32_is_valid(imgView))
                     continue;
 
                 if (wg_blit_composite_unchecked(
@@ -2338,8 +2397,8 @@ namespace waavs {
             if (tmp.empty())
                 return false;
 
-            out.clearAll();
-            tmp.clearAll();
+            wg_surface_clear(out);
+            wg_surface_clear(tmp);
 
             const int x0 = area.x;
             const int x1 = area.x + area.w - 1;
@@ -2421,7 +2480,7 @@ namespace waavs {
             if (out.empty())
                 return false;
 
-            out.clearAll();
+            wg_surface_clear(out);
 
             const WGRectI outBounds{ 0, 0, int(out.width()), int(out.height()) };
             const WGRectI inBounds{ 0, 0, int(in.width()), int(in.height()) };
@@ -2502,13 +2561,13 @@ namespace waavs {
                     Surface_ARGB32 inInfo = in.info();
                     Surface_ARGB32 outInfo = out.info();
 
-                    Surface_ARGB32 srcArea{};
-                    Surface_ARGB32 dstArea{};
+                    Surface_ARGB32 srcArea = Surface_ARGB32_subview(inInfo, srcRect);
+                    Surface_ARGB32 dstArea = Surface_ARGB32_subview(outInfo, dstRect);
 
-                    if (Surface_ARGB32_get_subarea(inInfo, srcRect, srcArea) != WG_SUCCESS)
+                    if (!Surface_ARGB32_is_valid(srcArea))
                         return false;
 
-                    if (Surface_ARGB32_get_subarea(outInfo, dstRect, dstArea) != WG_SUCCESS)
+                    if (!Surface_ARGB32_is_valid(dstArea))
                         return false;
 
                     if (wg_blit_copy(dstArea, srcArea, 0, 0) != WG_SUCCESS)
@@ -2552,7 +2611,7 @@ namespace waavs {
             if (out.empty())
                 return false;
 
-            out.clearAll();
+            wg_surface_clear(out);
 
             WGRectI area = resolveSubregionPx(subr, in);
             if (area.w <= 0 || area.h <= 0)
@@ -2637,7 +2696,7 @@ namespace waavs {
             if (out.empty())
                 return false;
 
-            out.clearAll();
+            wg_surface_clear(out);
 
             const WGRectI area = resolveSubregionPx(subr, in);
             if (area.w <= 0 || area.h <= 0)
@@ -2649,8 +2708,8 @@ namespace waavs {
                 return true;
             }
 
-            Surface outArea;
-            if (out.getSubSurface(area, outArea) != WG_SUCCESS)
+            Surface outArea = out.getView(area);
+            if (outArea.empty())
                 return false;
 
             const int tileW = (int)in.width();
@@ -2668,7 +2727,7 @@ namespace waavs {
             {
                 for (int x = -startX; x < area.w; x += tileW)
                 {
-                    outArea.blit(in, x, y);
+                    wg_blit_copy(outArea, in, x, y);
                 }
             }
 
@@ -2711,7 +2770,7 @@ namespace waavs {
             if (out.empty())
                 return false;
 
-            out.clearAll();
+            wg_surface_clear(out);
 
             WGRectI area = resolveSubregionPx(subr, out);
             if (area.w <= 0 || area.h <= 0)

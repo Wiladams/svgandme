@@ -3,7 +3,7 @@
 #include <cmath>
 #include <cstdint>
 
-#include "svgstructuretypes.h"
+#include "svggraphicselement.h"
 #include "wsenum.h"
 #include "smildatatypes.h"
 
@@ -118,7 +118,7 @@ namespace waavs {
 		SVGAnimateElement(IAmGroot*)
 			: SVGGraphicsElement()
 		{
-			isStructural(true);
+			setIsStructural(true);
 		}
 
 		// Attributes

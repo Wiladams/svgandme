@@ -32,7 +32,7 @@
 #include "maths.h"
 
 
-#include "xmlscan.h"
+#include "xml_scan.h"
 #include "xmlentity.h"
 
 #include "fonthandler.h"
@@ -41,9 +41,9 @@
 #include "svgclip.h"
 #include "svgconditional.h"
 #include "svgdefs.h"
-#include "svgflowroot.h"
+#include "svg_element_flowroot.h"
 #include "svggradient.h"
-#include "svgimage.h"
+#include "svg_element_image.h"
 #include "svgmarker.h"
 #include "svgmask.h"
 #include "svgmisc.h"
@@ -51,14 +51,14 @@
 #include "svgstructure.h"
 #include "svgshapes.h"
 #include "svgsolidcolor.h"
-#include "svgstyle.h"
-#include "svgsymbol.h"
-#include "svgtext.h"
+#include "svg_element_style.h"
+#include "svg_element_symbol.h"
+#include "svg_element_text.h"
 #include "svgpattern.h"
 #include "svgfilter.h"
 #include "svghyperlink.h"
 
-#include "svguse.h"
+#include "svg_element_use.h"
 
 
 
@@ -231,12 +231,45 @@ namespace waavs
 
         //
         //
+
+        void loadInternalEntityDeclarations(const ByteSpan &inChunk)
+        {
+            ByteSpan subset = inChunk;
+
+            while (subset)
+            {
+                ByteSpan ent;
+                if (!bspan_find_span(subset, "<!ENTITY", ent))
+                    return;
+
+                subset.resetStart(ent.end());
+                bspan_ltrim_spaces(subset);
+
+                if (subset && *subset == '%')
+                {
+                    // Parameter entity. Skip declaration for now.
+                    (void)bspan_read_until(subset, '>');
+                    continue;
+                }
+
+                ByteSpan name = bspan_read_until(subset, chrWspChars);
+                bspan_ltrim_spaces(subset);
+
+                ByteSpan value{};
+                if (bspan_read_quoted(subset, value))
+                    addXmlEntity(name, value);
+
+                (void)bspan_read_until(subset, '>');
+            }
+        }
+
+        /*
         void loadInternalEntityDeclarations(ByteSpan subset)
         {
             while (subset)
             {
-                ByteSpan ent = chunk_find_cstr(subset, "<!ENTITY");
-                if (!ent)
+                ByteSpan ent;
+                if (!bspan_find_span(subset, "<!ENTITY", ent))
                     return;
 
                 subset.resetStart(ent.begin() + 8);
@@ -249,11 +282,11 @@ namespace waavs
                     continue;
                 }
 
-                ByteSpan name = chunk_token(subset, chrWspChars);
+                ByteSpan name = bspan_read_until(subset, chrWspChars);
                 bspan_skip_spaces(subset);
 
                 ByteSpan value{};
-                if (chunk_read_quoted(subset, value))
+                if (bspan_read_quoted(subset, value))
                 {
                     addXmlEntity(name, value);
                 }
@@ -265,6 +298,7 @@ namespace waavs
                 subset.resetStart(endDecl.begin() + 1);
             }
         }
+        */
 
         // loadDocTypeNode
         //
@@ -272,7 +306,7 @@ namespace waavs
         void loadDocTypeNode(const XmlElement& elem, IAmGroot* groot)
         {
             XmlDocTypeDecl decl{};
-            if (!parseDocTypeDecl(elem.data(), decl))
+            if (!docTypeDecl_parse(elem.data(), decl))
                 return;
 
             if (decl.rootName != "svg")
@@ -342,7 +376,8 @@ namespace waavs
         bool loadFromChunk(const ByteSpan &srcChunk)
         {
 
-            fSourceMem.resetFromSpan(srcChunk);
+            if (!fSourceMem.resetFromData(srcChunk.data(), srcChunk.size()))
+                return false;
             
             // BUGBUG - It would be nice to take this opportunity to convert basic XML
             // entities such as &amp; &lt; &gt; &quot; &#39; into their
@@ -357,11 +392,10 @@ namespace waavs
             // size_t sz = expandXmlEntities(srcChunk, dstSpan);
 
             // Create the XML Iterator we're going to use to parse the document
-            XmlPull iter(fSourceMem.span(), true);
+            ByteSpan src(fSourceMem.data(), fSourceMem.size());
+            XmlPull iter(src);
             loadDocumentFromXmlPull(iter, this);
             
-
-
             return true;
         }
 
@@ -388,8 +422,8 @@ namespace waavs
         {
             fPortalFrame = { 0, 0, fCanvasWidth, fCanvasHeight };
 
-            ctx->setViewport(fPortalFrame);
-            ctx->setObjectFrame(fPortalFrame);
+            ctx->state().setViewport(fPortalFrame);
+            ctx->state().setObjectFrame(fPortalFrame);
 
             //this->bindSelfToContext(ctx, groot);
             this->bindChildrenToContext(ctx, groot);
@@ -408,8 +442,8 @@ namespace waavs
             // To start, we need to set the viewport and object frame
             // on the context, so binding can get the right sizes to start
 
-            ctx->setViewport(fPortalFrame);
-            ctx->setObjectFrame(fPortalFrame);
+            ctx->state().setViewport(fPortalFrame);
+            ctx->state().setObjectFrame(fPortalFrame);
 
             this->drawSelf(ctx, groot);
             this->drawRenderSubtree(ctx, groot);

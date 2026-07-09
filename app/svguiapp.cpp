@@ -2,12 +2,9 @@
 
 #include <filesystem>
 
-#include "svguiapp.h"
+#include "app_svguiapp.h"
 #include "stopwatch.h"
 
-
-
-//using namespace waavs;
 
 static waavs::StopWatch gSVGAppClock;
 
