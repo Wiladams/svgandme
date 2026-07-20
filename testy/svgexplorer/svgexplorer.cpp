@@ -5,15 +5,15 @@
 #include <filesystem>
 
 
-#include "mappedfile.h"
-#include "svguiapp.h"
+#include "app_mappedfile.h"
+#include "app_svguiapp.h"
 #include "svgwaavs.h"
 
 #include "svgdocumentbrowser.h"
 #include "svgfilelistview.h"
 #include "bgselector.h"
 #include "svgicons.h"
-#include "svgb2ddriver.h"
+#include "render_blend2d.h"
 
 
 using namespace waavs;

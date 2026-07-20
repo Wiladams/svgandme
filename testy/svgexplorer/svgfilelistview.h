@@ -5,10 +5,10 @@
 
 #include "apphost.h"
 #include "svgcacheddocument.h"
-#include "viewnavigator.h"
+#include "app_viewnavigator.h"
 #include "svgicons.h"
 #include "svgfactory.h"
-#include "mappedfile.h"
+#include "app_mappedfile.h"
 
 
 namespace waavs {
@@ -16,6 +16,11 @@ namespace waavs {
 
     struct FileIcon : public GraphicView, public Topic<FileIcon>
     {
+        SolidColorPaint fBackgroundBorderSelected{ BLRgba32(0xff7f2f2f) };
+        SolidColorPaint fBackgroundBorderNormal{ BLRgba32(0xff7fA0A0) };
+        SolidColorPaint fForegroundTextFill{ BLRgba32(0xff000000) };
+        SolidColorPaint fForegroundHoverFill{ BLRgba32(0x80A0A0A0) };
+
         std::string fFullPath;
         std::string fFilename;
         SVGDocumentHandle fDocument;
@@ -83,9 +88,9 @@ namespace waavs {
             apath.add_rect(0,0,fr.w,fr.h);
 
             if (isSelected())
-                ctx->stroke(BLVar(BLRgba32(0xff7f2f2f)));
+                ctx->stroke(&fBackgroundBorderSelected);
             else
-                ctx->stroke(BLVar(BLRgba32(0xff7fA0A0)));
+                ctx->stroke(&fBackgroundBorderNormal);
 
             ctx->strokeShape(apath);
         }
@@ -100,7 +105,7 @@ namespace waavs {
             // Draw Draw the icon's filename
 
             WGRectD fr = frame();
-            ctx->fill(BLVar(BLRgba32(0xff000000)));
+            ctx->fill(&fForegroundTextFill);
             ctx->fillText(fFilename.c_str(), 4 + fIconSize, fr.h - 6);
             
             // Draw the mouse hover state
@@ -108,7 +113,7 @@ namespace waavs {
             {
                 BLPath apath;
                 apath.add_rect(0, 0, fr.w, fr.h);
-                ctx->fill(BLVar(BLRgba32(0x80A0A0A0)));
+                ctx->fill(&fForegroundHoverFill);
                 ctx->fillShape(apath);
             }
         }
@@ -168,6 +173,9 @@ namespace waavs {
 
     struct SVGFileListView : public SVGCachedView, public Topic<bool>, public Topic<FileIcon>
     {
+        SolidColorPaint fForegroundStroke{ BLRgba32(0xff7fA0A0) };
+        SolidColorPaint fDefaultFill{ BLRgba32(0xff000000) };
+
         static size_t cellHeight() {
             return FileIconLarge::iconSize() + 2;
         }
@@ -403,7 +411,7 @@ namespace waavs {
             ctx->strokeWidth(4);
             BLPath apath;
             apath.add_rect(0, 0, frame().w, frame().h);
-            ctx->stroke(BLVar(BLRgba32(0xffA0A0A0)));
+            ctx->stroke(&fForegroundStroke);
             ctx->strokeShape(apath);
 
             // draw a semi-transparent rectangle around the hover icon frame
@@ -422,7 +430,7 @@ namespace waavs {
             ctx->fontFamily("Arial");
             ctx->fontSize(16);
             ctx->noStroke();
-            ctx->fill(BLVar(BLRgba32(0xff000000)));
+            ctx->fill(&fDefaultFill);
 
             for (auto& item : fFileList) {
                 item->draw(ctx);

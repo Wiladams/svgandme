@@ -427,92 +427,7 @@ namespace waavs {
             return ur;
         }
 
-        /*
-        WGRectD resolveSubregionUS(
-            const FilterPrimitiveSubregion& subr,
-            double padUserX = 0.0,
-            double padUserY = 0.0) const noexcept
-        {
-            WGRectD ur{};
-
-            if (!subr.isValid)
-            {
-                ur = fRunState.filterRectUS;
-            }
-            else
-            {
-                const auto& x = subr.x;
-                const auto& y = subr.y;
-                const auto& w = subr.w;
-                const auto& h = subr.h;
-
-                switch (fRunState.primitiveUnits)
-                {
-                default:
-                case SpaceUnitsKind::SVG_SPACE_USER:
-                {
-                    const double fx = x.isPercent()
-                        ? fRunState.filterRectUS.x + x.normalizedValue() * fRunState.filterRectUS.w
-                        : x.value();
-
-                    const double fy = y.isPercent()
-                        ? fRunState.filterRectUS.y + y.normalizedValue() * fRunState.filterRectUS.h
-                        : y.value();
-
-                    const double fw = w.isPercent()
-                        ? w.normalizedValue() * fRunState.filterRectUS.w
-                        : w.value();
-
-                    const double fh = h.isPercent()
-                        ? h.normalizedValue() * fRunState.filterRectUS.h
-                        : h.value();
-
-                    ur = WGRectD(fx, fy, fw, fh);
-                    break;
-                }
-
-                case SpaceUnitsKind::SVG_SPACE_OBJECT:
-                {
-                    const double bx = fRunState.objectBBoxUS.x;
-                    const double by = fRunState.objectBBoxUS.y;
-                    const double bw = fRunState.objectBBoxUS.w;
-                    const double bh = fRunState.objectBBoxUS.h;
-
-                    const double fx = bx + x.normalizedValue() * bw;
-                    const double fy = by + y.normalizedValue() * bh;
-                    const double fw = w.normalizedValue() * bw;
-                    const double fh = h.normalizedValue() * bh;
-
-                    ur = WGRectD(fx, fy, fw, fh);
-                    break;
-                }
-
-                case SpaceUnitsKind::SVG_SPACE_STROKEWIDTH:
-                {
-                    ur = WGRectD(
-                        x.normalizedValue(),
-                        y.normalizedValue(),
-                        w.normalizedValue(),
-                        h.normalizedValue());
-                    break;
-                }
-                }
-            }
-
-            if (!(ur.w > 0.0) || !(ur.h > 0.0))
-                return WGRectD{};
-
-            if (padUserX > 0.0 || padUserY > 0.0)
-            {
-                ur.x -= padUserX;
-                ur.y -= padUserY;
-                ur.w += 2.0 * padUserX;
-                ur.h += 2.0 * padUserY;
-            }
-
-            return ur;
-        }
-        */
+ 
 
         WGRectI resolveSubregionPx(
             const FilterPrimitiveSubregion& subr,
@@ -778,8 +693,7 @@ namespace waavs {
 
             IsolatedSubtreeRequest req{};
             SVGDrawingState & ds = ctx->state();
-            //if (ds)
-                req.drawingState = ds;
+            req.drawingState = ds;
             req.userRect = filterRectUS;
             req.pixelRect = filterRectPX;
             req.ctm = ctm;

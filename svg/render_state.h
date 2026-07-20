@@ -10,7 +10,7 @@
 #include "fonthandler.h"
 #include "svgenums.h"
 #include "svgdatatypes.h"
-#include "svgobject.h"
+#include "svg_interface.h"
 
 namespace waavs
 {
@@ -22,12 +22,19 @@ namespace waavs
         SolidColorPaint()
         {
             fColorValue.value = 0; // default to transparent black
-            isNone = true;
+            //isNone = true;
+        }
+
+        SolidColorPaint(const BLRgba32& color)
+        {
+            fColorValue = color;
+            isNone = false;
         }
 
         SolidColorPaint(const uint32_t r, const uint32_t g, const uint32_t b, const uint32_t a = 255)
         {
             fColorValue.reset(r, g, b, a);
+            isNone = false;
         }
 
         const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override

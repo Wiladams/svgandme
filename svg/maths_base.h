@@ -16,17 +16,17 @@
 namespace waavs
 {
     // Most Common Math constants
-    constexpr auto kPi = 3.14159265358979323846;          // PI (as a double)
-    constexpr auto kPif = (float)kPi;                      // PI (as a float value)
-    constexpr auto PiOver2 = 1.57079632679489661923;     // PI / 2
-    constexpr auto PiOver4 = 0.78539816339744830961;     // PI / 4
-    constexpr auto Pi2 = 6.28318530717958647693;         // 2 * PI
+    constexpr auto kPi = 3.14159265358979323846;        // PI (as a double)
+    constexpr auto kPif = (float)kPi;                   // PI (as a float value)
+    constexpr auto PiOver2 = 1.57079632679489661923;    // PI / 2
+    constexpr auto PiOver4 = 0.78539816339744830961;    // PI / 4
+    constexpr auto Pi2 = 6.28318530717958647693;        // 2 * PI
     constexpr auto InvPi = 0.31830988618379067154;
     constexpr auto Inv2Pi = 0.15915494309189533577;
-    constexpr auto Inv4Pi = 0.07957747154594766788;      // sqrt(2.0)
-    constexpr auto kDegToRad = 0.017453292519943295;      // PI / 180
-    constexpr auto RadToDeg = 57.29577951308232;         // 180 / PI
-    constexpr auto Sqrt2 = 1.41421356237309504880;
+    constexpr auto Inv4Pi = 0.07957747154594766788;      
+    constexpr auto kDegToRad = 0.017453292519943295;    // PI / 180
+    constexpr auto RadToDeg = 57.29577951308232;        // 180 / PI
+    constexpr auto Sqrt2 = 1.41421356237309504880;      // sqrt(2.0)
     
     constexpr float kInv255f = 1.0f / 255.0f;
     constexpr double kInv255 = 1.0 / 255.0;

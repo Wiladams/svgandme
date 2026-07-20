@@ -286,93 +286,6 @@ namespace waavs
                 WG_IMAGE_EDGE_Clamp);
         }
 
-        /*
-    static INLINE uint32_t wg_scale_blit_PRGB32(
-        Surface_ARGB32& dst,
-        const WGRectI& dstRectIn,
-        const Surface_ARGB32& src,
-        const WGRectI& srcRectIn,
-        WGScaleFilter filter = WG_BLIT_SCALE_Bilinear) noexcept
-    {
-        if (!dst.data || dst.width <= 0 || dst.height <= 0)
-            return WG_ERROR_Invalid_Argument;
-
-        if (!src.data || src.width <= 0 || src.height <= 0)
-            return WG_ERROR_Invalid_Argument;
-
-        if (!wg_rectI_is_valid(dstRectIn) || !wg_rectI_is_valid(srcRectIn))
-            return WG_ERROR_Invalid_Argument;
-
-        const WGRectI srcBounds{ 0, 0, int(src.width), int(src.height) };
-        const WGRectI dstBounds{ 0, 0, int(dst.width), int(dst.height) };
-
-        if (!wg_rectI_contains(srcRectIn, srcBounds))
-            return WG_ERROR_Invalid_Argument;
-
-        const WGRectI dstRect = intersection(dstRectIn, dstBounds);
-
-        if (!wg_rectI_is_valid(dstRect))
-            return WG_SUCCESS;
-
-        if (srcRectIn.w == dstRectIn.w && srcRectIn.h == dstRectIn.h)
-        {
-            const WGRectI srcClip{
-                srcRectIn.x + (dstRect.x - dstRectIn.x),
-                srcRectIn.y + (dstRect.y - dstRectIn.y),
-                dstRect.w,
-                dstRect.h
-            };
-
-            Surface_ARGB32 srcView{};
-            Surface_ARGB32 dstView{};
-
-            if (Surface_ARGB32_get_subarea(src, srcClip, srcView) != WG_SUCCESS)
-                return WG_ERROR_Invalid_Argument;
-
-            if (Surface_ARGB32_get_subarea(dst, dstRect, dstView) != WG_SUCCESS)
-                return WG_ERROR_Invalid_Argument;
-
-            return wg_blit_copy_unchecked(dstView, srcView);
-        }
-
-        const double scaleX = double(srcRectIn.w) / double(dstRectIn.w);
-        const double scaleY = double(srcRectIn.h) / double(dstRectIn.h);
-
-        const int clippedOffsetX = dstRect.x - dstRectIn.x;
-        const int clippedOffsetY = dstRect.y - dstRectIn.y;
-
-        const double startX =
-            double(srcRectIn.x) +
-            (double(clippedOffsetX) + 0.5) * scaleX -
-            0.5;
-
-        const double startY =
-            double(srcRectIn.y) +
-            (double(clippedOffsetY) + 0.5) * scaleY -
-            0.5;
-
-        double sy = startY;
-
-        for (int dy = 0; dy < dstRect.h; ++dy)
-        {
-            Pixel_ARGB32* dstRow = Surface_ARGB32_row_pointer(&dst, dstRect.y + dy);
-            double sx = startX;
-
-            for (int dx = 0; dx < dstRect.w; ++dx)
-            {
-                dstRow[dstRect.x + dx] =
-                    wg_sample_PRGB32(src, sx, sy, srcRectIn, filter);
-
-                sx += scaleX;
-            }
-
-            sy += scaleY;
-        }
-
-        return WG_SUCCESS;
-    }
-    */
-
 
     // wg_scale_blit_full_PRGB32
     // 
@@ -388,7 +301,5 @@ namespace waavs
         const WGRectI srcRect{ 0, 0, int(src.width), int(src.height) };
         return wg_scale_blit(dst, dstRect, src, srcRect, filter);
     }
-
-
 
 }

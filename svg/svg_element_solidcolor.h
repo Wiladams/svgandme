@@ -1,14 +1,13 @@
 #pragma once
 
-//#include <functional>
-//#include <unordered_map>
 
-//#include "svgattributes.h"
 #include "svggraphicselement.h"
 
-namespace waavs {
+namespace waavs 
+{
     //============================================================
     // SVGSolidColor
+    // 
     // Represents a single solid color
     // You could represent this as a linear gradient with a single color
     // but this is the way to do it for SVG 2.0

@@ -1,3 +1,5 @@
+// wg_matrix3x3.h
+
 #pragma once
 
 #include "core_geometry.h"
@@ -22,15 +24,19 @@ namespace waavs {
     // so you can optimize certain operations based on the type of matrix.
     enum WGTransformType : uint32_t
     {
-        WG_TRANSFORM_TYPE_IDENTITY = 0x00000001u,
-        WG_TRANSFORM_TYPE_TRANSLATE = 0x00000002u,
-        WG_TRANSFORM_TYPE_SCALE = 0x00000004u,
-        WG_TRANSFORM_TYPE_AFFINE = 0x00000008u,
-        WG_TRANSFORM_TYPE_PERSPECTIVE = 0x00000010u
+        WG_TRANSFORM_TYPE_IDENTITY      = 0x00000001u,
+        WG_TRANSFORM_TYPE_TRANSLATE     = 0x00000002u,
+        WG_TRANSFORM_TYPE_SCALE         = 0x00000004u,
+        WG_TRANSFORM_TYPE_AFFINE        = 0x00000008u,
+        WG_TRANSFORM_TYPE_PERSPECTIVE   = 0x00000010u
     };
 
-    struct WGMatrix3x3 final
+    struct WGMatrix3x3
     {
+        double m00, m01, m02;
+        double m10, m11, m12;
+        double m20, m21, m22;
+        /*
         union {
             double m[9];
             struct {
@@ -39,12 +45,13 @@ namespace waavs {
                 double m20, m21, m22;
             };
         };
+        */
 
         // ------------------------------------------------------------------------
         // Construction
         // ------------------------------------------------------------------------
 
-        INLINE WGMatrix3x3() noexcept
+        WGMatrix3x3() noexcept
         {
             // startoff with identity matrix
             m00 = 1.0; m01 = 0.0; m02 = 0.0;
@@ -52,8 +59,8 @@ namespace waavs {
             m20 = 0.0; m21 = 0.0; m22 = 1.0;
         }
 
-        INLINE constexpr WGMatrix3x3(const WGMatrix3x3&) noexcept = default;
-        INLINE WGMatrix3x3& operator=(const WGMatrix3x3&) noexcept = default;
+        constexpr WGMatrix3x3(const WGMatrix3x3&) noexcept = default;
+        WGMatrix3x3& operator=(const WGMatrix3x3&) noexcept = default;
 
         // Affine 2D constructor:
         //
@@ -84,71 +91,86 @@ namespace waavs {
         // Static constructors
         // ------------------------------------------------------------------------
 
-        WG_NODISCARD
-            static INLINE constexpr WGMatrix3x3 makeIdentity() noexcept {
+        static WGMatrix3x3 makeIdentity() noexcept 
+        {
             return WGMatrix3x3(
                 1.0, 0.0, 0.0,
                 0.0, 1.0, 0.0,
                 0.0, 0.0, 1.0);
         }
 
-        WG_NODISCARD
-            static INLINE constexpr WGMatrix3x3 makeTranslation(double x, double y) noexcept {
+        static WGMatrix3x3 makeTranslation(double x, double y) noexcept 
+        {
             return WGMatrix3x3(
                 1.0, 0.0, 0.0,
                 0.0, 1.0, 0.0,
                 x, y, 1.0);
         }
 
-        WG_NODISCARD
-            static INLINE constexpr WGMatrix3x3 makeScaling(double x, double y) noexcept {
+        static WGMatrix3x3 makeScaling(double x, double y) noexcept 
+        {
             return WGMatrix3x3(
                 x, 0.0, 0.0,
                 0.0, y, 0.0,
                 0.0, 0.0, 1.0);
         }
 
-        WG_NODISCARD
-            static INLINE constexpr WGMatrix3x3 makeScaling(double xy) noexcept {
+        static WGMatrix3x3 makeScaling(double xy) noexcept 
+        {
             return makeScaling(xy, xy);
         }
 
-        WG_NODISCARD
-            static INLINE WGMatrix3x3 makeSkewing(double x, double y) noexcept {
+        static WGMatrix3x3 makeSkewing(double x, double y) noexcept 
+        {
             return WGMatrix3x3(
                 1.0, std::tan(y), 0.0,
                 std::tan(x), 1.0, 0.0,
                 0.0, 0.0, 1.0);
         }
 
-        WG_NODISCARD
-            static INLINE WGMatrix3x3 makeSinCos(double s, double c, double tx = 0.0, double ty = 0.0) noexcept {
+        
+        static WGMatrix3x3 makeSinCos(double s, double c, double tx = 0.0, double ty = 0.0) noexcept 
+        {
             return WGMatrix3x3(
                 c, s, 0.0,
                 -s, c, 0.0,
                 tx, ty, 1.0);
         }
 
-        WG_NODISCARD
-            static INLINE WGMatrix3x3 makeRotation(double angle) noexcept
+        
+        static WGMatrix3x3 makeRotation(double angle) noexcept
+        {
+            return makeRotation(angle, 0.0, 0.0);
+        }
+
+        
+        static WGMatrix3x3 makeRotation(double angle, double cx, double cy) noexcept
         {
             WGMatrix3x3 m;
-            m.resetToRotation(angle);
+            m.resetToRotation(angle, cx, cy);
             return m;
         }
 
-        WG_NODISCARD
-            static INLINE WGMatrix3x3 makeRotation(double angle, double x, double y) noexcept
+        static WGMatrix3x3 makeRotationAboutPoint(
+            double angle,
+            double px,
+            double py) noexcept
         {
-            WGMatrix3x3 m;
-            m.resetToRotation(angle, x, y);
-            return m;
+            const double s = std::sin(angle);
+            const double c = std::cos(angle);
+
+            return WGMatrix3x3(
+                c, s, 0.0,
+                -s, c, 0.0,
+                px - c * px + s * py,
+                py - s * px - c * py,
+                1.0);
         }
 
         // ----------------------------------------
         // 
-        WG_NODISCARD
-            INLINE WGTransformType getType() const noexcept
+        
+        INLINE WGTransformType getType() const noexcept
         {
             if (m02 != 0.0 || m12 != 0.0 || m22 != 1.0)
                 return WG_TRANSFORM_TYPE_PERSPECTIVE;
@@ -224,28 +246,29 @@ namespace waavs {
             resetToScaling(xy, xy);
         }
 
-        INLINE void resetToSkewing(double x, double y) noexcept {
+        void resetToSkewing(double x, double y) noexcept {
             *this = makeSkewing(x, y);
         }
 
-        INLINE void resetToSinCos(double s, double c, double tx = 0.0, double ty = 0.0) noexcept {
-            resetAffine(c, s,
-                -s, c,
-                tx, ty);
+
+        void resetToRotation(double angle) noexcept 
+        {
+            resetToRotation(angle, 0.0, 0.0);
         }
 
-        INLINE void resetToRotation(double angle) noexcept {
-            const double s = std::sin(angle);
-            const double c = std::cos(angle);
-            resetToSinCos(s, c);
-        }
-
-        INLINE void resetToRotation(double angle, double x, double y) noexcept {
+        INLINE void resetToRotation(
+            double angle,
+            double x,
+            double y) noexcept
+        {
             const double s = std::sin(angle);
             const double c = std::cos(angle);
 
-            // Rotation about point (x, y) in row-vector convention:
-            // T(-x, -y) * R * T(x, y)
+            // Rotation about point (x, y):
+            //
+            //     T(-x, -y) * R * T(x, y)
+            //
+            // under the row-vector convention [px py 1] * M.
             resetAffine(
                 c, s,
                 -s, c,
@@ -327,85 +350,100 @@ namespace waavs {
             return r;
         }
 
-        INLINE void transform(const WGMatrix3x3& other) noexcept {
-            *this = mul(other, *this);
-        }
 
-        INLINE void postTransform(const WGMatrix3x3& other) noexcept {
-            *this = mul(*this, other);
-        }
+
 
         // ------------------------------------------------------------------------
         // Affine-style ops matching BLMatrix2D row-vector behavior
         // ------------------------------------------------------------------------
 
-        INLINE void translate(double x, double y) noexcept {
+        INLINE void translate(double x, double y) noexcept 
+        {
+            transform(makeTranslation(x, y));
+
             // Pre-style translate under row-vector convention.
-            m20 += x * m00 + y * m10;
-            m21 += x * m01 + y * m11;
-            m22 += x * m02 + y * m12;
+            //m20 += x * m00 + y * m10;
+            //m21 += x * m01 + y * m11;
+            //m22 += x * m02 + y * m12;
         }
 
-        INLINE void scale(double x, double y) noexcept {
-            // Pre-style scale under row-vector convention.
-            m00 *= x; m01 *= x; m02 *= x;
-            m10 *= y; m11 *= y; m12 *= y;
-        }
-
-        INLINE void scale(double xy) noexcept {
+        INLINE void scale(double xy) noexcept
+        {
             scale(xy, xy);
         }
 
-        INLINE void skew(double x, double y) noexcept {
+        INLINE void scale(double x, double y) noexcept 
+        {
+            transform(makeScaling(x, y));
+
+            // Pre-style scale under row-vector convention.
+            //m00 *= x; m01 *= x; m02 *= x;
+            //m10 *= y; m11 *= y; m12 *= y;
+        }
+
+
+
+        INLINE void skew(double x, double y) noexcept 
+        {
             transform(makeSkewing(x, y));
         }
 
         INLINE void rotate(double angle) noexcept
         {
-            WGMatrix3x3 r;
-            r.resetToRotation(angle);
-            transform(r);
+            rotate(angle, 0.0, 0.0);
         }
 
-        INLINE void rotate(double angle, double x, double y) noexcept
+        INLINE void rotate(double angle, double px, double py) noexcept
         {
-            WGMatrix3x3 r;
-            r.resetToRotation(angle, x, y);
-            transform(r);
+            transform(makeRotationAboutPoint(angle, px, py));
+
         }
 
-        INLINE void postTranslate(double x, double y) noexcept {
-            m20 += x;
-            m21 += y;
+
+        INLINE void transform(const WGMatrix3x3& other) noexcept 
+        {
+            *this = mul(other, *this);
         }
 
-        INLINE void postScale(double x, double y) noexcept {
-            m00 *= x; m01 *= y; m02 *= 1.0;
-            m10 *= x; m11 *= y; m12 *= 1.0;
-            m20 *= x; m21 *= y; m22 *= 1.0;
+        // ------------------------------------------
+        // Post transform
+        // ----------------------------------------
+        
+        INLINE void postTranslate(double x, double y) noexcept 
+        {
+            postTransform(makeTranslation(x, y));
         }
 
-        INLINE void postScale(double xy) noexcept {
+        INLINE void postScale(double xy) noexcept
+        {
             postScale(xy, xy);
         }
 
-        INLINE void postSkew(double x, double y) noexcept {
+        INLINE void postScale(double x, double y) noexcept 
+        {
+            postTransform(makeScaling(x, y));
+        }
+
+        INLINE void postSkew(double x, double y) noexcept 
+        {
             postTransform(makeSkewing(x, y));
         }
 
         INLINE void postRotate(double angle) noexcept
         {
-            WGMatrix3x3 r;
-            r.resetToRotation(angle);
-            postTransform(r);
+            postRotate(angle, 0.0, 0.0);
         }
 
-        INLINE void postRotate(double angle, double x, double y) noexcept
+        INLINE void postRotate(double angle, double px, double py) noexcept
         {
-            WGMatrix3x3 r;
-            r.resetToRotation(angle, x, y);
-            postTransform(r);
+            postTransform(makeRotationAboutPoint(angle, px, py));
         }
+
+        INLINE void postTransform(const WGMatrix3x3& other) noexcept
+        {
+            *this = mul(*this, other);
+        }
+        
 
         // ------------------------------------------------------------------------
         // Inversion

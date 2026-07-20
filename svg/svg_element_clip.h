@@ -78,7 +78,8 @@ namespace waavs
                 obb.translate(plan.objectBBoxUS.x, plan.objectBBoxUS.y);
                 obb.scale(plan.objectBBoxUS.w, plan.objectBBoxUS.h);
 
-                maskCtm.postTransform(obb);
+                //maskCtm.postTransform(obb);
+                maskCtm.transform(obb);
             }
 
             IsolatedSubtreeRequest req{};

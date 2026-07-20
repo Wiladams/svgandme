@@ -1,9 +1,9 @@
 #pragma once
 
 
-#include "bspan.h"
+#include "lang_span.h"
 #include "svgdocument.h"
-#include "viewport.h"
+#include "svg_attribute_viewport.h"
 #include "graphicview.h"
 
 

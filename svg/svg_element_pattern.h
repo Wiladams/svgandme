@@ -6,9 +6,9 @@
 //
 
 #include <memory>
-#include <vector>
+//#include <vector>
 #include <cmath>
-#include <cstdint>
+//#include <cstdint>
 
 #include "svggraphicselement.h"
 #include "svg_attribute_transform.h"
@@ -348,7 +348,8 @@ namespace waavs
             // space, to the BLImage space
             WGMatrix3x3 T = WGMatrix3x3::makeIdentity();
             T.postScale((double)fTilePxW / w, (double)fTilePxH / h);
-            if (fHasPatternTransform) T.postTransform(fPatternTransform);
+            if (fHasPatternTransform) 
+                T.postTransform(fPatternTransform);
 
             if (puObject)
                 T.postTranslate(-(objBBox.x + x), -(objBBox.y + y));
@@ -370,8 +371,159 @@ namespace waavs
             setNeedsBinding(false);
         }
 
+        bool renderTile(IAmGroot* groot, const WGRectD& objBBox) noexcept
+        {
+            if (!groot || fTileSurface.empty())
+                return false;
+
+            if (!(fTileRect.w > 0.0) || !(fTileRect.h > 0.0))
+                return false;
+
+            if (fTilePxW <= 0 || fTilePxH <= 0)
+                return false;
+
+            SVGB2DDriver ictx{};
+            ictx.attach(fTileSurface, 1);
+            ictx.renew();
+            ictx.clear();
+
+            // Pattern children see the tile as their nearest viewport.
+            //
+            // This is tile-local user space, not bitmap-pixel space.
+            ictx.state().setViewport({
+                0.0,
+                0.0,
+                fTileRect.w,
+                fTileRect.h
+                });
+
+            // Without a viewBox, objectBoundingBox content coordinates are
+            // normalized to [0..1] relative to the painted object's bbox.
+            //
+            // Otherwise, children operate in the tile/viewBox user space.
+            if (!fHasViewBox &&
+                fPatternContentUnits == SpaceUnitsKind::SVG_SPACE_OBJECT)
+            {
+                ictx.state().setObjectFrame({
+                    0.0,
+                    0.0,
+                    1.0,
+                    1.0
+                    });
+            }
+            else
+            {
+                ictx.state().setObjectFrame({
+                    0.0,
+                    0.0,
+                    fTileRect.w,
+                    fTileRect.h
+                    });
+            }
+
+            // Tile-local user units -> tile bitmap pixels.
+            const double pixelScaleX =
+                double(fTilePxW) / fTileRect.w;
+
+            const double pixelScaleY =
+                double(fTilePxH) / fTileRect.h;
+
+            // fTileRect.x/y are object-relative when patternUnits is
+            // objectBoundingBox, and absolute user-space coordinates when
+            // patternUnits is userSpaceOnUse.
+            const bool patternUnitsObject =
+                fPatternUnits == SpaceUnitsKind::SVG_SPACE_OBJECT;
+
+            const double tileOriginX =
+                patternUnitsObject
+                ? objBBox.x + fTileRect.x
+                : fTileRect.x;
+
+            const double tileOriginY =
+                patternUnitsObject
+                ? objBBox.y + fTileRect.y
+                : fTileRect.y;
+
+            WGMatrix3x3 contentToPixels{};
+
+            if (fHasViewBox)
+            {
+                // viewBox coordinates
+                //     -> tile-local user coordinates
+                //     -> tile bitmap pixels
+                computeViewBoxToViewport(
+                    {
+                        0.0,
+                        0.0,
+                        fTileRect.w,
+                        fTileRect.h
+                    },
+                    fViewBox,
+                    fPar,
+                    contentToPixels);
+
+                contentToPixels.postScale(
+                    pixelScaleX,
+                    pixelScaleY);
+            }
+            else if (
+                fPatternContentUnits ==
+                SpaceUnitsKind::SVG_SPACE_USER)
+            {
+                // Target user-space coordinates
+                //     -> tile-local user coordinates
+                //     -> tile bitmap pixels
+                contentToPixels =
+                    WGMatrix3x3::makeTranslation(
+                        -tileOriginX,
+                        -tileOriginY);
+
+                contentToPixels.postScale(
+                    pixelScaleX,
+                    pixelScaleY);
+            }
+            else
+            {
+                // Normalized objectBoundingBox coordinates
+                //     -> target object user space
+                //     -> tile-local user space
+                //     -> tile bitmap pixels
+                contentToPixels =
+                    WGMatrix3x3::makeScaling(
+                        objBBox.w,
+                        objBBox.h);
+
+                contentToPixels.postTranslate(
+                    objBBox.x,
+                    objBBox.y);
+
+                contentToPixels.postTranslate(
+                    -tileOriginX,
+                    -tileOriginY);
+
+                contentToPixels.postScale(
+                    pixelScaleX,
+                    pixelScaleY);
+            }
+
+            // Set the complete content-to-bitmap matrix.
+            ictx.transform(contentToPixels);
+
+            // Draw inherited content when this pattern gets its children
+            // through href; otherwise draw this pattern's own children.
+            if (fContentSource)
+                fContentSource->drawRenderSubtree(&ictx, groot);
+            else
+                drawRenderSubtree(&ictx, groot);
+
+            ictx.flush();
+            ictx.detach();
+
+            return true;
+        }
 
 
+        /*
         bool renderTile(IAmGroot* groot, const WGRectD &objBBox) noexcept
         {
             // Create a drawing context and attach it to our image
@@ -402,9 +554,10 @@ namespace waavs
 
             if (fHasViewBox)
             {
-                WGMatrix3x3 vb2tile = WGMatrix3x3::makeIdentity();
                 // viewport is tile-local [0..w, 0..h]
-                computeViewBoxToViewport({ 0,0,fTileRect.w, fTileRect.h }, fViewBox, fPar, vb2tile);
+                WGMatrix3x3 vb2tile = WGMatrix3x3::makeIdentity();
+                computeViewBoxToViewport({ 0,0,fTileRect.w, fTileRect.h }, 
+                    fViewBox, fPar, vb2tile);
                 C.postTransform(vb2tile);
             }
             else if (fPatternContentUnits == SpaceUnitsKind::SVG_SPACE_USER)
@@ -433,6 +586,7 @@ namespace waavs
 
             return true;
         }
+        */
 
         void update(IAmGroot* groot) override
         {

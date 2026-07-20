@@ -8,23 +8,27 @@ namespace waavs {
 
     struct BackgroundSelector : public GraphicView
     {
+        SolidColorPaint fForegroundBorder{ BLRgba32(0xff7fA0A0) };
+        SolidColorPaint fBackgroundFill{ BLRgba32(0xffF0EAD6) };
+
         BackgroundSelector(const WGRectD& fr)
             :GraphicView(fr)
-        {
-
-        }
-
-        void drawBackground(IRenderSVG* ctx) override
         {
             ColorSRGB srgb;
             if (get_color_by_name_as_srgb("beige", srgb) == WG_SUCCESS)
             {
                 BLRgba32 bgcolor = BLRgba32_premultiplied_from_ColorSRGB(srgb);
+                fBackgroundFill = SolidColorPaint(bgcolor);
+            }
+
+        }
+
+        void drawBackground(IRenderSVG* ctx) override
+        {
                 BLPath apath;
                 apath.add_rect(0, 0, frame().w, frame().h);
-                ctx->fill(BLVar(bgcolor));
+                ctx->fill(&fBackgroundFill);
                 ctx->fillShape(apath);
-            }
         }
 
         void drawForeground(IRenderSVG* ctx) override
@@ -32,7 +36,7 @@ namespace waavs {
             ctx->strokeWidth(3);
             BLPath apath;
             apath.add_rect(1, 1, frame().w - 2, frame().h - 2);
-            ctx->stroke(BLVar(BLRgba32(0xff7fA0A0)));
+            ctx->stroke(&fForegroundBorder);
             ctx->strokeShape(apath);
         }
 

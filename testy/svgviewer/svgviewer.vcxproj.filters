@@ -38,7 +38,7 @@
     <ClInclude Include="..\..\svg\render_interface.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\svgshapes.h">
+    <ClInclude Include="..\..\svg\svg_element_shapes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\svgattributes.h">
@@ -101,10 +101,10 @@
     <ClInclude Include="..\..\app\svgwaavs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\svgstructure.h">
+    <ClInclude Include="..\..\svg\svg_element_svg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\svgpattern.h">
+    <ClInclude Include="..\..\svg\svg_element_pattern.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\svg_element_gradient.h">
@@ -122,13 +122,13 @@
     <ClInclude Include="..\..\svg\svghyperlink.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\svgmask.h">
+    <ClInclude Include="..\..\svg\svg_element_mask.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\svgclip.h">
+    <ClInclude Include="..\..\svg\svg_element_clip.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\svgmarker.h">
+    <ClInclude Include="..\..\svg\svg_element_marker.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\converters.h">
@@ -218,7 +218,7 @@
     <ClInclude Include="..\..\svg\svgdefs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\svgsolidcolor.h">
+    <ClInclude Include="..\..\svg\svg_element_solidcolor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\svgtextlayout.h">
@@ -275,7 +275,7 @@
     <ClInclude Include="..\..\svg\filter_noise.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\svgmisc.h">
+    <ClInclude Include="..\..\svg\svg_element_misc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\filter_codec.h">
@@ -302,7 +302,7 @@
     <ClInclude Include="..\..\svg\effects.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\svg\svgobject.h">
+    <ClInclude Include="..\..\svg\svg_interface.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\filter_fecomposite.h">
@@ -477,6 +477,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\svg\core_table.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\svg\svg_element_group.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -215,7 +215,8 @@ namespace waavs
         // This is the transform that is applied to a drawing context when we're
         // drawing the scene onto the surface.
 
-        const WGMatrix3x3& viewBoxToViewportTransform() const {
+        const WGMatrix3x3& viewBoxToViewportTransform() const 
+        {
             return fTransform;
         }
 
@@ -225,7 +226,8 @@ namespace waavs
         // want to know where in the scene it is.  This is typically used when 
         // you do a mouse click on the surface, and you want to know where in the
         // scene that click hits.
-        const WGMatrix3x3& viewportToViewBoxTransform() const {
+        const WGMatrix3x3& viewportToViewBoxTransform() const 
+        {
             return fInverseTransform;
         }
 

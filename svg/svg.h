@@ -15,7 +15,7 @@
 #include "svgcss.h"
 #include "svgstructuretypes.h"
 #include "svgattributes.h"
-#include "svgshapes.h"
+#include "svg_element_shapes.h"
 #include "svgfilter.h"
 
 #include "fonthandler.h"

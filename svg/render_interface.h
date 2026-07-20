@@ -1,6 +1,5 @@
 #pragma once
 
-#pragma comment(lib, "blend2d.lib") // Link with Blend2D static library, on Windows
 
 #include <functional>
 
@@ -317,9 +316,8 @@ namespace waavs
         void applyTransform(const WGMatrix3x3& value)
         {
             auto t = state().getTransform();
-            t.postTransform(value);
+            t.transform(value);
             state().setTransform(t);
-            //onTransform(t);
 
             onApplyTransform(value);
         }
@@ -454,24 +452,23 @@ namespace waavs
         }
 
         // paint for filling shapes
-        virtual void onFill(BLVar) {}
-        void applyFillPaint(BLVar paint)
-        {
-            onFill(paint);
-        }
 
-        //template <typename StyleT>
-        //void fill(const StyleT& paint)
-        //{
-        //    setFillPaint(paint);
-        //    onFill();
-        //}
+
+        void fill(IServePaint *pServer)
+        {
+            state().setFillPaintServer(pServer);
+        }
 
         virtual void onNoFill() {}
         void noFill() {
             onNoFill();
         }
 
+        virtual void onApplyFill(BLVar) {}
+        void applyFillPaint(BLVar paint)
+        {
+            onApplyFill(paint);
+        }
 
         virtual void onFillOpacity(double o) {}
         void fillOpacity(double o)
@@ -490,17 +487,26 @@ namespace waavs
             onFillRule(rule);
         }
 
+        // ---------------------------------------
         // paint for stroking lines
-        virtual void onStroke(BLVar ) {}
+        // -------------------------------
         //template <typename StyleT>
         //void stroke(const StyleT& paint)
         //{
         //    setStrokePaint(paint);
         //    onStroke();
         //}
+
+        void stroke(IServePaint* pServer)
+        {
+            state().setStrokePaintServer(pServer);
+        }
+
+        virtual void onApplyStroke(BLVar ) {}
+
         void applyStrokePaint(BLVar paint)
         {
-            onStroke(paint);
+            onApplyStroke(paint);
         }
 
         virtual void onNoStroke() {}

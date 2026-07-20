@@ -183,7 +183,10 @@ namespace waavs
             if (!transformFromInvocation(call, tm))
                 return false;
 
-            xform.postTransform(tm);
+            // SVG lists transforms in coordinate-system order.
+            // WGMatrix3x3 maps row vectors, so each new transform
+            // is multiplied on the left.
+            xform.transform(tm);
         }
 
         return true;

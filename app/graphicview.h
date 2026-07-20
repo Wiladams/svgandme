@@ -1,9 +1,9 @@
 #pragma once
 
-#include "svgb2ddriver.h"
-#include "viewport.h"
+#include "render_blend2d.h"
+#include "svg_attribute_viewport.h"
 #include "uievent.h"
-#include "svgcamera.h"
+#include "app_svgcamera.h"
 
 namespace waavs {
     //
@@ -160,7 +160,7 @@ namespace waavs {
         {
             GraphicView::setFrame(arect);
 
-            fCachedImage.reset(arect.w, arect.h);
+            fCachedImage = Surface::createOwned(static_cast<int>(arect.w), static_cast<int>(arect.h));
             
             fCacheContext = nullptr;
             //fCacheContext.attach(fCachedImage, fDrawingThreads);

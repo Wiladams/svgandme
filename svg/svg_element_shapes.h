@@ -1,15 +1,13 @@
+// svgshapes.h
+
 #pragma once
 
-#include <string>
-#include <array>
-#include <list>
-#include <functional>
-#include <unordered_map>
+
 
 #include "svgattributes.h"
 #include "svggraphicselement.h"
 
-#include "svgmarker.h"
+#include "svg_element_marker.h"
 #include "pathattribute_parser.h"
 #include "pathprogram_builder.h"
 #include "pathprogram_flattener.h"

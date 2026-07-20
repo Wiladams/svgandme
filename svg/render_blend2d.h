@@ -267,7 +267,7 @@ namespace waavs
 
 
         // paint for filling shapes
-        void onFill(BLVar paint) override
+        void onApplyFill(BLVar paint) override
         {
             //if (!fDrawingContext)
             //    return;
@@ -284,8 +284,8 @@ namespace waavs
 
         void onNoFill() override
         {
-            fCtx.set_fill_style(SVGDrawingState::emptyPaintServer()->getVariant(nullptr,nullptr));
-            //fCtx.disable_fill_style();
+            //fCtx.set_fill_style(SVGDrawingState::emptyPaintServer()->getVariant(nullptr,nullptr));
+            fCtx.disable_fill_style();
         }
 
 
@@ -304,7 +304,7 @@ namespace waavs
         // paint for stroking lines
         // BUGBUG - this should not actually do anything
         // as it's being called when setting up a paintServer
-        void onStroke(BLVar strokePaint) override
+        void onApplyStroke(BLVar strokePaint) override
         {
             fCtx.set_stroke_style(strokePaint);
         }

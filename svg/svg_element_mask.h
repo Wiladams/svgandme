@@ -123,59 +123,7 @@ namespace waavs
 
 
         }
-        /*
-        WGRectD resolveMaskRegionUS(
-            IRenderSVG*,
-            IAmGroot*,
-            const WGRectD& objectBBoxUS) noexcept
-        {
-            if (fMaskUnits == SpaceUnitsKind::SVG_SPACE_OBJECT)
-            {
-                LengthResolveCtx xctx{};
-                xctx.ref = objectBBoxUS.w;
-                xctx.origin = objectBBoxUS.x;
-                xctx.space = SpaceUnitsKind::SVG_SPACE_OBJECT;
 
-                LengthResolveCtx yctx{};
-                yctx.ref = objectBBoxUS.h;
-                yctx.origin = objectBBoxUS.y;
-                yctx.space = SpaceUnitsKind::SVG_SPACE_OBJECT;
-
-                LengthResolveCtx wctx{};
-                wctx.ref = objectBBoxUS.w;
-                wctx.origin = 0.0;
-                wctx.space = SpaceUnitsKind::SVG_SPACE_OBJECT;
-
-                LengthResolveCtx hctx{};
-                hctx.ref = objectBBoxUS.h;
-                hctx.origin = 0.0;
-                hctx.space = SpaceUnitsKind::SVG_SPACE_OBJECT;
-
-                return WGRectD{
-                    resolveLengthUserUnits(fX, xctx),
-                    resolveLengthUserUnits(fY, yctx),
-                    resolveLengthUserUnits(fWidth, wctx),
-                    resolveLengthUserUnits(fHeight, hctx)
-                };
-            }
-
-            LengthResolveCtx xctx{};
-            xctx.ref = 1.0;
-            xctx.origin = 0.0;
-            xctx.space = SpaceUnitsKind::SVG_SPACE_USER;
-
-            LengthResolveCtx yctx = xctx;
-            LengthResolveCtx wctx = xctx;
-            LengthResolveCtx hctx = xctx;
-
-            return WGRectD{
-                resolveLengthUserUnits(fX, xctx),
-                resolveLengthUserUnits(fY, yctx),
-                resolveLengthUserUnits(fWidth, wctx),
-                resolveLengthUserUnits(fHeight, hctx)
-            };
-        }
-        */
 
         bool renderMaskSurface(
             IAmGroot* groot,
@@ -193,7 +141,8 @@ namespace waavs
                 obb.translate(plan.objectBBoxUS.x, plan.objectBBoxUS.y);
                 obb.scale(plan.objectBBoxUS.w, plan.objectBBoxUS.h);
 
-                maskCtm.postTransform(obb);
+                maskCtm.transform(obb);
+                //maskCtm.postTransform(obb);
             }
 
             IsolatedSubtreeRequest req{};

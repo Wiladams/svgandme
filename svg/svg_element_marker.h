@@ -678,6 +678,8 @@ namespace waavs
             ctx->push();
             ctx->translate(pt.x, pt.y);
             ctx->rotate(rads);
+
+            m->setNeedsBinding(true);
             m->draw(ctx, groot);
             ctx->pop();
         }

@@ -119,15 +119,16 @@ namespace waavs
             return false;
 
         WGMatrix3x3 off = req.ctm;
-        off.postTranslate(-double(req.pixelRect.x), -double(req.pixelRect.y));
+        //off.postTranslate(
+        off.translate(
+            -double(req.pixelRect.x), 
+            -double(req.pixelRect.y));
 
         SVGB2DDriver tmp{};
         tmp.attach(outSurface, 1, &req.drawingState);
-        //tmp.renew();
 
         // We have to pass along the drawing state
         // as the item in question will need context
-        tmp.copyDrawingState(req.drawingState);
 
 
         if (req.clear)
@@ -1071,7 +1072,8 @@ namespace waavs {
             WGRectD bbox = drawBegin(ctx, groot);
 
             IsolatedRenderPlan plan{};
-            if (!resolveIsolatedRenderPlan(ctx, groot, this, bbox, rFlags, plan)) {
+            if (!resolveIsolatedRenderPlan(ctx, groot, this, bbox, rFlags, plan)) 
+            {
                 drawEnd(ctx, groot);
                 return;
             }

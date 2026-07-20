@@ -2,7 +2,7 @@
 
 
 #include "svgcacheddocument.h"
-#include "viewnavigator.h"
+#include "app_viewnavigator.h"
 #include "svgicons.h"
 
 
@@ -17,6 +17,8 @@ namespace waavs {
 
         SVGDocument checkerboardDoc{};
         
+        SolidColorPaint fForegroundStrokePaint{ BLRgba32(0xffA000A0) };
+
         bool fAnimate{ false };
         bool fPerformTransform{ true };
         bool fUseCheckerBackground{ true };
@@ -66,7 +68,7 @@ namespace waavs {
         void drawForeground(IRenderSVG* ctx) override
         {
             ctx->strokeWidth(4);
-            ctx->state().stroke(BLVar(BLRgba32(0xffA000A0)));
+            ctx->stroke(&fForegroundStrokePaint);
             BLPath apath;
             apath.add_rect(0, 0, frame().w, frame().h);
             ctx->strokeShape(apath);

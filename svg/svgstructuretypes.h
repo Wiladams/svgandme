@@ -1,7 +1,9 @@
-#pragma once
+// svgstructuretypes.h
 
 #ifndef SVGSTRUCTURETYPES_H
 #define SVGSTRUCTURETYPES_H
+
+#pragma once
 
 #include "maths.h"
 
@@ -12,7 +14,7 @@
 #include "stopwatch.h"
 
 #include "svgatoms.h"
-#include "svgobject.h"
+#include "svg_interface.h"
 #include "svgdatatypes.h"
 #include "svgcss.h"
 #include "svgscan.h"

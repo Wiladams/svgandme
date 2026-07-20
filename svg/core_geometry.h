@@ -1,3 +1,5 @@
+// core_geometry.h
+
 #pragma once
 
 #include "definitions.h"
@@ -5,8 +7,8 @@
 #include "maths_base.h"
 
 
-//namespace waavs
-//{
+namespace waavs
+{
     // Very core low level geometry types.  Use type assertions here
     // so they remain usable in C interfaces, and to ensure they are 
     // POD types that can be safely memcpy'd and used in unions and the like.
@@ -14,7 +16,8 @@
     // as these types are meant to be lightweight and efficient, and used in hot code paths.
     //
 
-    struct WGPointD final { 
+    struct WGPointD final 
+    { 
         double x, y; 
         
         WGPointD() : x(0), y(0) {}
@@ -32,7 +35,7 @@
         // vector (divide by length)
         void normalize() {
             double len = std::sqrt(x * x + y * y);
-            if (len > waavs::dbl_eps) {
+            if (len > dbl_eps) {
                 x /= len;
                 y /= len;
             }
@@ -46,7 +49,7 @@
     struct WGPointI { 
         int x, y; 
 
-        WGPointI() : x(0), y(0) {}
+        WGPointI() = default;    // : x(0), y(0) {}
         WGPointI(const int x, const int y) : x(x), y(y) {}
 
 
@@ -97,7 +100,7 @@
     };
 
     ASSERT_POD_TYPE(WGRectI);
-//}
+}
 
 // ---------------------------------------
 // WGRectD utilities

@@ -36,6 +36,8 @@
 #include "maths_base.h"
 #include "maths_transcend.h"
 
+#include <utility>
+
 //=================================
 // CONSTANT Declarations
 //=================================

@@ -107,12 +107,12 @@ namespace waavs
 
             // Clipping
             //SVGClipPathAttribute::registerFactory();          // 'clip-path' attribute
-            SVGClipPathElement::registerFactory();              // 'clipPath' element
+            //SVGClipPathElement::registerFactory();              // 'clipPath' element
 
             // Masking
-            SVGMaskElement::registerFactory();                  // 'mask' element
+            //SVGMaskElement::registerFactory();                  // 'mask' element
 
-            SVGFilterElement::registerFactory();                // <filter>
+            //SVGFilterElement::registerFactory();                // <filter>
 
             //=============================================
             // Register SVG Node Types

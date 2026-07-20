@@ -181,6 +181,15 @@ namespace waavs
             {("black"), BLRgba32(0, 0, 0)},
             {("transparent"), BLRgba32(0, 0, 0, 0) },
 
+            // The other 'gray' values
+            { ("grey"), BLRgba32(128, 128, 128) },
+            { ("darkgrey"), BLRgba32(169, 169, 169) },
+            { ("dimgrey"), BLRgba32(105, 105, 105) },
+            { ("lightgrey"), BLRgba32(211, 211, 211) },
+            { ("slategrey"), BLRgba32(112, 128, 144) },
+            { ("darkslategrey"), BLRgba32(47, 79, 79) },
+            { ("lightslategrey"), BLRgba32(119, 136, 153) },
+
             // Deprecated system colors
             {"activeborder", BLRgba32(0xffb4b4b4)},
             {"activecaption", BLRgba32(0xff000080)},
@@ -677,7 +686,7 @@ namespace waavs
     // Parse only the color portion of a color specification
     // not concerned with a separate opacity value
     // Parse only the color portion of a color specification.
-// Not concerned with a separate opacity value.
+    // Not concerned with a separate opacity value.
     static WGResult parseColor(const ByteSpan& colorSpan, ColorSRGB& cSRGB) noexcept
     {
         colorsrgb_reset(cSRGB, 0, 0, 0, 1.0f);
