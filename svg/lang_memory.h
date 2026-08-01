@@ -89,45 +89,59 @@ namespace waavs {
         
         bool resetFromSize(const size_t sz) noexcept
         {
-            reset();
-
             if (sz == 0)
+            {
+                reset();
                 return true;
+            }
 
-            uint8_t* p = new (std::nothrow) uint8_t[sz];
-            if (!p)
-                return false; // allocation failed
+            uint8_t* newData =
+                new (std::nothrow) uint8_t[sz];
 
-            fData = p;
+            if (!newData)
+                return false;
+
+            delete[] fData;
+
+            fData = newData;
             fSize = sz;
 
             return true;
         }
 
+
         // resetFromData
         // 
         // copy the data from the input span into the memory buffer
 
-        bool resetFromData(const uint8_t* d, size_t s) noexcept
+        bool resetFromData(
+            const uint8_t* data,
+            size_t size) noexcept
         {
-            reset();
-
-            fSize = s;
-            if (fSize > 0)
+            if (size == 0)
             {
-                fData = new (std::nothrow) uint8_t[fSize];
-                if (!fData) {
-                    fSize = 0;
-                    return false; // allocation failed
-                }
-
-                memcpy(fData, d, fSize);
-
+                reset();
+                return true;
             }
+
+            if (!data)
+                return false;
+
+            uint8_t* newData =
+                new (std::nothrow) uint8_t[size];
+
+            if (!newData)
+                return false;
+
+            memcpy(newData, data, size);
+
+            delete[] fData;
+
+            fData = newData;
+            fSize = size;
 
             return true;
         }
-
 
 
         // Operators

@@ -371,7 +371,7 @@ namespace waavs {
             WGRectI srcRect{ 0, 0, fCurrentStruct.width, fCurrentStruct.height };
 
             // Intersect the crop rectangle with the source rectangle to ensure it fits within bounds
-            fCroppedRect = intersection(cropRect, srcRect);
+            fCroppedRect = rectI_intersection(cropRect, srcRect);
 
             fCropIsFull = (fCroppedRect == srcRect);
         }

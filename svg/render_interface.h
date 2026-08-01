@@ -305,11 +305,11 @@ namespace waavs
         // transform() - will set the transformation absolutely
         // applyTransform() - will add whatever transform is supplied to 
         //   the existing transform
-        virtual void onTransform(const WGMatrix3x3& value) {}
-        void transform(const WGMatrix3x3& value)
+        virtual void onSetTransform(const WGMatrix3x3& value) {}
+        void setTransform(const WGMatrix3x3& value)
         {
             state().setTransform(value);
-            onTransform(value);
+            onSetTransform(value);
         }
 
         virtual void onApplyTransform(const WGMatrix3x3& value) {}
@@ -326,7 +326,6 @@ namespace waavs
         void scale(double x, double y)
         {
             auto t = state().getTransform();
-            //t.postScale(x, y);
             t.scale(x, y);
             state().setTransform(t);
             //onTransform(t);
@@ -345,7 +344,6 @@ namespace waavs
         void rotate(double angle, double cx, double cy)
         {
             auto t = state().getTransform();
-            //t.postRotate(angle, cx, cy);
             t.rotate(angle, cx, cy);
             state().setTransform(t);
             //onTransform(t);
@@ -363,7 +361,6 @@ namespace waavs
         {
             // get current transform
             auto t = state().getTransform();
-            //t.postTranslate(x, y);
             t.translate(x, y);
             state().setTransform(t);
             //onTransform(t);
@@ -452,9 +449,7 @@ namespace waavs
         }
 
         // paint for filling shapes
-
-
-        void fill(IServePaint *pServer)
+        void fillPaintServer(IServePaint *pServer)
         {
             state().setFillPaintServer(pServer);
         }
@@ -478,7 +473,6 @@ namespace waavs
         }
 
 
-
         // Geometry
         virtual void onFillRule(BLFillRule rule) {}
         void fillRule(BLFillRule rule)
@@ -490,14 +484,7 @@ namespace waavs
         // ---------------------------------------
         // paint for stroking lines
         // -------------------------------
-        //template <typename StyleT>
-        //void stroke(const StyleT& paint)
-        //{
-        //    setStrokePaint(paint);
-        //    onStroke();
-        //}
-
-        void stroke(IServePaint* pServer)
+        void strokePaintServer(IServePaint* pServer)
         {
             state().setStrokePaintServer(pServer);
         }

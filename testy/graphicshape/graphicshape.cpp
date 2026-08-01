@@ -4,11 +4,11 @@
 #include <ranges>
 #include <algorithm>
 
-#include "mappedfile.h"
-#include "svguiapp.h"
+#include "app_mappedfile.h"
+#include "app_svguiapp.h"
 #include "agraphic.h"
 
-#include "viewnavigator.h"
+#include "app_viewnavigator.h"
 #include "b2dpath.h"
 #include "wsenum.h"
 

@@ -167,7 +167,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\;..\..\;..\..\blend2d;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\;..\..\;..\..\3rdparty;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;..\;..\..\;..\..\3rdparty;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
@@ -184,7 +184,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\;..\..\;..\..\blend2d;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\;..\..\;..\..\3rdparty;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;..\;..\..\;..\..\3rdparty;..\..\svg;..\..\app;..\..\3rdparty\ffmpeg\include;</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
@@ -199,10 +199,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\app\apphost.h" />
+    <ClInclude Include="..\..\app\app_nativewindow.h" />
     <ClInclude Include="..\..\svg\definitions.h" />
     <ClInclude Include="..\..\svg\idrawpixels.h" />
     <ClInclude Include="..\..\svg\pixeling.h" />
     <ClInclude Include="..\..\svg\surface.h" />
+    <ClInclude Include="..\..\svg\uievent.h" />
     <ClInclude Include="..\..\svg\wggeometry.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

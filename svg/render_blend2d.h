@@ -21,14 +21,8 @@ namespace waavs
 
         SVGB2DDriver()
         {
-            // Create a context by default, so we have 
-            // something initially, so we don't have to use
-            // null checks everywhere
-            //fDrawingContext = std::make_unique<BLContext>();
-
             initState();
             fCtx.set_comp_op(BLCompOp::BL_COMP_OP_SRC_OVER);
-
         }
 
 
@@ -39,8 +33,9 @@ namespace waavs
             return fCtx.target_image();
         }
 
-/*
-        void onApplyDrawingState(const SVGDrawingState& st) override
+//        void onApplyDrawingState(const SVGDrawingState& st) override
+
+        void onCopyDrawingState(const SVGDrawingState& st) override
         {
             // clear the clipping state
             fCtx.restore_clipping();
@@ -63,20 +58,16 @@ namespace waavs
             // Paints
             if (st.fFillPaintServer)
                 fCtx.set_fill_style(st.fFillPaintServer->getVariant(this, nullptr));
-            else
-                fCtx.disable_fill_style();
+            //else
+            //    fCtx.disable_fill_style();
 
             if (st.fStrokePaintServer)
                 fCtx.set_stroke_style(st.fStrokePaintServer->getVariant(this, nullptr));
-            else
-                fCtx.disable_stroke_style();
+            //else
+            //    fCtx.disable_stroke_style();
 
-            // I don't think these should be handled here at all
-            // they are handled within the paint servers or otherwise
-            //fCtx.set_stroke_alpha(getStrokeOpacity());
-            //fCtx.set_fill_alpha(getFillOpacity());
         }
-*/
+
 
         void onAttach(Surface& surf, int threadCount, const SVGDrawingState *state) override
         {
@@ -166,7 +157,7 @@ namespace waavs
 
 
         // Coordinate system transformation
-        void onTransform(const WGMatrix3x3& value) override
+        void onSetTransform(const WGMatrix3x3& value) override
         {
             //WGMatrix3x3 wgM = wgMatrix_from_BLMatrix2D(fCtx.user_transform());
             BLMatrix2D m = blMatrix_from_WGMatrix3x3(value);
@@ -265,7 +256,6 @@ namespace waavs
             fCtx.set_stroke_miter_limit(ml);
         }
 
-
         // paint for filling shapes
         void onApplyFill(BLVar paint) override
         {
@@ -312,8 +302,8 @@ namespace waavs
 
         void onNoStroke() override
         {
-            fCtx.set_stroke_style(SVGDrawingState::emptyPaintServer()->getVariant(nullptr, nullptr));
-            //fCtx.disable_stroke_style();
+            //fCtx.set_stroke_style(SVGDrawingState::emptyPaintServer()->getVariant(nullptr, nullptr));
+            fCtx.disable_stroke_style();
         }
 
 

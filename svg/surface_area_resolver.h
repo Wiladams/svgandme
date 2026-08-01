@@ -50,8 +50,8 @@ namespace waavs
         if (!Surface_ARGB32_is_valid(src))
             return WG_ERROR_Invalid_Argument;
 
-        WGRectI clipped = intersection(area, Surface_ARGB32_bounds(dst));
-        clipped = intersection(clipped, Surface_ARGB32_bounds(src));
+        WGRectI clipped = rectI_intersection(area, Surface_ARGB32_bounds(dst));
+        clipped = rectI_intersection(clipped, Surface_ARGB32_bounds(src));
 
         if (clipped.w <= 0 || clipped.h <= 0)
             return WG_SUCCESS;
@@ -95,7 +95,7 @@ namespace waavs
         const WGRectI dstPlacement{ dstX, dstY, src.width, src.height };
 
         // Clip placement against destination bounds.
-        const WGRectI dstClipped = intersection(dstPlacement, dstBounds);
+        const WGRectI dstClipped = rectI_intersection(dstPlacement, dstBounds);
         if (dstClipped.w <= 0 || dstClipped.h <= 0)
             return WG_SUCCESS;
 
@@ -119,69 +119,7 @@ namespace waavs
         return WG_SUCCESS;
     }
 
-    /*
-    static INLINE WGResult wg_resolve_binary_views(
-        const Surface_ARGB32& in1,
-        const Surface_ARGB32& in2,
-        Surface_ARGB32& dst,
-        int dstX,
-        int dstY,
-        Surface_ARGB32& in1View,
-        Surface_ARGB32& in2View,
-        Surface_ARGB32& dstView) noexcept
-    {
-        // Validate inputs
-        if (!dst.data || dst.width <= 0 || dst.height <= 0)
-            return WG_ERROR_Invalid_Argument;
 
-        if (!in1.data || in1.width <= 0 || in1.height <= 0)
-            return WG_ERROR_Invalid_Argument;
-
-        if (!in2.data || in2.width <= 0 || in2.height <= 0)
-            return WG_ERROR_Invalid_Argument;
-
-        // Destination bounds
-        const WGRectI dstBounds{ 0, 0, dst.width, dst.height };
-
-        // Full placement of in1 into dst
-        const WGRectI dstPlacement{ dstX, dstY, in1.width, in1.height };
-
-        // Clip against destination
-        const WGRectI dstClipped = intersection(dstPlacement, dstBounds);
-        if (dstClipped.w <= 0 || dstClipped.h <= 0)
-            return WG_SUCCESS;
-
-        // Corresponding rect in in1
-        const WGRectI in1Rect{
-            dstClipped.x - dstPlacement.x,
-            dstClipped.y - dstPlacement.y,
-            dstClipped.w,
-            dstClipped.h
-        };
-
-        // Corresponding rect in in2 (same mapping as in1)
-        const WGRectI in2Rect{
-            dstClipped.x - dstPlacement.x,
-            dstClipped.y - dstPlacement.y,
-            dstClipped.w,
-            dstClipped.h
-        };
-
-        WGResult res = Surface_ARGB32_get_subarea(in1, in1Rect, in1View);
-        if (res != WG_SUCCESS)
-            return res;
-
-        res = Surface_ARGB32_get_subarea(in2, in2Rect, in2View);
-        if (res != WG_SUCCESS)
-            return res;
-
-        res = Surface_ARGB32_get_subarea(dst, dstClipped, dstView);
-        if (res != WG_SUCCESS)
-            return res;
-
-        return WG_SUCCESS;
-    }
-    */
 
     static INLINE WGResult wg_surface_resolve_rect_binary(
         Surface_ARGB32& dst,
@@ -201,9 +139,9 @@ namespace waavs
         if (!b.data || b.width <= 0 || b.height <= 0)
             return WG_ERROR_Invalid_Argument;
 
-        WGRectI clipped = intersection(area, Surface_ARGB32_bounds(dst));
-        clipped = intersection(clipped, Surface_ARGB32_bounds(a));
-        clipped = intersection(clipped, Surface_ARGB32_bounds(b));
+        WGRectI clipped = rectI_intersection(area, Surface_ARGB32_bounds(dst));
+        clipped = rectI_intersection(clipped, Surface_ARGB32_bounds(a));
+        clipped = rectI_intersection(clipped, Surface_ARGB32_bounds(b));
 
         if (clipped.w <= 0 || clipped.h <= 0)
             return WG_SUCCESS;

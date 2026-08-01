@@ -761,8 +761,8 @@ namespace waavs
         Surface_ARGB32 dstView{};
         Surface_ARGB32 srcView{};
 
-        WGRectI clipped = intersection(area, Surface_ARGB32_bounds(dstInfo));
-        clipped = intersection(clipped, Surface_ARGB32_bounds(srcInfo));
+        WGRectI clipped = rectI_intersection(area, Surface_ARGB32_bounds(dstInfo));
+        clipped = rectI_intersection(clipped, Surface_ARGB32_bounds(srcInfo));
 
         if (clipped.w <= 0 || clipped.h <= 0)
             return WG_SUCCESS;

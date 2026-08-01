@@ -109,9 +109,6 @@ namespace waavs
             return BLVar::null();
         }
 
-        //virtual void applyPaintToContext(IRenderSVG* ctx, IAmGroot* groot)
-        //{
-        //}
 
         // paint usually comes in color/opacity pairs
         // so use SVGColor to read it, if it's not a URL 
@@ -165,18 +162,9 @@ namespace waavs
             setName(svgattr::fill());
         }
 
-        //virtual void applyPaintToContext(IRenderSVG* ctx, IAmGroot* groot) override
-        //{
-        //    BLVar aVar = getVariant(ctx, groot);
-        //    if (aVar.is_null())
-        //        ctx->noFill();
-        //    else
-        //        ctx->fill(aVar);
-        //}
-
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->state().setFillPaintServer(this);
+            ctx->fillPaintServer(this);
         }
 
     };
@@ -197,18 +185,9 @@ namespace waavs
             setName(svgattr::stroke());
         }
 
-        //void applyPaintToContext(IRenderSVG* ctx, IAmGroot* groot) override
-        //{
-        //    BLVar aVar = getVariant(ctx, groot);
-        //    if (aVar.is_null())
-        //        ctx->noStroke();
-        //    else
-        //        ctx->stroke(aVar);
-        //}
-
         void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
         {
-            ctx->state().setStrokePaintServer(this);
+            ctx->strokePaintServer(this);
         }
 
     };

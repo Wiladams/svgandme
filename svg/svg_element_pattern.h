@@ -507,7 +507,7 @@ namespace waavs
             }
 
             // Set the complete content-to-bitmap matrix.
-            ictx.transform(contentToPixels);
+            ictx.setTransform(contentToPixels);
 
             // Draw inherited content when this pattern gets its children
             // through href; otherwise draw this pattern's own children.

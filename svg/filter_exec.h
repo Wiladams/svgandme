@@ -458,7 +458,7 @@ namespace waavs
             break;
         }
 
-        rio.writeAreaPx = intersection(rio.primitiveAreaPx, rio.out.boundsI());
+        rio.writeAreaPx = rectI_intersection(rio.primitiveAreaPx, rio.out.boundsI());
 
         rio.readArea1Px = rio.writeAreaPx;
         rio.readArea2Px = rio.writeAreaPx;
@@ -466,7 +466,7 @@ namespace waavs
         if (policy.haloX || policy.haloY)
         {
             rio.readArea1Px = wg_rectI_inflate(rio.readArea1Px, policy.haloX, policy.haloY);
-            rio.readArea1Px = intersection(rio.readArea1Px, rio.in1.boundsI());
+            rio.readArea1Px = rectI_intersection(rio.readArea1Px, rio.in1.boundsI());
         }
 
         return true;

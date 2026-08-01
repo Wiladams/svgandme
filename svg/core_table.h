@@ -9,6 +9,7 @@
 
 namespace waavs
 {
+    // report the next highest power of 2 for a given number.
     static inline size_t ws_table_next_pow2(size_t n) noexcept
     {
         if (n < 2) return 2;
@@ -27,6 +28,21 @@ namespace waavs
         return n + 1;
     }
 
+    // ws_table_ptr_hash
+    // 
+    // We want to use memory pointers as keys in our open 
+    // hash table.  The problem with pointers is they tend 
+    // to cluster together, so just using them directly will
+    // not result in a good distribution of hash values.  
+    // We run the pointers through this hash function to obtain
+    // better distribution before storing a value in the hash table
+    // Note:
+    // Derived from MurmurHash3 finalizer, 
+    // which is a good hash function for 64-bit integers.
+    // BUGBUG: could create explicity 32-bit and 64-bit versions
+    // fmix64
+    // fmix32
+    //
     static inline size_t ws_table_ptr_hash(const void* p) noexcept
     {
         uintptr_t x = reinterpret_cast<uintptr_t>(p);

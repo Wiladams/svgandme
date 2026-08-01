@@ -38,7 +38,7 @@ static void processFrameTiming();
 
 // Some function signatures
 // WinMSGObserver - Function signature for Win32 message handler
-typedef LRESULT (*WinMSGObserver)(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+typedef bool (*WinMSGObserver)(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT &result);
 
 #define LODWORD(ull) ((DWORD)((ULONGLONG)(ull) & 0x00000000ffffffff))
 #define HIDWORD(ull) ((DWORD)((((ULONGLONG)(ull))>>32) & 0x00000000ffffffff))
@@ -51,7 +51,7 @@ static VOIDROUTINE gOnUnloadHandler = nullptr;
 static VOIDROUTINE gOnLoopHandler = nullptr;
 
 // Painting
-static WinMSGObserver gPaintHandler = nullptr;
+//static WinMSGObserver gPaintHandler = nullptr;
 
 // Topics applications can subscribe to
 SignalEventTopic gSignalEventTopic;
@@ -60,10 +60,11 @@ MouseEventTopic gMouseEventTopic;
 JoystickEventTopic gJoystickEventTopic;
 FileDropEventTopic gFileDropEventTopic;
 TouchEventTopic gTouchEventTopic;
-PointerEventTopic gPointerEventTopic;
+//PointerEventTopic gPointerEventTopic;
 GestureEventTopic gGestureEventTopic;
 FrameCountEventTopic gFrameCountEventTopic;
 ResizeEventTopic gResizeEventTopic;
+PenEventTopic gPenEventTopic;
 
 // Miscellaneous globals
 int gargc;
@@ -73,6 +74,7 @@ char **gargv;
 static StopWatch gAppClock;
 
 bool gIsLayered = false;
+bool gInSizeMove = false;
 
 // Some globals friendly to the p5 environment
 // Display Globals
@@ -203,31 +205,47 @@ void setFrameRate(float newRate) noexcept
 }
 
 float getFrameRate() noexcept { return fFrameRate;}
-
 uint64_t frameCount() noexcept { return fFrameCount;}
 
 
+bool presentLayeredWindow(HWND hwnd)
+{
+    // This is the workhorse of displaying directly
+    // to the screen.  Everything to be displayed
+    // must be in the FrameBuffer, even window chrome
+    LayeredWindowInfo lw(appFrameWidth, appFrameHeight);
+    //lw.display(getAppWindow()->windowHandle(), getAppFrameBuffer()->getGDIContext());
+}
 
+// requestScreenRefresh()
+void refreshScreenRefresh()
+{
+
+}
 
 // This function is called at any time to display whatever is in the app 
 // window to the actual screen
-void refreshScreenNow()
+bool refreshScreenNow()
 {
+    User32Window* window = getAppWindow();
+    if (!window)
+        return false;
 
-    if (!gIsLayered) {
-        // if we're not layered, then do a regular
-        // sort of WM_PAINT based drawing
-        //InvalidateRect(getAppWindow()->windowHandle(), NULL, 1);
-		//::RedrawWindow(getAppWindow()->windowHandle(), NULL, NULL, RDW_INVALIDATE );
-        ::RedrawWindow(getAppWindow()->windowHandle(), NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
-    }
-    else {
-        // This is the workhorse of displaying directly
-        // to the screen.  Everything to be displayed
-        // must be in the FrameBuffer, even window chrome
-        //LayeredWindowInfo lw(appFrameWidth, appFrameHeight);
-        //lw.display(getAppWindow()->windowHandle(), getAppFrameBuffer()->getGDIContext());
-    }
+    HWND hwnd = window->windowHandle();
+    if (!hwnd || !::IsWindow(hwnd))
+        return false;
+
+    if (gIsLayered)
+        return presentLayeredWindow(hwnd);
+
+
+    // if we're not layered, then do a regular
+    // sort of WM_PAINT based drawing
+    return ::RedrawWindow(hwnd,
+        NULL, 
+        NULL, 
+        RDW_INVALIDATE | RDW_UPDATENOW | RDW_NOERASE) != FALSE;
+
 }
 
 
@@ -288,14 +306,13 @@ void refreshKeyStates()
 // 
 //   Handle keyboard messages from Windows
 //
-static LRESULT HandleKeyboardMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+static bool PublishKeyboardMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    LRESULT res = 0;
+    KeyboardEvent e{};
 
     keyCode = 0;
     keyChar = 0;
 
-    KeyboardEvent e{};
     e.keyCode = (int)wParam;
     e.repeatCount =LOWORD(lParam);  // 0 - 15
     e.scanCode = ((lParam & 0xff0000) >> 16);        // 16 - 23
@@ -305,31 +322,28 @@ static LRESULT HandleKeyboardMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
     // Get the state of all keys on the keyboard
     ::GetKeyboardState(keyStates);
 
-//printf("HandleKeyboardMessage: %04x\n", msg);
+    //printf("HandleKeyboardMessage: %04x\n", msg);
+    switch (msg) {
+    case WM_KEYDOWN:
+        e.activity = KEYPRESSED;
+        break;
 
-    switch(msg) {
-        case WM_KEYDOWN:
-        case WM_SYSKEYDOWN:
-            e.activity = KEYPRESSED;
-            keyCode = e.keyCode;
-            break;
-        case WM_KEYUP:
-        case WM_SYSKEYUP:
-            e.activity = KEYRELEASED;
-            keyCode = e.keyCode;
-            break;
+    case WM_KEYUP:
+        e.activity = KEYRELEASED;
+        break;
 
-        case WM_CHAR:
-        case WM_SYSCHAR:
-            e.activity = KEYTYPED;
-            keyChar = e.keyCode;
-            break;
+    case WM_CHAR:
+        e.activity = KEYTYPED;
+        break;
+
+    default:
+        return false;
     }
-    
+
     // publish keyboard event
     gKeyboardEventTopic.notify(e);
 
-    return res;
+    return true;
 }
 
 
@@ -338,6 +352,8 @@ static LRESULT HandleKeyboardMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
 //    Turn Windows mouse messages into mouse events which can
 //    be dispatched by the application.
 //
+
+
 static LRESULT HandleMouseMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {   
     LRESULT res = 0;
@@ -354,14 +370,24 @@ static LRESULT HandleMouseMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
     e.lbutton = (wParam & MK_LBUTTON) != 0;
     e.rbutton = (wParam & MK_RBUTTON) != 0;
     e.mbutton = (wParam & MK_MBUTTON) != 0;
-    e.xbutton1 = (wParam & MK_XBUTTON1) != 0;
-    e.xbutton2 = (wParam & MK_XBUTTON2) != 0;
-    bool isPressed = e.lbutton || e.rbutton || e.mbutton || e.xbutton1 || e.xbutton2;
+
+    //e.xbutton1 = (wParam & MK_XBUTTON1) != 0;
+    //e.xbutton2 = (wParam & MK_XBUTTON2) != 0;
+    const WORD xButton = GET_XBUTTON_WPARAM(wParam);
+    e.xbutton1 = xButton == XBUTTON1;
+    e.xbutton2 = xButton == XBUTTON2;
+
+    const bool isPressed = e.lbutton || e.rbutton || e.mbutton || e.xbutton1 || e.xbutton2;
+    const bool isXButtonMessage = 
+        (msg == WM_XBUTTONDOWN || 
+            msg == WM_XBUTTONUP || 
+            msg == WM_XBUTTONDBLCLK);
 
     switch(msg) {
         case WM_LBUTTONDBLCLK:
 	    case WM_MBUTTONDBLCLK:
 	    case WM_RBUTTONDBLCLK:
+        case WM_XBUTTONDBLCLK:
             e.activity = MOUSEDOUBLECLICKED;
             break;
 
@@ -423,8 +449,8 @@ static LRESULT HandleMouseMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
             break;
 
         default:
-            printf("UNKNOWN MOUSE\n");
-            return res;
+            //printf("UNKNOWN MOUSE\n");
+            return ::DefWindowProcA(hwnd, msg, wParam, lParam);
         break;
     }
 
@@ -437,7 +463,7 @@ static LRESULT HandleMouseMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
 
     gMouseEventTopic.notify(e);
 
-    return res;
+    return isXButtonMessage ? TRUE : 0;
 }
 
 // HandleRawInputMessage()
@@ -551,139 +577,296 @@ static LRESULT HandleJoystickMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
 
 // HandleTouchMessage()
 //
-static LRESULT HandleTouchMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+static LRESULT HandleTouchMessage(
+    HWND hwnd,
+    UINT msg,
+    WPARAM wParam,
+    LPARAM lParam)
 {
-    LRESULT res = 0;
+    const UINT inputCount = LOWORD(wParam);
+    const HTOUCHINPUT inputHandle =
+        reinterpret_cast<HTOUCHINPUT>(lParam);
 
-    // cInputs could be set to a maximum value (10) and
-    // we could reuse the same allocated array each time
-    // rather than allocating a new one each time.
-    //std::cout << "wm_touch_event: " << wParam << std::endl;
+    // Reuse the allocation across messages. This assumes touch
+    // messages are dispatched on a single UI thread.
+    static std::vector<TOUCHINPUT> inputs;
 
-    int cInputs = LOWORD(wParam);
-    int cbSize = sizeof(TOUCHINPUT);
-
-    //printf("HandleTouchMessage 1.0: %d\n", cInputs);
-    //PTOUCHINPUT pInputs = new TOUCHINPUT[cInputs];
-    TOUCHINPUT pInputs[10];    // = new TOUCHINPUT[cInputs];
-
-    // 0 == failure?
-    BOOL bResult = ::GetTouchInputInfo((HTOUCHINPUT)lParam, cInputs, pInputs, cbSize);
-
-    if (bResult == 0) {
-        //delete[] pInputs;
-        DWORD err = ::GetLastError();
-        //printf("getTouchInputInfo, ERROR: %d %D\n", bResult, err);
-
-        return 0;
+    if (inputCount == 0)
+    {
+        // We are not consuming the message, so DefWindowProc
+        // remains responsible for the touch-input handle.
+        return ::DefWindowProcA(
+            hwnd,
+            msg,
+            wParam,
+            lParam);
     }
 
-    // construct an event for each item
-    // BUGBUG - really this should be a deque of events
-    // like with file drops
-    for (int i = 0; i < cInputs; i++) {
-        TOUCHINPUT ti = pInputs[i];
-        TouchEvent e = {};
+    // May throw std::bad_alloc. The handler deliberately allows
+    // allocation failures to propagate to the application's
+    // exception boundary.
+    inputs.resize(inputCount);
 
-        // convert values to local TouchEvent structure
+    if (!::GetTouchInputInfo(
+        inputHandle,
+        inputCount,
+        inputs.data(),
+        sizeof(TOUCHINPUT)))
+    {
+        // Do not close inputHandle here. DefWindowProc will close
+        // it when processing the unhandled message.
+        return ::DefWindowProcA(
+            hwnd,
+            msg,
+            wParam,
+            lParam);
+    }
+
+    for (UINT i = 0; i < inputCount; ++i)
+    {
+        const TOUCHINPUT& ti = inputs[i];
+
+        TouchEvent e{};
+
         e.id = ti.dwID;
-        e.rawX = (float)ti.x;
-        e.rawY = (float)ti.y;
 
-        POINT PT{};
-        PT.x = TOUCH_COORD_TO_PIXEL(ti.x);
-        PT.y = TOUCH_COORD_TO_PIXEL(ti.y);
+        // TOUCHINPUT coordinates are expressed in hundredths of
+        // a physical pixel and are relative to the screen.
+        e.rawX = static_cast<float>(ti.x);
+        e.rawY = static_cast<float>(ti.y);
 
-        // Convert from screen coordinates to local
-        // client coordinates
-        ::ScreenToClient(hwnd, &PT);
+        POINT pt{
+            TOUCH_COORD_TO_PIXEL(ti.x),
+            TOUCH_COORD_TO_PIXEL(ti.y)
+        };
 
-        // Assign x,y the client area value of the touch point
-        e.x = (float)PT.x;
-        e.y = (float)PT.y;
+        if (::ScreenToClient(hwnd, &pt))
+        {
+            e.x = static_cast<float>(pt.x);
+            e.y = static_cast<float>(pt.y);
+        }
+        else
+        {
+            // Preserve useful screen-pixel coordinates if the
+            // conversion unexpectedly fails.
+            e.x = static_cast<float>(
+                TOUCH_COORD_TO_PIXEL(ti.x));
 
-
-        // Now, deal with masks
-        //#define TOUCHINPUTMASKF_TIMEFROMSYSTEM  0x0001  // the dwTime field contains a system generated value
-        //#define TOUCHINPUTMASKF_EXTRAINFO       0x0002  // the dwExtraInfo field is valid
-        //#define TOUCHINPUTMASKF_CONTACTAREA     0x0004  // the cxContact and cyContact fields are valid
-
-        if ((ti.dwMask & TOUCHINPUTMASKF_CONTACTAREA) != 0) {
-            e.rawWidth = ti.cxContact;
-            e.rawHeight = ti.cyContact;
-            e.w = TOUCH_COORD_TO_PIXEL(e.rawWidth);
-            e.h = TOUCH_COORD_TO_PIXEL(e.rawHeight);
+            e.y = static_cast<float>(
+                TOUCH_COORD_TO_PIXEL(ti.y));
         }
 
-        // figure out kind of activity and attributes
-        /*
-        #define TOUCHEVENTF_MOVE            0x0001
-#define TOUCHEVENTF_DOWN            0x0002
-#define TOUCHEVENTF_UP              0x0004
-#define TOUCHEVENTF_INRANGE         0x0008
-#define TOUCHEVENTF_PRIMARY         0x0010
-#define TOUCHEVENTF_NOCOALESCE      0x0020
-#define TOUCHEVENTF_PEN             0x0040
-#define TOUCHEVENTF_PALM            0x0080
-        */
-        if (ti.dwFlags & TOUCHEVENTF_DOWN) {
+        if ((ti.dwMask &
+            TOUCHINPUTMASKF_CONTACTAREA) != 0)
+        {
+            e.rawWidth =
+                static_cast<float>(ti.cxContact);
+
+            e.rawHeight =
+                static_cast<float>(ti.cyContact);
+
+            e.w = static_cast<float>(
+                TOUCH_COORD_TO_PIXEL(ti.cxContact));
+
+            e.h = static_cast<float>(
+                TOUCH_COORD_TO_PIXEL(ti.cyContact));
+        }
+
+        // Treat DOWN, UP, and MOVE as mutually exclusive
+        // activities in the application's event model.
+        if ((ti.dwFlags & TOUCHEVENTF_DOWN) != 0)
+        {
             e.activity = TOUCH_DOWN;
             e.isDown = true;
         }
-
-        if (pInputs[i].dwFlags & TOUCHEVENTF_UP) {
+        else if ((ti.dwFlags & TOUCHEVENTF_UP) != 0)
+        {
             e.activity = TOUCH_UP;
-            e.x = -1;
-            e.y = -1;
             e.isUp = true;
         }
-
-        if (pInputs[i].dwFlags & TOUCHEVENTF_MOVE) {
+        else if ((ti.dwFlags & TOUCHEVENTF_MOVE) != 0)
+        {
             e.activity = TOUCH_MOVE;
             e.isMoving = true;
         }
-
-        // Attributes of the event
-        if (pInputs[i].dwFlags & TOUCHEVENTF_INRANGE) {
-            e.isHovering = true;
+        else
+        {
+            // No activity represented by the current TouchEvent
+            // model. Ignore this record but continue processing
+            // the rest of the message.
+            continue;
         }
 
-        if (ti.dwFlags & TOUCHEVENTF_PRIMARY) {
-            e.isPrimary = true;
-        }
+        e.isHovering =
+            (ti.dwFlags & TOUCHEVENTF_INRANGE) != 0;
 
-        if (pInputs[i].dwFlags & TOUCHEVENTF_PALM) {
-            e.isPalm = true;
-        }
-        
-        if (pInputs[i].dwFlags & TOUCHEVENTF_PEN) {
-            e.isPen = true;
-        }
+        e.isPrimary =
+            (ti.dwFlags & TOUCHEVENTF_PRIMARY) != 0;
+
+        e.isPalm =
+            (ti.dwFlags & TOUCHEVENTF_PALM) != 0;
+
+        e.isPen =
+            (ti.dwFlags & TOUCHEVENTF_PEN) != 0;
 
         gTouchEventTopic.notify(e);
     }
-    //delete[] pInputs;
 
-    if (!CloseTouchInputHandle((HTOUCHINPUT)lParam))
+    // GetTouchInputInfo succeeded, so this handler consumed the
+    // message and is responsible for releasing the handle.
+    if (!::CloseTouchInputHandle(inputHandle))
     {
-        // error handling
+        const DWORD error = ::GetLastError();
+        (void)error;
+
+        // Optional diagnostic:
+        // printf(
+        //     "CloseTouchInputHandle failed: %lu\n",
+        //     error);
     }
 
-    return res;
+    return 0;
 }
 
-// HandlePointerMessage()
-//
-static LRESULT HandlePointerMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+
+static bool HandlePenMessage(
+    HWND hwnd,
+    UINT msg,
+    WPARAM wParam,
+    LPARAM lParam,
+    LRESULT& result)
 {
-    LRESULT res = 0;
+    const UINT32 pointerId =
+        GET_POINTERID_WPARAM(wParam);
 
-    PointerEvent e{};
+    POINTER_INPUT_TYPE pointerType = PT_POINTER;
 
-    gPointerEventTopic.notify(e);
+    if (!::GetPointerType(pointerId, &pointerType))
+        return false;
 
-    return res;
+    if (pointerType != PT_PEN)
+        return false;
+
+    PenEvent e{};
+    e.pointerId = pointerId;
+
+    // WM_POINTERCAPTURECHANGED is primarily a cleanup notification.
+    // It does not need fresh pen sample data.
+    if (msg == WM_POINTERCAPTURECHANGED)
+    {
+        e.activity = PEN_CAPTURE_LOST;
+        gPenEventTopic.notify(e);
+
+        result = 0;
+        return true;
+    }
+
+    POINTER_PEN_INFO penInfo{};
+
+    if (!::GetPointerPenInfo(pointerId, &penInfo))
+        return false;
+
+    const POINTER_INFO& info =
+        penInfo.pointerInfo;
+
+    POINT pt = info.ptPixelLocation;
+
+    // POINTER_INFO positions are screen coordinates.
+    if (!::ScreenToClient(hwnd, &pt))
+        return false;
+
+    e.x = static_cast<float>(pt.x);
+    e.y = static_cast<float>(pt.y);
+
+    const UINT32 pointerFlags =
+        info.pointerFlags;
+
+    e.inRange =
+        (pointerFlags & POINTER_FLAG_INRANGE) != 0;
+
+    e.inContact =
+        (pointerFlags & POINTER_FLAG_INCONTACT) != 0;
+
+    e.primary =
+        (pointerFlags & POINTER_FLAG_PRIMARY) != 0;
+
+    e.canceled =
+        (pointerFlags & POINTER_FLAG_CANCELED) != 0;
+
+    e.barrelButton =
+        (penInfo.penFlags & PEN_FLAG_BARREL) != 0;
+
+    e.inverted =
+        (penInfo.penFlags & PEN_FLAG_INVERTED) != 0;
+
+    e.eraser =
+        (penInfo.penFlags & PEN_FLAG_ERASER) != 0;
+
+    e.hasPressure =
+        (penInfo.penMask & PEN_MASK_PRESSURE) != 0;
+
+    e.hasRotation =
+        (penInfo.penMask & PEN_MASK_ROTATION) != 0;
+
+    e.hasTiltX =
+        (penInfo.penMask & PEN_MASK_TILT_X) != 0;
+
+    e.hasTiltY =
+        (penInfo.penMask & PEN_MASK_TILT_Y) != 0;
+
+    if (e.hasPressure)
+    {
+        e.pressure =
+            static_cast<float>(penInfo.pressure) /
+            1024.0f;
+    }
+
+    if (e.hasRotation)
+        e.rotation = static_cast<float>(penInfo.rotation);
+
+    if (e.hasTiltX)
+        e.tiltX = static_cast<float>(penInfo.tiltX);
+
+    if (e.hasTiltY)
+        e.tiltY = static_cast<float>(penInfo.tiltY);
+
+    switch (msg)
+    {
+    case WM_POINTERENTER:
+        e.activity = PEN_ENTERED;
+        break;
+
+    case WM_POINTERLEAVE:
+        e.activity = PEN_LEFT;
+        break;
+
+    case WM_POINTERDOWN:
+        e.activity = PEN_PRESSED;
+        break;
+
+    case WM_POINTERUP:
+        e.activity = PEN_RELEASED;
+        break;
+
+    case WM_POINTERUPDATE:
+        e.activity =
+            e.inContact
+            ? PEN_MOVED
+            : PEN_HOVERED;
+        break;
+
+    default:
+        return false;
+    }
+
+    gPenEventTopic.notify(e);
+
+    // We handled this pen pointer message.
+    result = 0;
+    return true;
 }
+
+
 
 // HandlePaintMessage()
 //
@@ -727,14 +910,6 @@ static LRESULT HandlePaintMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
     // We are assuming the affFrameBuffer is free to be
     // drawn at this moment
 
-    //int pResult = StretchDIBits(hdc,
-    //    xDest,yDest,
-    //    DestWidth,DestHeight,
-    //    xSrc,ySrc,
-    //    SrcWidth, SrcHeight,
-    //    appFrameBuffer()->data(), &info,
-    //    DIB_RGB_COLORS,
-    //    SRCCOPY);
     int pResult = SetDIBitsToDevice(
         hdc,
         Destx,
@@ -816,25 +991,13 @@ static LRESULT HandleGestureMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
     BOOL bResult = GetGestureInfo((HGESTUREINFO)lParam, &gi);
 
 
-    // If getting gesture info fails, return immediately
-    // no further processing.
-    // This will look the same as us handling the gesture, and
-    // it might be better to throw some form of error
+    // If getting gesture info fails, return result
+    // of default message handling
     if (!bResult) {
-        //DWORD dwErr = ::GetLastError();
-        return FALSE;
-    }
-
-    // if the gesture ID is BEGIN, or END, we can allow the default
-    // behavior handle it
-    switch (gi.dwID) {
-    case GID_BEGIN:
-    case GID_END:
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }
 
     // If we are here, we can process well known gestures
-    LRESULT res = 0;
     BOOL bHandled = FALSE;
 
     // Turn the physical screen location into local
@@ -858,49 +1021,59 @@ static LRESULT HandleGestureMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
     //printf("ID: %d\tdwFlags: %d\n", gi.dwID, gi.dwFlags);
 
     // now interpret the gesture
-    switch (gi.dwID) 
+    switch (gi.dwID)
     {
-        case GID_ZOOM:
-            // zoom in and out, from a pinch or spread action
-            // ullarguments indicates distance between the two points   
-            bHandled = TRUE;
-            break;
-        case GID_PAN:
-            // Code for panning goes here
-            // If isInertia, then 
-            // HIDWORD(ull) is an inertia vector (two 16-bit values).
-            bHandled = TRUE;
-            break;
+    case GID_ZOOM:
+        // zoom in and out, from a pinch or spread action
+        // ullarguments indicates distance between the two points   
+        bHandled = TRUE;
+        break;
 
-        case GID_ROTATE:
-            // Code for rotation goes here
-            //printf("ROTATE\n");
-            bHandled = TRUE;
-            break;
-        case GID_TWOFINGERTAP:
-            // Code for two-finger tap goes here
-            // printf("TWO FINGER TAP\n");
-            bHandled = TRUE;
-            break;
-        case GID_PRESSANDTAP:
-            // Code for roll over goes here
-            //printf("PRESS AND TAP\n");
-            // HIDWORD(ull), is the distance between the two points
-            bHandled = TRUE;
-            break;
-        default:
-            // A gesture was not recognized
-            printf("GESTURE NOT RECOGNIZED\n");
-            break;
-        }
+    case GID_PAN:
+        // Code for panning goes here
+        // If isInertia, then 
+        // HIDWORD(ull) is an inertia vector (two 16-bit values).
+        bHandled = TRUE;
+        break;
+
+    case GID_ROTATE:
+        // Code for rotation goes here
+        //printf("ROTATE\n");
+        bHandled = TRUE;
+        break;
+
+    case GID_TWOFINGERTAP:
+        // Code for two-finger tap goes here
+        // printf("TWO FINGER TAP\n");
+        bHandled = TRUE;
+        break;
+
+    case GID_PRESSANDTAP:
+        // Code for roll over goes here
+        //printf("PRESS AND TAP\n");
+        // HIDWORD(ull), is the distance between the two points
+        bHandled = TRUE;
+        break;
+
+    case GID_BEGIN:
+    case GID_END:
+    default:
+        return DefWindowProc(hWnd, msg, wParam, lParam);
+    }
 
 
-
+    if (!bHandled)
+    {
+        // don't close the handle here
+        // DefWindowProc assumes ownership
+        return DefWindowProc(hWnd, msg, wParam, lParam);
+    }
     
-    ::CloseGestureInfoHandle((HGESTUREINFO)lParam);
+    ::CloseGestureInfoHandle(reinterpret_cast<HGESTUREINFO>(lParam));
+
     gGestureEventTopic.notify(ge);
 
-    return res;
+    return 0;
 }
 
 // HandleSizeMessage()
@@ -909,7 +1082,7 @@ static LRESULT HandleGestureMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
 //
 static LRESULT HandleSizeMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	LRESULT res = 0;
+	LRESULT result = 0;
     
     WORD newWidth = LOWORD(lParam);
     WORD newHeight = HIWORD(lParam);
@@ -927,7 +1100,7 @@ static LRESULT HandleSizeMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
     
     refreshScreenNow();
     
-    return res;
+    return 0;
 }
 
 
@@ -968,9 +1141,9 @@ void subscribe(TouchEventTopic::Subscriber s)
     gTouchEventTopic.subscribe(s);
 }
 
-void subscribe(PointerEventTopic::Subscriber s)
+void subscribe(PenEventTopic::Subscriber s)
 {
-    gPointerEventTopic.subscribe(s);
+    gPenEventTopic.subscribe(s);
 }
 
 void subscribe(GestureEventTopic::Subscriber s)
@@ -1152,6 +1325,39 @@ void showAppWindow()
     getAppWindow()->show();
 }
 
+
+
+static void processFrameTiming()
+{
+    const double nowMillis = gAppClock.millis();
+
+    // This routine may be called freely from multiple points in
+    // the message-processing path. Only dispatch when due.
+    if (nowMillis < fNextMillis)
+        return;
+
+    // Advance the deadline before notification. This prevents a
+    // re-entrant call from publishing the same frame again.
+    //
+    // Emit only one event even when several intervals were missed.
+    // Advancing from the previous deadline preserves the original
+    // cadence rather than introducing timing drift.
+    const double intervalsElapsed =
+        std::floor((nowMillis - fNextMillis) / fInterval) + 1.0;
+
+    fNextMillis += intervalsElapsed * fInterval;
+
+    ++fFrameCount;
+
+    FrameCountEvent fce{};
+    fce.frameCount = fFrameCount;
+    fce.seconds = nowMillis / 1000.0;
+
+    gFrameCountEventTopic.notify(fce);
+}
+
+
+/*
 static void processFrameTiming()
 {
     // Do frame timing event dispatch
@@ -1183,85 +1389,116 @@ static void processFrameTiming()
 
 
 }
-
+*/
 
 //
 //    Generic Windows message handler
 //    This is used as the function to associate with a window class
 //    when it is registered.
 //
+static bool isMouseEvent(UINT msg) {return (msg >= WM_MOUSEFIRST) && (msg <= WM_MOUSELAST);}
+static bool isKeyboardEvent(UINT msg) { return (msg >= WM_KEYFIRST) && (msg <= WM_KEYLAST); }
+static bool isJoystickEvent(UINT msg) { return (msg >= MM_JOY1MOVE) && (msg <= MM_JOY2BUTTONUP); }
+static bool isPenEvent(UINT msg) { 
+    switch (msg) {
+        case WM_POINTERENTER:
+        case WM_POINTERLEAVE:
+        case WM_POINTERDOWN:
+        case WM_POINTERUP:
+        case WM_POINTERUPDATE:
+        case WM_POINTERCAPTURECHANGED:
+            return true;
+    }
+
+    return false;
+}
+
 static LRESULT CALLBACK MsgHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    LRESULT res = 0;
-    
-    // Get pointer to window class from handle
-    User32Window* pThis = nullptr;
-    //reinterpret_cast<User32Window*> (::GetWindowLongPtr(hWnd, GWLP_USERDATA));
+    User32Window* window = nullptr;
     
     if (msg == WM_NCCREATE)
     {
-        CREATESTRUCTA* pCreate = reinterpret_cast<CREATESTRUCTA*>(lParam);
-        pThis = reinterpret_cast<User32Window*>(pCreate->lpCreateParams);
-        if (pThis) {
-            pThis->setWindowHandle(hWnd);
+        auto* create = reinterpret_cast<CREATESTRUCTA*>(lParam);
 
-            SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pThis));
+        window = static_cast<User32Window*>(create->lpCreateParams);
+
+        if (!window) {
+            return FALSE;
         }
-	}
-	else {
-		pThis = reinterpret_cast<User32Window*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
+
+        window->setWindowHandle(hWnd);
+
+        SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(window));
+
+        return ::DefWindowProcA(hWnd, msg, wParam, lParam);
 	}
 
+    // Get pointer to window class from handle
+    window = reinterpret_cast<User32Window*>(::GetWindowLongPtrA(hWnd, GWLP_USERDATA));
+
+    if (msg == WM_NCDESTROY)
+    {
+        LRESULT result = ::DefWindowProcA(hWnd, msg, wParam, lParam);
+        ::SetWindowLongPtr(hWnd, GWLP_USERDATA, 0);
+        if (window)
+            window->setWindowHandle(nullptr);
+
+        return result;
+    }
     
-    
+    // Mouse and keyboard are typically the most frequent
+    // so let's handle them up front.
+    if (isMouseEvent(msg)) {
+        // Handle all mouse messages
+        return HandleMouseMessage(hWnd, msg, wParam, lParam);
+    }
+
+    if (isKeyboardEvent(msg)) {
+
+        PublishKeyboardMessage(hWnd, msg, wParam, lParam);
+
+        return ::DefWindowProcA(hWnd, msg, wParam, lParam);
+    }
+
     switch (msg)
     {
-
-
-
-    case WM_ERASEBKGND: {
+    case WM_ERASEBKGND:
         //printf("WM_ERASEBKGND\n");
-        // return non-zero indicating we dealt with erasing the background
-        res = 1;
+        // return non-zero to tell the system we handled
+        // the erasing of the background, and no further
+        // processing needs to occur
+        return 1;
 
-        //if (gPaintHandler != nullptr) {
-        //    gPaintHandler(hWnd, msg, wParam, lParam);
-        //}
+    case WM_PAINT: 
+        return HandlePaintMessage(hWnd, msg, wParam, lParam);
 
-        //RECT rect;
-        //if (::GetUpdateRect(hWnd, &rect, FALSE))
-        //{
-        //    ::ValidateRect(hWnd, NULL);
-        //}
-    }
-                      break;
 
-    case WM_PAINT: {
-        //printf("WM_PAINT\n");
-        if (gPaintHandler != nullptr) {
-            gPaintHandler(hWnd, msg, wParam, lParam);
-        }
+    case WM_ENTERSIZEMOVE:
+        gInSizeMove = true;
+        return 0;
 
-        //RECT rect;
-        //if (::GetUpdateRect(hWnd, &rect, FALSE))
-        //{
-        //    ::ValidateRect(hWnd, NULL);
-        //}
-    }
-                 break;
+    case WM_EXITSIZEMOVE:
+        gInSizeMove = false;
+        refreshScreenNow();
+        return 0;
+
 
     case WM_MOVING:
-    case WM_WINDOWPOSCHANGING:
-        //printf("screen moving\n");
-        //screenRefresh();
+    case WM_SIZING:
         processFrameTiming();
-        //::InvalidateRect(hWnd, NULL, 1);
-        break;
+        break;  // Continue to DefWindowProcA() for default processing
+
+    case WM_WINDOWPOSCHANGING:
+        if (gInSizeMove)
+            processFrameTiming();
+        break;  // Continue to DefWindowProcA() for default processing
 
     case WM_SIZE:
-        HandleSizeMessage(hWnd, msg, wParam, lParam);
-        res = ::DefWindowProcA(hWnd, msg, wParam, lParam);
-        break;
+        if (wParam == SIZE_MINIMIZED)
+            return 0;
+
+        return HandleSizeMessage(hWnd, msg, wParam, lParam);
 
     case WM_DESTROY:
         // By doing a PostQuitMessage(), a 
@@ -1269,52 +1506,37 @@ static LRESULT CALLBACK MsgHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
         // message queue.
         ::PostQuitMessage(0);
         return 0;
-        break;
 
     case WM_INPUT:
-        res = HandleRawInputMessage(hWnd, msg, wParam, lParam);
-        break;
+        return  HandleRawInputMessage(hWnd, msg, wParam, lParam);
 
     case WM_TOUCH:
-        res = HandleTouchMessage(hWnd, msg, wParam, lParam);
-        break;
+        return HandleTouchMessage(hWnd, msg, wParam, lParam);
 
+    // we will only receive WM_GESTURE if not receiving WM_TOUCH
     case WM_GESTURE:
-        // we will only receive WM_GESTURE if not receiving WM_TOUCH
-        HandleGestureMessage(hWnd, msg, wParam, lParam);
-        break;
+        return HandleGestureMessage(hWnd, msg, wParam, lParam);
 
     case WM_DROPFILES:
-        HandleFileDropMessage(hWnd, msg, wParam, lParam);
+        return HandleFileDropMessage(hWnd, msg, wParam, lParam);
         break;
 
-    default:
-    {
-        if ((msg >= WM_MOUSEFIRST) && (msg <= WM_MOUSELAST)) {
-            // Handle all mouse messages
-            HandleMouseMessage(hWnd, msg, wParam, lParam);
-        }
-        else if ((msg >= WM_KEYFIRST) && (msg <= WM_KEYLAST)) {
-            // Handle all keyboard messages
-            HandleKeyboardMessage(hWnd, msg, wParam, lParam);
-        }
-        else if ((msg >= MM_JOY1MOVE) && (msg <= MM_JOY2BUTTONUP)) {
-            //printf("MM_JOYxxx: %p\n", gJoystickHandler);
-            HandleJoystickMessage(hWnd, msg, wParam, lParam);
-        }
-        else {
-            res = ::DefWindowProcA(hWnd, msg, wParam, lParam);
-        }
-    }
-    break;
     }
     
-    
-    //else if ((msg >= WM_NCPOINTERUPDATE) && (msg <= WM_POINTERROUTEDRELEASED)) {
-    //    HandlePointerMessage(hWnd, msg, wParam, lParam);
-    //}
 
-    return res;
+
+    if (isJoystickEvent(msg)) {
+        //printf("MM_JOYxxx: %p\n", gJoystickHandler);
+        return HandleJoystickMessage(hWnd, msg, wParam, lParam);
+    }
+
+    if (isPenEvent(msg)) {
+        LRESULT result = 0;
+        if (HandlePenMessage(hWnd, msg, wParam, lParam, result))
+            return result;
+    }
+
+    return ::DefWindowProcA(hWnd, msg, wParam, lParam);
 }
 
 
@@ -1333,17 +1555,6 @@ static void registerHandlers()
 
     HMODULE hInst = ::GetModuleHandleA(NULL);
 
-    // Start with our default paint message handler
-    gPaintHandler = HandlePaintMessage;
-
-
-    // One of the primary handlers the user can specify is 'onPaint'.  
-    // If implemented, this function will be called whenever a WM_PAINT message
-    // is seen by the application.
-    WinMSGObserver handler = (WinMSGObserver)::GetProcAddress(hInst, "onPaint");
-    if (handler != nullptr) {
-        gPaintHandler = handler;
-    }
 
     // Get the general app routines
     // onLoad()
@@ -1353,20 +1564,119 @@ static void registerHandlers()
 }
 
 
-// run()
-// 
-// This is the core "application loop" for a Windows application.  
-// This is the 'message pump'.  It runs constantly until the application
-// ends.  We need to achieve several things in here:
-// 1. make sure window messages are processed and dispatched to the appropriate handlers
-// 2. make sure the user application has a chance to do what it wants to do
-// 3. make sure we keep up with the wall clock and dispatch frame events at the appropriate time
-// 
-// We don't want to starve event processing , so we use 'MsgWaitForMultipleObjectsEx()'
-// to wait for either a message to arrive, or for the next frame time to arrive.  
-// This way, we can process messages as they come in, but we can also keep up with 
-// the wall clock and dispatch frame events at the appropriate time.
-// 
+// runLoop()
+//
+// This is the central scheduler for the WAAVS runtime.
+//
+// Although Windows applications are traditionally organized around a
+// message pump, this loop has a broader responsibility.  It arbitrates
+// between three independent sources of work:
+//
+//   1. Windows messages (input, painting, window management, etc.)
+//   2. Time-based work (frame timing and animation scheduling)
+//   3. Application work (onLoop() and future runtime services)
+//
+// The scheduler attempts to give each category a fair share of execution
+// time.  It intentionally does not drain the Windows message queue before
+// returning to other work, since a continuous stream of input messages
+// could otherwise starve animation and application processing.
+//
+// Likewise, frame timing is no longer driven by the wait timeout.
+// processFrameTiming() maintains its own schedule and simply returns
+// when no frame is due.  This allows the scheduler to poll for frame
+// deadlines whenever convenient without introducing timing drift.
+//
+// MsgWaitForMultipleObjectsEx() is used only to avoid busy-waiting while
+// the application is idle.  A short timeout allows the thread to sleep,
+// yet still wake frequently enough to remain responsive even when no
+// Windows messages are arriving.
+//
+// This design intentionally resembles a small cooperative kernel
+// scheduler rather than a traditional message pump.  Future runtime
+// services (signals, timers, task queues, fibers, etc.) can participate
+// in this scheduling loop without changing its overall structure.
+
+static void runLoop()
+{
+    // How long the thread may sleep when there is no immediate work.
+    //
+    // This prevents an idle busy-spin while still keeping the runtime
+    // responsive to frame deadlines and application work.
+    constexpr DWORD IDLE_WAIT_MILLIS = 1;
+
+    // Maximum amount of time devoted to Windows messages during
+    // one scheduler pass.
+    constexpr double MESSAGE_TIME_SLICE_MILLIS = 2.0;
+
+    MSG msg{};
+    bool running = true;
+
+    while (running)
+    {
+        const DWORD waitResult = ::MsgWaitForMultipleObjectsEx(
+            0,                      // no kernel objects
+            nullptr,
+            IDLE_WAIT_MILLIS,
+            QS_ALLEVENTS,
+            MWMO_INPUTAVAILABLE);
+
+        if (waitResult == WAIT_FAILED)
+            break;
+
+        // Frame timing is self-regulating, so it is safe to check
+        // on every scheduler pass regardless of why the wait ended.
+        processFrameTiming();
+
+        if (waitResult == WAIT_OBJECT_0)
+        {
+            const double sliceStartMillis = gAppClock.millis();
+
+            do
+            {
+                if (!::PeekMessageA(
+                    &msg,
+                    nullptr,
+                    0,
+                    0,
+                    PM_REMOVE))
+                {
+                    break;
+                }
+
+                if (msg.message == WM_QUIT)
+                {
+                    running = false;
+                    break;
+                }
+
+                ::TranslateMessage(&msg);
+                ::DispatchMessageA(&msg);
+
+                // Yield the scheduler once this message batch has
+                // consumed its allotted time.
+                const double elapsedMillis =
+                    gAppClock.millis() - sliceStartMillis;
+
+                if (elapsedMillis >= MESSAGE_TIME_SLICE_MILLIS)
+                    break;
+
+            } while (true);
+        }
+
+        if (!running)
+            break;
+
+        // Message handlers themselves may have consumed enough time
+        // to cross another frame boundary.
+        processFrameTiming();
+
+        // Give the application its portion of the scheduler pass.
+        if (gOnLoopHandler)
+            gOnLoopHandler();
+    }
+}
+
+/*
 static void runLoop()
 {
     static bool running = true;
@@ -1422,11 +1732,14 @@ static void runLoop()
         }
     }
 }
-
+*/
 
 static void run()
 {
-    
+    // Initiate frame timing variables
+    fFrameCount = 0;
+    fNextMillis = gAppClock.millis();
+
     // Make sure we have all the event handlers connected
     registerHandlers();
 
@@ -1434,6 +1747,9 @@ static void run()
     if (gOnloadHandler != nullptr) {
         gOnloadHandler();
     }
+
+
+
 
     showAppWindow();
 

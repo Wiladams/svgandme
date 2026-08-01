@@ -237,6 +237,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\app\apphost.h" />
     <ClInclude Include="..\..\app\appmodule.h" />
+    <ClInclude Include="..\..\app\app_icons.h" />
     <ClInclude Include="..\..\app\frames_ffmpeg_source.h" />
     <ClInclude Include="..\..\app\app_mappedfile.h" />
     <ClInclude Include="..\..\app\app_nativewindow.h" />
@@ -254,7 +255,6 @@
     <ClInclude Include="..\..\svg\bspan_hash.h" />
     <ClInclude Include="..\..\svg\bspan_print.h" />
     <ClInclude Include="..\..\svg\lang_grammar.h" />
-    <ClInclude Include="..\..\svg\effects.h" />
     <ClInclude Include="..\..\svg\filter_exec.h" />
     <ClInclude Include="..\..\svg\filter_fecomponenttransfer.h" />
     <ClInclude Include="..\..\svg\filter_fediffuselight.h" />
@@ -386,7 +386,6 @@
     <ClInclude Include="..\..\svg\xml_pull.h" />
     <ClInclude Include="..\..\svg\xml_scan.h" />
     <ClInclude Include="..\..\svg\xml_scan_element.h" />
-    <ClInclude Include="svgicons.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

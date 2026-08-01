@@ -76,6 +76,18 @@ namespace waavs
         return Surface_ARGB32_row_pointer(s, y);
     }
 
+    // Surface_ARGB32_subview()
+    //
+    // Get a subarea view of the given source surface. 
+    // The subarea shares memory with the original surface, 
+    // so changes to the subarea will affect the original surface.
+    // This is a 'view' onto the surface.  Efficient to create and 
+    // use with 'whole surface' operations like fill_all() or clear_all(), 
+    // or to read/write pixels within the subarea.
+    //
+    // This routine will perform boundary clipping and return a subarea
+    // that actually fits within the source surface.
+    //
 
     static INLINE Surface_ARGB32 Surface_ARGB32_subview(const Surface_ARGB32& src, const WGRectI& area) noexcept
     {
@@ -84,10 +96,10 @@ namespace waavs
         if (!Surface_ARGB32_is_valid(src))
             return subarea;
 
-        const WGRectI clippedArea =
-            intersection(Surface_ARGB32_bounds(src), area);
+        WGRectI srcBounds = Surface_ARGB32_bounds(src);
+        const WGRectI clippedArea = rectI_intersection(srcBounds, area);
 
-        if (clippedArea.w <= 0 || clippedArea.h <= 0)
+        if (!rectI_is_valid(clippedArea))
             return subarea;
 
         subarea.data =
@@ -106,48 +118,5 @@ namespace waavs
 
         return subarea;
     }
-
-    // wg_get_subarea()
-    //
-    // Get a subarea view of the given source surface. 
-    // The subarea shares memory with the original surface, 
-    // so changes to the subarea will affect the original surface.
-    // This is a 'view' onto the surface.  Efficient to create and 
-    // use with 'whole surface' operations like fill_all() or clear_all(), 
-    // or to read/write pixels within the subarea.
-    //
-    // This routine will perform boundary clipping and return a subarea
-    // that actually fits within the source surface.
-    //
-    static  WGResult Surface_ARGB32_get_subarea(const Surface_ARGB32& src, const WGRectI& area, Surface_ARGB32& subarea) noexcept = delete;
-    /*
-    {
-        // If there's not associated data in the source
-        // then return an early error
-        if (!src.data || (src.width <= 0) || (src.height <= 0) || (src.stride < src.width*4))
-            return WG_ERROR_Invalid_Argument;
-
-        // Get the intersection of the requested area with 
-        // the source bounds, and use that as the actual area 
-        // for the subarea.
-        WGRectI srcBounds = Surface_ARGB32_bounds(src);
-        WGRectI clippedArea = intersection(srcBounds, area);
-
-        // early return if no intersection
-        if (clippedArea.w <= 0 || clippedArea.h <= 0)
-            return WG_ERROR_Invalid_Argument;
-
-        subarea.data = src.data + (size_t)clippedArea.y * (size_t)src.stride + (size_t)clippedArea.x * 4;
-        subarea.width = clippedArea.w;
-        subarea.height = clippedArea.h;
-        subarea.stride = src.stride;
-        subarea.contiguous =
-            src.contiguous &&
-            clippedArea.x == 0 &&
-            clippedArea.w == src.width;
-
-        return WG_SUCCESS;
-    }
-    */
 
 }

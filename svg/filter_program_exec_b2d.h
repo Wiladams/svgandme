@@ -192,10 +192,10 @@ namespace waavs
             ctx.push();
 
             // Shift user-space filter region origin to surface origin.
-            ctx.transform(userToSurface);
+            ctx.setTransform(userToSurface);
 
             // Fit referenced content into the destination viewport.
-            ctx.transform(fit);
+            ctx.setTransform(fit);
 
             if (!renderReferencedSubtree(ctx, elem.get()))
             {
@@ -455,7 +455,7 @@ namespace waavs {
 
             const WGRectI subArea{ ix0, iy0, ix1 - ix0, iy1 - iy0 };
 
-            return intersection(subArea, surfArea);
+            return rectI_intersection(subArea, surfArea);
         }
 
 
@@ -572,7 +572,7 @@ namespace waavs {
                 return true; // Valid transparent background.
 
             const WGRectI srcBounds = bkgSurf.boundsI();
-            const WGRectI clippedSrc = intersection(srcBounds, filterRectPX);
+            const WGRectI clippedSrc = rectI_intersection(srcBounds, filterRectPX);
 
             if (clippedSrc.w <= 0 || clippedSrc.h <= 0)
                 return true; // Filter tile lies outside current target.
@@ -1542,8 +1542,8 @@ namespace waavs {
             Surface_ARGB32 outInfo = out.info();
 
             WGRectI area = resolveSubregionPx(subr, in1);
-            area = intersection(area, Surface_ARGB32_bounds(outInfo));
-            area = intersection(area, Surface_ARGB32_bounds(mapInfo));
+            area = rectI_intersection(area, Surface_ARGB32_bounds(outInfo));
+            area = rectI_intersection(area, Surface_ARGB32_bounds(mapInfo));
 
             if (area.w > 0 && area.h > 0)
             {
@@ -2400,7 +2400,7 @@ namespace waavs {
             const WGRectI inBounds{ 0, 0, int(in.width()), int(in.height()) };
 
             WGRectI area = resolveSubregionPx(subr, in);
-            area = intersection(area, outBounds);
+            area = rectI_intersection(area, outBounds);
 
             if (area.w <= 0 || area.h <= 0)
             {
@@ -2450,7 +2450,7 @@ namespace waavs {
                 area.h
             };
 
-            srcRect = intersection(srcRect, inBounds);
+            srcRect = rectI_intersection(srcRect, inBounds);
 
             if (srcRect.w > 0 && srcRect.h > 0)
             {
@@ -2461,7 +2461,7 @@ namespace waavs {
                     srcRect.h
                 };
 
-                dstRect = intersection(dstRect, area);
+                dstRect = rectI_intersection(dstRect, area);
 
                 if (dstRect.w > 0 && dstRect.h > 0)
                 {

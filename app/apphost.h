@@ -2,23 +2,23 @@
 #define apphost_h
 
 /*
-	apphost.h/appmain.cpp are meant to be the absolute minimum necessary 
-	to create a Windows application.  It also provides a simple pub/sub
-	system for easy UI event handling.
+    apphost.h/appmain.cpp are meant to be the absolute minimum necessary 
+    to create a Windows application.  It also provides a simple pub/sub
+    system for easy UI event handling.
 
-	Typical Windows messages, such as mouse and keyboard, are turned into 
-	topics, that other modules can subscribe to.
+    Typical Windows messages, such as mouse and keyboard, are turned into 
+    topics, that other modules can subscribe to.
 
-	A 'main()' is provided, so a compiled application has a minimal runtime environment
-	when it starts.  The user's app should implement a 'onLoad()', which is where
-	the user's code begins to run.
+    A 'main()' is provided, so a compiled application has a minimal runtime environment
+    when it starts.  The user's app should implement a 'onLoad()', which is where
+    the user's code begins to run.
 
-	From there, the user can decide to either be event driven, by subscribing
+    From there, the user can decide to either be event driven, by subscribing
     to various topics (mouse, keyboard, timed events, etc), or to implement 
-	an 'onLoop()' function, which will be called regularly.
+    an 'onLoop()' function, which will be called regularly.
 
-	All other aspects of the application are up to the application environment,
-	but at least all the Win32 specific stuff is wrapped up.
+    All other aspects of the application are up to the application environment,
+    but at least all the Win32 specific stuff is wrapped up.
 */
 #pragma comment(lib, "user32.lib")
 
@@ -143,7 +143,7 @@ APP_EXPORT size_t frameCount() noexcept;
 
 
 
-APP_EXPORT void refreshScreenNow();
+APP_EXPORT bool refreshScreenNow();
 
 APP_EXPORT void layered();
 APP_EXPORT void noLayered();
@@ -204,9 +204,9 @@ APP_EXPORT bool setAppFrameSize(long aWidth, long aHeight);
 #ifdef __cplusplus
 extern "C" {
 #endif
-	APP_EXPORT void onLoad();		// called once before main loop is running
-	APP_EXPORT void onUnload();		// called once halt() occurs, and before app exits
-	APP_EXPORT void onLoop();		// called each iteration of main application loop
+    APP_EXPORT void onLoad();		// called once before main loop is running
+    APP_EXPORT void onUnload();		// called once halt() occurs, and before app exits
+    APP_EXPORT void onLoop();		// called each iteration of main application loop
 #ifdef __cplusplus
 }
 #endif
@@ -221,11 +221,11 @@ using KeyboardEventTopic = waavs::Topic<waavs::KeyboardEvent>;		// Keyboard even
 using JoystickEventTopic = waavs::Topic<waavs::JoystickEvent>;		// Joystick events
 using FileDropEventTopic = waavs::Topic<waavs::FileDropEvent>;		// File drop events
 using TouchEventTopic = waavs::Topic<waavs::TouchEvent>;				// Touch events
-using PointerEventTopic = waavs::Topic<waavs::PointerEvent>;			// Pointer events
+//using PointerEventTopic = waavs::Topic<waavs::PointerEvent>;			// Pointer events
 using GestureEventTopic = waavs::Topic<waavs::GestureEvent>;			// Gesture events
 using FrameCountEventTopic = waavs::Topic<waavs::FrameCountEvent>;	// Timed Frame count events
 using ResizeEventTopic = waavs::Topic<waavs::ResizeEvent>;			// Application Window Resize events	
-
+using PenEventTopic = waavs::Topic<waavs::PenEvent>;					// Pen events
 
 APP_EXPORT void subscribe(SignalEventTopic::Subscriber s);
 APP_EXPORT void subscribe(MouseEventTopic::Subscriber s);
@@ -234,7 +234,7 @@ APP_EXPORT void subscribe(JoystickEventTopic::Subscriber s);
 APP_EXPORT void subscribe(FileDropEventTopic::Subscriber s);
 APP_EXPORT void subscribe(TouchEventTopic::Subscriber s);
 APP_EXPORT void subscribe(GestureEventTopic::Subscriber s);
-APP_EXPORT void subscribe(PointerEventTopic::Subscriber s);
+APP_EXPORT void subscribe(PenEventTopic::Subscriber s);
 APP_EXPORT void subscribe(FrameCountEventTopic::Subscriber s);
 APP_EXPORT void subscribe(ResizeEventTopic::Subscriber s);
 

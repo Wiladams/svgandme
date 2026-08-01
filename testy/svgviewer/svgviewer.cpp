@@ -7,8 +7,8 @@
 #include "app_mappedfile.h"
 #include "app_viewnavigator.h"
 #include "app_svguiapp.h"
+#include "app_icons.h"
 #include "svgwaavs.h"
-#include "svgicons.h"
 #include "render_blend2d.h"
 
 
@@ -114,7 +114,7 @@ static void drawDocument()
     if (gPerformTransform)
     {
         const WGMatrix3x3 & m = gNavigator.sceneToSurfaceTransform();
-        getDrawingContext()->transform(m);
+        getDrawingContext()->setTransform(m);
     }
 
 

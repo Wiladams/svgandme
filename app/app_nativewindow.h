@@ -17,6 +17,7 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
+//#include <WinUser.h>
 
 #include <stdio.h>
 #include <cstring>
@@ -41,15 +42,14 @@ namespace waavs
         // Constructor taking an already allocated
         // window handle.  Use a WindowKind to allocate
         // an instance of a particular kind of window
-        User32Window()
-        {
+        User32Window() = default;
 
-        }
 
         // Virtual destructor so the window can be sub-classed
         virtual ~User32Window()
         {
-            DestroyWindow(fHandle);
+            if (fHandle)
+                ::DestroyWindow(fHandle);
         }
 
 
@@ -100,25 +100,48 @@ namespace waavs
             ::SetWindowPos(fHandle, (HWND)0, x, y, 0, 0, flags);
         }
 
-        void setCanvasSize(long awidth, long aheight)
+        bool setCanvasSize(long awidth, long aheight)
         {
+            if (!fHandle || awidth < 0 || aheight < 0)
+                return false;
+
+            const DWORD style = static_cast<DWORD>(::GetWindowLongPtrA(fHandle, GWL_STYLE));
+            const DWORD exStyle = static_cast<DWORD>(::GetWindowLongPtrA(fHandle, GWL_EXSTYLE));
+
+            const bool hasMenu = ::GetMenu(fHandle) != NULL;
+            const UINT dpi = ::GetDpiForWindow(fHandle);
+
+            //RECT rect = { 0, 0, awidth, aheight };
+            RECT cRect = { 0,0,awidth,aheight };
+
             // Get current size of window
-            RECT wRect;
-            ::GetWindowRect(fHandle, &wRect);
+            //RECT wRect;
+            //::GetWindowRect(fHandle, &wRect);
 
             // Set the new size of the window based on the client area
-            RECT cRect = { 0,0,awidth,aheight };
-            ::AdjustWindowRect(&cRect, WS_OVERLAPPEDWINDOW, 1);
+            //::AdjustWindowRect(&cRect, style, FALSE);
+            if (!::AdjustWindowRectExForDpi(&cRect, style, FALSE, exStyle, 96))
+                return false;
 
-            //HWND hWndInsertAfter = (HWND)-1;
-            HWND hWndInsertAfter = NULL;
-            int X = wRect.left;
-            int Y = wRect.top;
-            int cx = cRect.right - cRect.left;
-            int cy = cRect.bottom - cRect.top;
-            UINT uFlags = 0;
+            const int outerWidth = cRect.right - cRect.left;
+            const int outerHeight = cRect.bottom - cRect.top;
 
-            ::SetWindowPos(windowHandle(), hWndInsertAfter, X, Y, cx, cy, uFlags);
+            return ::SetWindowPos(
+                fHandle, 
+                NULL, 
+                0, 0, 
+                outerWidth, 
+                outerHeight, 
+                SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE) != FALSE;
+
+            //HWND hWndInsertAfter = NULL;
+            //int X = wRect.left;
+            //int Y = wRect.top;
+            //int cx = cRect.right - cRect.left;
+            //int cy = cRect.bottom - cRect.top;
+            //UINT uFlags = 0;
+
+            //::SetWindowPos(windowHandle(), hWndInsertAfter, X, Y, cx, cy, uFlags);
 
         }
 
@@ -136,7 +159,8 @@ namespace waavs
         // Controlling a Window's style
         LONG addWindowStyle(int style)
         {
-            return SetWindowLongA(fHandle, GWL_STYLE, GetWindowLongA(fHandle, GWL_EXSTYLE) | style);
+            LONG currentStyle = GetWindowLongA(fHandle, GWL_STYLE);
+            return SetWindowLongA(fHandle, GWL_STYLE, currentStyle | style);
         }
 
         // Set a style bit
@@ -149,7 +173,9 @@ namespace waavs
         // Remove a specific style bit, or set of bits
         LONG removeWindowStyle(int style)
         {
-            return SetWindowLongA(fHandle, GWL_STYLE, (~(LONG)style) & GetWindowLongA(fHandle, GWL_STYLE));
+            LONG currentStyle = GetWindowLongA(fHandle, GWL_STYLE);
+
+            return SetWindowLongA(fHandle, GWL_STYLE, (~(LONG)style) & currentStyle);
         }
 
         // Add a specific extended window style to
@@ -175,15 +201,15 @@ namespace waavs
         // 0.0 - fully transparent
         // 1.0 - fully opaque
         //
-        int setOpacity(double opacity)
+        int setOpacity(float opacity)
         {
-            LONG style = ::GetWindowLong(fHandle, GWL_EXSTYLE);
+            LONG exstyle = ::GetWindowLong(fHandle, GWL_EXSTYLE);
 
             if (opacity == 1.0f)
             {
                 // if full opacity is desired
                 // just mark as unlayered
-                if (style & WS_EX_LAYERED)
+                if (exstyle & WS_EX_LAYERED)
                     removeExtendedStyle(WS_EX_LAYERED);
             }
             else {
@@ -219,10 +245,6 @@ namespace waavs
         bool setNonLayered()
         {
             return setLayered(false);
-            // Call this to ensure Windows actually updates the attributes
-            // before moving on
-            //::SetWindowPos(fHandle, 0, 0, 0, 0, 0,
-            //    SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
         }
 
 
@@ -230,11 +252,11 @@ namespace waavs
 
 
     // In Win32, a window 'class' must be registered
-    // before you can use the CreateWindow call.  This
-    // User32WindowClass object makes it easier to handle these
-    // Window Classes, and do that registration.  As well,
-    // it makes it relatively easy to create instances
-    // of classes.
+    // before you can use the CreateWindow call.  
+    // This User32WindowClass object makes it easier to handle these
+    // Window Classes, and do that registration.  
+    // it also makes it relatively easy to create instances
+    // of the specified window class.
     struct User32WindowClass 
     {
     protected:
@@ -246,6 +268,10 @@ namespace waavs
         uint16_t    fClassAtom{};
 
     public:
+
+        // Construct an instance of the class description
+        // based on a class name, or the atom representing
+        // the class.
         User32WindowClass(const char* classOrAtom)
             : fWndClass{}
             , fIsRegistered(false)
@@ -295,10 +321,10 @@ namespace waavs
             // The user might want to change any of these as they are not passed
             // into the constructor.
             fWndClass.hbrBackground = nullptr;
-            fWndClass.hCursor = nullptr;        // LoadCursorA(nullptr, IDC_ARROW);
+            fWndClass.hCursor = LoadCursorA(NULL, (LPCSTR)IDC_ARROW);
             fWndClass.lpszMenuName = nullptr;
-            fWndClass.hIcon = nullptr;          // LoadIcon(nullptr, IDI_APPLICATION);
-            fWndClass.hIconSm = nullptr;
+            fWndClass.hIcon = LoadIconA(NULL, (LPCSTR)IDI_APPLICATION);
+            fWndClass.hIconSm = LoadIconA(NULL, (LPCSTR)IDI_APPLICATION);
 
             // Try to register the window class
             fClassAtom = ::RegisterClassExA(&fWndClass);
@@ -316,7 +342,7 @@ namespace waavs
         int getLastError() const { return fLastError; }
         const char* getName() const { return fWndClass.lpszClassName; }
 
-        virtual User32Window* createWindow(const char* title, int width, int height, int style = WS_OVERLAPPEDWINDOW, int xstyle = 0)
+        virtual User32Window* createWindow(const char* title, int clientWidth, int clientHeight, int style = WS_OVERLAPPEDWINDOW, int xstyle = 0)
         {
             if (!isValid())
                 return {};
@@ -331,13 +357,21 @@ namespace waavs
             int winxstyle = xstyle;
             int winstyle = style;
 
+            // Adjust the window size to account for the non-client 
+            // area (title bar, borders, etc.)
+            RECT clientRect = { 0, 0, clientWidth, clientHeight };
+
+            ::AdjustWindowRectEx(&clientRect, winstyle, FALSE, winxstyle);
+            int windowWidth = clientRect.right - clientRect.left;
+            int windowHeight = clientRect.bottom - clientRect.top;
+
             HWND winHandle = CreateWindowExA(
                 winxstyle,
                 fWndClass.lpszClassName,
                 title,
                 winstyle,
                 CW_USEDEFAULT, CW_USEDEFAULT,
-                width, height,
+                windowWidth, windowHeight,
                 NULL,
                 NULL,
                 fWndClass.hInstance,
@@ -346,10 +380,13 @@ namespace waavs
             if (winHandle == nullptr)
             {
                 delete pWin;
-                return {};
+                return nullptr;
             }
             
             // store the pointer to the class inside the window handle
+            // Except, we don't do this here, as we don't have a full
+            // setup until the WM_NCCREATE message is received.  
+            // So we do this in the MsgHandler
 			//::SetWindowLongPtr(winHandle, GWLP_USERDATA, (LONG_PTR)win);
             
 			return pWin;

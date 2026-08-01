@@ -518,7 +518,7 @@ namespace waavs {
                 GlyphPainter painter{ ctx, font, one, 0, 0 };
                 prog.run(painter);
 
-                ctx->transform(saved);		// restore transform
+                ctx->setTransform(saved);		// restore transform
 
                 // Advance pen using ORIGINAL advances (SVG dx is already baked into placements).
                 penX += gp.advance.x;

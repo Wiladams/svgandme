@@ -1,8 +1,8 @@
 #pragma once
 
-/*
-    Data types for ui events
-*/
+//
+//    Data types for ui events
+//
 
 #include <vector>
 #include <string>
@@ -12,8 +12,12 @@
 #include "maths.h"
 
 
-namespace waavs {
-    // Basic type to encapsulate a mouse event
+namespace waavs 
+{
+    // ---------------------------------
+    // MouseActivityKind
+    // What kind of activity is the mouse reporting
+    // 
     enum MouseActivityKind {
         // These are based on regular events
         MOUSEMOVED,
@@ -53,6 +57,7 @@ namespace waavs {
         bool xbutton2;
     };
 
+    // ---------------------------------
     // Keyboard interactions
     enum KeyboardActivityKind {
         KEYPRESSED,
@@ -70,6 +75,7 @@ namespace waavs {
         bool wasDown;       // 30
     };
 
+    // ---------------------------------
     // Touch interactions
     enum touchActivityKind {
         TOUCH_DOWN,
@@ -102,6 +108,8 @@ namespace waavs {
         bool isPen;
     };
 
+    // ---------------------------------
+    // Gesture event
     enum GestureActivityKind {
         GESTURE_BEGIN = 1,
         GESTURE_END = 2,
@@ -132,14 +140,55 @@ namespace waavs {
         long distance;  // distance between points
     };
 
-    // Pointer interactions
-    struct PointerEvent {
-        int id;
-        int activity;
-        int x;
-        int y;
+    // ---------------------------------
+    // Pointer interactions  - For pen input
+
+    enum PenActivityKind 
+    {
+        PEN_ENTERED,
+        PEN_LEFT,
+
+        PEN_HOVERED,
+        PEN_PRESSED,
+        PEN_MOVED,
+        PEN_RELEASED,
+        PEN_CAPTURE_LOST,
+
     };
 
+    struct PenEvent {
+        PenActivityKind activity{};
+
+        uint32_t pointerId{};
+
+        float x = 0;
+        float y = 0;
+
+        // Normalized pressure [0..1]
+        float pressure = 0;
+
+        // Degrees
+        float rotation = 0;
+        float tiltX = 0;
+        float tiltY = 0;
+
+        bool inRange = false;
+        bool inContact = false;
+        bool primary = false;
+        bool canceled = false;
+
+        bool barrelButton = false;
+        bool inverted = false;
+        bool eraser = false;
+
+        bool hasPressure = false;
+        bool hasRotation = false;
+        bool hasTiltX = false;
+        bool hasTiltY = false;
+
+    };
+
+    // ---------------------------------
     // File drop interactions
     struct FileDropEvent {
         float x;
@@ -147,6 +196,7 @@ namespace waavs {
         std::vector<std::string> filenames;
     };
 
+    // ---------------------------------
     // For joystick activity
     enum JoystickActivityKind {
         JOYPRESSED,
@@ -172,12 +222,17 @@ namespace waavs {
         float v;
     };
 
+
+    // ---------------------------------
+    // Fixed interval timing events
     struct FrameCountEvent
     {
-        double seconds;         // Relative to application start time
-        uint64_t frameCount;    // Since application start
+        double seconds;         // Relative to clock start time
+        uint64_t frameCount;    // Since clock start
     };
 
+    // ---------------------------------
+    // Window resize events
     struct ResizeEvent
     {
 		size_t width;

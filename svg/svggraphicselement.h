@@ -5,6 +5,28 @@
 
 namespace waavs
 {
+    template <class SubtreeT>
+    static bool needsIsolation(IAmGroot* groot, SubtreeT* elem) noexcept
+    {
+        if (!groot || !elem)
+            return false;
+
+        ByteSpan featureValue{};
+        bool hasFilter =
+            elem->hasFeature(svgattr::filter(), featureValue);
+
+        bool hasMask =
+            elem->hasFeature(svgattr::mask(), featureValue);
+
+        bool hasClip =
+            elem->hasFeature(svgattr::clip_path(), featureValue);
+
+        bool hasOpacity =  
+            elem->hasFeature(svgattr::opacity(), featureValue) &&
+            featureValue != "1";
+
+        return (hasFilter || hasMask || hasClip || hasOpacity);
+    }
 
     template<class SubtreeT>
     static bool resolveIsolatedRenderPlan(
@@ -23,22 +45,25 @@ namespace waavs
         plan.ctm = ctx->state().getTransform();
         plan.invCtm = plan.ctm;
         (void)plan.invCtm.invert();
+        ByteSpan featureValue;
 
         plan.hasFilter =
             rFlags.has(RF_Filter) &&
-            elem->hasFeature(svgattr::filter());
+            elem->hasFeature(svgattr::filter(), featureValue);
 
         plan.hasMask =
             rFlags.has(RF_Mask) &&
-            elem->hasFeature(svgattr::mask());
+            elem->hasFeature(svgattr::mask(), featureValue);
 
         plan.hasClip =
             rFlags.has(RF_Clip) &&
-            elem->hasFeature(svgattr::clip_path());
+            elem->hasFeature(svgattr::clip_path(), featureValue);
 
-        plan.hasOpacity =
+        plan.hasOpacity =  
             rFlags.has(RF_Opacity) &&
-            elem->hasFeature(svgattr::opacity());
+            elem->hasFeature(svgattr::opacity(), featureValue) &&
+            featureValue != "1";
+        
 
         plan.needsIsolation =
             plan.hasFilter ||
@@ -127,14 +152,11 @@ namespace waavs
         SVGB2DDriver tmp{};
         tmp.attach(outSurface, 1, &req.drawingState);
 
-        // We have to pass along the drawing state
-        // as the item in question will need context
-
 
         if (req.clear)
             tmp.clear();
 
-        tmp.transform(off);
+        tmp.setTransform(off);
         tmp.state().setObjectFrame(req.objectBBoxUS);
         tmp.state().setViewport(req.objectBBoxUS);
 
@@ -208,13 +230,10 @@ namespace waavs {
         // Indicates whether the node has a particular feature
         // based on the presence of a given attribute.
         // Used to detect; filter, mask, clip, opacity
-        virtual bool hasFeature(InternedKey featureKey)
+        virtual bool hasFeature(InternedKey featureKey, ByteSpan &nodeRef)
         {
-            ByteSpan nodeRef{};
-            if (!getAttribute(featureKey, nodeRef))
-                return false;
-
-            return !nodeRef.empty();
+            nodeRef={};
+            return (getAttribute(featureKey, nodeRef) && !nodeRef.empty());
         }
 
         std::shared_ptr< SVGGraphicsElement> getReferencedFeatureNode(IAmGroot* groot, InternedKey featureKey) const noexcept
@@ -723,8 +742,6 @@ namespace waavs {
                 parseStyleAttribute(styleAttribute, fAttributes);
             }
 
-
-
             // Give a chance for a sub-class to do any additional processing 
             // of the attributes, or to set up any properties based on the attributes
             this->fixupSelfStyleAttributes(groot);
@@ -1064,7 +1081,7 @@ namespace waavs {
             ctx->pop();
         }
 
-        void draw(IRenderSVG* ctx, IAmGroot* groot, RenderFlags rFlags = RF_All) override
+        void draw(IRenderSVG* ctx, IAmGroot* groot, RenderFlags rFlags = RF_Content) override   // RF_ALL
         {
             if (!ctx || !groot)
                 return;
@@ -1079,7 +1096,7 @@ namespace waavs {
             }
 
             // BUGBUG - just for debugging
-            //plan.needsIsolation = false;
+            plan.needsIsolation = false;
 
             // If we don't need any isolation, then just draw the content
             // as per usual
@@ -1118,13 +1135,13 @@ namespace waavs {
             else {
                 IsolatedSubtreeRequest req{};
                 SVGDrawingState &ds = ctx->state();
-                //if (ds)
-                //    req.drawingState = *ds;
+
                 req.userRect = plan.effectRectUS;
                 req.pixelRect = plan.pixelRect;
                 req.ctm = plan.ctm;
                 req.objectBBoxUS = plan.objectBBoxUS;
                 req.renderMode = RF_Content;
+                req.drawingState = ds;
 
                 renderSubtreeToSurface(groot, this, req, result);
             }
@@ -1147,7 +1164,7 @@ namespace waavs {
 
                 // draw whatever was rendered offscreen to the context
                 ctx->push();
-                ctx->transform(WGMatrix3x3::makeIdentity());
+                ctx->setTransform(WGMatrix3x3::makeIdentity());
                 ctx->blendMode(BL_COMP_OP_SRC_OVER);
 
                 // Apply global opacity if required

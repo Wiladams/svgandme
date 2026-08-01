@@ -100,10 +100,15 @@ namespace waavs
     };
 
     ASSERT_POD_TYPE(WGRectI);
+
+    static INLINE bool rectI_is_valid(const WGRectI& r) noexcept
+    {
+        return (r.w > 0) && (r.h > 0);
+    }
 }
 
 // ---------------------------------------
-// WGRectD utilities
+// typed utilities
 //
 namespace waavs 
 {
@@ -123,14 +128,14 @@ namespace waavs
     static INLINE void moveBy(WGRectD& r, const WGPointD& dxy) { r.x += dxy.x; r.y += dxy.y; }
 
 
-    static INLINE bool containsRect(const WGRectD& a, double x, double y)
+    static INLINE bool rectD_contains_xy(const WGRectD& a, double x, double y)
     {
         return (x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h);
     }
 
-    static INLINE bool containsRect(const WGRectD& a, const WGPointD& pt)
+    static INLINE bool rectD_contains_point(const WGRectD& a, const WGPointD& pt)
     {
-        return containsRect(a, pt.x, pt.y);
+        return rectD_contains_xy(a, pt.x, pt.y);
     }
 
 
@@ -145,7 +150,7 @@ namespace waavs
     // return the intersection between two rectangles
     // if they don't intersect, then return an empty rect
     //
-    static INLINE WGRectD intersection(const WGRectD& a, const WGRectD& b) noexcept 
+    static INLINE WGRectD rectD_intersection(const WGRectD& a, const WGRectD& b) noexcept 
     {
         const double x0 = (a.x > b.x) ? a.x : b.x;
         const double y0 = (a.y > b.y) ? a.y : b.y;
@@ -294,7 +299,10 @@ namespace waavs
         return WGRectI{ r.x - dw, r.y - dh, r.w + 2 * dw, r.h + 2 * dh };
     }
 
-    static INLINE WGRectI intersection(const WGRectI& a, const WGRectI& b) noexcept {
+    static INLINE WGRectI intersection(const WGRectI& a, const WGRectI& b) noexcept = delete;
+
+    static INLINE WGRectI rectI_intersection(const WGRectI& a, const WGRectI& b) noexcept 
+    {
         const int x0 = (a.x > b.x) ? a.x : b.x;
         const int y0 = (a.y > b.y) ? a.y : b.y;
         const int x1 = ((a.x + a.w) < (b.x + b.w)) ? (a.x + a.w) : (b.x + b.w);

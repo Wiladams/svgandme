@@ -300,7 +300,8 @@ namespace waavs {
             if (!buildGradientValues(grad))
                 return false;
 
-            grad.set_transform(blMatrix_from_WGMatrix3x3(gradientFinalTransform()));
+            auto tform = gradientFinalTransform();
+            grad.set_transform(blMatrix_from_WGMatrix3x3(tform));
 
             return true;
         }
@@ -504,6 +505,13 @@ namespace waavs {
             registerSingularNode();
         }
 
+
+        SVGLengthValue x1;
+        SVGLengthValue y1;
+        SVGLengthValue x2;
+        SVGLengthValue y2;
+
+
         SVGLinearGradient() 
             :SVGGradient(BLGradientType::BL_GRADIENT_TYPE_LINEAR)
         {
@@ -533,14 +541,7 @@ namespace waavs {
             return true;
         }
 
-        // getVariant()
-        //
-        // Whomever is using us for paint is calling in here to get
-        // our paint variant.  This is the place to construct the thing,
-        // if it hasn't already been constructed.
-        //
-        // It's like a bindToContext essentially, but bindToContext is
-        // only called as part of a drawing chain.
+
 
 
 

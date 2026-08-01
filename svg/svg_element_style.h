@@ -12,46 +12,46 @@
 
 
 namespace waavs {
-	//============================================================
-	//	SVGStyleNode
-	// 
-	// The content can be either a CDATA section that contains a style sheet
+    //============================================================
+    //	SVGStyleNode
+    // 
+    // The content can be either a CDATA section that contains a style sheet
     // Or the style sheet can be in the element text itself.
-	// 
-	// This node exists to load the stylesheet into the root document
-	// object.  It should not become a part of the document tree itself.
-	//============================================================
-	struct SVGStyleNode :public SVGGraphicsElement
-	{
-		static void registerFactory()
-		{
-			registerContainerNodeByName("style",
-				[](IAmGroot* groot, XmlPull& iter) {
-					auto node = std::make_shared<SVGStyleNode>(groot);
-					node->loadFromXmlPull(iter, groot);
-					return node;
-				});
-		}
+    // 
+    // This node exists to load the stylesheet into the root document
+    // object.  It should not become a part of the document tree itself.
+    //============================================================
+    struct SVGStyleNode :public SVGGraphicsElement
+    {
+        static void registerFactory()
+        {
+            registerContainerNodeByName("style",
+                [](IAmGroot* groot, XmlPull& iter) {
+                    auto node = std::make_shared<SVGStyleNode>(groot);
+                    node->loadFromXmlPull(iter, groot);
+                    return node;
+                });
+        }
 
 
-		SVGStyleNode(IAmGroot* ) :SVGGraphicsElement()
-		{
-			setIsStructural(false);
-			setIsVisible(false);
-		}
+        SVGStyleNode(IAmGroot* ) :SVGGraphicsElement()
+        {
+            setIsStructural(false);
+            setIsVisible(false);
+        }
 
-		void loadContentNode(const XmlElement& elem, IAmGroot* groot) override
-		{
-			loadCDataNode(elem, groot);
-		}
+        void loadContentNode(const XmlElement& elem, IAmGroot* groot) override
+        {
+            loadCDataNode(elem, groot);
+        }
 
-		void loadCDataNode(const XmlElement& elem, IAmGroot* groot) override
-		{
-			if (groot)
-			{
-				groot->styleSheet().loadFromSpan(elem.data());
-			}
-		}
-	};
+        void loadCDataNode(const XmlElement& elem, IAmGroot* groot) override
+        {
+            if (groot)
+            {
+                groot->styleSheet().loadFromSpan(elem.data());
+            }
+        }
+    };
 
 }

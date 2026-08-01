@@ -47,6 +47,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "geomgen", "geomgen\geomgen.
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "matrixcomp", "matrixcomp\matrixcomp.vcxproj", "{8DDD40D4-5619-4479-8A09-3B2E7F7A2A12}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "computiview", "computiview\computiview.vcxproj", "{BCD867B4-A130-4C7E-B13E-0A72772558E0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -321,6 +323,18 @@ Global
 		{8DDD40D4-5619-4479-8A09-3B2E7F7A2A12}.Release|x64.Build.0 = Release|x64
 		{8DDD40D4-5619-4479-8A09-3B2E7F7A2A12}.Release|x86.ActiveCfg = Release|Win32
 		{8DDD40D4-5619-4479-8A09-3B2E7F7A2A12}.Release|x86.Build.0 = Release|Win32
+		{BCD867B4-A130-4C7E-B13E-0A72772558E0}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{BCD867B4-A130-4C7E-B13E-0A72772558E0}.Debug|ARM64.Build.0 = Debug|ARM64
+		{BCD867B4-A130-4C7E-B13E-0A72772558E0}.Debug|x64.ActiveCfg = Debug|x64
+		{BCD867B4-A130-4C7E-B13E-0A72772558E0}.Debug|x64.Build.0 = Debug|x64
+		{BCD867B4-A130-4C7E-B13E-0A72772558E0}.Debug|x86.ActiveCfg = Debug|Win32
+		{BCD867B4-A130-4C7E-B13E-0A72772558E0}.Debug|x86.Build.0 = Debug|Win32
+		{BCD867B4-A130-4C7E-B13E-0A72772558E0}.Release|ARM64.ActiveCfg = Release|ARM64
+		{BCD867B4-A130-4C7E-B13E-0A72772558E0}.Release|ARM64.Build.0 = Release|ARM64
+		{BCD867B4-A130-4C7E-B13E-0A72772558E0}.Release|x64.ActiveCfg = Release|x64
+		{BCD867B4-A130-4C7E-B13E-0A72772558E0}.Release|x64.Build.0 = Release|x64
+		{BCD867B4-A130-4C7E-B13E-0A72772558E0}.Release|x86.ActiveCfg = Release|Win32
+		{BCD867B4-A130-4C7E-B13E-0A72772558E0}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

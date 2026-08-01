@@ -17,7 +17,7 @@ namespace waavs
     struct SolidColorPaint : public IServePaint
     {
         BLRgba32 fColorValue;
-        bool isNone{ false };
+        //bool isNone{ false };
 
         SolidColorPaint()
         {
@@ -28,19 +28,19 @@ namespace waavs
         SolidColorPaint(const BLRgba32& color)
         {
             fColorValue = color;
-            isNone = false;
+            //isNone = false;
         }
 
         SolidColorPaint(const uint32_t r, const uint32_t g, const uint32_t b, const uint32_t a = 255)
         {
             fColorValue.reset(r, g, b, a);
-            isNone = false;
+            //isNone = false;
         }
 
         const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
         {
-            if (isNone)
-                return BLVar::null();
+            //if (isNone)
+            //    return BLVar::null();
 
             BLVar tmpVar{};
             tmpVar = fColorValue;
