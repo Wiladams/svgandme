@@ -120,7 +120,7 @@ namespace waavs
             // This is typically something like "\\\\.\\DISPLAY1" for the default display, 
             // but it could be other things if you have multiple displays or want to capture 
             // a specific monitor.
-            fDeviceKey = PSNameTable::INTERN(desc.src);
+            fDeviceKey = WSNameSet::INTERN(desc.src);
             if (!fScreenDevice.resetByName(fDeviceKey))
                 return false;
 

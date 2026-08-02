@@ -184,9 +184,9 @@ namespace waavs
                 kind == XML_ELEMENT_TYPE_SELF_CLOSING ||
                 kind == XML_ELEMENT_TYPE_END_TAG)
             {
-                fQNameAtom = !fQName.empty() ? PSNameTable::INTERN(fQName) : nullptr;
-                fLocalNameAtom = !fLocalName.empty() ? PSNameTable::INTERN(fLocalName) : nullptr;
-                fPrefixAtom = !fPrefix.empty() ? PSNameTable::INTERN(fPrefix) : nullptr;
+                fQNameAtom = !fQName.empty() ? WSNameSet::INTERN(fQName) : nullptr;
+                fLocalNameAtom = !fLocalName.empty() ? WSNameSet::INTERN(fLocalName) : nullptr;
+                fPrefixAtom = !fPrefix.empty() ? WSNameSet::INTERN(fPrefix) : nullptr;
             }
             else {
                 fQNameAtom = nullptr;

@@ -338,7 +338,7 @@ namespace waavs {
 
         ByteSpan getAttributeByName(const char* name) const noexcept
         {
-            return getAttribute(PSNameTable::INTERN(name));
+            return getAttribute(WSNameSet::INTERN(name));
         }
 
         // setting attributes
@@ -349,7 +349,7 @@ namespace waavs {
 
         void setAttributeByName(const char* name, const ByteSpan& value) noexcept
         {
-            InternedKey key = PSNameTable::INTERN(name);
+            InternedKey key = WSNameSet::INTERN(name);
             setAttribute(key, value);
         }
 
@@ -642,7 +642,7 @@ namespace waavs {
 
             while (xmlattribute_read_next(src, attrName, attrValue))
             {
-                InternedKey attrKey = PSNameTable::INTERN(attrName);
+                InternedKey attrKey = WSNameSet::INTERN(attrName);
 
                 if (attrKey == svgattr::id())
                 {
@@ -751,7 +751,7 @@ namespace waavs {
             if (fAttributes.getValue(svgattr::display(), displayAttr))
             {
                 bspan_trim_spaces(displayAttr);
-                InternedKey dv = PSNameTable::INTERN(displayAttr);
+                InternedKey dv = WSNameSet::INTERN(displayAttr);
 
                 if (dv == svgval::none())
                     setIsVisible(false);
@@ -925,7 +925,7 @@ namespace waavs {
                 if (!name)
                     continue;
 
-                applyProperty(ctx, groot, PSNameTable::INTERN(name));
+                applyProperty(ctx, groot, WSNameSet::INTERN(name));
             }
         }
 

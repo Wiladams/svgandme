@@ -55,7 +55,7 @@ namespace waavs
             fAttributes.getValue(svgattr::clipPathUnits(), clipUnitsAttr);
             if (clipUnitsAttr)
             {
-                InternedKey clipUnitsKey = PSNameTable::INTERN(clipUnitsAttr);
+                InternedKey clipUnitsKey = WSNameSet::INTERN(clipUnitsAttr);
                 if (clipUnitsKey == svgval::userSpaceOnUse())
                     fClipPathUnits = SpaceUnitsKind::SVG_SPACE_USER;
                 else if (clipUnitsKey == svgval::objectBoundingBox())

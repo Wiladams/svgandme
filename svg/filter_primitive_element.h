@@ -156,14 +156,14 @@ namespace waavs
             ByteSpan interpAttr{};
             if (getAttribute(filter::color_interpolation_filters(), interpAttr))
             {
-                InternedKey interpKey = PSNameTable::INTERN(interpAttr);
+                InternedKey interpKey = WSNameSet::INTERN(interpAttr);
                 fColorInterpolation = parseFilterColorInterpolation(interpKey, FilterColorInterpolation::FILTER_COLOR_INTERPOLATION_AUTO);
             }
 
             ByteSpan fInAttr{}, fIn2Attr{}, fResultAttr{};
-            if (getAttribute(filter::in(), fInAttr)) { fIn = PSNameTable::INTERN(fInAttr); }
-            if (getAttribute(filter::in2(), fIn2Attr)) { fIn2 = PSNameTable::INTERN(fIn2Attr); }
-            if (getAttribute(filter::result(), fResultAttr)) { fResult = PSNameTable::INTERN(fResultAttr); }
+            if (getAttribute(filter::in(), fInAttr)) { fIn = WSNameSet::INTERN(fInAttr); }
+            if (getAttribute(filter::in2(), fIn2Attr)) { fIn2 = WSNameSet::INTERN(fIn2Attr); }
+            if (getAttribute(filter::result(), fResultAttr)) { fResult = WSNameSet::INTERN(fResultAttr); }
 
 
             // Subregion (optional)

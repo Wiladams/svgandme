@@ -163,7 +163,7 @@ namespace waavs {
         int open(const ByteSpan &src)
         {
             // Intern the key in case we're storing in a library
-            fSourceKey = PSNameTable::INTERN(src);
+            fSourceKey = WSNameSet::INTERN(src);
 
             int err = avformat_open_input(&fFormatContext, fSourceKey, nullptr, &fOpts);
             av_dict_free(&fOpts);

@@ -33,7 +33,7 @@ namespace waavs {
     // PSNameTable
     //
     // A global name table for interned strings.
-    struct PSNameTable 
+    struct WSNameSet 
     {
     private:
         std::set<std::string, std::less<> > pool;
@@ -84,8 +84,8 @@ namespace waavs {
         }
         const char* intern(const char* cstr) { return intern(std::string_view(cstr)); }
 
-        static PSNameTable* getSingletonTable() {
-            static PSNameTable gTable;
+        static WSNameSet* getSingletonTable() {
+            static WSNameSet gTable;
             return &gTable;
         }
 

@@ -33,7 +33,7 @@ namespace waavs
 
         void addValueBySpan(const ByteSpan& name, const ByteSpan& valueChunk) noexcept
         {
-            addValue(PSNameTable::INTERN(name), valueChunk);
+            addValue(WSNameSet::INTERN(name), valueChunk);
         }
 
         bool getValue(AttrKey key, ByteSpan& value) const noexcept
@@ -57,7 +57,7 @@ namespace waavs
 
         bool getValueBySpan(const ByteSpan& name, ByteSpan& value) const noexcept
         {
-            return getValue(PSNameTable::INTERN(name), value);
+            return getValue(WSNameSet::INTERN(name), value);
         }
 
         XmlAttributeCollection& mergeAttributes(const XmlAttributeCollection& other) noexcept

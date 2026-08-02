@@ -653,7 +653,7 @@ namespace waavs
             bool preserveSpace = false;
             {
                 ByteSpan v{};
-                if (getElementAttribute(PSNameTable::INTERN("xml:space"), v)) {
+                if (getElementAttribute(WSNameSet::INTERN("xml:space"), v)) {
                     bspan_trim_spaces(v);
                     // accept "preserve" (case-sensitive per XML)
                     preserveSpace = (v == "preserve");

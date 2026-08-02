@@ -130,7 +130,7 @@ namespace waavs
             // Resolve empty / "__last__" sentinel to concrete key.
             InternedKey resolveKey(InternedKey k) const noexcept override
             {
-                static InternedKey kLast = PSNameTable::INTERN("__last__");
+                static InternedKey kLast = WSNameSet::INTERN("__last__");
 
                 if (!k)
                     return lastKey();

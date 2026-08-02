@@ -8,7 +8,7 @@ namespace waavs
 
     struct SVGFactory
     {
-        PSNameTable fFeatureNames{};
+        WSNameSet fFeatureNames{};
 
         // Disallow copying and assignment
         SVGFactory(const SVGFactory&) = delete;

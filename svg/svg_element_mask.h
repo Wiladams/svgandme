@@ -90,7 +90,7 @@ namespace waavs
             fAttributes.getValue(svgattr::mask_type(), maskTypeAttr);
             if (maskTypeAttr)
             {
-                InternedKey maskTypeKey = PSNameTable::INTERN(maskTypeAttr);
+                InternedKey maskTypeKey = WSNameSet::INTERN(maskTypeAttr);
                 if (maskTypeKey == svgval::luminance())
                     fMaskType = MASKTYPE_LUMINANCE;
                 else if (maskTypeKey == svgval::alpha())
@@ -102,7 +102,7 @@ namespace waavs
             fAttributes.getValue(svgattr::mask_units(), maskUnitsAttr);
             if (maskUnitsAttr)
             {
-                InternedKey maskUnitsKey = PSNameTable::INTERN(maskUnitsAttr);
+                InternedKey maskUnitsKey = WSNameSet::INTERN(maskUnitsAttr);
                 if (maskUnitsKey == svgval::userSpaceOnUse())
                     fMaskUnits = SpaceUnitsKind::SVG_SPACE_USER;
                 else if (maskUnitsKey == svgval::objectBoundingBox())
@@ -114,7 +114,7 @@ namespace waavs
             fAttributes.getValue(svgattr::mask_content_units(), maskContentUnitsAttr);
             if (maskContentUnitsAttr)
             {
-                InternedKey maskContentUnitsKey = PSNameTable::INTERN(maskContentUnitsAttr);
+                InternedKey maskContentUnitsKey = WSNameSet::INTERN(maskContentUnitsAttr);
                 if (maskContentUnitsKey == svgval::userSpaceOnUse())
                     fMaskContentUnits = SpaceUnitsKind::SVG_SPACE_USER;
                 else if (maskContentUnitsKey == svgval::objectBoundingBox())

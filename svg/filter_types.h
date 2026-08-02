@@ -116,161 +116,161 @@ namespace waavs::filter
     // --------------------------------------------------------
     // Common filter keys
     // --------------------------------------------------------
-    INLINE InternedKey color_interpolation_filters() noexcept { static InternedKey k = PSNameTable::INTERN("color-interpolation-filters"); return k; }
-    INLINE InternedKey kColorInterp_linearRGB() noexcept { static InternedKey k = PSNameTable::INTERN("linearRGB"); return k; }
-    INLINE InternedKey kColorInterp_sRGB()      noexcept { static InternedKey k = PSNameTable::INTERN("sRGB");      return k; }
+    INLINE InternedKey color_interpolation_filters() noexcept { static InternedKey k = WSNameSet::INTERN("color-interpolation-filters"); return k; }
+    INLINE InternedKey kColorInterp_linearRGB() noexcept { static InternedKey k = WSNameSet::INTERN("linearRGB"); return k; }
+    INLINE InternedKey kColorInterp_sRGB()      noexcept { static InternedKey k = WSNameSet::INTERN("sRGB");      return k; }
 
 
     // Common filter primitive keys
-    INLINE InternedKey SourceGraphic() noexcept { static InternedKey k = PSNameTable::INTERN("SourceGraphic"); return k; }
-    INLINE InternedKey SourceAlpha() noexcept { static InternedKey k = PSNameTable::INTERN("SourceAlpha"); return k; }
-    INLINE InternedKey BackgroundImage() noexcept { static InternedKey k = PSNameTable::INTERN("BackgroundImage"); return k; }
-    INLINE InternedKey BackgroundAlpha() noexcept { static InternedKey k = PSNameTable::INTERN("BackgroundAlpha"); return k; }
-    INLINE InternedKey Filter_Last() noexcept { static InternedKey k = PSNameTable::INTERN("__last__"); return k; }
+    INLINE InternedKey SourceGraphic() noexcept { static InternedKey k = WSNameSet::INTERN("SourceGraphic"); return k; }
+    INLINE InternedKey SourceAlpha() noexcept { static InternedKey k = WSNameSet::INTERN("SourceAlpha"); return k; }
+    INLINE InternedKey BackgroundImage() noexcept { static InternedKey k = WSNameSet::INTERN("BackgroundImage"); return k; }
+    INLINE InternedKey BackgroundAlpha() noexcept { static InternedKey k = WSNameSet::INTERN("BackgroundAlpha"); return k; }
+    INLINE InternedKey Filter_Last() noexcept { static InternedKey k = WSNameSet::INTERN("__last__"); return k; }
 
 
     // all filter primitives have these common attributes
-    inline InternedKey in() { static InternedKey k = PSNameTable::INTERN("in"); return k; }
-    inline InternedKey in2() { static InternedKey k = PSNameTable::INTERN("in2"); return k; }
-    inline InternedKey result() { static InternedKey k = PSNameTable::INTERN("result"); return k; }
+    inline InternedKey in() { static InternedKey k = WSNameSet::INTERN("in"); return k; }
+    inline InternedKey in2() { static InternedKey k = WSNameSet::INTERN("in2"); return k; }
+    inline InternedKey result() { static InternedKey k = WSNameSet::INTERN("result"); return k; }
 
     // feGaussianBlur
-    inline InternedKey stdDeviation() { static InternedKey k = PSNameTable::INTERN("stdDeviation"); return k; }
+    inline InternedKey stdDeviation() { static InternedKey k = WSNameSet::INTERN("stdDeviation"); return k; }
 
-    inline InternedKey flood_color() { static InternedKey k = PSNameTable::INTERN("flood-color"); return k; }
-    inline InternedKey flood_opacity() { static InternedKey k = PSNameTable::INTERN("flood-opacity"); return k; }
+    inline InternedKey flood_color() { static InternedKey k = WSNameSet::INTERN("flood-color"); return k; }
+    inline InternedKey flood_opacity() { static InternedKey k = WSNameSet::INTERN("flood-opacity"); return k; }
 
     // feOffset
-    inline InternedKey feOffset_dx() { static InternedKey k = PSNameTable::INTERN("dx"); return k; }
-    inline InternedKey feOffset_dy() { static InternedKey k = PSNameTable::INTERN("dy"); return k; }
+    inline InternedKey feOffset_dx() { static InternedKey k = WSNameSet::INTERN("dx"); return k; }
+    inline InternedKey feOffset_dy() { static InternedKey k = WSNameSet::INTERN("dy"); return k; }
 
     // feColorMatrix
-    inline InternedKey type_() { static InternedKey k = PSNameTable::INTERN("type"); return k; }
-    inline InternedKey values() { static InternedKey k = PSNameTable::INTERN("values"); return k; }
+    inline InternedKey type_() { static InternedKey k = WSNameSet::INTERN("type"); return k; }
+    inline InternedKey values() { static InternedKey k = WSNameSet::INTERN("values"); return k; }
 
     // feBlend
-    inline InternedKey mode() { static InternedKey k = PSNameTable::INTERN("mode"); return k; }
+    inline InternedKey mode() { static InternedKey k = WSNameSet::INTERN("mode"); return k; }
     
     // feBlend modes 
-    INLINE InternedKey kBlend_normal()   noexcept { static InternedKey k = PSNameTable::INTERN("normal");   return k; }
-    INLINE InternedKey kBlend_multiply() noexcept { static InternedKey k = PSNameTable::INTERN("multiply"); return k; }
-    INLINE InternedKey kBlend_screen()   noexcept { static InternedKey k = PSNameTable::INTERN("screen");   return k; }
-    INLINE InternedKey kBlend_overlay()  noexcept { static InternedKey k = PSNameTable::INTERN("overlay");  return k; }
-    INLINE InternedKey kBlend_darken()   noexcept { static InternedKey k = PSNameTable::INTERN("darken");   return k; }
-    INLINE InternedKey kBlend_lighten()  noexcept { static InternedKey k = PSNameTable::INTERN("lighten");  return k; }
-    INLINE InternedKey kBlend_color_dodge() noexcept { static InternedKey k = PSNameTable::INTERN("color-dodge"); return k; }
-    INLINE InternedKey kBlend_color_burn()   noexcept { static InternedKey k = PSNameTable::INTERN("color-burn");   return k; }
-    INLINE InternedKey kBlend_hard_light()  noexcept { static InternedKey k = PSNameTable::INTERN("hard-light");  return k; }
-    INLINE InternedKey kBlend_soft_light()  noexcept { static InternedKey k = PSNameTable::INTERN("soft-light");  return k; }
-    INLINE InternedKey kBlend_difference()  noexcept { static InternedKey k = PSNameTable::INTERN("difference");  return k; }
-    INLINE InternedKey kBlend_exclusion()   noexcept { static InternedKey k = PSNameTable::INTERN("exclusion");   return k; }
+    INLINE InternedKey kBlend_normal()   noexcept { static InternedKey k = WSNameSet::INTERN("normal");   return k; }
+    INLINE InternedKey kBlend_multiply() noexcept { static InternedKey k = WSNameSet::INTERN("multiply"); return k; }
+    INLINE InternedKey kBlend_screen()   noexcept { static InternedKey k = WSNameSet::INTERN("screen");   return k; }
+    INLINE InternedKey kBlend_overlay()  noexcept { static InternedKey k = WSNameSet::INTERN("overlay");  return k; }
+    INLINE InternedKey kBlend_darken()   noexcept { static InternedKey k = WSNameSet::INTERN("darken");   return k; }
+    INLINE InternedKey kBlend_lighten()  noexcept { static InternedKey k = WSNameSet::INTERN("lighten");  return k; }
+    INLINE InternedKey kBlend_color_dodge() noexcept { static InternedKey k = WSNameSet::INTERN("color-dodge"); return k; }
+    INLINE InternedKey kBlend_color_burn()   noexcept { static InternedKey k = WSNameSet::INTERN("color-burn");   return k; }
+    INLINE InternedKey kBlend_hard_light()  noexcept { static InternedKey k = WSNameSet::INTERN("hard-light");  return k; }
+    INLINE InternedKey kBlend_soft_light()  noexcept { static InternedKey k = WSNameSet::INTERN("soft-light");  return k; }
+    INLINE InternedKey kBlend_difference()  noexcept { static InternedKey k = WSNameSet::INTERN("difference");  return k; }
+    INLINE InternedKey kBlend_exclusion()   noexcept { static InternedKey k = WSNameSet::INTERN("exclusion");   return k; }
 
 
 
-    //static InternedKey kNormal = PSNameTable::INTERN("normal");
-    //static InternedKey kMultiply = PSNameTable::INTERN("multiply");
-    //static InternedKey kScreen = PSNameTable::INTERN("screen");
-    //static InternedKey kDarken = PSNameTable::INTERN("darken");
-    //static InternedKey kLighten = PSNameTable::INTERN("lighten");
-    //static InternedKey kOverlay = PSNameTable::INTERN("overlay");
-    //static InternedKey kColorDodge = PSNameTable::INTERN("color-dodge");
-    //static InternedKey kColorBurn = PSNameTable::INTERN("color-burn");
-    //static InternedKey kHardLight = PSNameTable::INTERN("hard-light");
-    //static InternedKey kSoftLight = PSNameTable::INTERN("soft-light");
-    //static InternedKey kDifference = PSNameTable::INTERN("difference");
-    //static InternedKey kExclusion = PSNameTable::INTERN("exclusion");
+    //static InternedKey kNormal = WSNameSet::INTERN("normal");
+    //static InternedKey kMultiply = WSNameSet::INTERN("multiply");
+    //static InternedKey kScreen = WSNameSet::INTERN("screen");
+    //static InternedKey kDarken = WSNameSet::INTERN("darken");
+    //static InternedKey kLighten = WSNameSet::INTERN("lighten");
+    //static InternedKey kOverlay = WSNameSet::INTERN("overlay");
+    //static InternedKey kColorDodge = WSNameSet::INTERN("color-dodge");
+    //static InternedKey kColorBurn = WSNameSet::INTERN("color-burn");
+    //static InternedKey kHardLight = WSNameSet::INTERN("hard-light");
+    //static InternedKey kSoftLight = WSNameSet::INTERN("soft-light");
+    //static InternedKey kDifference = WSNameSet::INTERN("difference");
+    //static InternedKey kExclusion = WSNameSet::INTERN("exclusion");
 
 
     // feComposite
-    inline InternedKey operator_() { static InternedKey k = PSNameTable::INTERN("operator"); return k; }
-    inline InternedKey k1() { static InternedKey k = PSNameTable::INTERN("k1"); return k; }
-    inline InternedKey k2() { static InternedKey k = PSNameTable::INTERN("k2"); return k; }
-    inline InternedKey k3() { static InternedKey k = PSNameTable::INTERN("k3"); return k; }
-    inline InternedKey k4() { static InternedKey k = PSNameTable::INTERN("k4"); return k; }
+    inline InternedKey operator_() { static InternedKey k = WSNameSet::INTERN("operator"); return k; }
+    inline InternedKey k1() { static InternedKey k = WSNameSet::INTERN("k1"); return k; }
+    inline InternedKey k2() { static InternedKey k = WSNameSet::INTERN("k2"); return k; }
+    inline InternedKey k3() { static InternedKey k = WSNameSet::INTERN("k3"); return k; }
+    inline InternedKey k4() { static InternedKey k = WSNameSet::INTERN("k4"); return k; }
 
     // feComposite operator values
-    INLINE InternedKey kCompOp_over()       noexcept { static InternedKey k = PSNameTable::INTERN("over");       return k; }
-    INLINE InternedKey kCompOp_in()         noexcept { static InternedKey k = PSNameTable::INTERN("in");         return k; }
-    INLINE InternedKey kCompOp_out()        noexcept { static InternedKey k = PSNameTable::INTERN("out");        return k; }
-    INLINE InternedKey kCompOp_atop()       noexcept { static InternedKey k = PSNameTable::INTERN("atop");       return k; }
-    INLINE InternedKey kCompOp_xor()        noexcept { static InternedKey k = PSNameTable::INTERN("xor");        return k; }
-    INLINE InternedKey kCompOp_arithmetic() noexcept { static InternedKey k = PSNameTable::INTERN("arithmetic"); return k; }
+    INLINE InternedKey kCompOp_over()       noexcept { static InternedKey k = WSNameSet::INTERN("over");       return k; }
+    INLINE InternedKey kCompOp_in()         noexcept { static InternedKey k = WSNameSet::INTERN("in");         return k; }
+    INLINE InternedKey kCompOp_out()        noexcept { static InternedKey k = WSNameSet::INTERN("out");        return k; }
+    INLINE InternedKey kCompOp_atop()       noexcept { static InternedKey k = WSNameSet::INTERN("atop");       return k; }
+    INLINE InternedKey kCompOp_xor()        noexcept { static InternedKey k = WSNameSet::INTERN("xor");        return k; }
+    INLINE InternedKey kCompOp_arithmetic() noexcept { static InternedKey k = WSNameSet::INTERN("arithmetic"); return k; }
 
     // feComponentTransfer / feFunc*
-    inline InternedKey tableValues() { static InternedKey k = PSNameTable::INTERN("tableValues"); return k; }
-    inline InternedKey slope() { static InternedKey k = PSNameTable::INTERN("slope"); return k; }
-    inline InternedKey intercept() { static InternedKey k = PSNameTable::INTERN("intercept"); return k; }
-    inline InternedKey amplitude() { static InternedKey k = PSNameTable::INTERN("amplitude"); return k; }
-    inline InternedKey exponent() { static InternedKey k = PSNameTable::INTERN("exponent"); return k; }
-    inline InternedKey offset() { static InternedKey k = PSNameTable::INTERN("offset"); return k; }
+    inline InternedKey tableValues() { static InternedKey k = WSNameSet::INTERN("tableValues"); return k; }
+    inline InternedKey slope() { static InternedKey k = WSNameSet::INTERN("slope"); return k; }
+    inline InternedKey intercept() { static InternedKey k = WSNameSet::INTERN("intercept"); return k; }
+    inline InternedKey amplitude() { static InternedKey k = WSNameSet::INTERN("amplitude"); return k; }
+    inline InternedKey exponent() { static InternedKey k = WSNameSet::INTERN("exponent"); return k; }
+    inline InternedKey offset() { static InternedKey k = WSNameSet::INTERN("offset"); return k; }
 
-    inline InternedKey feFuncR() { static InternedKey k = PSNameTable::INTERN("feFuncR"); return k; }
-    inline InternedKey feFuncG() { static InternedKey k = PSNameTable::INTERN("feFuncG"); return k; }
-    inline InternedKey feFuncB() { static InternedKey k = PSNameTable::INTERN("feFuncB"); return k; }
-    inline InternedKey feFuncA() { static InternedKey k = PSNameTable::INTERN("feFuncA"); return k; }
+    inline InternedKey feFuncR() { static InternedKey k = WSNameSet::INTERN("feFuncR"); return k; }
+    inline InternedKey feFuncG() { static InternedKey k = WSNameSet::INTERN("feFuncG"); return k; }
+    inline InternedKey feFuncB() { static InternedKey k = WSNameSet::INTERN("feFuncB"); return k; }
+    inline InternedKey feFuncA() { static InternedKey k = WSNameSet::INTERN("feFuncA"); return k; }
     
     
-    static InternedKey kIdentity = PSNameTable::INTERN("identity");
-    static InternedKey kTable = PSNameTable::INTERN("table");
-    static InternedKey kDiscrete = PSNameTable::INTERN("discrete");
-    static InternedKey kLinear = PSNameTable::INTERN("linear");
-    static InternedKey kGamma = PSNameTable::INTERN("gamma");
+    static InternedKey kIdentity = WSNameSet::INTERN("identity");
+    static InternedKey kTable = WSNameSet::INTERN("table");
+    static InternedKey kDiscrete = WSNameSet::INTERN("discrete");
+    static InternedKey kLinear = WSNameSet::INTERN("linear");
+    static InternedKey kGamma = WSNameSet::INTERN("gamma");
 
     // feConvolveMatrix
-    inline InternedKey order() { static InternedKey k = PSNameTable::INTERN("order"); return k; }
-    inline InternedKey kernelMatrix() { static InternedKey k = PSNameTable::INTERN("kernelMatrix"); return k; }
-    inline InternedKey divisor() { static InternedKey k = PSNameTable::INTERN("divisor"); return k; }
-    inline InternedKey bias() { static InternedKey k = PSNameTable::INTERN("bias"); return k; }
-    inline InternedKey targetX() { static InternedKey k = PSNameTable::INTERN("targetX"); return k; }
-    inline InternedKey targetY() { static InternedKey k = PSNameTable::INTERN("targetY"); return k; }
-    inline InternedKey edgeMode() { static InternedKey k = PSNameTable::INTERN("edgeMode"); return k; }
-    inline InternedKey kernelUnitLength() { static InternedKey k = PSNameTable::INTERN("kernelUnitLength"); return k; }
-    inline InternedKey preserveAlpha() { static InternedKey k = PSNameTable::INTERN("preserveAlpha"); return k; }
+    inline InternedKey order() { static InternedKey k = WSNameSet::INTERN("order"); return k; }
+    inline InternedKey kernelMatrix() { static InternedKey k = WSNameSet::INTERN("kernelMatrix"); return k; }
+    inline InternedKey divisor() { static InternedKey k = WSNameSet::INTERN("divisor"); return k; }
+    inline InternedKey bias() { static InternedKey k = WSNameSet::INTERN("bias"); return k; }
+    inline InternedKey targetX() { static InternedKey k = WSNameSet::INTERN("targetX"); return k; }
+    inline InternedKey targetY() { static InternedKey k = WSNameSet::INTERN("targetY"); return k; }
+    inline InternedKey edgeMode() { static InternedKey k = WSNameSet::INTERN("edgeMode"); return k; }
+    inline InternedKey kernelUnitLength() { static InternedKey k = WSNameSet::INTERN("kernelUnitLength"); return k; }
+    inline InternedKey preserveAlpha() { static InternedKey k = WSNameSet::INTERN("preserveAlpha"); return k; }
 
     // feDisplacementMap
-    inline InternedKey scale() { static InternedKey k = PSNameTable::INTERN("scale"); return k; }
-    inline InternedKey xChannelSelector() { static InternedKey k = PSNameTable::INTERN("xChannelSelector"); return k; }
-    inline InternedKey yChannelSelector() { static InternedKey k = PSNameTable::INTERN("yChannelSelector"); return k; }
+    inline InternedKey scale() { static InternedKey k = WSNameSet::INTERN("scale"); return k; }
+    inline InternedKey xChannelSelector() { static InternedKey k = WSNameSet::INTERN("xChannelSelector"); return k; }
+    inline InternedKey yChannelSelector() { static InternedKey k = WSNameSet::INTERN("yChannelSelector"); return k; }
 
     // feTurbulence
-    inline InternedKey baseFrequency() { static InternedKey k = PSNameTable::INTERN("baseFrequency"); return k; }
-    inline InternedKey numOctaves() { static InternedKey k = PSNameTable::INTERN("numOctaves"); return k; }
-    inline InternedKey seed() { static InternedKey k = PSNameTable::INTERN("seed"); return k; }
-    inline InternedKey stitchTiles() { static InternedKey k = PSNameTable::INTERN("stitchTiles"); return k; }
+    inline InternedKey baseFrequency() { static InternedKey k = WSNameSet::INTERN("baseFrequency"); return k; }
+    inline InternedKey numOctaves() { static InternedKey k = WSNameSet::INTERN("numOctaves"); return k; }
+    inline InternedKey seed() { static InternedKey k = WSNameSet::INTERN("seed"); return k; }
+    inline InternedKey stitchTiles() { static InternedKey k = WSNameSet::INTERN("stitchTiles"); return k; }
 
     // lighting
-    inline InternedKey surfaceScale() { static InternedKey k = PSNameTable::INTERN("surfaceScale"); return k; }
-    inline InternedKey diffuseConstant() { static InternedKey k = PSNameTable::INTERN("diffuseConstant"); return k; }
-    inline InternedKey specularConstant() { static InternedKey k = PSNameTable::INTERN("specularConstant"); return k; }
-    inline InternedKey specularExponent() { static InternedKey k = PSNameTable::INTERN("specularExponent"); return k; }
-    inline InternedKey lighting_color() { static InternedKey k = PSNameTable::INTERN("lighting-color"); return k; }
+    inline InternedKey surfaceScale() { static InternedKey k = WSNameSet::INTERN("surfaceScale"); return k; }
+    inline InternedKey diffuseConstant() { static InternedKey k = WSNameSet::INTERN("diffuseConstant"); return k; }
+    inline InternedKey specularConstant() { static InternedKey k = WSNameSet::INTERN("specularConstant"); return k; }
+    inline InternedKey specularExponent() { static InternedKey k = WSNameSet::INTERN("specularExponent"); return k; }
+    inline InternedKey lighting_color() { static InternedKey k = WSNameSet::INTERN("lighting-color"); return k; }
 
-    inline InternedKey azimuth() { static InternedKey k = PSNameTable::INTERN("azimuth"); return k; }
-    inline InternedKey elevation() { static InternedKey k = PSNameTable::INTERN("elevation"); return k; }
-    inline InternedKey pointsAtX() { static InternedKey k = PSNameTable::INTERN("pointsAtX"); return k; }
-    inline InternedKey pointsAtY() { static InternedKey k = PSNameTable::INTERN("pointsAtY"); return k; }
-    inline InternedKey pointsAtZ() { static InternedKey k = PSNameTable::INTERN("pointsAtZ"); return k; }
-    inline InternedKey limitingConeAngle() { static InternedKey k = PSNameTable::INTERN("limitingConeAngle"); return k; }
+    inline InternedKey azimuth() { static InternedKey k = WSNameSet::INTERN("azimuth"); return k; }
+    inline InternedKey elevation() { static InternedKey k = WSNameSet::INTERN("elevation"); return k; }
+    inline InternedKey pointsAtX() { static InternedKey k = WSNameSet::INTERN("pointsAtX"); return k; }
+    inline InternedKey pointsAtY() { static InternedKey k = WSNameSet::INTERN("pointsAtY"); return k; }
+    inline InternedKey pointsAtZ() { static InternedKey k = WSNameSet::INTERN("pointsAtZ"); return k; }
+    inline InternedKey limitingConeAngle() { static InternedKey k = WSNameSet::INTERN("limitingConeAngle"); return k; }
 
     // feDistantLight
-    inline InternedKey feDistantLight() { static InternedKey k = PSNameTable::INTERN("feDistantLight"); return k; }
-    inline InternedKey fePointLight() { static InternedKey k = PSNameTable::INTERN("fePointLight"); return k; }
-    inline InternedKey feSpotLight() { static InternedKey k = PSNameTable::INTERN("feSpotLight"); return k; }
+    inline InternedKey feDistantLight() { static InternedKey k = WSNameSet::INTERN("feDistantLight"); return k; }
+    inline InternedKey fePointLight() { static InternedKey k = WSNameSet::INTERN("fePointLight"); return k; }
+    inline InternedKey feSpotLight() { static InternedKey k = WSNameSet::INTERN("feSpotLight"); return k; }
 
     // diffuse/specular lighting common
-    inline InternedKey x() { static InternedKey k = PSNameTable::INTERN("x"); return k; }
-    inline InternedKey y() { static InternedKey k = PSNameTable::INTERN("y"); return k; }
-    inline InternedKey z() { static InternedKey k = PSNameTable::INTERN("z"); return k; }
+    inline InternedKey x() { static InternedKey k = WSNameSet::INTERN("x"); return k; }
+    inline InternedKey y() { static InternedKey k = WSNameSet::INTERN("y"); return k; }
+    inline InternedKey z() { static InternedKey k = WSNameSet::INTERN("z"); return k; }
 
     // feMorphology
-    inline InternedKey radius() { static InternedKey k = PSNameTable::INTERN("radius"); return k; }
+    inline InternedKey radius() { static InternedKey k = WSNameSet::INTERN("radius"); return k; }
 
     // feMerge / feMergeNode
-    inline InternedKey feMergeNode_in() { static InternedKey k = PSNameTable::INTERN("in"); return k; }
+    inline InternedKey feMergeNode_in() { static InternedKey k = WSNameSet::INTERN("in"); return k; }
 
     // feImage
-    inline InternedKey href() { static InternedKey k = PSNameTable::INTERN("href"); return k; }
-    inline InternedKey xlink_href() { static InternedKey k = PSNameTable::INTERN("xlink:href"); return k; }
+    inline InternedKey href() { static InternedKey k = WSNameSet::INTERN("href"); return k; }
+    inline InternedKey xlink_href() { static InternedKey k = WSNameSet::INTERN("xlink:href"); return k; }
 
 }
 
@@ -438,9 +438,9 @@ namespace waavs
         if (!s)
             return false;
 
-        static InternedKey kTrue = PSNameTable::INTERN("true");
-        static InternedKey kFalse = PSNameTable::INTERN("false");
-        InternedKey k = PSNameTable::INTERN(s);
+        static InternedKey kTrue = WSNameSet::INTERN("true");
+        static InternedKey kFalse = WSNameSet::INTERN("false");
+        InternedKey k = WSNameSet::INTERN(s);
 
         if (k == kTrue) {
             out = true;
@@ -465,9 +465,9 @@ namespace waavs
         if (!s)
             return false;
 
-        static InternedKey kStitch = PSNameTable::INTERN("stitch");
-        static InternedKey kNoStitch = PSNameTable::INTERN("noStitch");
-        InternedKey k = PSNameTable::INTERN(s);
+        static InternedKey kStitch = WSNameSet::INTERN("stitch");
+        static InternedKey kNoStitch = WSNameSet::INTERN("noStitch");
+        InternedKey k = WSNameSet::INTERN(s);
 
         if (k == kStitch) {
             out = true;
@@ -537,10 +537,10 @@ namespace waavs
     {
         if (!k) return FILTER_COLOR_MATRIX_MATRIX;
 
-        static InternedKey kMatrix = PSNameTable::INTERN("matrix");
-        static InternedKey kSaturate = PSNameTable::INTERN("saturate");
-        static InternedKey kHueRotate = PSNameTable::INTERN("hueRotate");
-        static InternedKey kLuminanceToAlpha = PSNameTable::INTERN("luminanceToAlpha");
+        static InternedKey kMatrix = WSNameSet::INTERN("matrix");
+        static InternedKey kSaturate = WSNameSet::INTERN("saturate");
+        static InternedKey kHueRotate = WSNameSet::INTERN("hueRotate");
+        static InternedKey kLuminanceToAlpha = WSNameSet::INTERN("luminanceToAlpha");
 
         if (k == kMatrix)           return FILTER_COLOR_MATRIX_MATRIX;
         if (k == kSaturate)         return FILTER_COLOR_MATRIX_SATURATE;
@@ -554,11 +554,11 @@ namespace waavs
     {
         if (!k) return FILTER_TRANSFER_IDENTITY;
 
-        static InternedKey kIdentity = PSNameTable::INTERN("identity");
-        static InternedKey kTable = PSNameTable::INTERN("table");
-        static InternedKey kDiscrete = PSNameTable::INTERN("discrete");
-        static InternedKey kLinear = PSNameTable::INTERN("linear");
-        static InternedKey kGamma = PSNameTable::INTERN("gamma");
+        static InternedKey kIdentity = WSNameSet::INTERN("identity");
+        static InternedKey kTable = WSNameSet::INTERN("table");
+        static InternedKey kDiscrete = WSNameSet::INTERN("discrete");
+        static InternedKey kLinear = WSNameSet::INTERN("linear");
+        static InternedKey kGamma = WSNameSet::INTERN("gamma");
 
         if (k == kIdentity) return FILTER_TRANSFER_IDENTITY;
         if (k == kTable)    return FILTER_TRANSFER_TABLE;
@@ -573,8 +573,8 @@ namespace waavs
     {
         if (!k) return FILTER_MORPHOLOGY_ERODE;
 
-        static InternedKey kErode = PSNameTable::INTERN("erode");
-        static InternedKey kDilate = PSNameTable::INTERN("dilate");
+        static InternedKey kErode = WSNameSet::INTERN("erode");
+        static InternedKey kDilate = WSNameSet::INTERN("dilate");
 
         if (k == kErode)  return FILTER_MORPHOLOGY_ERODE;
         if (k == kDilate) return FILTER_MORPHOLOGY_DILATE;
@@ -586,9 +586,9 @@ namespace waavs
     {
         if (!k) return FILTER_EDGE_DUPLICATE;
 
-        static InternedKey kDuplicate = PSNameTable::INTERN("duplicate");
-        static InternedKey kWrap = PSNameTable::INTERN("wrap");
-        static InternedKey kNone = PSNameTable::INTERN("none");
+        static InternedKey kDuplicate = WSNameSet::INTERN("duplicate");
+        static InternedKey kWrap = WSNameSet::INTERN("wrap");
+        static InternedKey kNone = WSNameSet::INTERN("none");
 
         if (k == kDuplicate) return FILTER_EDGE_DUPLICATE;
         if (k == kWrap)      return FILTER_EDGE_WRAP;
@@ -601,10 +601,10 @@ namespace waavs
     {
         if (!k) return FILTER_CHANNEL_A;
 
-        static InternedKey kR = PSNameTable::INTERN("R");
-        static InternedKey kG = PSNameTable::INTERN("G");
-        static InternedKey kB = PSNameTable::INTERN("B");
-        static InternedKey kA = PSNameTable::INTERN("A");
+        static InternedKey kR = WSNameSet::INTERN("R");
+        static InternedKey kG = WSNameSet::INTERN("G");
+        static InternedKey kB = WSNameSet::INTERN("B");
+        static InternedKey kA = WSNameSet::INTERN("A");
 
         if (k == kR) return FILTER_CHANNEL_R;
         if (k == kG) return FILTER_CHANNEL_G;
@@ -618,8 +618,8 @@ namespace waavs
     {
         if (!k) return FILTER_TURBULENCE_TURBULENCE;
 
-        static InternedKey kTurbulence = PSNameTable::INTERN("turbulence");
-        static InternedKey kFractalNoise = PSNameTable::INTERN("fractalNoise");
+        static InternedKey kTurbulence = WSNameSet::INTERN("turbulence");
+        static InternedKey kFractalNoise = WSNameSet::INTERN("fractalNoise");
 
         if (k == kTurbulence)   return FILTER_TURBULENCE_TURBULENCE;
         if (k == kFractalNoise) return FILTER_TURBULENCE_FRACTAL_NOISE;

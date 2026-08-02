@@ -373,7 +373,7 @@ namespace waavs
             if (fAttributes.getValue(svgattr::display(), displayAttr))
             {
                 bspan_trim_spaces(displayAttr);
-                InternedKey dv = PSNameTable::INTERN(displayAttr);
+                InternedKey dv = WSNameSet::INTERN(displayAttr);
 
                 if (dv == svgval::none())
                     return;

@@ -396,7 +396,7 @@ namespace waavs {
 
             while (xmlattribute_read_next(src, k, v))
             {
-                InternedKey key = PSNameTable::INTERN(k);
+                InternedKey key = WSNameSet::INTERN(k);
 
                 // avoid repeated INTERN calls for constants by caching once
                 static InternedKey kx = svgattr::x();
@@ -614,7 +614,7 @@ namespace waavs {
                 ByteSpan ta = getAttributeByName(svgattr::text_align());
                 bspan_trim(ta, chrWspChars);
                 if (ta) {
-                    InternedKey tak = PSNameTable::INTERN(ta);
+                    InternedKey tak = WSNameSet::INTERN(ta);
 
                     if (tak == svgval::center()) 
                         align = ALIGN_MIDDLE;

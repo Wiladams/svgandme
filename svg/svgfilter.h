@@ -104,7 +104,7 @@ namespace waavs
             (void)groot;
             ByteSpan modeAttr{};
             if (getAttribute(filter::mode(), modeAttr)) 
-                fMode = parseFilterBlendMode(PSNameTable::INTERN(modeAttr));
+                fMode = parseFilterBlendMode(WSNameSet::INTERN(modeAttr));
             else
                 fMode = FilterBlendMode::FILTER_BLEND_NORMAL;
         }
@@ -176,7 +176,7 @@ namespace waavs
 
             ByteSpan typeAttr{};
             if (getAttribute(filter::type_(), typeAttr))
-                fFunc.fType = parseFilterTransferFuncType(PSNameTable::INTERN(typeAttr));
+                fFunc.fType = parseFilterTransferFuncType(WSNameSet::INTERN(typeAttr));
             else
                 fFunc.fType = FILTER_TRANSFER_IDENTITY;
 
@@ -377,7 +377,7 @@ namespace waavs
 
             ByteSpan opAttr{};
             if (getAttribute(filter::operator_(), opAttr))
-                fCompOp = parseFilterCompositeOp(PSNameTable::INTERN(opAttr));
+                fCompOp = parseFilterCompositeOp(WSNameSet::INTERN(opAttr));
             else
                 fCompOp = FILTER_COMPOSITE_OVER;
 
@@ -461,7 +461,7 @@ namespace waavs
 
             ByteSpan typeAttr{};
             if (getAttribute(filter::type_(), typeAttr))
-                fType = parseFilterColorMatrixType(PSNameTable::INTERN(typeAttr));
+                fType = parseFilterColorMatrixType(WSNameSet::INTERN(typeAttr));
             else
                 fType = FILTER_COLOR_MATRIX_MATRIX;
 
@@ -620,7 +620,7 @@ namespace waavs
 
             ByteSpan edgeAttr{};
             if (getAttribute(filter::edgeMode(), edgeAttr))
-                fEdgeMode = parseFilterEdgeMode(PSNameTable::INTERN(edgeAttr));
+                fEdgeMode = parseFilterEdgeMode(WSNameSet::INTERN(edgeAttr));
             else
                 fEdgeMode = FILTER_EDGE_DUPLICATE;
 
@@ -819,12 +819,12 @@ namespace waavs
             ByteSpan ySelAttr{};
 
             if (getAttribute(filter::xChannelSelector(), xSelAttr))
-                fXChannel = parseFilterChannelSelector(PSNameTable::INTERN(xSelAttr));
+                fXChannel = parseFilterChannelSelector(WSNameSet::INTERN(xSelAttr));
             else
                 fXChannel = FILTER_CHANNEL_A;
 
             if (getAttribute(filter::yChannelSelector(), ySelAttr))
-                fYChannel = parseFilterChannelSelector(PSNameTable::INTERN(ySelAttr));
+                fYChannel = parseFilterChannelSelector(WSNameSet::INTERN(ySelAttr));
             else
                 fYChannel = FILTER_CHANNEL_A;
         }
@@ -1132,7 +1132,7 @@ namespace waavs
                 hrefAttr = getAttribute(filter::xlink_href());
 
             if (hrefAttr)
-                fImageKey = PSNameTable::INTERN(hrefAttr);
+                fImageKey = WSNameSet::INTERN(hrefAttr);
             else
                 fImageKey = nullptr;
 
@@ -1255,9 +1255,9 @@ namespace waavs
                 // If "in" is not specified, SVG spec says the default is the result of the previous filter primitive.
                 if (!mn->getAttribute(filter::in(), inAttr))
                 {
-                    k = PSNameTable::INTERN("__last__");
+                    k = WSNameSet::INTERN("__last__");
                 }else
-                    k = PSNameTable::INTERN(inAttr);
+                    k = WSNameSet::INTERN(inAttr);
 
 
                 fInputs.push_back(k);
@@ -1318,7 +1318,7 @@ namespace waavs
 
             ByteSpan opAttr{};
             if (getAttribute(filter::operator_(), opAttr))
-                fMorphOp = parseFilterMorphologyOp(PSNameTable::INTERN(opAttr));
+                fMorphOp = parseFilterMorphologyOp(WSNameSet::INTERN(opAttr));
             else
                 fMorphOp = FILTER_MORPHOLOGY_ERODE;
 
@@ -1647,7 +1647,7 @@ namespace waavs
 
             ByteSpan typeAttr{};
             if (getAttribute(filter::type_(), typeAttr))
-                fType = parseFilterTurbulenceType(PSNameTable::INTERN(typeAttr));
+                fType = parseFilterTurbulenceType(WSNameSet::INTERN(typeAttr));
             else
                 fType = FILTER_TURBULENCE_TURBULENCE;
 
@@ -1834,7 +1834,7 @@ namespace waavs {
             ByteSpan interpAttr{};
             if (getAttribute(filter::color_interpolation_filters(), interpAttr))
             {
-                InternedKey interpKey = PSNameTable::INTERN(interpAttr);
+                InternedKey interpKey = WSNameSet::INTERN(interpAttr);
                 fColorInterpolation = parseFilterColorInterpolation(interpKey, FilterColorInterpolation::FILTER_COLOR_INTERPOLATION_LINEAR_RGB);
             }
             

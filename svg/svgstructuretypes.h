@@ -248,7 +248,7 @@ namespace waavs
     
     static bool registerSVGAttributeByName(const char* name, SVGAttributeToPropertyConverter func)
     {
-        InternedKey k = PSNameTable::INTERN(name);
+        InternedKey k = WSNameSet::INTERN(name);
         return registerSVGAttribute(k, std::move(func));
     }
 
@@ -283,7 +283,7 @@ namespace waavs
 
     struct IAmGroot
     {
-        PSNameTable fIdNameTable{};
+        WSNameSet fIdNameTable{};
         WSOpenHashTable<InternedKey, std::shared_ptr<IViewable>> fDefinitions{};
 
         //std::unordered_map<ByteSpan, std::shared_ptr<IViewable>, ByteSpanHash, ByteSpanEquivalent> fDefinitions{};
@@ -483,7 +483,7 @@ namespace waavs
 
     static void registerSVGSingularNodeByName(const char* name, SVGSingularCreator func)
     {
-        InternedKey k = PSNameTable::INTERN(name);
+        InternedKey k = WSNameSet::INTERN(name);
         registerSVGSingularNode(k, std::move(func));
     }
 
@@ -495,7 +495,7 @@ namespace waavs
 
     static void registerContainerNodeByName(const char* name, std::function<std::shared_ptr<ISVGElement>(IAmGroot*, XmlPull&)> creator)
     {
-        InternedKey key = PSNameTable::INTERN(name);
+        InternedKey key = WSNameSet::INTERN(name);
         registerContainerNode(key, std::move(creator));
     }
 

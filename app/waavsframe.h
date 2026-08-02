@@ -78,7 +78,7 @@ namespace waavs
 //   * Windows drive paths (e.g., "C:\file.mp4") are NOT treated as schemes.
 //
 //   * All scheme and extension comparisons use InternedKey
-//     (PSNameTable::INTERN) for fast dispatch.
+//     (WSNameSet::INTERN) for fast dispatch.
 //
 //   * The <frames> element is intentionally separate from <image>,
 //     and supports animated images, video files, streams, and screen capture.
@@ -198,7 +198,7 @@ namespace waavs
             buf[i] = (char)to_lower(ext[i]);
         buf[ext.size()] = 0;
 
-        return PSNameTable::INTERN(ByteSpan(buf));
+        return WSNameSet::INTERN(ByteSpan(buf));
     }
 
     static INLINE FramesSourceKind kindFromExtension(const ByteSpan& src) noexcept
@@ -212,22 +212,22 @@ namespace waavs
             return FramesSourceKind::Blend2DImage;
 
         // Interned extension keys (lowercase)
-        static const InternedKey kPng = PSNameTable::INTERN("png");
-        static const InternedKey kApng = PSNameTable::INTERN("apng");
-        static const InternedKey kGif = PSNameTable::INTERN("gif");
-        static const InternedKey kJpg = PSNameTable::INTERN("jpg");
-        static const InternedKey kJpeg = PSNameTable::INTERN("jpeg");
-        static const InternedKey kBmp = PSNameTable::INTERN("bmp");
-        static const InternedKey kWebp = PSNameTable::INTERN("webp");
-        static const InternedKey kQoi = PSNameTable::INTERN("qoi");
+        static const InternedKey kPng = WSNameSet::INTERN("png");
+        static const InternedKey kApng = WSNameSet::INTERN("apng");
+        static const InternedKey kGif = WSNameSet::INTERN("gif");
+        static const InternedKey kJpg = WSNameSet::INTERN("jpg");
+        static const InternedKey kJpeg = WSNameSet::INTERN("jpeg");
+        static const InternedKey kBmp = WSNameSet::INTERN("bmp");
+        static const InternedKey kWebp = WSNameSet::INTERN("webp");
+        static const InternedKey kQoi = WSNameSet::INTERN("qoi");
 
-        static const InternedKey kMp4 = PSNameTable::INTERN("mp4");
-        static const InternedKey kMkv = PSNameTable::INTERN("mkv");
-        static const InternedKey kMov = PSNameTable::INTERN("mov");
-        static const InternedKey kAvi = PSNameTable::INTERN("avi");
-        static const InternedKey kWebm = PSNameTable::INTERN("webm");
-        static const InternedKey kTs = PSNameTable::INTERN("ts");
-        static const InternedKey kM3u8 = PSNameTable::INTERN("m3u8");
+        static const InternedKey kMp4 = WSNameSet::INTERN("mp4");
+        static const InternedKey kMkv = WSNameSet::INTERN("mkv");
+        static const InternedKey kMov = WSNameSet::INTERN("mov");
+        static const InternedKey kAvi = WSNameSet::INTERN("avi");
+        static const InternedKey kWebm = WSNameSet::INTERN("webm");
+        static const InternedKey kTs = WSNameSet::INTERN("ts");
+        static const InternedKey kM3u8 = WSNameSet::INTERN("m3u8");
 
         // Blend2D image formats (static or animated)
         if (ek == kPng || ek == kApng || ek == kGif || ek == kJpg || ek == kJpeg || ek == kBmp || ek == kWebp || ek == kQoi)
@@ -257,21 +257,21 @@ namespace waavs
 
         if (parseFrameSourceScheme(src, scheme, rest))
         {
-            const InternedKey sk = PSNameTable::INTERN(scheme);
+            const InternedKey sk = WSNameSet::INTERN(scheme);
 
             // Interned scheme keys
-            static const InternedKey kMonitor = PSNameTable::INTERN("monitor");
-            static const InternedKey kScreen = PSNameTable::INTERN("screen");
-            static const InternedKey kFfmpeg = PSNameTable::INTERN("ffmpeg");
-            static const InternedKey kFile = PSNameTable::INTERN("file");
+            static const InternedKey kMonitor = WSNameSet::INTERN("monitor");
+            static const InternedKey kScreen = WSNameSet::INTERN("screen");
+            static const InternedKey kFfmpeg = WSNameSet::INTERN("ffmpeg");
+            static const InternedKey kFile = WSNameSet::INTERN("file");
 
             // Common URL schemes -> FFmpeg
-            static const InternedKey kRtsp = PSNameTable::INTERN("rtsp");
-            static const InternedKey kHttp = PSNameTable::INTERN("http");
-            static const InternedKey kHttps = PSNameTable::INTERN("https");
-            static const InternedKey kUdp = PSNameTable::INTERN("udp");
-            static const InternedKey kTcp = PSNameTable::INTERN("tcp");
-            static const InternedKey kSrt = PSNameTable::INTERN("srt");
+            static const InternedKey kRtsp = WSNameSet::INTERN("rtsp");
+            static const InternedKey kHttp = WSNameSet::INTERN("http");
+            static const InternedKey kHttps = WSNameSet::INTERN("https");
+            static const InternedKey kUdp = WSNameSet::INTERN("udp");
+            static const InternedKey kTcp = WSNameSet::INTERN("tcp");
+            static const InternedKey kSrt = WSNameSet::INTERN("srt");
 
             if (sk == kMonitor)
                 return FramesSourceKind::MONITOR;

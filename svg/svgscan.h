@@ -35,9 +35,9 @@ namespace waavs
             return false;
         
         if (ignoreCase)
-            out.nameKey = PSNameTable::INTERN_CI(out.name);
+            out.nameKey = WSNameSet::INTERN_CI(out.name);
         else
-            out.nameKey = PSNameTable::INTERN(out.name);
+            out.nameKey = WSNameSet::INTERN(out.name);
 
         bspan_skip_spaces(src);
 

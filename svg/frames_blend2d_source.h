@@ -70,7 +70,7 @@ namespace waavs
 
             // The 'src' field is the path to the image file.  
             // We will use Blend2D to decode it.
-            fSourceKey = PSNameTable::INTERN(desc.src);
+            fSourceKey = WSNameSet::INTERN(desc.src);
 
             fMappedFile = MappedFile::create_shared(fSourceKey);
 
