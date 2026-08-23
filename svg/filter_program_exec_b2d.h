@@ -68,13 +68,13 @@ namespace waavs
         using ResourceHandle = std::unique_ptr<SurfaceT>;
 
         IAmGroot* fGroot{ nullptr };
-        IRenderSVG* fRender{ nullptr };
+        IDrawGraphics* fRender{ nullptr };
         IAmFroot<SurfaceT>* fFroot{ nullptr };
 
 
         B2DFilterResourceResolver(
             IAmGroot* groot,
-            IRenderSVG* render,
+            IDrawGraphics* render,
             IAmFroot<SurfaceT>* froot) noexcept
             : fGroot(groot)
             , fRender(render)
@@ -544,7 +544,7 @@ namespace waavs {
         // So, it's essentially 'free' to call.
         //
         bool getBackgroundLocal(
-            IRenderSVG* ctx,
+            IDrawGraphics* ctx,
             const WGRectI& filterRectPX,
             Surface& out) noexcept
         {
@@ -596,12 +596,12 @@ namespace waavs {
         //
         // SubtreeT requirements:
         //   WGRectD objectBoundingBox() const noexcept;
-        //   void draw(IRenderSVG*, IAmGroot*);
+        //   void draw(IDrawGraphics*, IAmGroot*);
         // --------------------------------------------------------
         
         template<class SubtreeT>
         WGResult applyFilterToSurface(
-            IRenderSVG* ctx,
+            IDrawGraphics* ctx,
             IAmGroot* groot,
             SubtreeT* subtree,
             const WGRectD& objectBBoxUS,

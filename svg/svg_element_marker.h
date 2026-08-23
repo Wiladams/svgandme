@@ -486,8 +486,8 @@ namespace waavs {
 
 
         // Resolve (with a tiny cache) using the current context.
-        //INLINE bool ensureResolved(IRenderSVG* ctx, IAmGroot* groot) noexcept
-        void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        //INLINE bool ensureResolved(IDrawGraphics* ctx, IAmGroot* groot) noexcept
+        void bindSelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             if (!ctx) return;
 
@@ -524,7 +524,7 @@ namespace waavs {
         }
 
 
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void drawSelf(IDrawGraphics* ctx, IAmGroot* groot) override
         {
 
 
@@ -542,7 +542,7 @@ namespace waavs {
             //ctx->setViewport(fRes.viewport);
         }
 
-        void drawRenderSubtree(IRenderSVG* ctx, IAmGroot* groot) override
+        void drawRenderSubtree(IDrawGraphics* ctx, IAmGroot* groot) 
         {
             // Keep your current marker child paint defaults
             ctx->push();
@@ -553,7 +553,7 @@ namespace waavs {
             ctx->strokeWidth(1.0);
             ctx->lineJoin(BLStrokeJoin::BL_STROKE_JOIN_MITER_BEVEL);
 
-            SVGGraphicsElement::drawRenderSubtree(ctx, groot);
+            //SVGGraphicsElement::drawRenderSubtree(ctx, groot);
 
             ctx->pop();
         }
@@ -586,7 +586,7 @@ namespace waavs
     }
 
 
-    INLINE std::shared_ptr<SVGMarkerElement> resolveMarkerNode(ISVGElement* self, IRenderSVG* ctx, IAmGroot* groot, InternedKey key)
+    INLINE std::shared_ptr<SVGMarkerElement> resolveMarkerNode(ISVGElement* self, IDrawGraphics* ctx, IAmGroot* groot, InternedKey key)
     {
         auto prop = self->getVisualProperty(key);
         if (!prop) return nullptr;
@@ -608,7 +608,7 @@ namespace waavs
 
     struct MarkerProgramExec
     {
-        IRenderSVG* ctx{};
+        IDrawGraphics* ctx{};
         IAmGroot* groot{};
         ISVGElement* owner{};
         ResolvedMarkers rm{};
@@ -628,7 +628,7 @@ namespace waavs
         bool haveLastSeg{ false };
         BLPoint lastEndTan{};
 
-        explicit MarkerProgramExec(IRenderSVG* c, IAmGroot* g, ISVGElement* o)
+        explicit MarkerProgramExec(IDrawGraphics* c, IAmGroot* g, ISVGElement* o)
             : ctx(c), groot(g), owner(o)
         {
         }
@@ -849,7 +849,7 @@ namespace waavs
     // Most useful utility:
     // Called by an element (owner) to draw markers along a given path program
     //
-    INLINE bool drawMarkersForPathProgram(ISVGElement* owner, IRenderSVG* ctx, IAmGroot* groot, const PathProgram& prog) noexcept
+    INLINE bool drawMarkersForPathProgram(ISVGElement* owner, IDrawGraphics* ctx, IAmGroot* groot, const PathProgram& prog) noexcept
     {
         if (!owner || !ctx || !groot) return false;
 

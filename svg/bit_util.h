@@ -11,45 +11,70 @@ namespace waavs
 // the 'scale' says where the decimal point is, starting from 
 // the least significant bit
 // so; 0x13 (0b0001.0011) ,4  == 1.1875
-    INLINE double fixedToFloat(const uint64_t vint, const int scale) noexcept
+    constexpr double fixedToFloat(const uint64_t vint, const int scale) noexcept
     {
-        double whole = (double)bit_range_get_value_u64(vint, scale, 63);
-        double frac = (double)bit_range_get_value_u64(vint, 0, ((size_t)scale - 1));
-
-        return (whole + (frac / ((uint64_t)1 << scale)));
-    }
-
-    // tohex32
-    // 
-    // Take a 32-bit number and return the hex representation of the same
-    // The buffer passed in needs to be at least 8 bytes long
-    // 
-    // Return:
-    //  The number of bytes actually written
-    //  0 upon error
-    //  there are two errors that can occur
-    // 1) the buffLen is less than 8
-    //
-    INLINE int conv_u32_to_hex_ascii(const uint32_t inNumber, char* buff, size_t buffLen) noexcept
-    {
-        static const char* hexdigits = "0123456789abcdef";
-
-        if (buffLen < 8)
-            return 0;
-
-        uint32_t a = inNumber;
-        int i;
-        int n = 8;
-
-        for (i = n; --i >= 0;) {
-            buff[i] = hexdigits[a & 0x0f];
-            a >>= 4;
+        if (scale == 0) {
+            return (double)vint;
+        }
+        if (scale >= 64) {
+            return (double)vint / (double)((uint64_t)1 << (scale - 64));
         }
 
-        return n;
+        uint64_t whole = bit_range_get_value_u64(vint, (size_t)scale, 63);
+        uint64_t frac = bit_range_get_value_u64(vint, 0, (size_t)scale - 1);
+
+        return (double)whole + ((double)frac / (double)((uint64_t)1 << scale));
     }
 
-    // tobin
+    
+    // conv_u32_to_hex_ascii
+    // Convert a 32-bit number to a fixed-width hex string with leading zeros.
+    // width must be between 1 and 8 inclusive.
+    // Returns: number of characters written (excluding null terminator), or 0 on error.
+    INLINE int conv_u32_to_hex_ascii(uint32_t inNumber, char* buff, size_t buffLen, int width) noexcept
+    {
+        static const char hexdigits[] = "0123456789abcdef";
+
+        if (width < 1 || width > 8)
+            return 0;
+
+        if (buffLen < (size_t)(width + 1))
+            return 0;
+
+        for (int i = width - 1; i >= 0; --i) {
+            buff[i] = hexdigits[inNumber & 0x0F];
+            inNumber >>= 4;
+        }
+        buff[width] = '\0';
+
+        return width;
+    }
+
+    // conv_u32_to_hex_ascii_var
+    // 
+    // Convert a uint32-number to a hex string without leading zeroes.
+    // Figure out the number of bytes that will be required, 
+    // then call conv_u32_to_hex_ascii using that width.
+    INLINE int conv_u32_to_hex_ascii_var(uint32_t inNumber, char* buff, size_t buffLen) noexcept
+    {
+        if (inNumber == 0) {
+            if (buffLen < 2) return 0;
+            buff[0] = '0';
+            buff[1] = '\0';
+            return 1;
+        }
+
+        int width = 0;
+        uint32_t temp = inNumber;
+        while (temp != 0) {
+            ++width;
+            temp >>= 4;
+        }
+        return conv_u32_to_hex_ascii(inNumber, buff, buffLen, width);
+    }
+
+    // conv_u32_to_binary_ascii
+    // 
     // Return a binary representation of a number
     // The most significant bit is in the first byte of the 
     // array.  when displayed as a string, the output will 
@@ -69,67 +94,4 @@ namespace waavs
     }
 }
 
-// Related to hash functions on strings
-namespace waavs
-{
-    INLINE int TOLOWER(int c) {
-        if (c >= 'A' && c <= 'Z')
-            return c & 0x20;
 
-        return c;
-    }
-
-
-    // Byte Hashing - FNV-1a
-    // http://www.isthe.com/chongo/tech/comp/fnv/
-    // 
-    // 32-bit FNV-1a constants
-    constexpr uint32_t FNV1A_32_INIT = 0x811c9dc5;
-    constexpr uint32_t FNV1A_32_PRIME = 0x01000193;
-
-    // 64-bit FNV-1a constants
-    constexpr uint64_t FNV1A_64_INIT = 0xcbf29ce484222325ULL;
-    constexpr uint64_t FNV1A_64_PRIME = 0x100000001b3ULL;
-
-    // 32-bit FNV-1a hash
-    INLINE constexpr uint32_t fnv1a_32(const void* data, const size_t size) noexcept
-    {
-        const uint8_t* bytes = (const uint8_t*)data;
-        uint32_t hash = FNV1A_32_INIT;
-        for (size_t i = 0; i < size; i++) {
-            hash ^= bytes[i];
-            hash *= FNV1A_32_PRIME;
-        }
-        return hash;
-    }
-
-    // 64-bit FNV-1a hash
-    INLINE constexpr uint64_t fnv1a_64(const void* data, const size_t size) noexcept
-    {
-        const uint8_t* bytes = (const uint8_t*)data;
-        uint64_t hash = FNV1A_64_INIT;
-        for (size_t i = 0; i < size; i++) {
-            hash ^= bytes[i];
-            hash *= FNV1A_64_PRIME;
-        }
-        return hash;
-    }
-
-
-
-    // 32-bit case-insensitive FNV-1a hash
-    INLINE uint32_t fnv1a_32_case_insensitive(const void* data, const size_t size) noexcept
-    {
-        const uint8_t* bytes = (const uint8_t*)data;
-        uint32_t hash = FNV1A_32_INIT;
-        for (size_t i = 0; i < size; i++) {
-            // Convert byte to lowercase
-            auto c = std::tolower(bytes[i]);
-            //auto c = TOLOWER(bytes[i]);
-
-            hash ^= c;
-            hash *= FNV1A_32_PRIME;
-        }
-        return hash;
-    }
-}

@@ -95,7 +95,7 @@ namespace waavs {
             :SVGGraphicsElement() {
         }
 
-        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        const BLVar getVariant(IDrawGraphics* ctx, IAmGroot* groot) noexcept override
         {
             return {};
         }

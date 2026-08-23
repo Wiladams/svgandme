@@ -12,7 +12,7 @@ namespace waavs
 // byte.
     constexpr void getbitbyteoffset(size_t bitnumber, size_t& byteoffset, size_t& bitoffset) noexcept
     {
-        byteoffset = (int)(bitnumber / 8);
+        byteoffset = (bitnumber / 8);
         bitoffset = bitnumber % 8;
     }
 
@@ -20,7 +20,7 @@ namespace waavs
     constexpr uint64_t bitsValueFromBytes(const uint8_t* bytes, const size_t startbit, const size_t bitcount, bool bigendian = false) noexcept
     {
         // Sanity check
-        if (nullptr == bytes)
+        if (nullptr == bytes || (bitcount == 0))
             return 0;
 
         uint64_t value = 0;

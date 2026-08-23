@@ -13,9 +13,9 @@ namespace waavs {
     // SVGStateManager
     // Manages the drawing state for those who are walking
     // A SVG DOM
-    // Does what a IRenderSVG does, but doesn't actually  
+    // Does what a IDrawGraphics does, but doesn't actually  
     // do any drawing.
-    // Once this object exists, the IRenderSVG should use
+    // Once this object exists, the IDrawGraphics should use
     // it to manage its state
     struct SVGStateManager
     {
@@ -82,7 +82,7 @@ namespace waavs {
             ctx->push();
 
             this->fixupStyleAttributes(ctx, groot);
-            convertAttributesToProperties(ctx, groot);
+            convertAttributesToProperties(groot);
 
             this->bindSelfToContext(ctx, groot);
            // this->bindChildrenToContext(ctx, groot);

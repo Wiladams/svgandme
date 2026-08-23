@@ -33,7 +33,7 @@ namespace waavs
             setIsVisible(false);
         }
 
-        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        const BLVar getVariant(IDrawGraphics* ctx, IAmGroot* groot) noexcept override
         {
             BLVar tmpVar;
             tmpVar = BLRgba32_premultiplied_from_ColorSRGB(fColor.value());
@@ -43,9 +43,7 @@ namespace waavs
 
         void fixupSelfStyleAttributes(IAmGroot* groot) override
         {
-            (void)groot;
-
-            fColor.loadFromAttributes(fAttributes);
+            fColor.loadFromAttributes(fAttributes, groot);
         }
 
     };

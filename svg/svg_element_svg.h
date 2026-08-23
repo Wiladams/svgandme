@@ -103,7 +103,7 @@ namespace waavs {
 
 
         
-        void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void bindSelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             if (!fViewportState.fResolved)
             {
@@ -114,7 +114,7 @@ namespace waavs {
         }
         
         
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void drawSelf(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             // Clipping doesn't quite work out, because it's a non-transformed
             // rectangle on the context, and it's only a rectangle, not a shape

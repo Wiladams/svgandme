@@ -2,7 +2,7 @@
 
 #pragma comment(lib, "blend2d.lib") // Link with Blend2D static library, on Windows
 
-#include "render_interface.h"
+#include "graphics_draw.h"
 
 
 namespace waavs
@@ -10,7 +10,7 @@ namespace waavs
 
     // A specialization of state management, connected to a BLContext
     // This is used when rendering a tree of SVG elements
-    struct SVGB2DDriver : public IRenderSVG
+    struct SVGB2DDriver : public IDrawGraphics
     {
         BLContext fCtx;
         BLImage fTargetImage;  // the image we are currently drawing to.

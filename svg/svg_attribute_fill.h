@@ -10,9 +10,9 @@ namespace waavs
     struct SVGFillOpacity : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute(svgattr::fill_opacity(), [](const XmlAttributeCollection& attrs) {
+            registerSVGAttribute(svgattr::fill_opacity(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {
                 auto node = std::make_shared<SVGFillOpacity>();
-                node->loadFromAttributes(attrs);
+                node->loadFromAttributes(attrs, groot);
                 return node;
                 });
 
@@ -44,7 +44,7 @@ namespace waavs
             return true;
         }
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             ctx->fillOpacity(fValue);
         }
@@ -58,9 +58,9 @@ namespace waavs
     struct SVGFillRuleAttribute : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute(svgattr::fill_rule(), [](const XmlAttributeCollection& attrs) {
+            registerSVGAttribute(svgattr::fill_rule(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {
                 auto node = std::make_shared<SVGFillRuleAttribute>(nullptr);
-                node->loadFromAttributes(attrs);
+                node->loadFromAttributes(attrs, groot);
                 return node;
                 });
         }
@@ -79,7 +79,7 @@ namespace waavs
             return success;
         }
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             ctx->fillRule(fValue);
         }

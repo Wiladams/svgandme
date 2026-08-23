@@ -703,7 +703,7 @@ namespace waavs
                 parseFloatPairAttr(kulAttr, fKernelUnitLengthX, fKernelUnitLengthY);
 
             // get the lighting color
-            if (!fLightingColor.loadFromAttributes(fAttributes))
+            if (!fLightingColor.loadFromAttributes(fAttributes, groot))
             {
                 fLightingColor.setValue(1.0f, 1.0f, 1.0f, 1.0f);
             }
@@ -936,7 +936,7 @@ namespace waavs
 
             // flood-color + flood-opacity
             // Same approach as feFlood.
-            if (!fFloodColor.loadFromAttributes(fAttributes) || !fFloodColor.isColor())
+            if (!fFloodColor.loadFromAttributes(fAttributes, groot) || !fFloodColor.isColor())
             {
                 // default to black on failure
                 fFloodColor.setValue(0.0f, 0.0f, 0.0f, 1.0f);
@@ -999,7 +999,7 @@ namespace waavs
 
         void fixupFilterSpecificAttributes(IAmGroot* groot) noexcept override
         {
-            if (fFloodColor.loadFromAttributes(fAttributes))
+            if (fFloodColor.loadFromAttributes(fAttributes, groot))
             {
                 // nothing to do, we were successful in loading the color
             }
@@ -1470,7 +1470,7 @@ namespace waavs
             if (getAttribute(filter::kernelUnitLength(), kulAttr))
                 parseFloatPairAttr(kulAttr, fKernelUnitLengthX, fKernelUnitLengthY);
 
-            if (!fLightingColor.loadFromAttributes(fAttributes))
+            if (!fLightingColor.loadFromAttributes(fAttributes, groot))
             {
                 fLightingColor.setValue(1.0f, 1.0f, 1.0f, 1.0f);
             }
@@ -1727,7 +1727,7 @@ namespace waavs {
 
 
         // Retrieve a filter program stream for this element
-        std::shared_ptr<FilterProgramStream> getFilterProgramStream(IAmGroot* groot) noexcept override
+        std::shared_ptr<FilterProgramStream> getFilterProgramStream(IAmGroot* groot) noexcept
         {
             if (!fProgCompiled)
             {
@@ -1739,7 +1739,7 @@ namespace waavs {
             return std::make_shared<FilterProgramStream>(fProgram);
         }
 
-        const WGRectD resolveFilterRegion(IRenderSVG* ctx, IAmGroot* groot, const WGRectD &bbox) noexcept override
+        const WGRectD resolveFilterRegion(IDrawGraphics* ctx, IAmGroot* groot, const WGRectD &bbox) noexcept override
         {
             if (!ctx)
                 return {};
@@ -1965,7 +1965,7 @@ namespace waavs {
             fProgram.ops.push_back(packOp(FOP_END));
         }
 
-        void bindSelfToContext(IRenderSVG*, IAmGroot*) override
+        void bindSelfToContext(IDrawGraphics*, IAmGroot*) override
         { 
             // this is where we build the program and do anything
             // else needed for actual use

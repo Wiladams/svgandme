@@ -1,6 +1,7 @@
 #pragma once
 
 #include "lang_span.h"
+#include "core_hash.h"
 
 // Implementation of hash function for ByteSpan
 // so it can be used in 'map' collections

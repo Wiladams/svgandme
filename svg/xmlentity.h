@@ -37,7 +37,7 @@ namespace waavs
             if (*s == '&')
             {
                 // skip past the initial ampersand, ready to decode the rest
-                s++;
+                ++s;
                 if (!s)
                     break;
 
@@ -53,11 +53,11 @@ namespace waavs
                     uint64_t value = 0;
                     
                     // should be a numeric entity
-                    ent++;
+                    ++ent;
                     
                     if (*ent == 'x') {
                         // hex entity
-                        ent++;
+                        ++ent;
 
                         if (parseHex64u(ent, value)) 
                         {
@@ -115,8 +115,8 @@ namespace waavs
             else
             {
                 outCursor[0] = *s;
-                outCursor++;
-                s++;
+                ++outCursor;
+                ++s;
             }
 
 

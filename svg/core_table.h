@@ -5,99 +5,22 @@
 #include <new>
 
 #include "definitions.h"
+#include "core_nametable.h"
+#include "core_hash.h"
 
 
 namespace waavs
 {
-    // report the next highest power of 2 for a given number.
-    static inline size_t ws_table_next_pow2(size_t n) noexcept
+
+
+    template <typename ValueT>
+    struct WSNameMap
     {
-        if (n < 2) return 2;
-
-        n--;
-        n |= n >> 1;
-        n |= n >> 2;
-        n |= n >> 4;
-        n |= n >> 8;
-        n |= n >> 16;
-
-#if SIZE_MAX > 0xffffffffu
-        n |= n >> 32;
-#endif
-
-        return n + 1;
-    }
-
-    // ws_table_ptr_hash
-    // 
-    // We want to use memory pointers as keys in our open 
-    // hash table.  The problem with pointers is they tend 
-    // to cluster together, so just using them directly will
-    // not result in a good distribution of hash values.  
-    // We run the pointers through this hash function to obtain
-    // better distribution before storing a value in the hash table
-    // Note:
-    // Derived from MurmurHash3 finalizer, 
-    // which is a good hash function for 64-bit integers.
-    // BUGBUG: could create explicity 32-bit and 64-bit versions
-    // fmix64
-    // fmix32
-    //
-    static inline size_t ws_table_ptr_hash(const void* p) noexcept
-    {
-        uintptr_t x = reinterpret_cast<uintptr_t>(p);
-
-#if INTPTR_MAX > 0xffffffff
-        x ^= x >> 33;
-        x *= uintptr_t(0xff51afd7ed558ccdULL);
-        x ^= x >> 33;
-        x *= uintptr_t(0xc4ceb9fe1a85ec53ULL);
-        x ^= x >> 33;
-#else
-        x ^= x >> 16;
-        x *= uintptr_t(0x7feb352dU);
-        x ^= x >> 15;
-        x *= uintptr_t(0x846ca68bU);
-        x ^= x >> 16;
-#endif
-
-        return size_t(x);
-    }
-
-    template <typename KeyT>
-    struct WSPointerHash
-    {
-        size_t operator()(KeyT key) const noexcept
-        {
-            return ws_table_ptr_hash(reinterpret_cast<const void*>(key));
-        }
-    };
-
-    template <typename KeyT>
-    struct WSPointerEqual
-    {
-        bool operator()(KeyT a, KeyT b) const noexcept
-        {
-            return a == b;
-        }
-    };
-
-    template <
-        typename KeyT,
-        typename ValueT,
-        typename HashT = WSPointerHash<KeyT>,
-        typename EqualT = WSPointerEqual<KeyT>>
-        struct WSOpenHashTable
-    {
-        static_assert(std::is_pointer_v<KeyT>, "WSOpenHashTable expects pointer keys.");
-
-        ASSERT_MEMCPY_SAFE(KeyT);
-        //ASSERT_MEMCPY_SAFE(ValueT);
-
+        using Key = InternedKey;
 
         struct Entry
         {
-            KeyT key{};
+            Key key{};
             ValueT value{};
             size_t hash{};
         };
@@ -107,30 +30,27 @@ namespace waavs
         size_t fCapacity{ 0 };
         size_t fSize{ 0 };
 
-        HashT fHash{};
-        EqualT fEqual{};
-
         static constexpr size_t kInitialCapacity = 8;
 
-        WSOpenHashTable() noexcept
+        WSNameMap() noexcept
         {
             init(kInitialCapacity);
         }
 
-        explicit WSOpenHashTable(size_t cap) noexcept
+        explicit WSNameMap(size_t cap) noexcept
         {
             init(cap);
         }
 
-        WSOpenHashTable(const WSOpenHashTable&) = delete;
-        WSOpenHashTable& operator=(const WSOpenHashTable&) = delete;
+        WSNameMap(const WSNameMap&) = delete;
+        WSNameMap& operator=(const WSNameMap&) = delete;
 
-        WSOpenHashTable(WSOpenHashTable&& other) noexcept
+        WSNameMap(WSNameMap&& other) noexcept
         {
             moveFrom(other);
         }
 
-        WSOpenHashTable& operator=(WSOpenHashTable&& other) noexcept
+        WSNameMap& operator=(WSNameMap&& other) noexcept
         {
             if (this != &other)
             {
@@ -141,7 +61,7 @@ namespace waavs
             return *this;
         }
 
-        ~WSOpenHashTable() noexcept
+        ~WSNameMap() noexcept
         {
             destroy();
         }
@@ -159,7 +79,6 @@ namespace waavs
             if (fCapacity < 2)
                 fCapacity = 2;
 
-            //fEntries = static_cast<Entry*>(std::calloc(fCapacity, sizeof(Entry)));
             fEntries = new (std::nothrow) Entry[fCapacity];
             if (!fEntries)
             {
@@ -191,7 +110,7 @@ namespace waavs
 
             for (size_t i = 0; i < fCapacity; ++i)
             {
-                fEntries[i].key = KeyT{};
+                fEntries[i].key = nullptr;
                 fEntries[i].value = ValueT{};
                 fEntries[i].hash = 0;
             }
@@ -231,17 +150,16 @@ namespace waavs
 
         bool reserve(size_t expectedCount) noexcept
         {
-            if (!fEntries)
-                return init(expectedCount);
+            size_t cap = fCapacity ? fCapacity : size_t{ 2 };
 
-            size_t needed = expectedCount * 4 / 3 + 1;
-            size_t cap = fCapacity;
-
-            while (loadThreshold(cap) < needed)
+            while (loadThreshold(cap) < expectedCount)
                 cap <<= 1;
 
             if (cap == fCapacity)
                 return true;
+
+            if (!fEntries)
+                return init(cap);
 
             return rehash(cap);
         }
@@ -257,6 +175,235 @@ namespace waavs
             return true;
         }
 
+
+
+    public:
+        bool put(Key key, const ValueT& value) noexcept
+        {
+            if (!key)
+                return false;
+
+            if (!maybeGrow())
+                return false;
+
+            size_t h = ws_table_ptr_hash(key);
+            size_t idx = h & (fCapacity - 1);
+
+            for (;;)
+            {
+                Entry& e = fEntries[idx];
+
+                if (!e.key)
+                {
+                    e.key = key;
+                    e.hash = h;
+                    e.value = value;
+                    ++fSize;
+                    return true;
+                }
+
+                if (e.key == key)
+                {
+                    e.value = value;
+                    return true;
+                }
+
+                idx = (idx + 1) & (fCapacity - 1);
+            }
+        }
+
+        bool put(Key key, ValueT&& value) noexcept
+        {
+            if (!key)
+                return false;
+
+            if (!maybeGrow())
+                return false;
+
+            size_t h = ws_table_ptr_hash(key);
+            size_t idx = h & (fCapacity - 1);
+
+            for (;;)
+            {
+                Entry& e = fEntries[idx];
+
+                if (!e.key)
+                {
+                    e.key = key;
+                    e.hash = h;
+                    e.value = std::move(value);
+                    ++fSize;
+                    return true;
+                }
+
+                if (e.key == key)
+                {
+                    e.value = std::move(value);
+                    return true;
+                }
+
+                idx = (idx + 1) & (fCapacity - 1);
+            }
+        }
+
+        bool get(Key key, ValueT& outValue) const noexcept
+        {
+            const Entry* e = findEntry(key);
+            if (!e)
+                return false;
+
+            outValue = e->value;
+            return true;
+        }
+
+        const ValueT* getRef(Key key) const noexcept
+        {
+            const Entry* e = findEntry(key);
+            return e ? &e->value : nullptr;
+        }
+
+        ValueT* getRef(Key key) noexcept
+        {
+            Entry* e = findEntry(key);
+            return e ? &e->value : nullptr;
+        }
+
+        bool contains(Key key) const noexcept
+        {
+            return findEntry(key) != nullptr;
+        }
+
+        bool remove(Key key) noexcept
+        {
+            if (!fEntries || !key || !fCapacity)
+                return false;
+
+            const size_t mask = fCapacity - 1;
+
+            // Find the entry to remove.
+            size_t hole = ws_table_ptr_hash(key) & mask;
+
+            for (;;)
+            {
+                Entry& entry = fEntries[hole];
+
+                if (!entry.key)
+                    return false;
+
+                if (entry.key == key)
+                    break;
+
+                hole = (hole + 1) & mask;
+            }
+
+            // Remove the target entry. This slot is now the hole.
+            fEntries[hole].key = nullptr;
+            fEntries[hole].value = ValueT{};
+            fEntries[hole].hash = 0;
+            --fSize;
+
+            // Scan forward through the remainder of the cluster.
+            size_t scan = (hole + 1) & mask;
+
+            while (fEntries[scan].key)
+            {
+                Entry& candidate = fEntries[scan];
+
+                const size_t ideal =
+                    candidate.hash & mask;
+
+                // Cyclic distances from the candidate's ideal position.
+                const size_t distanceToHole =
+                    (hole - ideal) & mask;
+
+                const size_t distanceToCandidate =
+                    (scan - ideal) & mask;
+
+                // Move the candidate when the hole occurs earlier in that
+                // candidate's probe sequence.
+                if (distanceToHole < distanceToCandidate)
+                {
+                    fEntries[hole].key = candidate.key;
+                    fEntries[hole].hash = candidate.hash;
+                    fEntries[hole].value = std::move(candidate.value);
+
+                    candidate.key = nullptr;
+                    candidate.value = ValueT{};
+                    candidate.hash = 0;
+
+                    // The candidate's old position is now the new hole.
+                    hole = scan;
+                }
+
+                // Advance independently of the hole.
+                scan = (scan + 1) & mask;
+            }
+
+            return true;
+        }
+
+        // ----------------------------------
+        // Operations
+        // 
+        // Instead of exposing the internal array, 
+        // we provide a forEach method that takes a callable function
+        // as the only parameter.  The function 
+        // will be called for each valid entry in the table.
+
+        // forEach
+        // Calls the provided function for each valid entry in the table.
+        template <typename Fn>
+        void forEach(Fn&& fn) const
+        {
+            if (!fEntries)
+                return;
+
+            for (size_t i = 0; i < fCapacity; ++i)
+            {
+                const Entry& e = fEntries[i];
+                if (e.key)
+                    fn(e.key, e.value);
+            }
+        }
+
+        // forEachWhile
+        // 
+        // Calls the provided function for each valid entry in the table.
+        // If the function returns false, the iteration stops and forEachWhile
+        // returns false.
+        template <typename Fn>
+        bool forEachWhile(Fn&& fn) const
+        {
+            if (!fEntries)
+                return true;
+
+            for (size_t i = 0; i < fCapacity; ++i)
+            {
+                const Entry& e = fEntries[i];
+                if (e.key && !fn(e.key, e.value))
+                    return false;
+            }
+
+            return true;
+        }
+
+        template <typename Fn>
+        const Entry* findIf(Fn&& fn) const
+        {
+            if (!fEntries)
+                return nullptr;
+
+            for (size_t i = 0; i < fCapacity; ++i)
+            {
+                const Entry& e = fEntries[i];
+                if (e.key && fn(e.key, e.value))
+                    return &e;
+            }
+
+            return nullptr;
+        }
+
+    private:
         bool rehash(size_t newCapacity) noexcept
         {
             newCapacity = ws_table_next_pow2(newCapacity);
@@ -292,230 +439,12 @@ namespace waavs
             return true;
         }
 
-        bool put(KeyT key, const ValueT& value) noexcept
-        {
-            if (!key)
-                return false;
-
-            if (!maybeGrow())
-                return false;
-
-            size_t h = fHash(key);
-            size_t idx = h & (fCapacity - 1);
-
-            for (;;)
-            {
-                Entry& e = fEntries[idx];
-
-                if (!e.key)
-                {
-                    e.key = key;
-                    e.hash = h;
-                    e.value = value;
-                    ++fSize;
-                    return true;
-                }
-
-                if (fEqual(e.key, key))
-                {
-                    e.value = value;
-                    return true;
-                }
-
-                idx = (idx + 1) & (fCapacity - 1);
-            }
-        }
-
-        bool put(KeyT key, ValueT&& value) noexcept
-        {
-            if (!key)
-                return false;
-
-            if (!maybeGrow())
-                return false;
-
-            size_t h = fHash(key);
-            size_t idx = h & (fCapacity - 1);
-
-            for (;;)
-            {
-                Entry& e = fEntries[idx];
-
-                if (!e.key)
-                {
-                    e.key = key;
-                    e.hash = h;
-                    e.value = std::move(value);
-                    ++fSize;
-                    return true;
-                }
-
-                if (fEqual(e.key, key))
-                {
-                    e.value = std::move(value);
-                    return true;
-                }
-
-                idx = (idx + 1) & (fCapacity - 1);
-            }
-        }
-
-        bool get(KeyT key, ValueT& outValue) const noexcept
-        {
-            const Entry* e = findEntry(key);
-            if (!e)
-                return false;
-
-            outValue = e->value;
-            return true;
-        }
-
-        const ValueT* getRef(KeyT key) const noexcept
-        {
-            const Entry* e = findEntry(key);
-            return e ? &e->value : nullptr;
-        }
-
-        ValueT* getRef(KeyT key) noexcept
-        {
-            Entry* e = findEntry(key);
-            return e ? &e->value : nullptr;
-        }
-
-        bool contains(KeyT key) const noexcept
-        {
-            return findEntry(key) != nullptr;
-        }
-
-        bool remove(KeyT key) noexcept
-        {
-            if (!fEntries || !key || !fCapacity)
-                return false;
-
-            size_t h = fHash(key);
-            size_t idx = h & (fCapacity - 1);
-
-            for (;;)
-            {
-                Entry& e = fEntries[idx];
-
-                if (!e.key)
-                    return false;
-
-                if (fEqual(e.key, key))
-                    break;
-
-                idx = (idx + 1) & (fCapacity - 1);
-            }
-
-            fEntries[idx].key = KeyT{};
-            fEntries[idx].value = ValueT{};
-            fEntries[idx].hash = 0;
-            --fSize;
-
-            size_t hole = idx;
-
-            for (;;)
-            {
-                size_t next = (hole + 1) & (fCapacity - 1);
-                Entry& enext = fEntries[next];
-
-                if (!enext.key)
-                    return true;
-
-                size_t ideal = enext.hash & (fCapacity - 1);
-
-                bool mustMove = (hole <= next)
-                    ? (ideal <= hole || ideal > next)
-                    : (ideal <= hole && ideal > next);
-
-                if (mustMove)
-                {
-                    fEntries[hole].key = enext.key;
-                    fEntries[hole].hash = enext.hash;
-                    fEntries[hole].value = std::move(enext.value);
-
-                    enext.key = KeyT{};
-                    enext.value = ValueT{};
-                    enext.hash = 0;
-
-                    hole = next;
-                }
-                else
-                {
-                    hole = next;
-                }
-            }
-        }
-
-        // ----------------------------------
-        // Operations
-        // 
-        // Instead of exposing the internal array, 
-        // we provide a forEach method that takes a callable function
-        // as the only parameter.  The function 
-        // will be called for each valid entry in the table.
-
-        // forEach
-        // Calls the provided function for each valid entry in the table.
-        template <typename Fn>
-        void forEach(Fn&& fn) const noexcept
-        {
-            if (!fEntries)
-                return;
-
-            for (size_t i = 0; i < fCapacity; ++i)
-            {
-                const Entry& e = fEntries[i];
-                if (e.key)
-                    fn(e.key, e.value);
-            }
-        }
-
-        // forEachWhile
-        // 
-        // Calls the provided function for each valid entry in the table.
-        // If the function returns false, the iteration stops and forEachWhile
-        // returns false.
-        template <typename Fn>
-        bool forEachWhile(Fn&& fn) const noexcept
-        {
-            if (!fEntries)
-                return true;
-
-            for (size_t i = 0; i < fCapacity; ++i)
-            {
-                const Entry& e = fEntries[i];
-                if (e.key && !fn(e.key, e.value))
-                    return false;
-            }
-
-            return true;
-        }
-
-        template <typename Fn>
-        const Entry* findIf(Fn&& fn) const noexcept
-        {
-            if (!fEntries)
-                return nullptr;
-
-            for (size_t i = 0; i < fCapacity; ++i)
-            {
-                const Entry& e = fEntries[i];
-                if (e.key && fn(e.key, e.value))
-                    return &e;
-            }
-
-            return nullptr;
-        }
-
-    private:
-        const Entry* findEntry(KeyT key) const noexcept
+        const Entry* findEntry(Key key) const noexcept
         {
             if (!fEntries || !key || !fCapacity)
                 return nullptr;
 
-            size_t h = fHash(key);
+            size_t h = ws_table_ptr_hash(key);
             size_t idx = h & (fCapacity - 1);
             size_t start = idx;
 
@@ -526,7 +455,7 @@ namespace waavs
                 if (!e.key)
                     return nullptr;
 
-                if (fEqual(e.key, key))
+                if (e.key == key)
                     return &e;
 
                 idx = (idx + 1) & (fCapacity - 1);
@@ -536,23 +465,38 @@ namespace waavs
             }
         }
 
-        Entry* findEntry(KeyT key) noexcept
+        Entry* findEntry(Key key) noexcept
         {
             return const_cast<Entry*>(
-                static_cast<const WSOpenHashTable*>(this)->findEntry(key));
+                static_cast<const WSNameMap*>(this)->findEntry(key));
         }
 
-        void moveFrom(WSOpenHashTable& other) noexcept
+        void moveFrom(WSNameMap& other) noexcept
         {
             fEntries = other.fEntries;
             fCapacity = other.fCapacity;
             fSize = other.fSize;
-            fHash = other.fHash;
-            fEqual = other.fEqual;
 
             other.fEntries = nullptr;
             other.fCapacity = 0;
             other.fSize = 0;
         }
     };
+
+
+    template<typename ValueT>
+    void dumpTableMap(const WSNameMap<ValueT>& map) {
+        std::cout << "Table entries (size=" << map.size() << ", cap=" << map.capacity() << "):" << std::endl;
+        for (size_t i = 0; i < map.capacity(); ++i) {
+            const auto* e = &map.entries()[i];  // entries() returns const Entry*
+            if (e->key) {
+                std::cout << "  [" << i << "] key=" << e->key << " hash=" << e->hash << std::endl;
+            }
+            else {
+                std::cout << "  [" << i << "] NULL" << std::endl;
+            }
+        }
+    }
 }
+
+

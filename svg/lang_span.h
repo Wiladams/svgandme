@@ -10,9 +10,6 @@
 #include <cstdint>
 
 
-
-
-
 namespace waavs 
 {
     //
@@ -39,8 +36,8 @@ namespace waavs
     struct ByteSpan final
     {
     private:
-        const unsigned char* fStart{ nullptr };
-        const unsigned char* fEnd{ nullptr };
+        const uint8_t* fStart{ nullptr };
+        const uint8_t* fEnd{ nullptr };
 
     public:
         static const ByteSpan& null() noexcept 
@@ -53,12 +50,12 @@ namespace waavs
         constexpr ByteSpan() noexcept = default;
 
         // Construct from start and end pointers
-        constexpr ByteSpan(const unsigned char* start, const unsigned char* end) noexcept 
+        constexpr ByteSpan(const uint8_t* start, const uint8_t* end) noexcept 
             : fStart(start)
             , fEnd(end) {}
         
         // Construct from a pointer and size
-        constexpr ByteSpan(const unsigned char * start, size_t sz) noexcept
+        constexpr ByteSpan(const uint8_t * start, size_t sz) noexcept
             : fStart(start)
             , fEnd(start ? start + sz : nullptr)
         {
@@ -82,42 +79,28 @@ namespace waavs
         //~ByteSpan() = default;
 
 
-        constexpr void reset()
-        { fStart = nullptr; fEnd = nullptr; }
+        constexpr void reset() { fStart = nullptr; fEnd = nullptr; }
         
-        constexpr void resetPointers(const unsigned char* start, const unsigned char* end) noexcept
+        constexpr void resetPointers(const uint8_t * start, const uint8_t * end) noexcept
         {
             fStart = start;
             fEnd = end;
         }
-        constexpr void resetStart(const unsigned char* start) noexcept { fStart = start; }
-        constexpr void resetEnd(const unsigned char* end) noexcept {fEnd = end;}
+        constexpr void resetStart(const uint8_t * start) noexcept { fStart = start; }
+        constexpr void resetEnd(const uint8_t* end) noexcept {fEnd = end;}
 
         constexpr void resetFromSize(const void *data, size_t sz) noexcept
         {
-            fStart = static_cast<const unsigned char *>(data);
+            fStart = static_cast<const uint8_t*>(data);
             fEnd = fStart + sz;
         }
         
-        // Static factory methods for convenience
-        static  constexpr ByteSpan fromPointers(const unsigned char* startAt, const unsigned char* endAt) noexcept
-        {
-            ByteSpan bs(startAt, endAt);
-            return bs;
-        }
-        
-        static INLINE ByteSpan fromPointerAndSize(const unsigned char* start, size_t sz)
-        {
-            ByteSpan bs;
-            bs.fStart = start;
-            bs.fEnd = start + sz;
-            return bs;
-        }
+
 
         // setting up for a range-based for loop
         // not actually that useful, as it's just memory traversal
         // but, having data() and size() hides the internals
-        constexpr const unsigned char* data() const noexcept { return fStart; }
+        constexpr const uint8_t* data() const noexcept { return fStart; }
         constexpr size_t size() const noexcept { return (fStart && fEnd >= fStart) ? size_t(fEnd - fStart) : 0; }
 
         constexpr const uint8_t* begin() const noexcept { return fStart; }
@@ -136,6 +119,22 @@ namespace waavs
             return (fStart && fStart < fEnd) ? *fStart : 0;
         }
 
+
+        // Create a ByteSpan beginning at startAt and extending
+        // through the end of the current span.
+        // If startAt is beyond the end, returns an empty span
+        // positioned at the end.
+        constexpr ByteSpan subSpan(size_t startAt) const noexcept
+        {
+            if (!fStart)
+                return {};
+
+            const size_t n = size();
+            const size_t off = startAt < n ? startAt : n;
+
+            return ByteSpan(fStart + off, n - off);
+        }
+
         // subSpan()
         // 
         // Create a ByteSpan that is a view on the current span
@@ -146,9 +145,13 @@ namespace waavs
         // and the current span.
         constexpr ByteSpan subSpan(size_t startAt, size_t sz) const noexcept
         {
+            if (!fStart)
+                return {};
+
             const size_t n = size();
             const size_t off = startAt < n ? startAt : n;
             const size_t len = sz < (n - off) ? sz : (n - off);
+            
             return ByteSpan(fStart + off, len);
         }
 
@@ -172,12 +175,6 @@ namespace waavs
             return *this;
         }
 
-        //constexpr ByteSpan& advance(size_t n) noexcept
-        //{
-        //    fStart = (fStart + n <= fEnd) ? fStart + n : fEnd;
-        //    return *this;
-        //}
-
         constexpr ByteSpan& advanceToEnd() noexcept
         {
             fStart = fEnd;
@@ -187,12 +184,12 @@ namespace waavs
         constexpr ByteSpan& operator+=(size_t n) noexcept  {  return advance(n); }
 
         constexpr ByteSpan& operator++() noexcept { return advance(1); }
-        constexpr ByteSpan operator++(int) noexcept
-        {
-            ByteSpan tmp = *this;
-            advance(1);
-            return tmp;
-        }
+        //constexpr ByteSpan operator++(int) noexcept
+        //{
+        //    ByteSpan tmp = *this;
+        //    advance(1);
+        //    return tmp;
+        //}
 
 
 
@@ -284,12 +281,127 @@ namespace waavs
             return (cmp > 0) || (cmp == 0 && size() >= b.size());
         }
 
+        // -----------------------------------------
+        // Static factory methods for convenience
+        // -----------------------------------------
+        static  constexpr ByteSpan fromPointers(const uint8_t* startAt, const uint8_t* endAt) noexcept
+        {
+            ByteSpan bs(startAt, endAt);
+            return bs;
+        }
+
+        static INLINE ByteSpan fromPointerAndSize(const uint8_t* start, size_t sz)
+        {
+            ByteSpan bs;
+            bs.fStart = start;
+            bs.fEnd = start + sz;
+            return bs;
+        }
     };
 
     ASSERT_MEMCPY_SAFE(ByteSpan);
 }
 
+namespace waavs
+{
+    // hex_nibble
+// 
+// given an input character representing a hex digit
+// put the decimal value of that hex digit in outValue
+    static INLINE WGResult hex_nibble(const uint8_t vIn, uint8_t& outValue) noexcept
+    {
+        if (vIn >= '0' && vIn <= '9')
+        {
+            outValue = vIn - '0';
+            return WG_SUCCESS;
+        }
 
+        if (vIn >= 'a' && vIn <= 'f')
+        {
+            outValue = vIn - 'a' + 10;
+            return WG_SUCCESS;
+        }
+
+        if (vIn >= 'A' && vIn <= 'F')
+        {
+            outValue = vIn - 'A' + 10;
+            return WG_SUCCESS;
+        }
+
+        return WG_ERROR_Invalid_Argument;
+    }
+
+    // Read two bytes representing a hex byte (e.g. '4F') and 
+    // convert them to a single byte value (0x4F in this example).
+    // Return: 
+    //  WG_SUCCESS if successful, or 
+    //  WG_ERROR_Invalid_Argument if either of 
+    //      the input characters is not a valid hex digit.
+    static INLINE WGResult hex_byte(const uint8_t highNibble, const uint8_t lowNibble, uint8_t& outValue) noexcept
+    {
+        uint8_t highValue = 0;
+        uint8_t lowValue = 0;
+        if (hex_nibble(highNibble, highValue) != WG_SUCCESS)
+            return WG_ERROR_Invalid_Argument;
+
+        if (hex_nibble(lowNibble, lowValue) != WG_SUCCESS)
+            return WG_ERROR_Invalid_Argument;
+
+        outValue = (highValue << 4) | lowValue;
+
+        return WG_SUCCESS;
+    }
+
+    // parseHex64u
+//
+// Parse a hex string into a 64-bit unsigned integer.
+// The string must be a valid hex string, and must not contain any spaces.
+    static INLINE bool parseHex64u(const ByteSpan& inSpan, uint64_t& outValue) noexcept
+    {
+        if (inSpan.size() == 0 || inSpan.size() > 16)
+            return false;
+
+
+        // building up outValue as we go
+        outValue = 0;
+        const uint8_t* c = inSpan.begin();
+        while (c != inSpan.end())
+        {
+            uint8_t nibble = 0;
+            if (hex_nibble(*c, nibble) == WG_SUCCESS)
+            {
+                // We shift by 4 bits, because we're processing a nibble
+                // at a time. so shift and add the latest nibble
+                outValue <<= 4;
+                outValue |= nibble;
+            }
+            else {
+                // if we get here, it means we had an invalid hex digit
+                // in the input string.  We return false to indicate a parse failure.
+                return false;
+            }
+
+            c++;
+        }
+
+        return true;
+    }
+
+    // return 1 if the chunk is "true" or "1" or "t" or "T" or "y" or "Y" or "yes" or "Yes" or "YES"
+// return 0 if the chunk is "false" or "0" or "f" or "F" or "n" or "N" or "no" or "No" or "NO"
+// return 0 otherwise
+    static INLINE int toBoolInt(const ByteSpan& inChunk)
+    {
+        ByteSpan s = inChunk;
+
+        if (s == "true" || s == "1" || s == "t" || s == "T" || s == "y" || s == "Y" || s == "yes" || s == "Yes" || s == "YES")
+            return 1;
+        else if (s == "false" || s == "0" || s == "f" || s == "F" || s == "n" || s == "N" || s == "no" || s == "No" || s == "NO")
+            return 0;
+        else
+            return 0;
+    }
+}
 
 
 

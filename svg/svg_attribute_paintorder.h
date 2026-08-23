@@ -118,9 +118,9 @@ namespace waavs {
     struct SVGPaintOrderAttribute : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute(svgattr::paint_order(), [](const XmlAttributeCollection& attrs) {
+            registerSVGAttribute(svgattr::paint_order(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {
                 auto node = std::make_shared<SVGPaintOrderAttribute>(nullptr);
-                node->loadFromAttributes(attrs);
+                node->loadFromAttributes(attrs, groot);
                 return node;
                 });
         }
@@ -152,7 +152,7 @@ namespace waavs {
             return true;
         }
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
 
             ctx->paintOrder(fInstruct);

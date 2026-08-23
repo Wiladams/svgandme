@@ -369,7 +369,7 @@ namespace waavs
         }
 
 
-        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        const BLVar getVariant(IDrawGraphics* ctx, IAmGroot* groot) noexcept override
         {
             if (needsBinding())
             {
@@ -420,7 +420,7 @@ namespace waavs
 
 
         // Here's where we create the backend to deal with the source.
-        void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void bindSelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             if (fSourceKind == FramesSourceKind::None)
                 return;
@@ -556,7 +556,7 @@ namespace waavs
             fSource->update();
         }
 
-        void drawSelf(IRenderSVG* ctx, IAmGroot*) override
+        void drawSelf(IDrawGraphics* ctx, IAmGroot*) override
         {
             if (!fHasCapture)
                 return;

@@ -1,177 +1,9 @@
 #pragma once
 
 #include "svgstructuretypes.h"
-#include "filter_program_exec_b2d.h"
+//#include "filter_program_exec_b2d.h"
+//#include "svg_attribute_clip.h"
 
-namespace waavs
-{
-    template <class SubtreeT>
-    static bool needsIsolation(IAmGroot* groot, SubtreeT* elem) noexcept
-    {
-        if (!groot || !elem)
-            return false;
-
-        ByteSpan featureValue{};
-        bool hasFilter =
-            elem->hasFeature(svgattr::filter(), featureValue);
-
-        bool hasMask =
-            elem->hasFeature(svgattr::mask(), featureValue);
-
-        bool hasClip =
-            elem->hasFeature(svgattr::clip_path(), featureValue);
-
-        bool hasOpacity =  
-            elem->hasFeature(svgattr::opacity(), featureValue) &&
-            featureValue != "1";
-
-        return (hasFilter || hasMask || hasClip || hasOpacity);
-    }
-
-    template<class SubtreeT>
-    static bool resolveIsolatedRenderPlan(
-        IRenderSVG* ctx,
-        IAmGroot* groot,
-        SubtreeT* elem,
-        const WGRectD& objectBBoxUS,
-        RenderFlags rFlags,
-        IsolatedRenderPlan& plan) noexcept
-    {
-        if (!ctx || !groot || !elem)
-            return false;
-
-        plan = {};
-        plan.objectBBoxUS = objectBBoxUS;
-        plan.ctm = ctx->state().getTransform();
-        plan.invCtm = plan.ctm;
-        (void)plan.invCtm.invert();
-        ByteSpan featureValue;
-
-        plan.hasFilter =
-            rFlags.has(RF_Filter) &&
-            elem->hasFeature(svgattr::filter(), featureValue);
-
-        plan.hasMask =
-            rFlags.has(RF_Mask) &&
-            elem->hasFeature(svgattr::mask(), featureValue);
-
-        plan.hasClip =
-            rFlags.has(RF_Clip) &&
-            elem->hasFeature(svgattr::clip_path(), featureValue);
-
-        plan.hasOpacity =  
-            rFlags.has(RF_Opacity) &&
-            elem->hasFeature(svgattr::opacity(), featureValue) &&
-            featureValue != "1";
-        
-
-        plan.needsIsolation =
-            plan.hasFilter ||
-            plan.hasMask ||
-            plan.hasClip ||
-            plan.hasOpacity;
-
-        if (!plan.needsIsolation)
-            return true;
-
-        WGRectD effectRectUS = objectBBoxUS;
-
-        if (plan.hasFilter) {
-            auto filterNode = elem->getReferencedFeatureNode(groot, svgattr::filter());
-            if (!filterNode)
-                plan.hasFilter = false;
-            else
-                effectRectUS = filterNode->resolveFilterRegion(ctx, groot, objectBBoxUS);
-        }
-
-        // check whether isolation is still needed if the filter
-        // doesn't actually exist.
-        plan.needsIsolation =
-            plan.hasFilter ||
-            plan.hasMask ||
-            plan.hasClip ||
-            plan.hasOpacity;
-
-        if (!plan.needsIsolation)
-            return true;
-
-        if (!(effectRectUS.w > 0.0) || !(effectRectUS.h > 0.0))
-            return false;
-
-        plan.effectRectUS = effectRectUS;
-        plan.nominalRectPX = mapRectAABB(plan.ctm, effectRectUS);
-
-        // Later this should intersect against viewport/device clip.
-        plan.allocRectPX = plan.nominalRectPX;
-
-        if (!(plan.allocRectPX.w > 0.0) || !(plan.allocRectPX.h > 0.0))
-            return false;
-
-        const int x0 = (int)std::floor(plan.allocRectPX.x);
-        const int y0 = (int)std::floor(plan.allocRectPX.y);
-        const int x1 = (int)std::ceil(plan.allocRectPX.x + plan.allocRectPX.w);
-        const int y1 = (int)std::ceil(plan.allocRectPX.y + plan.allocRectPX.h);
-
-        if (x1 <= x0 || y1 <= y0)
-            return false;
-
-        plan.pixelRect = WGRectI{ x0, y0, x1 - x0, y1 - y0 };
-        return true;
-    }
-
-
-    template<class SubtreeT>
-    bool renderSubtreeToSurface(
-        IAmGroot* groot,
-        SubtreeT* subtree,
-        const IsolatedSubtreeRequest& req,
-        Surface& outSurface) noexcept
-    {
-        if (!groot || !subtree)
-            return false;
-
-        if (req.pixelRect.w <= 0 || req.pixelRect.h <= 0)
-            return true;
-
-        // Resize the output surface if needed.
-        //
-        if (outSurface.width() != uint32_t(req.pixelRect.w) || outSurface.height() != uint32_t(req.pixelRect.h))
-        {
-            outSurface = Surface::createOwned( req.pixelRect.w, req.pixelRect.h);
-        }
-
-        if (outSurface.empty())
-            return false;
-
-        WGMatrix3x3 off = req.ctm;
-        //off.postTranslate(
-        off.translate(
-            -double(req.pixelRect.x), 
-            -double(req.pixelRect.y));
-
-        SVGB2DDriver tmp{};
-        tmp.attach(outSurface, 1, &req.drawingState);
-
-
-        if (req.clear)
-            tmp.clear();
-
-        tmp.setTransform(off);
-        tmp.state().setObjectFrame(req.objectBBoxUS);
-        tmp.state().setViewport(req.objectBBoxUS);
-
-        if (req.renderMode.has(RenderFeature::RF_Content))
-        {
-            subtree->drawContent(&tmp, groot);
-        }
-
-        tmp.detach();
-
-        return true;
-    }
-
-
-}
 
 namespace waavs {
 
@@ -207,10 +39,14 @@ namespace waavs {
             setNeedsBinding(true);
         }
 
+        // return the collections of nodes that we are renderable
+        const std::vector<std::shared_ptr<IViewable>> &
+        renderNodes() const noexcept { return fRenderNodes; }
+
         // We have this separate for those cases where you want to traverse
         // the tree asking for bounding boxes, but you don't want to do it all the 
         // time.
-        const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        const WGRectD getObjectBoundingBox(IDrawGraphics* ctx, IAmGroot* groot) noexcept override
         {
             WGRectD bbox{};
             for (auto& node : fRenderNodes)
@@ -225,74 +61,13 @@ namespace waavs {
             return bbox;
         }
 
-        // hasFeature
-        //
-        // Indicates whether the node has a particular feature
-        // based on the presence of a given attribute.
-        // Used to detect; filter, mask, clip, opacity
-        virtual bool hasFeature(InternedKey featureKey, ByteSpan &nodeRef)
-        {
-            nodeRef={};
-            return (getAttribute(featureKey, nodeRef) && !nodeRef.empty());
-        }
 
-        std::shared_ptr< SVGGraphicsElement> getReferencedFeatureNode(IAmGroot* groot, InternedKey featureKey) const noexcept
-        {
-            if (!groot)
-                return {};
 
-            // Get the filter reference from our 'filter' attribute
-            ByteSpan nodeRef{};
-            if (!getAttribute(featureKey, nodeRef))
-                return {};
-
-            // Look up the filter element by id reference
-            // (filterRef is expected to be in the form "url(#id)")
-            auto featureNode = groot->findNodeByUrl(nodeRef);
-            if (!featureNode)
-                return {};
-
-            // try to dynamic cast the feature 
-            auto featureElem = std::dynamic_pointer_cast<SVGGraphicsElement>(featureNode);
-            if (!featureElem)
-                return {};
-
-            return featureElem;
-        }
 
         // Deal with masks
 
 
-        // Deal with filters
-        // Retrieve a filter program stream for this element
-        // Any SVGGraphicsElement can have a filter, but only SVGFilter elements 
-        // will actually have a program stream to return.
-        virtual std::shared_ptr<FilterProgramStream> getFilterProgramStream(IAmGroot* groot) noexcept
-        {
-            return nullptr;
-        }
-
-        // deal with masks
-        virtual bool applyMaskToSurface(IAmGroot* groot,
-            const IsolatedRenderPlan& plan,
-            Surface& result) noexcept
-        {
-            return true;
-        }
-
-        // Deal with clipping
-        virtual bool applyClipToSurface(
-            IRenderSVG *ctx,
-            IAmGroot* groot,
-            const IsolatedRenderPlan& plan,
-            Surface& result) noexcept
-        {
-            return true;
-        }
-
-
-
-        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        const BLVar getVariant(IDrawGraphics* ctx, IAmGroot* groot) noexcept override
         {
             // if our variant is null
             // traverse down our fNodes, until we find
@@ -375,13 +150,39 @@ namespace waavs {
             fVisualProperties[key] = prop;
         }
 
-        std::shared_ptr<SVGVisualProperty> getVisualProperty(InternedKey key) override
+        std::shared_ptr<SVGVisualProperty> 
+        getVisualProperty(InternedKey key) const override
         {
             auto it = fVisualProperties.find(key);
             if (it != fVisualProperties.end())
                 return it->second;
 
             return nullptr;
+        }
+
+        std::shared_ptr<SVGVisualProperty>
+        getVisualProperty(InternedKey key) 
+        {
+            auto it = fVisualProperties.find(key);
+            if (it != fVisualProperties.end())
+                return it->second;
+
+            return nullptr;
+        }
+
+        // To avoid spreading dynamic_pointer_cast all over the place, 
+        // we have this templated version of getVisualProperty
+        template<typename PropertyT>
+        std::shared_ptr<PropertyT> getVisualPropertyAs(InternedKey key)
+        {
+            return std::dynamic_pointer_cast<PropertyT>(
+                getVisualProperty(key));
+        }
+
+        template<typename PropertyT>
+        std::shared_ptr<PropertyT> getVisualPropertyAs(InternedKey key) const
+        {
+            return std::dynamic_pointer_cast<PropertyT>(getVisualProperty(key));
         }
 
 
@@ -773,7 +574,7 @@ namespace waavs {
 
             // Convert the attributes that have a property registration 
             // into VisualProperty objects
-            convertAttributesToProperties(nullptr, groot);
+            convertAttributesToProperties(groot);
         }
 
         // This is called after the document is fully loaded
@@ -842,36 +643,24 @@ namespace waavs {
         // Take the step of converting a raw attribute
         // value into a specific display property if a routine
         // exists for it.
-        void convertAttributesToProperties(IRenderSVG* ctx, IAmGroot* groot)
+        void convertAttributesToProperties(IAmGroot* groot)
         {
             fAttributes.values().forEach([this, &groot](InternedKey key, const ByteSpan& value) {
                 auto propertyMapper = getAttributeConverter(key);
-                if (propertyMapper)
-                {
-                    auto prop = propertyMapper(fAttributes);
+                if (!propertyMapper)
+                    return;
+
+                    auto prop = propertyMapper(fAttributes, groot);
                     if (prop)
-                        addVisualProperty(key, prop);
-                }
+                        addVisualProperty(key, std::move(prop));
+
                 });
-            /*
-            //
-            for (auto& attr : fAttributes.values())
-            {
-                // Find an attribute to property converter, if it exists
-                auto propertyMapper = getAttributeConverter(attr.first);
-                if (propertyMapper)
-                {
-                    auto prop = propertyMapper(fAttributes);
-                    if (prop != nullptr)
-                        addVisualProperty(attr.first, prop);
-                }
-            }
-            */
+
         }
 
-        virtual void bindSelfToContext(IRenderSVG*, IAmGroot*) { ; }
-        virtual void bindGeometryToContext(IRenderSVG*, IAmGroot*) { ; }
-        virtual void bindPaintToContext(IRenderSVG*, IAmGroot*) { ; }
+        virtual void bindSelfToContext(IDrawGraphics*, IAmGroot*) { ; }
+        virtual void bindGeometryToContext(IDrawGraphics*, IAmGroot*) { ; }
+        virtual void bindPaintToContext(IDrawGraphics*, IAmGroot*) { ; }
 
 
         // For compound nodes (which have children) we want to 
@@ -880,7 +669,7 @@ namespace waavs {
         // then do your own thing.  We don't want to call a 'bindSelfToGroot'
         // here, because that complicates the interactions and sequences of things
         // so just override bindToGroot
-        void bindToContext(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        void bindToContext(IDrawGraphics* ctx, IAmGroot* groot) noexcept override
         {
             // First, find any style attributes that might apply
             // to this element
@@ -899,7 +688,7 @@ namespace waavs {
         // 
         // Apply a single property to the context
         // if it exists, is set, and is autoDraw
-        void applyProperty(IRenderSVG *ctx, IAmGroot* groot, InternedKey key)
+        void applyProperty(IDrawGraphics *ctx, IAmGroot* groot, InternedKey key)
         {
             auto prop = getVisualProperty(key);
             if (prop && prop->autoDraw() && prop->isSet())
@@ -913,7 +702,7 @@ namespace waavs {
         // Given a comma separated list of property names,
         // apply each of those properties to the context if they exist.
 
-        void applyProperties(IRenderSVG* ctx, IAmGroot* groot, ByteSpan names)
+        void applyProperties(IDrawGraphics* ctx, IAmGroot* groot, ByteSpan names)
         {
             ByteSpan s = names;
 
@@ -929,7 +718,7 @@ namespace waavs {
             }
         }
 
-        virtual void resolvePaintServers(IRenderSVG* ctx, IAmGroot* groot)
+        virtual void resolvePaintServers(IDrawGraphics* ctx, IAmGroot* groot)
         {
             if (!ctx)
                 return;
@@ -958,25 +747,15 @@ namespace waavs {
 
 
 
-        virtual void applyTransform(IRenderSVG* ctx, IAmGroot* groot)
+        virtual void applyTransform(IDrawGraphics* ctx, IAmGroot* groot)
         {
             auto tform = getVisualProperty(svgattr::transform());
             if (tform)
                 tform->applyToContext(ctx, groot);
         }
 
-        virtual void applyProperties(IRenderSVG* ctx, IAmGroot* groot) = delete;
-        //{
-        //    for (auto& prop : fVisualProperties)
-        //    {
-        //        if (prop.second->autoDraw() && prop.second->isSet())
-        //        {
-        //            prop.second->applyToContext(ctx, groot);
-        //        }
-        //    }
-        //}
 
-        void applyPaintSelectionProperties(IRenderSVG* ctx, IAmGroot* groot)
+        void applyPaintSelectionProperties(IDrawGraphics* ctx, IAmGroot* groot)
         {
             applyProperty(ctx, groot, svgattr::color());
             applyProperty(ctx, groot, svgattr::fill());
@@ -997,7 +776,7 @@ namespace waavs {
             applyProperty(ctx, groot, svgattr::marker_end());
         }
 
-        void applyTextProperties(IRenderSVG* ctx, IAmGroot* groot)
+        void applyTextProperties(IDrawGraphics* ctx, IAmGroot* groot)
         {
             static ByteSpan kTextProperties =
                 "font-family,"
@@ -1024,43 +803,20 @@ namespace waavs {
             applyProperties(ctx, groot, kTextProperties);
         }
 
-        virtual void drawRenderSubtree(IRenderSVG* ctx, IAmGroot* groot)
-        {
-            for (auto& node : fRenderNodes)
-            {
-                // should we check to see if the node
-                // is visible before drawing it?
-                bool nodeVisible = node->isVisible();
-                if (nodeVisible)
-                {
-                    node->draw(ctx, groot);
-                }
-            }
-        }
 
-
-        virtual void drawSelf(IRenderSVG*, IAmGroot*)
+        virtual void drawSelf(IDrawGraphics*, IAmGroot*)
         {
             ;
         }
 
-        // This is the core of drawing the content for this node
-        // All environment preperation occurs outside this call.
-        void drawContent(IRenderSVG* ctx, IAmGroot* groot)
+
+
+        WGRectD drawBegin( IDrawGraphics* ctx, IAmGroot* groot)
         {
-            //applyProperties(ctx, groot);
-            drawSelf(ctx, groot);
-            drawRenderSubtree(ctx, groot);
-        }
-
-
-        WGRectD drawBegin(IRenderSVG* ctx, IAmGroot* groot) 
-        {
-
             ctx->push();
 
             if (needsBinding())
-                this->bindToContext(ctx, groot);
+                bindToContext(ctx, groot);
 
             applyTextProperties(ctx, groot);
             applyPaintSelectionProperties(ctx, groot);
@@ -1068,7 +824,9 @@ namespace waavs {
 
             bindGeometryToContext(ctx, groot);
 
-            WGRectD bbox = getObjectBoundingBox(ctx, groot);
+            WGRectD bbox =
+                getObjectBoundingBox(ctx, groot);
+
             ctx->state().setObjectFrame(bbox);
 
             resolvePaintServers(ctx, groot);
@@ -1076,120 +834,36 @@ namespace waavs {
             return bbox;
         }
 
-        void drawEnd(IRenderSVG* ctx, IAmGroot* groot)
+        void drawEnd(IDrawGraphics* ctx)
         {
             ctx->pop();
         }
 
-        void draw(IRenderSVG* ctx, IAmGroot* groot, RenderFlags rFlags = RF_Content) override   // RF_ALL
+        // Compatibility path only.
+        //
+        // Full document rendering, including effects and renderer-owned
+        // child traversal, should enter through SVGRenderer.
+        void draw(
+            IDrawGraphics* ctx,
+            IAmGroot* groot,
+            RenderFlags flags = RF_All) override
         {
+            (void)flags;
+
             if (!ctx || !groot)
                 return;
 
-            WGRectD bbox = drawBegin(ctx, groot);
+            drawBegin(ctx, groot);
 
-            IsolatedRenderPlan plan{};
-            if (!resolveIsolatedRenderPlan(ctx, groot, this, bbox, rFlags, plan)) 
+            drawSelf(ctx, groot);
+
+            for (const auto& child : fRenderNodes)
             {
-                drawEnd(ctx, groot);
-                return;
+                if (child && child->isVisible())
+                    child->draw(ctx, groot, flags);
             }
 
-            // BUGBUG - just for debugging
-            plan.needsIsolation = false;
-
-            // If we don't need any isolation, then just draw the content
-            // as per usual
-            if (!plan.needsIsolation) {
-                drawContent(ctx, groot);
-                drawEnd(ctx, groot);
-                return;
-            }
-
-            Surface result{};
-
-            if (plan.hasFilter) {
-                auto filterNode = getReferencedFeatureNode(groot, svgattr::filter());
-                auto program = filterNode ? filterNode->getFilterProgramStream(groot) : nullptr;
-
-                if (program) {
-                    RenderFlags sourceFlags = rFlags;
-                    sourceFlags.remove(RF_Filter);
-                    sourceFlags.remove(RF_Opacity);
-                    sourceFlags.remove(RF_Mask);
-                    sourceFlags.remove(RF_Clip);
-
-                    B2DFilterExecutor exec;
-                    WGResult err = exec.applyFilterToSurface(
-                        ctx,
-                        groot,
-                        this,
-                        plan.objectBBoxUS,
-                        plan.effectRectUS,
-                        plan.pixelRect,
-                        *program,
-                        result,
-                        sourceFlags);
-                }
-            }
-            else {
-                IsolatedSubtreeRequest req{};
-                SVGDrawingState &ds = ctx->state();
-
-                req.userRect = plan.effectRectUS;
-                req.pixelRect = plan.pixelRect;
-                req.ctm = plan.ctm;
-                req.objectBBoxUS = plan.objectBBoxUS;
-                req.renderMode = RF_Content;
-                req.drawingState = ds;
-
-                renderSubtreeToSurface(groot, this, req, result);
-            }
-
-            if (!result.empty()) {
-                if (plan.hasMask)
-                {
-                    //printf("Applying mask to surface...\n");
-                    auto featureNode = getReferencedFeatureNode(groot, svgattr::mask());
-                    if (featureNode)
-                        featureNode->applyMaskToSurface(groot, plan, result);
-                }
-
-                if (plan.hasClip)
-                {
-                    auto featureNode = getReferencedFeatureNode(groot, svgattr::clip_path());
-                    if (featureNode)
-                        featureNode->applyClipToSurface(ctx,groot, plan, result);
-                }
-
-                // draw whatever was rendered offscreen to the context
-                ctx->push();
-                ctx->setTransform(WGMatrix3x3::makeIdentity());
-                ctx->blendMode(BL_COMP_OP_SRC_OVER);
-
-                // Apply global opacity if required
-                if (plan.hasOpacity)
-                {
-                    //printf("Applying opacity to surface...\n");
-                    ByteSpan opacityAttr{};
-                    if (getAttribute(svgattr::opacity(), opacityAttr))
-                    {
-                        SVGNumberOrPercent op{};
-                        if (numberOrPercent_read(opacityAttr, op))
-                        {
-                            double opacityValue = op.normalizedValue();
-                            ctx->globalOpacity(opacityValue);
-                        }
-                    }
-                }
-
-
-                ctx->image(result, double(plan.pixelRect.x), double(plan.pixelRect.y));
-                ctx->flush();
-                ctx->pop();
-            }
-
-            drawEnd(ctx, groot);
+            drawEnd(ctx);
         }
 
 

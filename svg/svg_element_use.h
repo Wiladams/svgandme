@@ -66,7 +66,7 @@ namespace waavs
             return fTarget->objectBoundingBox();
         }
 
-        const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        const WGRectD getObjectBoundingBox(IDrawGraphics* ctx, IAmGroot* groot) noexcept override
         {
             if (!fTarget)
                 return {};
@@ -110,7 +110,7 @@ namespace waavs
 
 
 
-        void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void bindSelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             fHasPlacedRect = false;
             fPlacedRect = BLRect{};
@@ -162,7 +162,7 @@ namespace waavs
         }
 
 
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void drawSelf(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             if (!fTarget)
                 return;

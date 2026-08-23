@@ -68,7 +68,7 @@ namespace waavs
 
         // calculate the full extent of the painted area.  Used to calculate
         // ofscreen size for filters.
-        const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot)  noexcept override
+        const WGRectD getObjectBoundingBox(IDrawGraphics* ctx, IAmGroot* groot)  noexcept override
         {
             WGRectD pbox{};
 

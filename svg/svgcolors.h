@@ -872,7 +872,7 @@ namespace waavs {
         //  the drawing context at the site of call.
         //
 
-        bool loadFromAttributes(const XmlAttributeCollection& attrs)
+        bool loadFromAttributes(const XmlAttributeCollection& attrs, IAmGroot* groot)
         {
             fValue = {};
             fSemantics = COLOR_SEMANTIC_UNKNOWN;

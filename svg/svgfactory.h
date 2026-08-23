@@ -106,13 +106,15 @@ namespace waavs
             //SVGStrokeDashOffset::registerFactory();
 
             // Clipping
-            //SVGClipPathAttribute::registerFactory();          // 'clip-path' attribute
-            //SVGClipPathElement::registerFactory();              // 'clipPath' element
+            SVGClipPathAttribute::registerFactory();            // 'clip-path' attribute
+            SVGClipPathElement::registerFactory();            // 'clipPath' element
 
             // Masking
-            //SVGMaskElement::registerFactory();                  // 'mask' element
+            SVGMaskAttribute::registerFactory();                // 'mask' attribute
+            SVGMaskElement::registerFactory();                // 'mask' element
 
-            //SVGFilterElement::registerFactory();                // <filter>
+            SVGFilterAttribute::registerFactory();
+            SVGFilterElement::registerFactory();              // <filter>
 
             //=============================================
             // Register SVG Node Types

@@ -53,7 +53,7 @@ namespace waavs {
 
 
         
-        void drawBackground(IRenderSVG *ctx) override
+        void drawBackground(IDrawGraphics*ctx) override
         {
             if (fUseCheckerBackground)
             {
@@ -65,7 +65,7 @@ namespace waavs {
             }
         }
 
-        void drawForeground(IRenderSVG* ctx) override
+        void drawForeground(IDrawGraphics* ctx) override
         {
             ctx->strokeWidth(4);
             ctx->stroke(&fForegroundStrokePaint);

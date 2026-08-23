@@ -48,7 +48,7 @@ namespace waavs
 
         SVGPaint(const SVGPaint& other) = delete;
 
-        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        const BLVar getVariant(IDrawGraphics* ctx, IAmGroot* groot) noexcept override
         {
             // if it's simply a color, then do a quick convert and return
             if (fColor.isColor())
@@ -113,9 +113,9 @@ namespace waavs
         // paint usually comes in color/opacity pairs
         // so use SVGColor to read it, if it's not a URL 
         // reference
-        bool loadFromAttributes(const XmlAttributeCollection& attrs) override
+        bool loadFromAttributes(const XmlAttributeCollection& attrs, IAmGroot* groot) override
         {
-            if (!fColor.loadFromAttributes(attrs))
+            if (!fColor.loadFromAttributes(attrs, groot))
                 return false;
 
             set(true);
@@ -149,9 +149,9 @@ namespace waavs
     struct SVGFillPaint : public SVGPaint
     {
         static void registerFactory() {
-            registerSVGAttribute(svgattr::fill(), [](const XmlAttributeCollection& attrs) {
+            registerSVGAttribute(svgattr::fill(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {
                 auto node = std::make_shared<SVGFillPaint>();
-                node->loadFromAttributes(attrs);
+                node->loadFromAttributes(attrs, groot);
                 return node;
                 });
         }
@@ -162,7 +162,7 @@ namespace waavs
             setName(svgattr::fill());
         }
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             ctx->fillPaintServer(this);
         }
@@ -172,9 +172,9 @@ namespace waavs
     struct SVGStrokePaint : public SVGPaint
     {
         static void registerFactory() {
-            registerSVGAttributeByName(svgattr::stroke(), [](const XmlAttributeCollection& attrs) {
+            registerSVGAttributeByName(svgattr::stroke(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {
                 auto node = std::make_shared<SVGStrokePaint>();
-                node->loadFromAttributes(attrs);
+                node->loadFromAttributes(attrs, groot);
                 return node;
                 });
         }
@@ -185,7 +185,7 @@ namespace waavs
             setName(svgattr::stroke());
         }
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             ctx->strokePaintServer(this);
         }
@@ -196,9 +196,9 @@ namespace waavs
     struct SVGColorPaint : public SVGPaint
     {
         static void registerFactory() {
-            registerSVGAttributeByName("color", [](const XmlAttributeCollection& attrs) {
+            registerSVGAttributeByName("color", [](const XmlAttributeCollection& attrs, IAmGroot* groot) {
                 auto node = std::make_shared<SVGColorPaint>();
-                node->loadFromAttributes(attrs);
+                node->loadFromAttributes(attrs, groot);
                 return node;
                 });
         }
@@ -210,7 +210,7 @@ namespace waavs
         }
 
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             ctx->state().setDefaultColor(getVariant(ctx, groot));
         }

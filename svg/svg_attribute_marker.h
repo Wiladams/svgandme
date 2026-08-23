@@ -10,10 +10,10 @@ namespace waavs {
     {
 
         static void registerMarkerFactory() {
-            registerSVGAttribute(svgattr::marker(), [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGMarkerAttribute>(svgattr::marker()); node->loadFromAttributes(attrs);  return node; });
-            registerSVGAttribute(svgattr::marker_start(), [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGMarkerAttribute>(svgattr::marker_start()); node->loadFromAttributes(attrs);  return node; });
-            registerSVGAttribute(svgattr::marker_mid(), [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGMarkerAttribute>(svgattr::marker_mid()); node->loadFromAttributes(attrs);  return node; });
-            registerSVGAttribute(svgattr::marker_end(), [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGMarkerAttribute>(svgattr::marker_end()); node->loadFromAttributes(attrs);  return node; });
+            registerSVGAttribute(svgattr::marker(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {auto node = std::make_shared<SVGMarkerAttribute>(svgattr::marker()); node->loadFromAttributes(attrs, groot);  return node; });
+            registerSVGAttribute(svgattr::marker_start(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {auto node = std::make_shared<SVGMarkerAttribute>(svgattr::marker_start()); node->loadFromAttributes(attrs, groot);  return node; });
+            registerSVGAttribute(svgattr::marker_mid(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {auto node = std::make_shared<SVGMarkerAttribute>(svgattr::marker_mid()); node->loadFromAttributes(attrs, groot);  return node; });
+            registerSVGAttribute(svgattr::marker_end(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {auto node = std::make_shared<SVGMarkerAttribute>(svgattr::marker_end()); node->loadFromAttributes(attrs, groot);  return node; });
         }
 
         std::shared_ptr<IViewable> fWrappedNode = nullptr;
@@ -24,7 +24,7 @@ namespace waavs {
             setName(key);
         }
 
-        std::shared_ptr<IViewable> markerNode(IRenderSVG* ctx, IAmGroot* groot)
+        std::shared_ptr<IViewable> markerNode(IDrawGraphics* ctx, IAmGroot* groot)
         {
             if (fWrappedNode == nullptr)
             {
@@ -33,7 +33,7 @@ namespace waavs {
             return fWrappedNode;
         }
 
-        void bindToContext(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        void bindToContext(IDrawGraphics* ctx, IAmGroot* groot) noexcept override
         {
 
             if (bspan_starts_with(rawValue(), "url("))
@@ -58,7 +58,7 @@ namespace waavs {
             return true;
         }
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             if (fWrappedNode)
                 fWrappedNode->draw(ctx, groot);

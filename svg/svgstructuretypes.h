@@ -10,7 +10,7 @@
 
 #include "core_nametable.h"
 #include "xml_pull.h"
-#include "render_interface.h"
+#include "graphics_draw.h"
 #include "stopwatch.h"
 
 #include "svgatoms.h"
@@ -85,7 +85,7 @@ namespace waavs {
 
         virtual ~IViewable() = default;
 
-        virtual const BLVar getVariant(IRenderSVG*, IAmGroot*) noexcept { return BLVar::null(); }
+        virtual const BLVar getVariant(IDrawGraphics*, IAmGroot*) noexcept { return BLVar::null(); }
 
 
         const ByteSpan& id() const noexcept { return fId; }
@@ -97,7 +97,7 @@ namespace waavs {
         bool isVisible() const { return fIsVisible; }
         void setIsVisible(bool visible) { fIsVisible = visible; }
 
-        virtual const WGRectD resolveFilterRegion(IRenderSVG* ctx, IAmGroot* groot, const WGRectD& bbox)  noexcept
+        virtual const WGRectD resolveFilterRegion(IDrawGraphics* ctx, IAmGroot* groot, const WGRectD& bbox)  noexcept
         {
             (void)ctx;
             (void)groot;
@@ -105,7 +105,7 @@ namespace waavs {
             return bbox;
         }
 
-        virtual const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot)  noexcept
+        virtual const WGRectD getObjectBoundingBox(IDrawGraphics* ctx, IAmGroot* groot)  noexcept
         {
             return {};
         }
@@ -122,7 +122,7 @@ namespace waavs {
         virtual void fixupStyleAttributes(IAmGroot* groot) = 0;
 
         virtual void update(IAmGroot*) = 0;
-        virtual void draw(IRenderSVG*, IAmGroot*, 
+        virtual void draw(IDrawGraphics*, IAmGroot*, 
             RenderFlags featureSet = RenderFeature::RF_All) = 0;
 
     };
@@ -186,7 +186,7 @@ namespace waavs
             return this->loadSelfFromChunk(fRawValue);
         }
 
-        virtual bool loadFromAttributes(const XmlAttributeCollection& attrs)
+        virtual bool loadFromAttributes(const XmlAttributeCollection& attrs, IAmGroot *groot)
         {
             ByteSpan attr{};
 
@@ -196,7 +196,7 @@ namespace waavs
             return loadFromChunk(attr);
         }
 
-		void bindToContext(IRenderSVG*, IAmGroot*) noexcept override
+		void bindToContext(IDrawGraphics*, IAmGroot*) noexcept override
 		{
             // do nothing by default
             setNeedsBinding(false);
@@ -206,11 +206,10 @@ namespace waavs
         virtual void update(IAmGroot*) { ; }
 
         // Apply property to the context
-        virtual void drawSelf(IRenderSVG*, IAmGroot*) = delete; // { ; }
 
-        virtual void applySelfToContext(IRenderSVG*, IAmGroot*) { ; }
+        virtual void applySelfToContext(IDrawGraphics*, IAmGroot*) { ; }
         
-        virtual void applyToContext(IRenderSVG* ctx, IAmGroot* groot)
+        virtual void applyToContext(IDrawGraphics* ctx, IAmGroot* groot)
         {
             if (needsBinding())
                 this->bindToContext(ctx, groot);
@@ -226,9 +225,8 @@ namespace waavs
     // Handling attribute conversion to properties
     // ================================================
     // Collection of property constructors
-    using SVGAttributeToPropertyConverter = std::function<std::shared_ptr<SVGVisualProperty>(const XmlAttributeCollection& attrs)>;    
-    using SVGPropertyConstructorMap = WSOpenHashTable<InternedKey, SVGAttributeToPropertyConverter>;
-    //using SVGPropertyConstructorMap = std::unordered_map<InternedKey, SVGAttributeToPropertyConverter, InternedKeyHash, InternedKeyEquivalent>;
+    using SVGAttributeToPropertyConverter = std::function<std::shared_ptr<SVGVisualProperty>(const XmlAttributeCollection& attrs, IAmGroot *groot)>;    
+    using SVGPropertyConstructorMap = WSNameMap<SVGAttributeToPropertyConverter>;
 
 
     static SVGPropertyConstructorMap & getPropertyConstructionMap()
@@ -284,7 +282,7 @@ namespace waavs
     struct IAmGroot
     {
         WSNameSet fIdNameTable{};
-        WSOpenHashTable<InternedKey, std::shared_ptr<IViewable>> fDefinitions{};
+        WSNameMap<std::shared_ptr<IViewable>> fDefinitions{};
 
         //std::unordered_map<ByteSpan, std::shared_ptr<IViewable>, ByteSpanHash, ByteSpanEquivalent> fDefinitions{};
         std::unordered_map<ByteSpan, ByteSpan, ByteSpanHash, ByteSpanEquivalent> fEntities{};
@@ -336,10 +334,14 @@ namespace waavs
 
             bspan_trim_spaces(id);
 
+            // early return if we don't have a valid id
+            if (!id)
+                return nullptr;
+
             // The first character could be '.' or '#'
             // so we need to skip past that
             if (*id == '.' || *id == '#')
-                id++;
+                ++id;
 
             if (!id)
                 return nullptr;
@@ -361,11 +363,17 @@ namespace waavs
             // and then find the closing ')'
             // and then we have the id
             Invocation invoc{};
-            readInvocation(str, invoc);
-            bspan_trim_spaces(invoc.payload);
-            bspan_trim_matching_quotes(invoc.payload);
+            bool success = readInvocation(str, invoc);
+            if (success && invoc.nameKey == svgfunc::url())
+            {
+                bspan_trim_spaces(invoc.payload);
+                bspan_trim_matching_quotes(invoc.payload);
 
-            return this->findNodeByHref(invoc.payload);
+                return this->findNodeByHref(invoc.payload);
+            }
+
+            return nullptr;
+            
         }
         
 
@@ -419,7 +427,7 @@ namespace waavs {
     {
 		XmlElement fSourceElement{};
         
-       virtual  std::shared_ptr<SVGVisualProperty> getVisualProperty(InternedKey key) = 0;
+       virtual  std::shared_ptr<SVGVisualProperty> getVisualProperty(InternedKey key) const = 0;
 
        bool getElementAttribute(const ByteSpan & name, ByteSpan &value) const
        {
@@ -434,10 +442,8 @@ namespace waavs
     // node creation dispatch
     // Creating from a singular element, typically a self-closing tag
     using SVGSingularCreator = std::function<std::shared_ptr<ISVGElement>(IAmGroot*, const XmlElement&)>;
-    using ShapeCreationMap = WSOpenHashTable<InternedKey, SVGSingularCreator>;
-//        std::unordered_map<InternedKey,
-//        std::function<std::shared_ptr<ISVGElement>(IAmGroot*, const XmlElement&)>,
-//        InternedKeyHash, InternedKeyEquivalent>;
+    using ShapeCreationMap = WSNameMap<SVGSingularCreator>;
+
 
     // compound node creation dispatch - 
     // 'g', 'symbol', 'pattern', 'linearGradient', 'radialGradient', 'conicGradient', 
@@ -450,7 +456,7 @@ namespace waavs
     // And probably some others.  Basically, anything that has a start tag should 
     // register a routine here.
     using SVGContainerCreator = std::function<std::shared_ptr<ISVGElement>(IAmGroot*, XmlPull&)>;
-    using SVGContainerCreationMap = WSOpenHashTable<InternedKey,SVGContainerCreator>;
+    using SVGContainerCreationMap = WSNameMap<SVGContainerCreator>;
 
 
     //using SVGContainerCreationMap =

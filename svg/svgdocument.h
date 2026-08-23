@@ -173,7 +173,7 @@ namespace waavs
             return outFr;
         }
 
-        const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        const WGRectD getObjectBoundingBox(IDrawGraphics* ctx, IAmGroot* groot) noexcept override
         {
             if (fTopLevelNode != nullptr)
             {
@@ -408,7 +408,7 @@ namespace waavs
         // This mimics what is done in drawing, but it's meant to 
         // allow those things that need to do binding to do what they need
         // and not actually do the drawing
-        virtual void bindChildrenToContext(IRenderSVG* ctx, IAmGroot* groot)
+        virtual void bindChildrenToContext(IDrawGraphics* ctx, IAmGroot* groot)
         {
             for (auto& node : fRenderNodes)
             {
@@ -419,7 +419,7 @@ namespace waavs
         // Binding to a context gives the document a chance to fixup
         // relative sizing
         // 
-        void bindToContext(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        void bindToContext(IDrawGraphics* ctx, IAmGroot* groot) noexcept override
         {
             fPortalFrame = { 0, 0, fCanvasWidth, fCanvasHeight };
 
@@ -433,7 +433,7 @@ namespace waavs
         }
 
         
-        void draw(IRenderSVG* ctx, IAmGroot* groot, RenderFlags featureSet = RenderFeature::RF_All) override
+        void draw(IDrawGraphics* ctx, IAmGroot* groot, RenderFlags featureSet = RenderFeature::RF_All) override
         {        
             if (needsBinding())
                 this->bindToContext(ctx, groot);

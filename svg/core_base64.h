@@ -398,6 +398,7 @@ namespace waavs {
             return (status == DecodeStatus::DECODE_STATUS_Success) ? bytesWritten : 0;
         }
 
+        // Experimental
         /*
         static size_t decode(const unsigned char* in, size_t inlen, unsigned char* out, size_t maxOut) noexcept {
             size_t i = 0, j = 0;
@@ -439,5 +440,101 @@ namespace waavs {
 
 }
 
+// ========================================================================
+// Base64 Support
+// ========================================================================
+/*
+            inline bool readBase64(size_t length, SharedMemBuff& out) noexcept {
+                if (mData.size() < length) return false;
+
+                ByteSpan encoded = mData.subSpan(0, length);
+                mData.advance(length);
+
+                size_t outputSize = base64::getDecodeOutputSize(encoded.size());
+                if (outputSize == 0) return false;
+
+                if (!out.resetFromSize(outputSize)) {
+                    return false;
+                }
+
+                size_t bytesRead, bytesWritten;
+                auto status = base64::decode(
+                    encoded.begin(),
+                    encoded.size(),
+                    out.data(),
+                    outputSize,
+                    bytesRead,
+                    bytesWritten);
+
+                if (status != DecodeStatus::DECODE_STATUS_Success) {
+                    out.reset();
+                    return false;
+                }
+
+                if (bytesWritten < outputSize) {
+                    SharedMemBuff trimmed;
+                    if (!trimmed.resetFromSize(bytesWritten)) {
+                        out.reset();
+                        return false;
+                    }
+                    std::memcpy(trimmed.data(), out.data(), bytesWritten);
+                    out = std::move(trimmed);
+                }
+
+                return true;
+            }
+
+            inline bool readBase64Until(uint8_t delim, SharedMemBuff& out) noexcept {
+                const uint8_t* start = mData.begin();
+                const uint8_t* end = mData.end();
+
+                const uint8_t* found = static_cast<const uint8_t*>(
+                    std::memchr(start, delim, end - start));
+
+                if (!found) {
+                    return false;
+                }
+
+                ByteSpan encoded = ByteSpan::fromPointers(start, found);
+                mData.resetStart(found + 1);
+
+                size_t outputSize = base64::getDecodeOutputSize(encoded.size());
+                if (outputSize == 0) return false;
+
+                if (!out.resetFromSize(outputSize)) {
+                    return false;
+                }
+
+                size_t bytesRead, bytesWritten;
+                auto status = base64::decode(
+                    encoded.begin(),
+                    encoded.size(),
+                    out.data(),
+                    outputSize,
+                    bytesRead,
+                    bytesWritten);
+
+                if (status != DecodeStatus::DECODE_STATUS_Success) {
+                    out.reset();
+                    return false;
+                }
+
+                if (bytesWritten < outputSize) {
+                    SharedMemBuff trimmed;
+                    if (!trimmed.resetFromSize(bytesWritten)) {
+                        out.reset();
+                        return false;
+                    }
+                    std::memcpy(trimmed.data(), out.data(), bytesWritten);
+                    out = std::move(trimmed);
+                }
+
+                return true;
+            }
+
+            inline size_t encodeBase64(const ByteSpan& data, char* out) const noexcept {
+                return base64::encode(data.begin(), data.size(), out);
+            }
+            */
 
 #endif // BASE64_H

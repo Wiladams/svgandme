@@ -44,9 +44,9 @@ namespace waavs
     struct SVGFontSize : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute(svgattr::font_size(), [](const XmlAttributeCollection& attrs) {
-                auto node = std::make_shared<SVGFontSize>(nullptr);
-                node->loadFromAttributes(attrs);
+            registerSVGAttribute(svgattr::font_size(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {
+                auto node = std::make_shared<SVGFontSize>();
+                node->loadFromAttributes(attrs, groot);
                 return node;
                 });
         }
@@ -55,8 +55,8 @@ namespace waavs
         SVGVariableSize dimValue{};
         double fValue{ 16.0 };
 
-        SVGFontSize(IAmGroot* inMap)
-            : SVGVisualProperty(inMap)
+        SVGFontSize()
+            : SVGVisualProperty(nullptr)
         {
             setName(svgattr::font_size());
         }
@@ -94,7 +94,7 @@ namespace waavs
             return true;
         }
 
-        virtual void bindToContext(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        virtual void bindToContext(IDrawGraphics* ctx, IAmGroot* groot) noexcept override
         {
             //if (nullptr == groot)
             //    return;
@@ -109,7 +109,7 @@ namespace waavs
             setNeedsBinding(false);
         }
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot*) override
+        void applySelfToContext(IDrawGraphics* ctx, IAmGroot*) override
         {
             ctx->fontSize(static_cast<float>(fValue));
         }
@@ -124,9 +124,9 @@ namespace waavs
     struct SVGFontFamily : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute(svgattr::font_family(), [](const XmlAttributeCollection& attrs) {
+            registerSVGAttribute(svgattr::font_family(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {
                 auto node = std::make_shared<SVGFontFamily>(nullptr);
-                node->loadFromAttributes(attrs);
+                node->loadFromAttributes(attrs, groot);
                 return node;
                 });
         }
@@ -157,7 +157,7 @@ namespace waavs
             return true;
         }
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             ctx->fontFamily(fValue);
         }
@@ -170,9 +170,9 @@ namespace waavs
     struct SVGFontStyleAttribute : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute(svgattr::font_style(), [](const XmlAttributeCollection& attrs) {
+            registerSVGAttribute(svgattr::font_style(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {
                 auto node = std::make_shared<SVGFontStyleAttribute>();
-                node->loadFromAttributes(attrs);
+                node->loadFromAttributes(attrs, groot);
                 return node;
                 });
         }
@@ -198,7 +198,7 @@ namespace waavs
             return success;
         }
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             ctx->fontStyle(fValue);
         }
@@ -207,9 +207,9 @@ namespace waavs
     struct SVGFontWeightAttribute : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttributeByName("font-weight", [](const XmlAttributeCollection& attrs) {
+            registerSVGAttributeByName("font-weight", [](const XmlAttributeCollection& attrs, IAmGroot* groot) {
                 auto node = std::make_shared<SVGFontWeightAttribute>();
-                node->loadFromAttributes(attrs);
+                node->loadFromAttributes(attrs, groot);
                 return node;
                 });
         }
@@ -229,7 +229,7 @@ namespace waavs
             return success;
         }
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             ctx->fontWeight(value());
         }
@@ -238,9 +238,9 @@ namespace waavs
     struct SVGFontStretchAttribute : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute(svgattr::font_stretch(), [](const XmlAttributeCollection& attrs) {
+            registerSVGAttribute(svgattr::font_stretch(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {
                 auto node = std::make_shared<SVGFontStretchAttribute>();
-                node->loadFromAttributes(attrs);
+                node->loadFromAttributes(attrs, groot);
                 return node;
                 });
         }
@@ -261,7 +261,7 @@ namespace waavs
 
         }
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             ctx->fontStretch(value());
         }

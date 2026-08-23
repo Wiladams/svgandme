@@ -80,8 +80,8 @@
 #endif
 
 #ifndef WG_NODISCARD
-//#define WG_NODISCARD [[nodiscard]]
-#define WG_NODISCARD
+#define WG_NODISCARD [[nodiscard]]
+//#define WG_NODISCARD
 #endif
 
 

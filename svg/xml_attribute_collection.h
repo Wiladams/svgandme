@@ -10,7 +10,7 @@
 namespace waavs
 {
     using AttrKey = InternedKey;
-    using AttrDictionary = WSOpenHashTable<AttrKey, ByteSpan>;
+    using AttrDictionary = WSNameMap<ByteSpan>;
 
     struct XmlAttributeCollection
     {

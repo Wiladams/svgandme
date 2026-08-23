@@ -104,7 +104,7 @@ namespace waavs
         }
 
         // Pattern is used as a paint server: return variant
-        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        const BLVar getVariant(IDrawGraphics* ctx, IAmGroot* groot) noexcept override
         {
             // Should be bindToContext(), to be more normal
             // Resolve + update cache if needed
@@ -121,7 +121,7 @@ namespace waavs
         }
 
         // Not a geometry bbox; return something stable
-        const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot)  noexcept override
+        const WGRectD getObjectBoundingBox(IDrawGraphics* ctx, IAmGroot* groot)  noexcept override
         {
             return fTileRect;
         }
@@ -297,7 +297,7 @@ namespace waavs
         }
 
 
-        void bindToContext(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        void bindToContext(IDrawGraphics* ctx, IAmGroot* groot) noexcept override
         {
             if (!ctx) {
                 printf("SVGPatternElement::bindToContext: no context\n");

@@ -12,9 +12,9 @@ namespace waavs
     struct SVGTextAnchorAttribute : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute(svgattr::text_anchor(), [](const XmlAttributeCollection& attrs) {
+            registerSVGAttribute(svgattr::text_anchor(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {
                 auto node = std::make_shared<SVGTextAnchorAttribute>();
-                node->loadFromAttributes(attrs);
+                node->loadFromAttributes(attrs, groot);
                 return node;
                 });
         }
@@ -38,7 +38,7 @@ namespace waavs
             return success;
         }
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             ctx->textAnchor(fValue);
         }

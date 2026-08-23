@@ -12,9 +12,9 @@ namespace waavs
     struct SVGStrokeWidth : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute(svgattr::stroke_width(), [](const XmlAttributeCollection& attrs) {
+            registerSVGAttribute(svgattr::stroke_width(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {
                 auto node = std::make_shared<SVGStrokeWidth>(nullptr);
-                node->loadFromAttributes(attrs);
+                node->loadFromAttributes(attrs, groot);
                 return node;
                 });
         }
@@ -42,7 +42,7 @@ namespace waavs
             return true;
         }
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             (void)groot;
 
@@ -57,7 +57,10 @@ namespace waavs
     struct SVGStrokeMiterLimit : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute(svgattr::stroke_miterlimit(), [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGStrokeMiterLimit>(nullptr); node->loadFromAttributes(attrs);  return node; });
+            registerSVGAttribute(svgattr::stroke_miterlimit(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {
+                auto node = std::make_shared<SVGStrokeMiterLimit>(nullptr); 
+                node->loadFromAttributes(attrs, groot);  
+                return node; });
         }
 
 
@@ -85,7 +88,7 @@ namespace waavs
             return true;
         }
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             ctx->strokeMiterLimit(fMiterLimit);
         }
@@ -100,9 +103,9 @@ namespace waavs
     {
         static void registerFactory()
         {
-            registerSVGAttributeByName(svgattr::stroke_linecap(), [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGStrokeLineCap>(nullptr, svgattr::stroke_linecap()); node->loadFromAttributes(attrs);  return node; });
-            registerSVGAttributeByName(svgattr::stroke_linecap_start(), [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGStrokeLineCap>(nullptr, svgattr::stroke_linecap_start()); node->loadFromAttributes(attrs);  return node; });
-            registerSVGAttributeByName(svgattr::stroke_linecap_end(), [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGStrokeLineCap>(nullptr, svgattr::stroke_linecap_end()); node->loadFromAttributes(attrs);  return node; });
+            registerSVGAttributeByName(svgattr::stroke_linecap(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {auto node = std::make_shared<SVGStrokeLineCap>(nullptr, svgattr::stroke_linecap()); node->loadFromAttributes(attrs, groot);  return node; });
+            registerSVGAttributeByName(svgattr::stroke_linecap_start(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {auto node = std::make_shared<SVGStrokeLineCap>(nullptr, svgattr::stroke_linecap_start()); node->loadFromAttributes(attrs, groot);  return node; });
+            registerSVGAttributeByName(svgattr::stroke_linecap_end(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {auto node = std::make_shared<SVGStrokeLineCap>(nullptr, svgattr::stroke_linecap_end()); node->loadFromAttributes(attrs, groot);  return node; });
         }
 
 
@@ -142,7 +145,7 @@ namespace waavs
             return success;
         }
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             if (fBothCaps) {
                 ctx->strokeCaps(fLineCap);
@@ -161,7 +164,10 @@ namespace waavs
     struct SVGStrokeLineJoin : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute(svgattr::stroke_linejoin(), [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGStrokeLineJoin>(nullptr); node->loadFromAttributes(attrs);  return node; });
+            registerSVGAttribute(svgattr::stroke_linejoin(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {
+                auto node = std::make_shared<SVGStrokeLineJoin>(nullptr); 
+                node->loadFromAttributes(attrs, groot);  
+                return node; });
         }
 
         BLStrokeJoin fLineJoin{ BL_STROKE_JOIN_MITER_BEVEL };
@@ -179,7 +185,7 @@ namespace waavs
             return success;
         }
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             ctx->lineJoin(fLineJoin);
         }

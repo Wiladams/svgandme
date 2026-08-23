@@ -15,7 +15,7 @@
 using namespace waavs;
 
 // Drawing context used for drawing document
-static IRenderSVG gDrawingContext{};
+static IDrawGraphics gDrawingContext{};
 
 
 // Reference to currently active document
@@ -48,7 +48,7 @@ static WSEnum WSPathCmdEnum = {
 
 
 
-static void quickDraw(IRenderSVG* ctx)
+static void quickDraw(IDrawGraphics* ctx)
 {
 	ctx->renew();
 	ctx->push();
@@ -121,7 +121,7 @@ static void quickDraw(IRenderSVG* ctx)
 	ctx->pop();
 }
 
-static void quickDraw2(IRenderSVG* ctx)
+static void quickDraw2(IDrawGraphics* ctx)
 {
 	ctx->renew();
 	ctx->push();
@@ -144,7 +144,7 @@ static void quickDraw2(IRenderSVG* ctx)
 
 
 
-static void drawCommand(uint8_t cmd, const BLPoint& currentPt, IRenderSVG* ctx)
+static void drawCommand(uint8_t cmd, const BLPoint& currentPt, IDrawGraphics* ctx)
 {
 	static constexpr double ptRadius = 0.5;
 
@@ -204,7 +204,7 @@ static void drawCommand(uint8_t cmd, const BLPoint& currentPt, IRenderSVG* ctx)
 // Ensure the type is a PathCommandState
 template <std::ranges::range Range>
 	requires std::same_as<std::ranges::range_value_t<Range>, PathCommandState>
-static void drawCommands(const Range& commands, IRenderSVG* ctx)
+static void drawCommands(const Range& commands, IDrawGraphics* ctx)
 {
 	for (const auto& cmd : commands) {
 		drawCommand(cmd.command(), cmd.point(), ctx);
@@ -213,7 +213,7 @@ static void drawCommands(const Range& commands, IRenderSVG* ctx)
 
 
 
-static void drawShadowPath(BLPath& apath, IRenderSVG* ctx)
+static void drawShadowPath(BLPath& apath, IDrawGraphics* ctx)
 {
 	// put a simple command iterator on the path
 	//PathIterState iterState(apath);
@@ -309,7 +309,7 @@ static void printPathCommands(PathCommandContainer& pcc)
 
 // A test case to iterate over the commands in a path
 // applying filters to select specific kinds
-static void quickDraw3(IRenderSVG* ctx)
+static void quickDraw3(IDrawGraphics* ctx)
 {
 	static constexpr double figScale = 40.0;
 
@@ -382,7 +382,7 @@ static void quickDraw3(IRenderSVG* ctx)
 
 
 // Test ByteSpan
-static void quickDraw5(IRenderSVG* ctx)
+static void quickDraw5(IDrawGraphics* ctx)
 {
 	ByteSpan span1("Hello, World!");
 	for (auto c : span1)
@@ -393,7 +393,7 @@ static void quickDraw5(IRenderSVG* ctx)
 
 }
 
-static void quickDraw6(IRenderSVG* ctx)
+static void quickDraw6(IDrawGraphics* ctx)
 {
 	//ByteSpan pathSpan(goSquare_s);
 	//ByteSpan pathSpan(goDown_s);
@@ -413,7 +413,7 @@ static void quickDraw6(IRenderSVG* ctx)
 
 // Check to see what lastVertext reports when you close
 // a path
-static void quickDraw7(IRenderSVG* ctx)
+static void quickDraw7(IDrawGraphics* ctx)
 {
 	BLPath apath{};
 
@@ -428,7 +428,7 @@ static void quickDraw7(IRenderSVG* ctx)
 	printf("Last Vertex (10,10): %f, %f\n", vtxOut.x, vtxOut.y);
 }
 
-static void quickDraw8(IRenderSVG* ctx)
+static void quickDraw8(IDrawGraphics* ctx)
 {
 	BLPath apath{};
 	B2DPathBuilder builder(apath);
@@ -496,7 +496,7 @@ static void onFileDrop(const FileDropEvent& fde)
 			// We have loaded the un-processed document
 			// Draw into an empty context at least once to resolve references
 			// and fix sizes.
-			//IRenderSVG ctx(FontHandler::getFontHandler());
+			//IDrawGraphics ctx(FontHandler::getFontHandler());
 			//ctx.setContainerFrame(BLRect(0, 0, canvasWidth, canvasHeight));
 			//gDoc->draw(&ctx, gDoc.get());
 

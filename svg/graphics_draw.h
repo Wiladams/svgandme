@@ -67,7 +67,7 @@ namespace waavs
     
     // A specialization of state management, connected to a BLContext
     // This is used when rendering a tree of SVG elements
-    struct IRenderSVG
+    struct IDrawGraphics
     {
         SVGStateManager fStateManager;
         
@@ -76,7 +76,7 @@ namespace waavs
 
 
     public:
-        IRenderSVG()
+        IDrawGraphics()
         {
             // Create a context by default, so we have 
             // something initially, so we don't have to use
@@ -86,7 +86,7 @@ namespace waavs
         }
 
         
-        virtual ~IRenderSVG() = default;
+        virtual ~IDrawGraphics() = default;
 
         SVGDrawingState& state() noexcept { return fStateManager.current(); }
         const SVGDrawingState& state() const noexcept { return fStateManager.current(); }
@@ -737,5 +737,6 @@ namespace waavs
 
     };
 
+    //using IDrawGraphics = IRenderSVG;
 }
 

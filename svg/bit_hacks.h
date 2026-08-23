@@ -35,7 +35,7 @@ namespace waavs
     constexpr uint16_t repl_u8_u16(const uint8_t x) { return static_cast<uint16_t>(x) * 0x0101u; }
     constexpr uint32_t repl_u8_u32(const uint8_t x) { return static_cast<uint32_t>(x) * 0x01010101u; }
     constexpr uint64_t repl_u8_u64(const uint8_t x) { return static_cast<uint64_t>(x) * 0x0101010101010101ull; }
-    
+
     // Convert between integer types
     // going from u64 to others
     constexpr uint8_t  conv_u64_to_u8(const uint64_t x) noexcept { return static_cast<uint8_t>(x); }
@@ -59,7 +59,7 @@ namespace waavs
         memcpy(&u, &f, 4);
         return (uint64_t)u;
     }
-    
+
     static INLINE uint64_t conv_f64_to_u64(double d) noexcept
     {
         uint64_t u{};
@@ -69,7 +69,7 @@ namespace waavs
         return u;
     }
 
-}   
+}
 
 
 
@@ -206,20 +206,68 @@ namespace waavs
 
     static constexpr bool bit_is_set_u64(uint64_t v, size_t bit) noexcept
     {
-        return (bit < 64) && ((v >> bit) & UINT64_C(1));
+        return (bit < 64) && ((v >> bit) & (uint64_t)1);
     }
 
     static constexpr uint64_t bit_set_u64(uint64_t v, size_t bit) noexcept
     {
-        return (bit < 64) ? (v | (UINT64_C(1) << bit)) : v;
+        return (bit < 64) ? (v | ((uint64_t)1 << bit)) : v;
     }
 
     static constexpr uint64_t bit_clear_u64(uint64_t v, size_t bit) noexcept
     {
-        return (bit < 64) ? (v & ~(UINT64_C(1) << bit)) : v;
+        return (bit < 64) ? (v & ~((uint64_t)1 << bit)) : v;
     }
 
 }
+
+
+
+
+// ----- Byte offset constants (shifts) -----
+// These are the bit positions of each byte in a 64-bit word.
+// They make code that manipulates individual bytes completely self-explanatory.
+#define SHIFT_BYTE_0 0
+#define SHIFT_BYTE_1 8
+#define SHIFT_BYTE_2 16
+#define SHIFT_BYTE_3 24
+#define SHIFT_BYTE_4 32
+#define SHIFT_BYTE_5 40
+#define SHIFT_BYTE_6 48
+#define SHIFT_BYTE_7 56
+
+// ----- Byte masks (pre-shifted) -----
+// Pre-shifted masks that isolate exactly one byte
+#define MASK_BYTE_0 ((uint64_t)0xFF << SHIFT_BYTE_0)
+#define MASK_BYTE_1 ((uint64_t)0xFF << SHIFT_BYTE_1)
+#define MASK_BYTE_2 ((uint64_t)0xFF << SHIFT_BYTE_2)
+#define MASK_BYTE_3 ((uint64_t)0xFF << SHIFT_BYTE_3)
+#define MASK_BYTE_4 ((uint64_t)0xFF << SHIFT_BYTE_4)
+#define MASK_BYTE_5 ((uint64_t)0xFF << SHIFT_BYTE_5)
+#define MASK_BYTE_6 ((uint64_t)0xFF << SHIFT_BYTE_6)
+#define MASK_BYTE_7 ((uint64_t)0xFF << SHIFT_BYTE_7)
+
+// Extract a specific byte from a value
+#define GET_BYTE_0(v) ((uint8_t)((v) >> SHIFT_BYTE_0))
+#define GET_BYTE_1(v) ((uint8_t)((v) >> SHIFT_BYTE_1))
+#define GET_BYTE_2(v) ((uint8_t)((v) >> SHIFT_BYTE_2))
+#define GET_BYTE_3(v) ((uint8_t)((v) >> SHIFT_BYTE_3))
+#define GET_BYTE_4(v) ((uint8_t)((v) >> SHIFT_BYTE_4))
+#define GET_BYTE_5(v) ((uint8_t)((v) >> SHIFT_BYTE_5))
+#define GET_BYTE_6(v) ((uint8_t)((v) >> SHIFT_BYTE_6))
+#define GET_BYTE_7(v) ((uint8_t)((v) >> SHIFT_BYTE_7))
+
+// Insert a byte into its natural position
+#define PUT_BYTE_0(b) (((uint64_t)(b)) << SHIFT_BYTE_0)
+#define PUT_BYTE_1(b) (((uint64_t)(b)) << SHIFT_BYTE_1)
+#define PUT_BYTE_2(b) (((uint64_t)(b)) << SHIFT_BYTE_2)
+#define PUT_BYTE_3(b) (((uint64_t)(b)) << SHIFT_BYTE_3)
+#define PUT_BYTE_4(b) (((uint64_t)(b)) << SHIFT_BYTE_4)
+#define PUT_BYTE_5(b) (((uint64_t)(b)) << SHIFT_BYTE_5)
+#define PUT_BYTE_6(b) (((uint64_t)(b)) << SHIFT_BYTE_6)
+#define PUT_BYTE_7(b) (((uint64_t)(b)) << SHIFT_BYTE_7)
+
+
 
 
 // The following is of questionable usage, as binary literals
@@ -250,21 +298,23 @@ namespace waavs
 #define B8(d) ((unsigned char) B8_(HEX_(d)))
 
 // for upto 16-bit binary constants, MSB first
-#define B16(dmsb,dlsb) ((unsigned short) (B8(dmsb) << 8) \
-        | B8(dlsb))
+#define B16(dmsb, dlsb) \
+    ((unsigned short)((B8(dmsb) << SHIFT_BYTE_1) | B8(dlsb)))
 
 // for upto 32-bit binary constants, MSB first
-#define B32(dmsb,db2,db3,dlsb) ((unsigned long) (B8(dmsb) << 24) \
-        | (B8(db2) << 16) \
-        | (B8(db3) << 8) \
-        | B8(dlsb))
+#define B32(dmsb, db2, db3, dlsb) \
+    ((unsigned long)((B8(dmsb) << SHIFT_BYTE_3) | \
+                     (B8(db2)  << SHIFT_BYTE_2) | \
+                     (B8(db3)  << SHIFT_BYTE_1) | \
+                      B8(dlsb)))
 
 // for upto 64-bit binary constants, MSB first
-#define B64(dmsb,db2,db3,db4,db5,db6,db7,dlsb) ((unsigned long long) (B8(dmsb) << 56) \
-        | (B8(db2) << 48) \
-        | (B8(db3) << 40) \
-        | (B8(db4) << 32) \
-        | (B8(db5) << 24) \
-        | (B8(db6) << 16) \
-        | (B8(db7) << 8) \
-        | B8(dlsb))
+#define B64(dmsb, db2, db3, db4, db5, db6, db7, dlsb) \
+    ((unsigned long long)((B8(dmsb) << SHIFT_BYTE_7) | \
+                          (B8(db2)  << SHIFT_BYTE_6) | \
+                          (B8(db3)  << SHIFT_BYTE_5) | \
+                          (B8(db4)  << SHIFT_BYTE_4) | \
+                          (B8(db5)  << SHIFT_BYTE_3) | \
+                          (B8(db6)  << SHIFT_BYTE_2) | \
+                          (B8(db7)  << SHIFT_BYTE_1) | \
+                           B8(dlsb)))

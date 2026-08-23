@@ -61,14 +61,14 @@ namespace waavs {
 			fHasRefXY = fRefX.isSet() || fRefY.isSet();
 		}
 
-		void bindSelfToContext(IRenderSVG*, IAmGroot*) override
+		void bindSelfToContext(IDrawGraphics*, IAmGroot*) override
 		{
 			// No persistent “binding” needed for symbol viewport.
 			// The instance viewport is provided by <use> at draw time.
 		}
 
 
-		void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+		void drawSelf(IDrawGraphics* ctx, IAmGroot* groot) override
 		{
 			if (!fHasDocVP)
 				return;

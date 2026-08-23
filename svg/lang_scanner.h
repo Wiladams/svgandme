@@ -131,16 +131,26 @@ namespace waavs
                 return false;
         }
 
-        double result = 0.0;
+        uint64_t intPart = 0;
         bool hasDigits = false;
 
         // Integer part
         while (s && is_digit(*s))
         {
-            result = (result * 10.0) + double(*s - '0');
+            intPart = (intPart * 10.0) + uint64_t(*s - '0');
             ++s;
             hasDigits = true;
         }
+
+        // early return if it's a pure integer 
+        // with no fractional or exponent part
+        if (!s || (*s != '.' && *s != 'e' && *s != 'E'))
+        {
+            value = isNegative ? -double(intPart) : double(intPart);
+            return hasDigits;
+        }
+
+        double result = double(intPart);
 
         // Fractional part
         if (s && *s == '.')
@@ -200,90 +210,7 @@ namespace waavs
         return true;
     }
 
-    /*
-    static INLINE bool number_read(ByteSpan& s, double& value) noexcept
-    {
-        if (s.empty())
-            return false;
 
-        bool isNegative = false;
-        double result = 0.0;
-
-        if (*s == '+' || *s == '-')
-        {
-            isNegative = (*s == '-');
-            ++s;
-
-            if (s.empty())
-                return false;
-        }
-
-        bool hasIntPart = false;
-        bool hasFracPart = false;
-
-        uint64_t intPart = 0;
-        size_t digitsRead = 0;
-
-        if (s && is_digit(*s))
-        {
-            if (u64_read(s, intPart, digitsRead))
-            {
-                hasIntPart = digitsRead > 0;
-                result = static_cast<double>(intPart);
-            }
-        }
-
-        if (s && *s == '.')
-        {
-            ++s;
-
-            uint64_t fracPart = 0;
-            uint64_t fracBase = 1;
-
-            while (s && is_digit(*s))
-            {
-                fracPart = (fracPart * 10) + uint64_t(*s - '0');
-                fracBase *= 10;
-                ++s;
-                hasFracPart = true;
-            }
-
-            if (hasFracPart)
-                result += double(fracPart) / double(fracBase);
-        }
-
-        if (!hasIntPart && !hasFracPart)
-            return false;
-
-        if (s && (*s == 'e' || *s == 'E'))
-        {
-            ByteSpan exp = s;
-            ++exp;
-
-            double expSign = 1.0;
-
-            if (exp && (*exp == '+' || *exp == '-'))
-            {
-                expSign = (*exp == '-') ? -1.0 : 1.0;
-                ++exp;
-            }
-
-            uint64_t expPart = 0;
-            size_t expDigits = 0;
-
-            if (exp && u64_read(exp, expPart, expDigits))
-            {
-                result *= POW(10, expSign * double(expPart));
-                s = exp;
-            }
-            // Otherwise leave the e/E unconsumed.
-            // This preserves useful behavior for 1em / 1ex.
-        }
-
-        value = isNegative ? -result : result;
-        return true;
-    }
-    */
 
     static INLINE bool number_list_read_next(ByteSpan& s, double& outNumber) noexcept
     {

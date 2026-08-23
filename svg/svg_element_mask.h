@@ -124,7 +124,7 @@ namespace waavs
 
         }
 
-
+        /*
         bool renderMaskSurface(
             IAmGroot* groot,
             const IsolatedRenderPlan& plan,
@@ -163,7 +163,7 @@ namespace waavs
         bool applyMaskToSurface(
             IAmGroot* groot,
             const IsolatedRenderPlan& plan,
-            Surface& result) noexcept override
+            Surface& result) noexcept
         {
             if (!groot || result.empty())
                 return false;
@@ -180,7 +180,7 @@ namespace waavs
 
             return true;
         }
-
+        */
     };
 
 

@@ -3,7 +3,7 @@
 #include <string>
 #include <array>
 #include <functional>
-#include <unordered_map>
+//#include <unordered_map>
 
 
 #include "svgshapes.h"
@@ -64,7 +64,7 @@ namespace waavs {
 		}
 
 
-		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+		void bindSelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
 		{
 
 
@@ -150,7 +150,7 @@ namespace waavs {
 		}
 
 
-		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+		void bindSelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
 		{
 			auto fontFamily = getAttributeByName("font-family");
 			auto fontStyle = getAttributeByName("font-style");
@@ -205,7 +205,7 @@ namespace waavs {
 		{
 		}
 
-		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+		void bindSelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
 		{	
 			parseNumber(getAttributeByName("horiz-adv-x"), fHorizAdvX);
 			parseNumber(getAttributeByName("vert-adv-y"), fVertAdvY);
@@ -257,7 +257,7 @@ namespace waavs {
 
 		SVGGlyphNode(IAmGroot* iMap) :SVGPathBasedGeometry(iMap) {}
 
-		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+		void bindSelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
 		{
 			//SVGGeometryElement::loadSelfFromXmlElement(elem, groot);
 
@@ -338,7 +338,7 @@ namespace waavs {
 			return fFaceName;
 		}
 		
-		void bindSelfToContext(IRenderSVG* ctx, IAmGroot* ) override
+		void bindSelfToContext(IDrawGraphics* ctx, IAmGroot* ) override
 		{
 			fFaceName = getAttributeByName("name");
 		}

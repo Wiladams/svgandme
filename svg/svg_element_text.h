@@ -55,11 +55,11 @@ namespace waavs
         // Abstracts that MUST have an implementation
         // For text runs, these are all no-ops because 
         // the container ('text' or 'tspan') is responsible for all of these things.
-        void draw(IRenderSVG*, IAmGroot*, RenderFlags = RenderFeature::RF_All) override {}
-        void bindToContext(IRenderSVG*, IAmGroot*) noexcept override {}
+        void draw(IDrawGraphics*, IAmGroot*, RenderFlags = RenderFeature::RF_All) override {}
+        void bindToContext(IDrawGraphics*, IAmGroot*) noexcept override {}
         void fixupStyleAttributes(IAmGroot*) override {}
 
-//        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override { return BLVar{}; }
+//        const BLVar getVariant(IDrawGraphics* ctx, IAmGroot* groot) noexcept override { return BLVar{}; }
 
         
         void setBBox(const WGRectD& box) { fBBox = box; }
@@ -268,7 +268,7 @@ namespace waavs
 namespace waavs {
 
 
-    static INLINE bool tokenToPx(IRenderSVG* ctx, const ByteSpan& tok, double range, double& outPx, double dpi=96.0) noexcept
+    static INLINE bool tokenToPx(IDrawGraphics* ctx, const ByteSpan& tok, double range, double& outPx, double dpi=96.0) noexcept
     {
         outPx = 0.0;
         if (!tok) return false;
@@ -284,7 +284,7 @@ namespace waavs {
 
 
 
-    static INLINE bool consumeNextRotateRad(IRenderSVG* ctx, double& ioLastRad) noexcept
+    static INLINE bool consumeNextRotateRad(IDrawGraphics* ctx, double& ioLastRad) noexcept
     {
         ByteSpan tok{};
         if (!ctx->consumeNextRotateToken(tok))
@@ -298,7 +298,7 @@ namespace waavs {
     }
 
 
-    static INLINE double consumeNextLengthPxOrZero(IRenderSVG* ctx, IAmGroot* groot, bool isDx) noexcept
+    static INLINE double consumeNextLengthPxOrZero(IDrawGraphics* ctx, IAmGroot* groot, bool isDx) noexcept
     {
         double dpi = groot ? groot->dpi() : 96.0;  // default to 96 dpi if no groot
 
@@ -329,7 +329,7 @@ namespace waavs {
     // This is an executor for paint-order rendering of glyph runs.
     // It Works with two-bit paint order encoding.
     struct GlyphPainter {
-        IRenderSVG* ctx;
+        IDrawGraphics* ctx;
         const BLFont& font;
         const BLGlyphRun& run;
         double x, y;
@@ -341,7 +341,7 @@ namespace waavs {
 
 
     static  void drawTextRunGlyphLoop(
-        IRenderSVG* ctx, IAmGroot* groot,
+        IDrawGraphics* ctx, IAmGroot* groot,
         const ByteSpan& txt,
         TXTALIGNMENT vAlign,
         DOMINANTBASELINE domBase,
@@ -591,10 +591,10 @@ namespace waavs
         }
 
         // --- initial position policy hooks ---
-        virtual WGPointD defaultCursor(IRenderSVG* ctx) const noexcept = 0;
+        virtual WGPointD defaultCursor(IDrawGraphics* ctx) const noexcept = 0;
 
 
-        const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot)  noexcept override
+        const WGRectD getObjectBoundingBox(IDrawGraphics* ctx, IAmGroot* groot)  noexcept override
         { 
             return fBBox; 
         }
@@ -759,7 +759,7 @@ namespace waavs
 
         // --- binding (shared) ---
 
-        void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void bindSelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             // dx, dy, rotate, are all treated as lists, even if they only have
             // one value.  
@@ -797,7 +797,7 @@ namespace waavs
 
         // --- draw (shared ) ---
 
-        void drawRenderSubtree(IRenderSVG* ctx, IAmGroot* groot) override
+        void drawRenderSubtree(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             fBBox = {};
 
@@ -825,7 +825,7 @@ namespace waavs
 
 
 
-        static inline double evalSingleLengthPx(IRenderSVG* ctx, IAmGroot* groot,
+        static inline double evalSingleLengthPx(IDrawGraphics* ctx, IAmGroot* groot,
             const ByteSpan& listSpan,
             double rel /* viewport w or h */) noexcept
         {
@@ -845,7 +845,7 @@ namespace waavs
             return dim.calculatePixels(ctx->state().getFont(), rel, 0.0, dpi);
         }
 
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void drawSelf(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             const double dpi = groot ? groot->dpi() : 96.0;
             const WGRectD cFrame = ctx->state().getViewport();
@@ -922,7 +922,7 @@ namespace waavs {
 
         SVGTSpanNode(IAmGroot* groot) : SVGTextContainerNode(groot) {}
 
-        WGPointD defaultCursor(IRenderSVG* ctx) const noexcept override {
+        WGPointD defaultCursor(IDrawGraphics* ctx) const noexcept override {
             return ctx->textCursor();
         }
     };
@@ -943,10 +943,10 @@ namespace waavs {
 
         SVGTextNode(IAmGroot* groot) : SVGTextContainerNode(groot) {}
 
-        const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot)  noexcept override
+        const WGRectD getObjectBoundingBox(IDrawGraphics* ctx, IAmGroot* groot)  noexcept override
         {
-            // draw content into a IRenderSVG context and then return fBBox
-            IRenderSVG offscreenCtx{};
+            // draw content into a IDrawGraphics context and then return fBBox
+            IDrawGraphics offscreenCtx{};
             WGRectD vp = ctx->state().getViewport();
             offscreenCtx.state().setViewport(vp);
 
@@ -956,7 +956,7 @@ namespace waavs {
         }
 
 
-        WGPointD defaultCursor(IRenderSVG* ctx) const noexcept override
+        WGPointD defaultCursor(IDrawGraphics* ctx) const noexcept override
         {
             return { 0, 0 };
         }

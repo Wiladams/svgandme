@@ -471,7 +471,7 @@ namespace waavs
             if (selectorKind != CSSSelectorKind::CSS_SELECTOR_INVALID) {
                 if (selectorKind != CSSSelectorKind::CSS_SELECTOR_ELEMENT)
                 {
-                    selectorName++; // skip the first character of the name
+                    ++selectorName; // skip the first character of the name
                 }
                 
                 fCurrentItem.reset(selectorKind, selectorName, fSelectorContent);

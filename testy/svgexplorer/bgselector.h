@@ -23,7 +23,7 @@ namespace waavs {
 
         }
 
-        void drawBackground(IRenderSVG* ctx) override
+        void drawBackground(IDrawGraphics* ctx) override
         {
                 BLPath apath;
                 apath.add_rect(0, 0, frame().w, frame().h);
@@ -31,7 +31,7 @@ namespace waavs {
                 ctx->fillShape(apath);
         }
 
-        void drawForeground(IRenderSVG* ctx) override
+        void drawForeground(IDrawGraphics* ctx) override
         {
             ctx->strokeWidth(3);
             BLPath apath;
@@ -40,7 +40,7 @@ namespace waavs {
             ctx->strokeShape(apath);
         }
 
-        void drawSelf(IRenderSVG* ctx) override 
+        void drawSelf(IDrawGraphics* ctx) override 
         {
             // draw all the stuff
             // square for checkboard

@@ -69,7 +69,7 @@ namespace waavs {
             onDocumentLoad();
         }
 
-        void drawSelf(IRenderSVG* ctx)
+        void drawSelf(IDrawGraphics* ctx)
         {
             if (nullptr != fDocument) {
                 fDocument->draw(ctx, fDocument.get());

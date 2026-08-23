@@ -49,6 +49,8 @@ namespace waavs
             setIsVisible(false);
         }
 
+        SpaceUnitsKind clipPathUnits() { return fClipPathUnits; }
+
         void fixupSelfStyleAttributes(IAmGroot* groot) override
         {
             ByteSpan clipUnitsAttr{};
@@ -63,7 +65,8 @@ namespace waavs
             }
         }
 
-        bool renderClipSurface(IRenderSVG *ctx, IAmGroot* groot,
+        /*
+        bool renderClipSurface(IDrawGraphics*ctx, IAmGroot* groot,
             const IsolatedRenderPlan& plan,
             Surface& outMask) noexcept
         {
@@ -95,10 +98,10 @@ namespace waavs
 
 
         bool applyClipToSurface(
-            IRenderSVG *ctx,
+            IDrawGraphics*ctx,
             IAmGroot* groot,
             const IsolatedRenderPlan& plan,
-            Surface& result) noexcept override
+            Surface& result) noexcept
         {
             if (!groot || result.empty())
                 return false;
@@ -115,5 +118,7 @@ namespace waavs
 
             return true;
         }
+        */
     };
 }
+

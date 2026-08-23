@@ -514,7 +514,7 @@ namespace waavs {
             }
         }
 
-        void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void bindSelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             (void)groot;
 
@@ -561,7 +561,7 @@ namespace waavs {
             }
         }
 
-        void drawLine(IRenderSVG* ctx, const ByteSpan& txt, double x, double y)
+        void drawLine(IDrawGraphics* ctx, const ByteSpan& txt, double x, double y)
         {
             uint32_t porder = ctx->state().getPaintOrder();
             for (int slot = 0; slot < 3; ++slot)
@@ -583,7 +583,7 @@ namespace waavs {
             }
         }
 
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void drawSelf(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             //(void)groot;
 

@@ -10,6 +10,7 @@
 #include "app_icons.h"
 #include "svgwaavs.h"
 #include "render_blend2d.h"
+#include "svg_renderer.h"
 
 
 using namespace waavs;
@@ -25,6 +26,7 @@ static constexpr int canvasWidth = 2560, canvasHeight = 1440;
 static constexpr float kFrameRate = 30.0f;
 
 static std::unique_ptr<SVGB2DDriver> gDrawingContext{ nullptr };
+static SVGRenderer gRenderer;
 
 // Reference to currently active document
 std::shared_ptr<SVGDocument> gDoc{ nullptr };
@@ -38,7 +40,7 @@ bool gAutoGrow{ true };
 double gRecordingStart{ 0 };
 
 // retrieve a pointer to a unique drawing context
-static IRenderSVG *getDrawingContext()
+static IDrawGraphics *getDrawingContext()
 {
     if (!gDrawingContext)
     {
@@ -110,21 +112,25 @@ static void drawForeground()
 
 static void drawDocument()
 {
-    // First apply the transform as tracked by the navigator
+    IDrawGraphics* ctx = getDrawingContext();
+    if (!ctx)
+        return;
+
+    // Apply the application/view transform before SVG rendering begins
     if (gPerformTransform)
     {
         const WGMatrix3x3 & m = gNavigator.sceneToSurfaceTransform();
-        getDrawingContext()->setTransform(m);
-    }
 
+        ctx->setTransform(m);
+    }
 
     // draw the document into the ctx
-    if (gDoc != nullptr)
+    if (gDoc)
     {
-        gDoc->draw(getDrawingContext(), gDoc.get());
+        gRenderer.draw(*gDoc, *ctx, RenderFeature::RF_All);
     }
 
-    getDrawingContext()->flush();
+    ctx->flush();
 }
 
 

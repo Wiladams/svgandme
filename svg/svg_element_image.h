@@ -268,13 +268,13 @@ namespace waavs
             return { fX, fY, fWidth, fHeight };
         }
         
-        const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        const WGRectD getObjectBoundingBox(IDrawGraphics* ctx, IAmGroot* groot) noexcept override
         {
             bindSelfToContext(ctx, groot);
             return { fX, fY, fWidth, fHeight };
         }
 
-        const BLVar getVariant(IRenderSVG *ctx, IAmGroot *groot) noexcept override
+        const BLVar getVariant(IDrawGraphics *ctx, IAmGroot *groot) noexcept override
         {
             if (fImageVar.is_null())
             {
@@ -329,7 +329,7 @@ namespace waavs
         }
 
 
-        void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void bindSelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             const BLFont* fontOpt = nullptr;    // font not relevant here
             double dpi = groot ? groot->dpi() : 96;
@@ -354,7 +354,7 @@ namespace waavs
         }
 
 
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void drawSelf(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             if (fImage.is_empty())
                 return;

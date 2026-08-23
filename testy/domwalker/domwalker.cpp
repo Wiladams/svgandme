@@ -19,7 +19,7 @@
 using namespace waavs;
 
 // Drawing context used for drawing document
-static IRenderSVG gDrawingContext{};
+static IDrawGraphics gDrawingContext{};
 
 
 // Reference to currently active document
@@ -115,7 +115,7 @@ static void onFileDrop(const FileDropEvent& fde)
 			// We have loaded the un-processed document
 			// Draw into an empty context at least once to resolve references
 			// and fix sizes.
-			//IRenderSVG ctx(FontHandler::getFontHandler());
+			//IDrawGraphics ctx(FontHandler::getFontHandler());
 			//ctx.setContainerFrame(BLRect(0, 0, canvasWidth, canvasHeight));
 			//gDoc->draw(&ctx, gDoc.get());
 

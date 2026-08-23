@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 #include "lang_span.h"
 
@@ -185,3 +186,156 @@ namespace waavs
 		return e;
 	}
 }
+
+// core_utf8.h or core_utf16.h – add after includes
+
+
+
+namespace waavs {
+
+	// Convert a UTF-16BE encoded byte span to a UTF-8 string.
+	// Returns an empty string if the input is empty.
+	// If the input length is odd, the last byte is ignored.
+	// Invalid sequences (lone surrogates, truncated pairs) are replaced with U+FFFD.
+	// This function may throw std::bad_alloc if memory allocation fails.
+	inline std::string convertUtf16BeToUtf8(const ByteSpan& span) {
+		if (span.empty()) return {};
+
+		const uint8_t* p = span.begin();
+		const uint8_t* end = span.end();
+
+		// Ignore trailing odd byte
+		if ((span.size() & 1) != 0) {
+			--end;
+		}
+
+		std::string result;
+		result.reserve(span.size() / 2); // rough lower bound, may grow
+
+		auto readU16 = [&](const uint8_t*& ptr) -> uint32_t {
+			uint32_t high = ptr[0];
+			uint32_t low = ptr[1];
+			ptr += 2;
+			return (high << 8) | low;
+			};
+
+		while (p < end) {
+			uint32_t u16 = readU16(p);
+			uint32_t codepoint = 0;
+
+			if (u16 >= 0xD800 && u16 <= 0xDBFF) {
+				// High surrogate: need a low surrogate
+				if (p + 2 <= end) {
+					uint32_t low = readU16(p);
+					if (low >= 0xDC00 && low <= 0xDFFF) {
+						codepoint = 0x10000 + ((u16 - 0xD800) << 10) + (low - 0xDC00);
+					}
+					else {
+						// Invalid low surrogate -> replacement char
+						codepoint = 0xFFFD;
+					}
+				}
+				else {
+					// Truncated surrogate pair -> replacement char
+					codepoint = 0xFFFD;
+					break; // no more data
+				}
+			}
+			else if (u16 >= 0xDC00 && u16 <= 0xDFFF) {
+				// Lone low surrogate -> replacement char
+				codepoint = 0xFFFD;
+			}
+			else {
+				// Basic Multilingual Plane (BMP) codepoint
+				codepoint = u16;
+			}
+
+			// Encode codepoint to UTF-8
+			char buffer[4];
+			size_t len = 0;
+
+			if (codepoint < 0x80) {
+				buffer[0] = static_cast<char>(codepoint);
+				len = 1;
+			}
+			else if (codepoint < 0x800) {
+				buffer[0] = static_cast<char>(0xC0 | ((codepoint >> 6) & 0x1F));
+				buffer[1] = static_cast<char>(0x80 | (codepoint & 0x3F));
+				len = 2;
+			}
+			else if (codepoint < 0x10000) {
+				buffer[0] = static_cast<char>(0xE0 | ((codepoint >> 12) & 0x0F));
+				buffer[1] = static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F));
+				buffer[2] = static_cast<char>(0x80 | (codepoint & 0x3F));
+				len = 3;
+			}
+			else if (codepoint <= 0x10FFFF) {
+				buffer[0] = static_cast<char>(0xF0 | ((codepoint >> 18) & 0x07));
+				buffer[1] = static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F));
+				buffer[2] = static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F));
+				buffer[3] = static_cast<char>(0x80 | (codepoint & 0x3F));
+				len = 4;
+			}
+			else {
+				// Out of Unicode range -> replacement char
+				buffer[0] = static_cast<char>(0xEF);
+				buffer[1] = static_cast<char>(0xBF);
+				buffer[2] = static_cast<char>(0xBD);
+				len = 3;
+			}
+
+			result.append(buffer, len);
+		}
+
+		return result;
+	}
+
+	/*
+	            // ========================================================================
+            // UTF-8 Support
+            // ========================================================================
+						static inline bool isValidUTF8(const ByteSpan& data) noexcept {
+				uint32_t state = UTF8_ACCEPT;
+				uint32_t cp = 0;
+
+				for (const uint8_t* p = data.begin(); p != data.end(); ++p) {
+					uint32_t newState = decode(&state, &cp, *p);
+					if (newState == UTF8_REJECT) {
+						return false;
+					}
+				}
+
+				return state == UTF8_ACCEPT;
+			}
+
+            inline bool readUTF8String(uint8_t delim, ByteSpan& out) noexcept {
+                const uint8_t* start = mData.begin();
+                const uint8_t* end = mData.end();
+
+                const uint8_t* found = static_cast<const uint8_t*>(
+                    std::memchr(start, delim, end - start));
+
+                if (!found) {
+                    out = mData;
+                    mData.advanceToEnd();
+                }
+                else {
+                    out = ByteSpan::fromPointers(start, found);
+                    mData.resetStart(found + 1);
+                }
+
+                return isValidUTF8(out);
+            }
+
+            inline bool readUTF8String(size_t length, ByteSpan& out) noexcept {
+                if (mData.size() < length) return false;
+
+                out = mData.subSpan(0, length);
+                mData.advance(length);
+
+                return isValidUTF8(out);
+            }
+	*/
+} // namespace waavs
+
+

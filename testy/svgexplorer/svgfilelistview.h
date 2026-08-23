@@ -78,24 +78,23 @@ namespace waavs {
             }
         }
 
-        void drawBackground(IRenderSVG* ctx) override 
+        void drawBackground(IDrawGraphics* ctx) override 
         {
             WGRectD fr = frame();
             ctx->strokeWidth(3);
 
             BLPath apath;
-            //WGRectD rect(0, 0, fr.w, fr.h);
             apath.add_rect(0,0,fr.w,fr.h);
 
             if (isSelected())
-                ctx->stroke(&fBackgroundBorderSelected);
+                ctx->strokePaintServer(&fBackgroundBorderSelected);
             else
-                ctx->stroke(&fBackgroundBorderNormal);
+                ctx->strokePaintServer(&fBackgroundBorderNormal);
 
             ctx->strokeShape(apath);
         }
 
-        void drawForeground(IRenderSVG* ctx) override
+        void drawForeground(IDrawGraphics* ctx) override
         {
             // Draw border around file icon
             BLPath rpath;
@@ -119,7 +118,7 @@ namespace waavs {
         }
 
         
-        void drawSelf(IRenderSVG* ctx)
+        void drawSelf(IDrawGraphics* ctx)
         {
             fDocIcon.draw(ctx);
         }
@@ -400,13 +399,13 @@ namespace waavs {
         {
         }
 
-        void drawBackground(IRenderSVG* ctx) override
+        void drawBackground(IDrawGraphics* ctx) override
         {
             ctx->background(BLRgba32(0xffffffff));
             ctx->clearToBackground();
         }
 
-        void drawForeground(IRenderSVG* ctx) override
+        void drawForeground(IDrawGraphics* ctx) override
         {
             ctx->strokeWidth(4);
             BLPath apath;
@@ -423,7 +422,7 @@ namespace waavs {
             //}
         }
 
-        void drawSelf(IRenderSVG* ctx)
+        void drawSelf(IDrawGraphics* ctx)
         {
             ctx->resetFont();
 
@@ -438,7 +437,7 @@ namespace waavs {
 
         }
 
-        void draw(IRenderSVG* ctx) override
+        void draw(IDrawGraphics* ctx) override
         {
             SVGCachedView::draw(ctx);
         }

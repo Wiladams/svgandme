@@ -69,12 +69,12 @@ namespace waavs {
     // offset == 0
     // color == black
     // opacity == 1.0
-    struct SVGStopNode : public SVGObject
+    struct SVGStopNode //: public SVGObject
     {
         double fOffset = 0;
         BLRgba32 fColor{};  // default black
 
-        SVGStopNode() :SVGObject() 
+        SVGStopNode() //:SVGObject() 
         {
             fColor = BLRgba32(0xFF000000u);
         }
@@ -119,7 +119,7 @@ namespace waavs {
             // Now, try to read a color value
             SVGColor sColor(svgattr::stop_color(), svgattr::stop_opacity());
 
-            if (sColor.loadFromAttributes(attrs))
+            if (sColor.loadFromAttributes(attrs, groot))
             {
                 if (sColor.isColor())
                     fColor.value = Pixel_ARGB32_from_ColorSRGB(sColor.value());
@@ -128,10 +128,10 @@ namespace waavs {
             //    fColor.value = 0xFF000000u;
         }
         
-        void bindToContext(IRenderSVG*, IAmGroot*) noexcept override
-        {
-            // nothing to see here, part of SVGObject abstract
-        }
+        //void bindToContext(IDrawGraphics*, IAmGroot*) noexcept override
+        //{
+            // nothing to see here
+        //}
     };
     
     //============================================================
@@ -144,7 +144,7 @@ namespace waavs {
 
     protected:
         // Used for gradient construction
-        IRenderSVG* fBuildCtx = nullptr;
+        IDrawGraphics* fBuildCtx = nullptr;
         IAmGroot* fBuildGroot = nullptr;
         double fBuildDpi = 96.0;
         WGRectD fBuildViewport{};
@@ -192,7 +192,7 @@ namespace waavs {
 
     protected:
 
-        void beginGradientBuild(IRenderSVG* ctx, IAmGroot* groot) noexcept
+        void beginGradientBuild(IDrawGraphics* ctx, IAmGroot* groot) noexcept
         {
             fBuildCtx = ctx;
             fBuildGroot = groot;
@@ -288,7 +288,7 @@ namespace waavs {
         }
 
 
-        bool buildCommonGradient(IRenderSVG* ctx, IAmGroot* groot, BLGradient& grad) noexcept
+        bool buildCommonGradient(IDrawGraphics* ctx, IAmGroot* groot, BLGradient& grad) noexcept
         {
             beginGradientBuild(ctx, groot);
 
@@ -318,7 +318,7 @@ namespace waavs {
         // It's like a bindToContext essentially, but bindToContext is
         // only called as part of a drawing chain.
 
-        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        const BLVar getVariant(IDrawGraphics* ctx, IAmGroot* groot) noexcept override
         {
             BLGradient grad{};
 

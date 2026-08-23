@@ -3,18 +3,19 @@
 
 #include <memory>
 #include <vector>
-//#include <cstdint>  // uint8_t, etc
-//#include <cstddef>  // nullptr_t, ptrdiff_t, size_t
-//#include <list>
+
 
 #include "maths.h"
 
 #include "svgstructuretypes.h"
 #include "svgcolors.h"
 
+//#include "svg_attribute_clip.h"
 #include "svg_attribute_fill.h"
+#include "svg_attribute_filter.h"
 #include "svg_attribute_font.h"
 #include "svg_attribute_marker.h"
+#include "svg_attribute_mask.h"
 #include "svg_attribute_paintorder.h"
 #include "svg_attribute_stroke.h"
 #include "svg_attribute_text.h"
@@ -30,9 +31,9 @@ namespace waavs
     struct SVGPatternExtendMode : public SVGVisualProperty 
     {
         static void registerFactory() {
-            registerSVGAttribute(svgattr::extendMode(), [](const XmlAttributeCollection& attrs) {
+            registerSVGAttribute(svgattr::extendMode(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {
                 auto node = std::make_shared<SVGPatternExtendMode>(nullptr);
-                node->loadFromAttributes(attrs);
+                node->loadFromAttributes(attrs, groot);
                 return node;
                 });
         }
@@ -79,9 +80,9 @@ namespace waavs
     struct SVGOpacity : public SVGVisualProperty 
     {
         static void registerFactory() {
-            registerSVGAttribute(svgattr::opacity(), [](const XmlAttributeCollection& attrs) {
+            registerSVGAttribute(svgattr::opacity(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {
                 auto node = std::make_shared<SVGOpacity>();
-            node->loadFromAttributes(attrs);
+            node->loadFromAttributes(attrs, groot);
             return node;
                 });
         }
@@ -122,9 +123,9 @@ namespace waavs
     struct SVGStrokeOpacity : public SVGOpacity
     {
         static void registerFactory() {
-            registerSVGAttribute(svgattr::stroke_opacity(), [](const XmlAttributeCollection& attrs) {
+            registerSVGAttribute(svgattr::stroke_opacity(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {
                 auto node = std::make_shared<SVGStrokeOpacity>(); 
-                node->loadFromAttributes(attrs);
+                node->loadFromAttributes(attrs, groot);
                 return node; 
                 });
 
@@ -132,7 +133,7 @@ namespace waavs
 
         SVGStrokeOpacity() :SVGOpacity() { setName(svgattr::stroke_opacity()); }
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             ctx->strokeOpacity(fValue);
         }
@@ -142,92 +143,18 @@ namespace waavs
 }
 
 
-namespace waavs {
-    //======================================================
-    // SVGClipAttribute
-    // This is the attribute that can be connected to some
-    // shape that's being drawn.  
-    //======================================================
-    struct SVGClipPathAttribute : public SVGVisualProperty
-    {
-        static void registerFactory()
-        {
-            registerSVGAttribute(svgattr::clip_path(), [](const XmlAttributeCollection& attrs) {
-                auto node = std::make_shared<SVGClipPathAttribute>(nullptr);
-                node->loadFromAttributes(attrs);
 
-                return node;
-                });
-
-        }
-
-
-        std::shared_ptr<IViewable> fClipNode{ nullptr };
-        BLVar fClipVar;
-        
-        
-        SVGClipPathAttribute(IAmGroot* groot) 
-            : SVGVisualProperty(groot) 
-        { setName(svgattr::clip_path()); }
-
-        
-        bool loadFromUrl(IRenderSVG *ctx, IAmGroot* groot, const ByteSpan& inChunk)
-        {
-            if (nullptr == groot)
-                return false;
-
-            fClipNode = groot->findNodeByUrl(inChunk);
-
-            if (fClipNode == nullptr) {
-                set(false);
-                return false;
-            }
-
-            // pull out the color value
-            // BUGBUG - this will not always be the case
-            // as what we point to might be a gradient or pattern
-            if (fClipNode->needsBinding())
-                fClipNode->bindToContext(ctx, groot);
-
-            set(true);
-
-            return true;
-        }
-
-        
-        // Let's get a connection to our referenced thing
-        void bindToContext(IRenderSVG *ctx, IAmGroot* groot) noexcept override
-        {
-            ByteSpan str = rawValue();
-
-            // Just load the referenced node at this point
-            //if (bspan_starts_with(str, "url("))
-            Invocation invoc{};
-            bool success = readInvocation(str, invoc);
-            if (success && invoc.nameKey == svgfunc::url())
-            {
-                loadFromUrl(ctx, groot, str);
-            }
-
-            setNeedsBinding(false);
-        }
-        
-        bool loadSelfFromChunk(const ByteSpan& ) override
-        {
-            setNeedsBinding(true);
-            set(true);
-            
-            return true;
-        }
-    };
-}
     
 namespace waavs {
     
     struct SVGVectorEffectAttribute : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute(svgattr::vector_effect(), [](const XmlAttributeCollection& attrs) {auto node = std::make_shared<SVGVectorEffectAttribute>(nullptr); node->loadFromAttributes(attrs);  return node; });
+            registerSVGAttribute(svgattr::vector_effect(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) 
+                {
+                    auto node = std::make_shared<SVGVectorEffectAttribute>(nullptr); 
+                    node->loadFromAttributes(attrs, groot);  
+                    return node; });
         }
 
         VectorEffectKind fEffectKind{ VECTOR_EFFECT_NONE };
@@ -248,7 +175,7 @@ namespace waavs {
             return success;
         }
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             if (VECTOR_EFFECT_NON_SCALING_STROKE == fEffectKind)
             {
@@ -270,9 +197,10 @@ namespace waavs
     {
         static void registerFactory()
         {
-            registerSVGAttribute(svgattr::stroke_dasharray(), [](const XmlAttributeCollection& attrs) {
+            registerSVGAttribute(svgattr::stroke_dasharray(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) 
+                {
                 auto node = std::make_shared<SVGStrokeDashArray>();
-                node->loadFromAttributes(attrs);
+                node->loadFromAttributes(attrs, groot);
                 return node;
                 });
         }
@@ -286,7 +214,7 @@ namespace waavs
             setName(svgattr::stroke_dasharray());
         }
 
-        bool loadFromAttributes(const XmlAttributeCollection& attrs) override
+        bool loadFromAttributes(const XmlAttributeCollection& attrs, IAmGroot* groot) override
         {
             // Get the dash array and offset if they exist
             ByteSpan dashArrayAttr{};
@@ -320,7 +248,7 @@ namespace waavs
             return true;
         }
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             (void)groot;
 
@@ -390,7 +318,7 @@ namespace waavs
             return true;
         }
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             if (ctx == nullptr)
                 return;

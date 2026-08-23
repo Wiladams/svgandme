@@ -37,7 +37,7 @@ namespace waavs
             //isNone = false;
         }
 
-        const BLVar getVariant(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        const BLVar getVariant(IDrawGraphics* ctx, IAmGroot* groot) noexcept override
         {
             //if (isNone)
             //    return BLVar::null();

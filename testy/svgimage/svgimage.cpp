@@ -11,9 +11,9 @@
 
 #include <filesystem>
 
-#include "mappedfile.h"
+#include "app_mappedfile.h"
 #include "svg.h"
-#include "viewport.h"
+#include "svg_viewport.h"
 #include "svgb2ddriver.h"
 
 

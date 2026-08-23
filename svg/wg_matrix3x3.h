@@ -281,7 +281,7 @@ namespace waavs {
         // ------------------------------------------------------------------------
 
         WG_NODISCARD
-            INLINE bool equals(const WGMatrix3x3& other) const noexcept {
+        INLINE bool equals(const WGMatrix3x3& other) const noexcept {
             return dbl_eq(m00, other.m00) &&
                 dbl_eq(m01, other.m01) &&
                 dbl_eq(m02, other.m02) &&

@@ -149,7 +149,7 @@ namespace waavs {
 		//	targetElement	IDREF	#IMPLIED
 
 		// Read in all the attributes for the animation
-		void fixupSelfStyleAttributes(IRenderSVG*, IAmGroot*) override
+		void fixupSelfStyleAttributes(IDrawGraphics*, IAmGroot*) override
 		{
 			getEnumValue(SVGAnimFill, getAttribute("fill"), (uint32_t&)fAnimFill);
 			getEnumValue(SVGAnimRestart, getAttribute("restart"), (uint32_t&)fAnimRestart);

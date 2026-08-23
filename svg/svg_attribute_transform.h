@@ -43,7 +43,7 @@ namespace waavs
             bspan_skip_spaces(body);
 
             if (body && *body == ',') {
-                body++;
+                ++body;
                 bspan_skip_spaces(body);
             }
 
@@ -204,8 +204,10 @@ namespace waavs {
     struct SVGTransform : public SVGVisualProperty
     {
         static void registerFactory() {
-            registerSVGAttribute(svgattr::transform(), [](const XmlAttributeCollection& attrs)
-                {auto node = std::make_shared<SVGTransform>(); node->loadFromAttributes(attrs);  return node; });
+            registerSVGAttribute(svgattr::transform(), [](const XmlAttributeCollection& attrs, IAmGroot* groot) {
+                auto node = std::make_shared<SVGTransform>(); 
+                node->loadFromAttributes(attrs, groot);
+                return node; });
         }
 
         WGMatrix3x3 fMatrix = WGMatrix3x3::makeIdentity();
@@ -233,7 +235,7 @@ namespace waavs {
             return true;
         }
 
-        void applySelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void applySelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             //if ((fMatrix.type() != BLTransformType::BL_TRANSFORM_TYPE_INVALID) &&
             //    (fMatrix.type() != BLTransformType::BL_TRANSFORM_TYPE_IDENTITY))

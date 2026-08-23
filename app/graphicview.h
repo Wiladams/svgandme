@@ -85,14 +85,14 @@ namespace waavs {
 
         // This is meant to be rendered without any transformation applied
         // except translation based on our frame offset
-        virtual void drawBackground(IRenderSVG* ctx){}
+        virtual void drawBackground(IDrawGraphics* ctx){}
 
         // This is where the content should be drawn
-        virtual void drawSelf(IRenderSVG* ctx){}
+        virtual void drawSelf(IDrawGraphics* ctx){}
 
-        virtual void drawForeground(IRenderSVG* ctx){}
+        virtual void drawForeground(IDrawGraphics* ctx){}
 
-        virtual void draw(IRenderSVG* ctx)
+        virtual void draw(IDrawGraphics* ctx)
         {
             WGRectD fr = frame();
 
@@ -170,7 +170,7 @@ namespace waavs {
         }
 
 
-        void draw(IRenderSVG* ctx) override
+        void draw(IDrawGraphics* ctx) override
         {
             if (needsRedraw())
             {

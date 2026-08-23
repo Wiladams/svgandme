@@ -5,17 +5,20 @@
 namespace waavs
 {
     struct IAmGroot;            // forward declaration
-    struct IRenderSVG;
-//    struct AnimationProgram; // forward declaration
-//    class AnimationValueContext;
+    struct IDrawGraphics;
+    struct FilterProgramStream;
 
-    // Base class of many things.  This is just to ensure a virtual destructor
-    // and binding behavior.
-    // BUGBUG - I'm not sure binding needs to be represented universally at this
-    // level.  I think having it at the IViewable level might be ok.
-    // Having the ability to call: getVariant, is still useful, because both
-    // attributes, and elements can produce paint variants, so that's still good.
-    //
+
+    //    struct AnimationProgram; // forward declaration
+    //    class AnimationValueContext;
+
+        // Base class of many things.  This is just to ensure a virtual destructor
+        // and binding behavior.
+        // BUGBUG - I'm not sure binding needs to be represented universally at this
+        // level.  I think having it at the IViewable level might be ok.
+        // Having the ability to call: getVariant, is still useful, because both
+        // attributes, and elements can produce paint variants, so that's still good.
+        //
     struct IBindToContext
     {
     protected:
@@ -26,7 +29,8 @@ namespace waavs
 
         bool needsBinding() const noexcept { return fNeedsBinding; }
         void setNeedsBinding(bool needsIt) noexcept { fNeedsBinding = needsIt; }
-        virtual void bindToContext(IRenderSVG*, IAmGroot*) noexcept = 0;
+
+        virtual void bindToContext(IDrawGraphics*, IAmGroot*) noexcept = 0;
 
     };
 
@@ -40,10 +44,19 @@ namespace waavs
     {
         virtual ~IServePaint() = default;
 
-        virtual const BLVar getVariant(IRenderSVG*, IAmGroot*) noexcept = 0;
+        virtual const BLVar getVariant(IDrawGraphics*, IAmGroot*) noexcept = 0;
     };
 
 
+
+
+}
+
+namespace waavs
+{
+    // BUGBUG - It's unclear if there is any value to have
+    // this base class any longer.  I don't think anything depends
+    // on it.
     struct SVGObject : public IBindToContext
     {
     public:
@@ -59,7 +72,6 @@ namespace waavs
         virtual ~SVGObject() = default;
 
     };
-
 
 }
 

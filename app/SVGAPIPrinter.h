@@ -6,7 +6,7 @@
 #include "fonthandler.h"
 #include "svgenums.h"
 #include "imanagesvgstate.h"
-#include "irendersvg.h"
+#include "graphics_draw.h"
 #include "pathcmdprinter.h"
 #include "b2dpath.h"
 
@@ -15,7 +15,7 @@ namespace waavs
 
     // A specialization of state management, connected to a BLContext
     // This is used when rendering a tree of SVG elements
-    struct SVGAPIPrinter : public IRenderSVG 
+    struct SVGAPIPrinter : public IDrawGraphics
     {
         int fStyleCounter{ 1 };
 

@@ -21,11 +21,11 @@ namespace waavs
 
     struct PathPainter
     {
-        IRenderSVG* fCtx{};
+        IDrawGraphics* fCtx{};
         const BLPath& fFillPath;
         const BLPath* fStrokePathOpt{ nullptr };
 
-        PathPainter(IRenderSVG* ctx, const BLPath& fillPath, const BLPath* strokeOpt) noexcept
+        PathPainter(IDrawGraphics* ctx, const BLPath& fillPath, const BLPath* strokeOpt) noexcept
             : fCtx(ctx), fFillPath(fillPath), fStrokePathOpt(strokeOpt) {
         }
 
@@ -47,7 +47,7 @@ namespace waavs
     struct MarkersPainter
     {
         ISVGElement* fOwner{ nullptr };
-        IRenderSVG* fCtx{ nullptr };
+        IDrawGraphics* fCtx{ nullptr };
         IAmGroot* fGroot{ nullptr };
         const PathProgram* fProg{nullptr};
 
@@ -145,7 +145,7 @@ namespace waavs
             return fFillPath;
         }
 
-        bool hasDashing(IRenderSVG* ctx) const noexcept
+        bool hasDashing(IDrawGraphics* ctx) const noexcept
         {
             if (ctx->state().hasDashing()) { return true;}
 
@@ -166,7 +166,7 @@ namespace waavs
         // Get the path used for stroking. Do a lazy evaluation here 
         // so we only compute a dashed path if needed.
         // Otherwise, just use the fill path for stroking.
-        const BLPath & getStrokePath(IRenderSVG* ctx, IAmGroot* groot) const noexcept
+        const BLPath & getStrokePath(IDrawGraphics* ctx, IAmGroot* groot) const noexcept
         {
             (void)groot;
 
@@ -234,7 +234,7 @@ namespace waavs
            return bbox;
        }
         
-        const WGRectD getObjectBoundingBox(IRenderSVG* ctx, IAmGroot* groot) noexcept override
+        const WGRectD getObjectBoundingBox(IDrawGraphics* ctx, IAmGroot* groot) noexcept override
         {
             bindToContext(ctx, groot);
 
@@ -296,13 +296,13 @@ namespace waavs
         // we might have changed attributes such as dash-array which affects 
         // the stroke path.
         // 
-        void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void bindSelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             // Invalidate the geometry if we're re-binding
             invalidateGeometry();
         }
         
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void drawSelf(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             PaintOrderProgram<uint8_t> prog(ctx->state().getPaintOrder());
 
@@ -386,7 +386,7 @@ namespace waavs {
             loadDocLineState(fDocState, fAttributes);
         }
 
-        void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void bindSelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {	
             double dpi = groot ? groot->dpi() : 96;
 
@@ -584,7 +584,7 @@ namespace waavs {
             loadDocRectState(fDocState, fAttributes);
         }
 
-        void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void bindSelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             double dpi = groot ? groot->dpi() : 96.0;
 
@@ -701,7 +701,7 @@ namespace waavs {
 
         }
 
-        void bindSelfToContext(IRenderSVG *ctx, IAmGroot *groot) override
+        void bindSelfToContext(IDrawGraphics *ctx, IAmGroot *groot) override
         {
             double dpi = 96;
             double w = 1.0;
@@ -803,7 +803,7 @@ namespace waavs {
             lengthValue_parse(getAttributeByName(svgattr::ry()), fRy);
         }
 
-        void bindSelfToContext(IRenderSVG* ctx, IAmGroot* groot) override
+        void bindSelfToContext(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             double dpi = groot ? groot->dpi() : 96;
             double w = 1.0;

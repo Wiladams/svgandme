@@ -85,14 +85,14 @@ namespace waavs {
         }
 
 
-        void bindSelfToContext(IRenderSVG *ctx, IAmGroot* groot) override
+        void bindSelfToContext(IDrawGraphics *ctx, IAmGroot* groot) override
         {
             auto node = getSelectedNode();
             if (node)
                 node->bindToContext(ctx, groot);
         }
 
-        void drawSelf(IRenderSVG* ctx, IAmGroot* groot) override
+        void drawSelf(IDrawGraphics* ctx, IAmGroot* groot) override
         {
             auto node = getSelectedNode();
             if (node && node->isVisible()) {
