@@ -50,9 +50,6 @@
     <ClInclude Include="ucd_blocks_parser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="test_unicode_blocks.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="unicode_database_writer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -68,17 +65,95 @@
     <ClInclude Include="ucd_scripts_parser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="test_core.h">
-      <Filter>Source Files</Filter>
+    <ClInclude Include="unicode_value_table8_data.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="test_unicode_scripts.h">
-      <Filter>Source Files</Filter>
+    <ClInclude Include="unicode_value_page_pool_builder8.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="test_read_value_aliases.h">
-      <Filter>Source Files</Filter>
+    <ClInclude Include="unicode_value_table8_builder.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="test_database_write.h">
-      <Filter>Source Files</Filter>
+    <ClInclude Include="unicode_value_table8.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ucd_general_category_parser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="unicode_general_category.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="unicode_combining_class.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ucd_combining_class_parser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="unicode_decomposition_data.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="unicode_decomposition_page_pool_builder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="unicode_decomposition_builder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ucd_unicode_data_parser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="unicode_decomposition.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="unicode_database_generator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="unicode_canonical_decomposer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="unicode_canonical_ordering.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="unicode_normalizer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ucd_normalization_props_parser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="unicode_composition_data.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="unicode_composition_builder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="unicode_composition.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="unicode_canonical_composer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="unicode_canonical_sequence_composer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="unicode_bidi_class.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ucd_bidi_class_parser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="unicode_grapheme_cluster_break.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ucd_grapheme_cluster_break_parser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ucd_extended_pictographic_parser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="unicode_indic_conjunct_break.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ucd_indic_conjunct_break_parser.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -1,3 +1,5 @@
+// unicode_database_format.h
+
 #pragma once
 
 #include <cstddef>
@@ -5,6 +7,9 @@
 #include <type_traits>
 
 #include "unicode_coverage_data.h"
+#include "unicode_decomposition_data.h"
+#include "unicode_composition_data.h"
+#include "unicode_value_table8_data.h"
 
 
 namespace waavs
@@ -31,46 +36,51 @@ namespace waavs
 
     static constexpr uint32_t kUnicodeDatabasePoolAlignment = 64;
 
+
     // ========================================================================
     // Signature
-    //
-    // Stored literally as the four bytes:
-    //
-    //      U C D B
-    //
-    // Using a byte array avoids making the signature itself endian-dependent.
-    //
     // ========================================================================
 
-    static constexpr uint8_t kUnicodeDatabaseSignature[4] =
-    {
-        'U', 'C', 'D', 'B'
-    };
+    static constexpr uint8_t kUnicodeDatabaseSignature[4] ={'U', 'C', 'D', 'B'};
 
 
     // ========================================================================
     // Database format version
     //
-    // This version describes OUR binary database format and is independent
-    // of the version of Unicode from which the data was generated.
+    // 1.0:
+    //
+    //      coverage / blocks / scripts / binary properties
+    //
+    // 1.1:
+    //
+    //      adds generic uint8_t value tables and VALUE8 property directory
+    //
+    // 1.2:
+    //
+    //      adds direct canonical decomposition
+    //
+    // 1.3:
+    //
+    //      adds canonical composition
+    //
+    // 1.4:
+    //
+    //      adds Bidi_Class as a semantic VALUE8 property
+    //
+    // 1.5:
+    //      adds Grapheme_Cluster_Break VALUE8 property
+    // 
+    // 1.6 
+    //      adds Indic_Conjunct_Break VALUE8 property
     //
     // ========================================================================
 
     static constexpr uint16_t kUnicodeDatabaseFormatMajor = 1;
-    static constexpr uint16_t kUnicodeDatabaseFormatMinor = 0;
+    static constexpr uint16_t kUnicodeDatabaseFormatMinor = 6;
 
 
     // ========================================================================
     // Byte-order marker
-    //
-    // Version 1 databases are written little-endian.
-    //
-    // A directly mapped database should produce this value when read on a
-    // compatible host.
-    //
-    // A byte-swapped value indicates that direct interpretation is not
-    // possible without conversion.
-    //
     // ========================================================================
 
     static constexpr uint32_t kUnicodeDatabaseByteOrder = 0x01020304u;
@@ -82,6 +92,7 @@ namespace waavs
 
     using UnicodeCoverageIndex = uint32_t;
     using UnicodeStringOffset = uint32_t;
+    using UnicodeValueTable8Index = uint32_t;
 
 
     static constexpr UnicodeCoverageIndex kUnicodeCoverageIndexInvalid =
@@ -90,29 +101,38 @@ namespace waavs
     static constexpr UnicodeStringOffset kUnicodeStringOffsetInvalid =
         0xFFFFFFFFu;
 
+    static constexpr UnicodeValueTable8Index kUnicodeValueTable8IndexInvalid =
+        0xFFFFFFFFu;
+
 
     // ========================================================================
     // UnicodeDatabaseHeader
     //
     // Fixed 128-byte database header.
     //
-    // Every section offset is relative to byte zero of the database.
+    // Version 1.1 adds:
     //
-    // Section ordering is not part of the ABI.  The offsets describe the
-    // actual layout.
+    //      UnicodeValueProperty8Record[]
+    //      UnicodeValueTable8Data[]
+    //      UnicodeValueMasterPage8[]
+    //      UnicodeValuePage8[]
     //
-    // The initial writer will probably emit:
+    // Version 1.2 adds:
     //
-    //      UnicodeDatabaseHeader
-    //      UnicodeBlockRecord[]
-    //      UnicodeScriptRecord[]
-    //      UnicodePropertyRecord[]
-    //      UnicodeCoverageData[]
-    //      alignment
-    //      UnicodeMasterPage[]
-    //      alignment
-    //      UnicodeBitPage[]
-    //      string pool
+    //      UnicodeDecompositionSection
+    //
+    // The decomposition section descriptor contains the decomposition root
+    // directly and identifies the three physical pools used by that root:
+    //
+    //      UnicodeDecompositionMasterPage[]
+    //      UnicodeDecompositionPage[]
+    //      UnicodeDecompositionRecord[]
+    //
+    // The header remains exactly 128 bytes. Version 1.2 consumes one of the
+    // two uint32_t words which remained reserved in format 1.1.
+    //
+    // decompositionOffset == 0 means that this database contains no canonical
+    // decomposition data.
     //
     // ========================================================================
 
@@ -130,11 +150,6 @@ namespace waavs
 
         // --------------------------------------------------------------------
         // Unicode source version
-        //
-        // Example:
-        //
-        //      Unicode 17.0.0
-        //
         // --------------------------------------------------------------------
 
         uint16_t unicodeMajor;
@@ -204,8 +219,6 @@ namespace waavs
 
         // --------------------------------------------------------------------
         // UTF-8 string pool
-        //
-        // stringPoolSize is measured in bytes.
         // --------------------------------------------------------------------
 
         uint32_t stringPoolOffset;
@@ -213,29 +226,66 @@ namespace waavs
 
 
         // --------------------------------------------------------------------
-        // Reserved for future database sections.
+        // UnicodeValueProperty8Record[]
         //
-        // Must be zero in version 1.
+        // Directory associating semantic Unicode properties with VALUE8
+        // tables.
         // --------------------------------------------------------------------
 
-        uint32_t reserved[10];
+        uint32_t valueProperty8Offset;
+        uint32_t valueProperty8Count;
+
+
+        // --------------------------------------------------------------------
+        // UnicodeValueTable8Data[]
+        // --------------------------------------------------------------------
+
+        uint32_t valueTable8Offset;
+        uint32_t valueTable8Count;
+
+
+        // --------------------------------------------------------------------
+        // Shared UnicodeValueMasterPage8[]
+        // --------------------------------------------------------------------
+
+        uint32_t valueMasterPage8Offset;
+        uint32_t valueMasterPage8Count;
+
+
+        // --------------------------------------------------------------------
+        // Shared UnicodeValuePage8[]
+        // --------------------------------------------------------------------
+
+        uint32_t valuePage8Offset;
+        uint32_t valuePage8Count;
+
+
+        // --------------------------------------------------------------------
+        // UnicodeDecompositionSection
+        //
+        // Zero means canonical decomposition is not present.
+        //
+        // For format 1.0 and 1.1 this location was reserved and therefore
+        // must be zero.
+        // --------------------------------------------------------------------
+
+        uint32_t decompositionOffset;
+
+
+        // --------------------------------------------------------------------
+        // Canonical composition
+        //
+        // Added in format 1.3.
+        //
+        // Zero means the section is absent.
+        // --------------------------------------------------------------------
+
+        uint32_t compositionOffset;
     };
 
 
     // ========================================================================
     // UnicodeBlockRecord
-    //
-    // Persistent metadata for one Unicode block.
-    //
-    // first and last are inclusive Unicode code points.
-    //
-    // nameOffset is relative to the start of the database string pool.
-    //
-    // coverageIndex indexes UnicodeCoverageData[].
-    //
-    // Blocks.txt is naturally ordered by code point, so the generated block
-    // directory should remain sorted by first.
-    //
     // ========================================================================
 
     struct UnicodeBlockRecord
@@ -250,29 +300,6 @@ namespace waavs
 
     // ========================================================================
     // UnicodeScriptRecord
-    //
-    // Persistent metadata for one Unicode Script property value.
-    //
-    // nameOffset:
-    //
-    //      Long Unicode name:
-    //
-    //          Arabic
-    //          Latin
-    //          Telugu
-    //
-    // iso15924Offset:
-    //
-    //      ISO 15924 short identifier:
-    //
-    //          Arab
-    //          Latn
-    //          Telu
-    //
-    // coverageIndex:
-    //
-    //      Index into UnicodeCoverageData[].
-    //
     // ========================================================================
 
     struct UnicodeScriptRecord
@@ -289,12 +316,7 @@ namespace waavs
     // ========================================================================
     // UnicodePropertyRecord
     //
-    // Persistent metadata for one binary Unicode property.
-    //
-    // source identifies the source category from which unicover generated
-    // the property.  We deliberately store it as a plain integer rather than
-    // exposing a runtime enum as part of the persistent ABI.
-    //
+    // Persistent metadata for one binary SET property.
     // ========================================================================
 
     struct UnicodePropertyRecord
@@ -310,10 +332,7 @@ namespace waavs
 
 
     // ========================================================================
-    // Property source values stored in UnicodePropertyRecord::source
-    //
-    // These values are part of the database ABI.
-    //
+    // Binary property source values
     // ========================================================================
 
     enum UnicodeDatabasePropertySource : uint16_t
@@ -327,76 +346,380 @@ namespace waavs
 
 
     // ========================================================================
-    // ABI checks
+    // UnicodeValueProperty8
+    //
+    // Stable semantic identifiers for uint8-valued Unicode properties.
+    //
+    // These numeric values are part of the persistent database ABI.
+    //
+    // New properties may be appended in future database-format revisions.
+    // Existing values must never be renumbered.
+    //
     // ========================================================================
 
-    static_assert(sizeof(UnicodeDatabaseHeader) == 128,
+    enum UnicodeValueProperty8 : uint16_t
+    {
+        UnicodeValueProperty8Unknown = 0,
+
+        UnicodeValueProperty8GeneralCategory = 1,
+        UnicodeValueProperty8CanonicalCombiningClass = 2,
+        UnicodeValueProperty8BidiClass = 3,
+        UnicodeValueProperty8GraphemeClusterBreak = 4,
+        UnicodeValueProperty8IndicConjunctBreak = 5,
+
+        UnicodeValueProperty8MAX = UnicodeValueProperty8IndicConjunctBreak
+    };
+
+
+    // ========================================================================
+    // UnicodeValueProperty8Record
+    //
+    // Associates one semantic uint8-valued Unicode property with a
+    // UnicodeValueTable8Data record.
+    //
+    // property:
+    //
+    //      UnicodeValueProperty8 value.
+    //
+    // tableIndex:
+    //
+    //      Index into UnicodeValueTable8Data[].
+    //
+    // This directory avoids encoding one table index per property directly in
+    // UnicodeDatabaseHeader. Future VALUE8 properties can therefore be added
+    // without consuming additional fixed header fields.
+    //
+    // Runtime initialization can scan this small directory once and cache the
+    // important table indices.
+    //
+    // ========================================================================
+
+    struct UnicodeValueProperty8Record
+    {
+        uint16_t property;
+        uint16_t reserved;
+
+        UnicodeValueTable8Index tableIndex;
+    };
+
+
+    // ========================================================================
+    // UnicodeDecompositionSection
+    //
+    // Persistent descriptor for direct canonical decomposition.
+    //
+    // There is currently at most one canonical decomposition table in a
+    // Unicode database, so no directory or table index is necessary.
+    //
+    // The logical decomposition root is embedded directly in this descriptor:
+    //
+    //      data
+    //          |
+    //          +-> UnicodeDecompositionMasterPage[]
+    //                  |
+    //                  +-> UnicodeDecompositionPage[]
+    //                          |
+    //                          +-> UnicodeDecompositionRecord[]
+    //
+    // masterPageOffset:
+    //
+    //      Byte offset from database start to:
+    //
+    //          UnicodeDecompositionMasterPage[]
+    //
+    // pageOffset:
+    //
+    //      Byte offset from database start to:
+    //
+    //          UnicodeDecompositionPage[]
+    //
+    // recordOffset:
+    //
+    //      Byte offset from database start to:
+    //
+    //          UnicodeDecompositionRecord[]
+    //
+    // The corresponding count fields contain the number of physical records
+    // in each array.
+    //
+    // All offsets are zero when their corresponding count is zero.
+    //
+    // reserved must be zero.
+    //
+    // ========================================================================
+
+    struct UnicodeDecompositionSection
+    {
+        UnicodeDecompositionData data;
+
+        uint32_t masterPageOffset;
+        uint32_t masterPageCount;
+
+        uint32_t pageOffset;
+        uint32_t pageCount;
+
+        uint32_t recordOffset;
+        uint32_t recordCount;
+
+        uint32_t reserved;
+    };
+
+    // ========================================================================
+// UnicodeCompositionSection
+//
+// Persistent canonical composition section.
+//
+// recordOffset:
+//
+//      Absolute database offset of UnicodeCompositionRecord[].
+//
+// recordCount:
+//
+//      Number of records.
+//
+// Records are strictly ordered lexicographically by:
+//
+//      first
+//      second
+//
+// Hangul composition is deliberately absent and remains algorithmic.
+// ========================================================================
+
+    struct UnicodeCompositionSection
+    {
+        uint32_t recordOffset;
+        uint32_t recordCount;
+
+        uint32_t reserved[2];
+    };
+
+
+    static_assert(
+        sizeof(UnicodeCompositionSection) == 16,
+        "UnicodeCompositionSection must be exactly 16 bytes");
+
+    static_assert(
+        offsetof(UnicodeCompositionSection, recordOffset) == 0,
+        "UnicodeCompositionSection recordOffset must begin at byte offset 0");
+
+    static_assert(
+        offsetof(UnicodeCompositionSection, recordCount) == 4,
+        "UnicodeCompositionSection recordCount must begin at byte offset 4");
+
+    static_assert(
+        offsetof(UnicodeCompositionSection, reserved) == 8,
+        "UnicodeCompositionSection reserved must begin at byte offset 8");
+
+    static_assert(
+        std::is_trivially_copyable<UnicodeCompositionSection>::value,
+        "UnicodeCompositionSection must be trivially copyable");
+
+    static_assert(
+        std::is_standard_layout<UnicodeCompositionSection>::value,
+        "UnicodeCompositionSection must have standard layout");
+
+
+    // ========================================================================
+    // ABI checks - header
+    // ========================================================================
+
+    static_assert(
+        sizeof(UnicodeDatabaseHeader) == 128,
         "UnicodeDatabaseHeader must be exactly 128 bytes");
 
-    static_assert(offsetof(UnicodeDatabaseHeader, signature) == 0,
+
+    static_assert(
+        offsetof(UnicodeDatabaseHeader, signature) == 0,
         "UnicodeDatabaseHeader signature must begin at byte offset 0");
 
-    static_assert(offsetof(UnicodeDatabaseHeader, headerSize) == 16,
+    static_assert(
+        offsetof(UnicodeDatabaseHeader, headerSize) == 16,
         "UnicodeDatabaseHeader headerSize must begin at byte offset 16");
 
-    static_assert(offsetof(UnicodeDatabaseHeader, coverageOffset) == 32,
+    static_assert(
+        offsetof(UnicodeDatabaseHeader, coverageOffset) == 32,
         "UnicodeDatabaseHeader coverageOffset must begin at byte offset 32");
 
-    static_assert(offsetof(UnicodeDatabaseHeader, masterPageOffset) == 40,
+    static_assert(
+        offsetof(UnicodeDatabaseHeader, masterPageOffset) == 40,
         "UnicodeDatabaseHeader masterPageOffset must begin at byte offset 40");
 
-    static_assert(offsetof(UnicodeDatabaseHeader, bitPageOffset) == 48,
+    static_assert(
+        offsetof(UnicodeDatabaseHeader, bitPageOffset) == 48,
         "UnicodeDatabaseHeader bitPageOffset must begin at byte offset 48");
 
-    static_assert(offsetof(UnicodeDatabaseHeader, blockOffset) == 56,
+    static_assert(
+        offsetof(UnicodeDatabaseHeader, blockOffset) == 56,
         "UnicodeDatabaseHeader blockOffset must begin at byte offset 56");
 
-    static_assert(offsetof(UnicodeDatabaseHeader, scriptOffset) == 64,
+    static_assert(
+        offsetof(UnicodeDatabaseHeader, scriptOffset) == 64,
         "UnicodeDatabaseHeader scriptOffset must begin at byte offset 64");
 
-    static_assert(offsetof(UnicodeDatabaseHeader, propertyOffset) == 72,
+    static_assert(
+        offsetof(UnicodeDatabaseHeader, propertyOffset) == 72,
         "UnicodeDatabaseHeader propertyOffset must begin at byte offset 72");
 
-    static_assert(offsetof(UnicodeDatabaseHeader, stringPoolOffset) == 80,
+    static_assert(
+        offsetof(UnicodeDatabaseHeader, stringPoolOffset) == 80,
         "UnicodeDatabaseHeader stringPoolOffset must begin at byte offset 80");
 
-    static_assert(offsetof(UnicodeDatabaseHeader, reserved) == 88,
-        "UnicodeDatabaseHeader reserved area must begin at byte offset 88");
+    static_assert(
+        offsetof(UnicodeDatabaseHeader, valueProperty8Offset) == 88,
+        "UnicodeDatabaseHeader valueProperty8Offset must begin at byte offset 88");
+
+    static_assert(
+        offsetof(UnicodeDatabaseHeader, valueTable8Offset) == 96,
+        "UnicodeDatabaseHeader valueTable8Offset must begin at byte offset 96");
+
+    static_assert(
+        offsetof(UnicodeDatabaseHeader, valueMasterPage8Offset) == 104,
+        "UnicodeDatabaseHeader valueMasterPage8Offset must begin at byte offset 104");
+
+    static_assert(
+        offsetof(UnicodeDatabaseHeader, valuePage8Offset) == 112,
+        "UnicodeDatabaseHeader valuePage8Offset must begin at byte offset 112");
+
+    static_assert(
+        offsetof(UnicodeDatabaseHeader, decompositionOffset) == 120,
+        "UnicodeDatabaseHeader decompositionOffset must begin at byte offset 120");
 
 
-    static_assert(sizeof(UnicodeBlockRecord) == 16,
+
+    // ========================================================================
+    // ABI checks - ordinary records
+    // ========================================================================
+
+    static_assert(
+        sizeof(UnicodeBlockRecord) == 16,
         "UnicodeBlockRecord must be exactly 16 bytes");
 
-    static_assert(sizeof(UnicodeScriptRecord) == 16,
+    static_assert(
+        sizeof(UnicodeScriptRecord) == 16,
         "UnicodeScriptRecord must be exactly 16 bytes");
 
-    static_assert(sizeof(UnicodePropertyRecord) == 16,
+    static_assert(
+        sizeof(UnicodePropertyRecord) == 16,
         "UnicodePropertyRecord must be exactly 16 bytes");
 
+    static_assert(
+        sizeof(UnicodeValueProperty8Record) == 8,
+        "UnicodeValueProperty8Record must be exactly 8 bytes");
 
-    static_assert(std::is_trivially_copyable<UnicodeDatabaseHeader>::value,
+
+    static_assert(
+        offsetof(UnicodeValueProperty8Record, property) == 0,
+        "UnicodeValueProperty8Record property must begin at byte offset 0");
+
+    static_assert(
+        offsetof(UnicodeValueProperty8Record, tableIndex) == 4,
+        "UnicodeValueProperty8Record tableIndex must begin at byte offset 4");
+
+
+    // ========================================================================
+    // ABI checks - decomposition section
+    //
+    // UnicodeDecompositionData is 68 bytes:
+    //
+    //      34 * uint16_t
+    //
+    // The following uint32_t fields therefore begin naturally at byte 68.
+    // No implicit padding is required.
+    // ========================================================================
+
+    static_assert(
+        sizeof(UnicodeDecompositionSection) == 96,
+        "UnicodeDecompositionSection must be exactly 96 bytes");
+
+
+    static_assert(
+        offsetof(UnicodeDecompositionSection, data) == 0,
+        "UnicodeDecompositionSection data must begin at byte offset 0");
+
+    static_assert(
+        offsetof(UnicodeDecompositionSection, masterPageOffset) == 68,
+        "UnicodeDecompositionSection masterPageOffset must begin at byte offset 68");
+
+    static_assert(
+        offsetof(UnicodeDecompositionSection, masterPageCount) == 72,
+        "UnicodeDecompositionSection masterPageCount must begin at byte offset 72");
+
+    static_assert(
+        offsetof(UnicodeDecompositionSection, pageOffset) == 76,
+        "UnicodeDecompositionSection pageOffset must begin at byte offset 76");
+
+    static_assert(
+        offsetof(UnicodeDecompositionSection, pageCount) == 80,
+        "UnicodeDecompositionSection pageCount must begin at byte offset 80");
+
+    static_assert(
+        offsetof(UnicodeDecompositionSection, recordOffset) == 84,
+        "UnicodeDecompositionSection recordOffset must begin at byte offset 84");
+
+    static_assert(
+        offsetof(UnicodeDecompositionSection, recordCount) == 88,
+        "UnicodeDecompositionSection recordCount must begin at byte offset 88");
+
+    static_assert(
+        offsetof(UnicodeDecompositionSection, reserved) == 92,
+        "UnicodeDecompositionSection reserved field must begin at byte offset 92");
+
+
+    // ========================================================================
+    // Trivially copyable
+    // ========================================================================
+
+    static_assert(
+        std::is_trivially_copyable<UnicodeDatabaseHeader>::value,
         "UnicodeDatabaseHeader must be trivially copyable");
 
-    static_assert(std::is_trivially_copyable<UnicodeBlockRecord>::value,
+    static_assert(
+        std::is_trivially_copyable<UnicodeBlockRecord>::value,
         "UnicodeBlockRecord must be trivially copyable");
 
-    static_assert(std::is_trivially_copyable<UnicodeScriptRecord>::value,
+    static_assert(
+        std::is_trivially_copyable<UnicodeScriptRecord>::value,
         "UnicodeScriptRecord must be trivially copyable");
 
-    static_assert(std::is_trivially_copyable<UnicodePropertyRecord>::value,
+    static_assert(
+        std::is_trivially_copyable<UnicodePropertyRecord>::value,
         "UnicodePropertyRecord must be trivially copyable");
 
+    static_assert(
+        std::is_trivially_copyable<UnicodeValueProperty8Record>::value,
+        "UnicodeValueProperty8Record must be trivially copyable");
 
-    static_assert(std::is_standard_layout<UnicodeDatabaseHeader>::value,
+    static_assert(
+        std::is_trivially_copyable<UnicodeDecompositionSection>::value,
+        "UnicodeDecompositionSection must be trivially copyable");
+
+
+    // ========================================================================
+    // Standard layout
+    // ========================================================================
+
+    static_assert(
+        std::is_standard_layout<UnicodeDatabaseHeader>::value,
         "UnicodeDatabaseHeader must have standard layout");
 
-    static_assert(std::is_standard_layout<UnicodeBlockRecord>::value,
+    static_assert(
+        std::is_standard_layout<UnicodeBlockRecord>::value,
         "UnicodeBlockRecord must have standard layout");
 
-    static_assert(std::is_standard_layout<UnicodeScriptRecord>::value,
+    static_assert(
+        std::is_standard_layout<UnicodeScriptRecord>::value,
         "UnicodeScriptRecord must have standard layout");
 
-    static_assert(std::is_standard_layout<UnicodePropertyRecord>::value,
+    static_assert(
+        std::is_standard_layout<UnicodePropertyRecord>::value,
         "UnicodePropertyRecord must have standard layout");
+
+    static_assert(
+        std::is_standard_layout<UnicodeValueProperty8Record>::value,
+        "UnicodeValueProperty8Record must have standard layout");
+
+    static_assert(
+        std::is_standard_layout<UnicodeDecompositionSection>::value,
+        "UnicodeDecompositionSection must have standard layout");
 
 } // namespace waavs

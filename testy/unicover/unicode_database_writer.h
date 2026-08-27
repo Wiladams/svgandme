@@ -7,6 +7,7 @@
 #include <cstring>
 #include <fstream>
 #include <limits>
+#include <utility>
 #include <vector>
 
 #include "unicode_database_builder.h"
@@ -24,12 +25,28 @@ namespace waavs
         None = 0,
 
         UnsupportedByteOrder,
+
         TooManyCoverages,
         TooManyMasterPages,
         TooManyBitPages,
+
+        TooManyValueProperties8,
+        TooManyValueTables8,
+        TooManyValueMasterPages8,
+        TooManyValuePages8,
+
+        TooManyDecompositionMasterPages,
+        TooManyDecompositionPages,
+        TooManyDecompositionRecords,
+        InvalidDecomposition,
+
+        TooManyCompositionRecords,
+        InvalidComposition,
+
         TooManyBlocks,
         TooManyScripts,
         TooManyProperties,
+
         StringPoolTooLarge,
         InvalidStringPool,
         DatabaseTooLarge,
@@ -41,14 +58,11 @@ namespace waavs
 
     // ========================================================================
     // UnicodeDatabaseWriteResult
-    //
-    // databaseSize is valid after successful serialization.
     // ========================================================================
 
     struct UnicodeDatabaseWriteResult
     {
         UnicodeDatabaseWriteError error{ UnicodeDatabaseWriteError::None };
-
         uint32_t databaseSize{ 0 };
 
 
@@ -70,7 +84,8 @@ namespace waavs
     // unicodeDatabaseWriteErrorString
     // ========================================================================
 
-    static inline const char* unicodeDatabaseWriteErrorString(UnicodeDatabaseWriteError error) noexcept
+    static inline const char* unicodeDatabaseWriteErrorString(
+        UnicodeDatabaseWriteError error) noexcept
     {
         switch (error)
         {
@@ -89,6 +104,36 @@ namespace waavs
         case UnicodeDatabaseWriteError::TooManyBitPages:
             return "too many Unicode bit pages";
 
+        case UnicodeDatabaseWriteError::TooManyValueProperties8:
+            return "too many Unicode VALUE8 property records";
+
+        case UnicodeDatabaseWriteError::TooManyValueTables8:
+            return "too many Unicode VALUE8 tables";
+
+        case UnicodeDatabaseWriteError::TooManyValueMasterPages8:
+            return "too many Unicode VALUE8 master pages";
+
+        case UnicodeDatabaseWriteError::TooManyValuePages8:
+            return "too many Unicode VALUE8 pages";
+
+        case UnicodeDatabaseWriteError::TooManyDecompositionMasterPages:
+            return "too many Unicode decomposition master pages";
+
+        case UnicodeDatabaseWriteError::TooManyDecompositionPages:
+            return "too many Unicode decomposition pages";
+
+        case UnicodeDatabaseWriteError::TooManyDecompositionRecords:
+            return "too many Unicode decomposition records";
+
+        case UnicodeDatabaseWriteError::InvalidDecomposition:
+            return "invalid Unicode canonical decomposition data";
+
+        case UnicodeDatabaseWriteError::TooManyCompositionRecords:
+            return "too many Unicode composition records";
+
+        case UnicodeDatabaseWriteError::InvalidComposition:
+            return "invalid Unicode canonical composition data";
+
         case UnicodeDatabaseWriteError::TooManyBlocks:
             return "too many Unicode block records";
 
@@ -96,7 +141,7 @@ namespace waavs
             return "too many Unicode script records";
 
         case UnicodeDatabaseWriteError::TooManyProperties:
-            return "too many Unicode property records";
+            return "too many Unicode binary property records";
 
         case UnicodeDatabaseWriteError::StringPoolTooLarge:
             return "Unicode string pool exceeds database format limits";
@@ -123,27 +168,53 @@ namespace waavs
     //
     // Serializes UnicodeDatabaseBuilder into the persistent .ucdb format.
     //
-    // Version 1 format:
+    // Version 1.3 layout currently emitted:
     //
     //      UnicodeDatabaseHeader
+    //
     //      UnicodeBlockRecord[]
     //      UnicodeScriptRecord[]
     //      UnicodePropertyRecord[]
+    //      UnicodeValueProperty8Record[]
+    //
     //      UnicodeCoverageData[]
+    //      UnicodeValueTable8Data[]
     //
-    //      alignment to kUnicodeDatabasePoolAlignment
+    //      UnicodeDecompositionSection       optional
+    //      UnicodeCompositionSection         optional
     //
+    //      alignment
     //      UnicodeMasterPage[]
     //
-    //      alignment to kUnicodeDatabasePoolAlignment
-    //
+    //      alignment
     //      UnicodeBitPage[]
+    //
+    //      alignment
+    //      UnicodeValueMasterPage8[]
+    //
+    //      alignment
+    //      UnicodeValuePage8[]
+    //
+    //      alignment
+    //      UnicodeDecompositionMasterPage[]  optional
+    //
+    //      alignment
+    //      UnicodeDecompositionPage[]        optional
+    //
+    //      alignment
+    //      UnicodeDecompositionRecord[]      optional
+    //
+    //      alignment
+    //      UnicodeCompositionRecord[]        optional
     //
     //      UTF-8 string pool
     //
+    // Section ordering itself is not part of the persistent ABI. Offsets in
+    // UnicodeDatabaseHeader, UnicodeDecompositionSection, and
+    // UnicodeCompositionSection define the physical layout.
     //
-    // The page pools are already canonical and deduplicated by the builder.
-    // The writer performs no conversion or further deduplication.
+    // All page pools have already been canonicalized and deduplicated by the
+    // corresponding generator-side pool builders.
     //
     // ========================================================================
 
@@ -153,7 +224,7 @@ namespace waavs
         // ====================================================================
         // Layout
         //
-        // Calculated completely before any output buffer is allocated.
+        // Calculated completely before output storage is allocated.
         // ====================================================================
 
         struct Layout
@@ -161,10 +232,25 @@ namespace waavs
             uint32_t blockOffset{ 0 };
             uint32_t scriptOffset{ 0 };
             uint32_t propertyOffset{ 0 };
+            uint32_t valueProperty8Offset{ 0 };
+
             uint32_t coverageOffset{ 0 };
+            uint32_t valueTable8Offset{ 0 };
+
+            uint32_t decompositionOffset{ 0 };
+            uint32_t compositionOffset{ 0 };
 
             uint32_t masterPageOffset{ 0 };
             uint32_t bitPageOffset{ 0 };
+
+            uint32_t valueMasterPage8Offset{ 0 };
+            uint32_t valuePage8Offset{ 0 };
+
+            uint32_t decompositionMasterPageOffset{ 0 };
+            uint32_t decompositionPageOffset{ 0 };
+            uint32_t decompositionRecordOffset{ 0 };
+
+            uint32_t compositionRecordOffset{ 0 };
 
             uint32_t stringPoolOffset{ 0 };
 
@@ -178,12 +264,10 @@ namespace waavs
         //
         // Serialize the complete builder into an in-memory database image.
         //
-        // unicodeMajor / Minor / Patch describe the UCD source data used to
-        // construct the database.  For the current data this will be:
+        // unicodeMajor / Minor / Patch describe the Unicode source data.
         //
-        //      17, 0, 0
-        //
-        // outData is replaced only after layout validation succeeds.
+        // outData is replaced only after complete validation and serialization
+        // succeed.
         // ====================================================================
 
         static bool write(const UnicodeDatabaseBuilder& database,
@@ -194,10 +278,7 @@ namespace waavs
 
 
             // ---------------------------------------------------------------
-            // Version 1 is a canonical little-endian format.
-            //
-            // We currently write the canonical aggregate representations
-            // directly, so generation must occur on a little-endian host.
+            // Version 1 databases are canonical little-endian images.
             // ---------------------------------------------------------------
 
             if (!hostIsLittleEndian())
@@ -209,9 +290,9 @@ namespace waavs
             }
 
 
-            // ---------------------------------------------------------------
-            // Validate section counts against persistent field widths.
-            // ---------------------------------------------------------------
+            // ================================================================
+            // SET count validation
+            // ================================================================
 
             if (database.coverageCount() >=
                 static_cast<size_t>(kUnicodeCoverageIndexInvalid))
@@ -243,6 +324,120 @@ namespace waavs
             }
 
 
+            // ================================================================
+            // VALUE8 count validation
+            // ================================================================
+
+            if (database.valueProperty8Count() >
+                std::numeric_limits<uint32_t>::max())
+            {
+                outResult.error =
+                    UnicodeDatabaseWriteError::TooManyValueProperties8;
+
+                return false;
+            }
+
+
+            if (database.valueTable8Count() >=
+                static_cast<size_t>(kUnicodeValueTable8IndexInvalid))
+            {
+                outResult.error =
+                    UnicodeDatabaseWriteError::TooManyValueTables8;
+
+                return false;
+            }
+
+
+            if (database.valuePagePool8().masterPageCount() >
+                kUnicodeValue8MaxPoolPages)
+            {
+                outResult.error =
+                    UnicodeDatabaseWriteError::TooManyValueMasterPages8;
+
+                return false;
+            }
+
+
+            if (database.valuePagePool8().valuePageCount() >
+                kUnicodeValue8MaxPoolPages)
+            {
+                outResult.error =
+                    UnicodeDatabaseWriteError::TooManyValuePages8;
+
+                return false;
+            }
+
+
+            // ================================================================
+            // Canonical-decomposition validation
+            // ================================================================
+
+            if (database.decompositionPagePool().masterPageCount() >
+                kUnicodeDecompositionMaxPoolPages)
+            {
+                outResult.error =
+                    UnicodeDatabaseWriteError::TooManyDecompositionMasterPages;
+
+                return false;
+            }
+
+
+            if (database.decompositionPagePool().pageCount() >
+                kUnicodeDecompositionMaxPoolPages)
+            {
+                outResult.error =
+                    UnicodeDatabaseWriteError::TooManyDecompositionPages;
+
+                return false;
+            }
+
+
+            if (database.decompositionRecordCount() >
+                kUnicodeDecompositionMaxRecords)
+            {
+                outResult.error =
+                    UnicodeDatabaseWriteError::TooManyDecompositionRecords;
+
+                return false;
+            }
+
+
+            if (!validateDecomposition(database))
+            {
+                outResult.error =
+                    UnicodeDatabaseWriteError::InvalidDecomposition;
+
+                return false;
+            }
+
+
+            // ================================================================
+            // Canonical-composition validation
+            // ================================================================
+
+            if (database.compositionRecordCount() >
+                std::numeric_limits<uint32_t>::max())
+            {
+                outResult.error =
+                    UnicodeDatabaseWriteError::TooManyCompositionRecords;
+
+                return false;
+            }
+
+
+            if (!validateComposition(database))
+            {
+                outResult.error =
+                    UnicodeDatabaseWriteError::InvalidComposition;
+
+                return false;
+            }
+
+
+            // ================================================================
+            // Semantic directories
+            // ================================================================
+
             if (database.blockCount() >
                 std::numeric_limits<uint32_t>::max())
             {
@@ -273,6 +468,10 @@ namespace waavs
             }
 
 
+            // ================================================================
+            // String pool
+            // ================================================================
+
             if (database.stringPoolSize() >
                 std::numeric_limits<uint32_t>::max())
             {
@@ -282,10 +481,6 @@ namespace waavs
                 return false;
             }
 
-
-            // ---------------------------------------------------------------
-            // String pool offset zero must represent the empty string.
-            // ---------------------------------------------------------------
 
             if (database.stringPool().empty() ||
                 database.stringPool()[0] != 0)
@@ -297,14 +492,16 @@ namespace waavs
             }
 
 
-            // ---------------------------------------------------------------
-            // Calculate complete physical layout.
-            // ---------------------------------------------------------------
+            // ================================================================
+            // Calculate complete physical layout
+            // ================================================================
 
             Layout layout{};
 
 
-            if (!calculateLayout(database, layout))
+            if (!calculateLayout(
+                database,
+                layout))
             {
                 outResult.error =
                     UnicodeDatabaseWriteError::DatabaseTooLarge;
@@ -313,21 +510,21 @@ namespace waavs
             }
 
 
-            // ---------------------------------------------------------------
-            // Allocate the complete database in one operation.
+            // ================================================================
+            // Allocate complete database image
             //
-            // Zero initialization deliberately leaves alignment padding and
-            // any otherwise unwritten bytes deterministic.
-            // ---------------------------------------------------------------
+            // Zero initialization deliberately makes alignment padding and
+            // reserved bytes deterministic.
+            // ================================================================
 
             std::vector<uint8_t> result(
                 static_cast<size_t>(layout.databaseSize),
                 uint8_t(0));
 
 
-            // ---------------------------------------------------------------
-            // Construct header.
-            // ---------------------------------------------------------------
+            // ================================================================
+            // Header
+            // ================================================================
 
             UnicodeDatabaseHeader header{};
 
@@ -354,9 +551,6 @@ namespace waavs
             header.unicodePatch =
                 unicodePatch;
 
-            header.reserved0 =
-                0;
-
 
             header.headerSize =
                 static_cast<uint32_t>(
@@ -373,7 +567,7 @@ namespace waavs
 
 
             // ---------------------------------------------------------------
-            // Coverage records
+            // SET roots / pools
             // ---------------------------------------------------------------
 
             header.coverageOffset =
@@ -384,10 +578,6 @@ namespace waavs
                     database.coverageCount());
 
 
-            // ---------------------------------------------------------------
-            // Master-page pool
-            // ---------------------------------------------------------------
-
             header.masterPageOffset =
                 layout.masterPageOffset;
 
@@ -395,10 +585,6 @@ namespace waavs
                 static_cast<uint32_t>(
                     database.pagePool().masterPageCount());
 
-
-            // ---------------------------------------------------------------
-            // Bit-page pool
-            // ---------------------------------------------------------------
 
             header.bitPageOffset =
                 layout.bitPageOffset;
@@ -409,7 +595,7 @@ namespace waavs
 
 
             // ---------------------------------------------------------------
-            // Block directory
+            // Semantic directories
             // ---------------------------------------------------------------
 
             header.blockOffset =
@@ -420,10 +606,6 @@ namespace waavs
                     database.blockCount());
 
 
-            // ---------------------------------------------------------------
-            // Script directory
-            // ---------------------------------------------------------------
-
             header.scriptOffset =
                 layout.scriptOffset;
 
@@ -431,10 +613,6 @@ namespace waavs
                 static_cast<uint32_t>(
                     database.scriptCount());
 
-
-            // ---------------------------------------------------------------
-            // Property directory
-            // ---------------------------------------------------------------
 
             header.propertyOffset =
                 layout.propertyOffset;
@@ -457,12 +635,79 @@ namespace waavs
 
 
             // ---------------------------------------------------------------
-            // reserved[] remains zero because header was value-initialized.
+            // VALUE8 property directory
             // ---------------------------------------------------------------
+
+            header.valueProperty8Offset =
+                layout.valueProperty8Offset;
+
+            header.valueProperty8Count =
+                static_cast<uint32_t>(
+                    database.valueProperty8Count());
 
 
             // ---------------------------------------------------------------
-            // Write header.
+            // VALUE8 table roots
+            // ---------------------------------------------------------------
+
+            header.valueTable8Offset =
+                layout.valueTable8Offset;
+
+            header.valueTable8Count =
+                static_cast<uint32_t>(
+                    database.valueTable8Count());
+
+
+            // ---------------------------------------------------------------
+            // VALUE8 master-page pool
+            // ---------------------------------------------------------------
+
+            header.valueMasterPage8Offset =
+                layout.valueMasterPage8Offset;
+
+            header.valueMasterPage8Count =
+                static_cast<uint32_t>(
+                    database.valuePagePool8().masterPageCount());
+
+
+            // ---------------------------------------------------------------
+            // VALUE8 leaf-page pool
+            // ---------------------------------------------------------------
+
+            header.valuePage8Offset =
+                layout.valuePage8Offset;
+
+            header.valuePage8Count =
+                static_cast<uint32_t>(
+                    database.valuePagePool8().valuePageCount());
+
+
+            // ---------------------------------------------------------------
+            // Canonical decomposition
+            //
+            // Zero means this database does not contain decomposition data.
+            // ---------------------------------------------------------------
+
+            header.decompositionOffset =
+                database.hasDecomposition()
+                ? layout.decompositionOffset
+                : 0;
+
+
+            // ---------------------------------------------------------------
+            // Canonical composition
+            //
+            // Zero means this database does not contain composition data.
+            // ---------------------------------------------------------------
+
+            header.compositionOffset =
+                database.hasComposition()
+                ? layout.compositionOffset
+                : 0;
+
+
+            // ---------------------------------------------------------------
+            // Write header
             // ---------------------------------------------------------------
 
             std::memcpy(
@@ -471,9 +716,9 @@ namespace waavs
                 sizeof(header));
 
 
-            // ---------------------------------------------------------------
-            // Write semantic directories.
-            // ---------------------------------------------------------------
+            // ================================================================
+            // Semantic directories
+            // ================================================================
 
             copyArray(
                 result,
@@ -493,9 +738,15 @@ namespace waavs
                 database.properties());
 
 
-            // ---------------------------------------------------------------
-            // Write coverage records.
-            // ---------------------------------------------------------------
+            copyArray(
+                result,
+                layout.valueProperty8Offset,
+                database.valueProperties8());
+
+
+            // ================================================================
+            // Root tables
+            // ================================================================
 
             copyArray(
                 result,
@@ -503,9 +754,82 @@ namespace waavs
                 database.coverages());
 
 
-            // ---------------------------------------------------------------
-            // Write shared page pools.
-            // ---------------------------------------------------------------
+            copyArray(
+                result,
+                layout.valueTable8Offset,
+                database.valueTables8());
+
+
+            // ================================================================
+            // Canonical-decomposition descriptor
+            // ================================================================
+
+            if (database.hasDecomposition())
+            {
+                UnicodeDecompositionSection section{};
+
+
+                section.data =
+                    database.decomposition();
+
+
+                section.masterPageOffset =
+                    layout.decompositionMasterPageOffset;
+
+                section.masterPageCount =
+                    static_cast<uint32_t>(
+                        database.decompositionPagePool().masterPageCount());
+
+
+                section.pageOffset =
+                    layout.decompositionPageOffset;
+
+                section.pageCount =
+                    static_cast<uint32_t>(
+                        database.decompositionPagePool().pageCount());
+
+
+                section.recordOffset =
+                    layout.decompositionRecordOffset;
+
+                section.recordCount =
+                    static_cast<uint32_t>(
+                        database.decompositionRecordCount());
+
+
+                std::memcpy(
+                    result.data() + layout.decompositionOffset,
+                    &section,
+                    sizeof(section));
+            }
+
+
+            // ================================================================
+            // Canonical-composition descriptor
+            // ================================================================
+
+            if (database.hasComposition())
+            {
+                UnicodeCompositionSection section{};
+
+                section.recordOffset =
+                    layout.compositionRecordOffset;
+
+                section.recordCount =
+                    static_cast<uint32_t>(
+                        database.compositionRecordCount());
+
+
+                std::memcpy(
+                    result.data() + layout.compositionOffset,
+                    &section,
+                    sizeof(section));
+            }
+
+
+            // ================================================================
+            // SET pools
+            // ================================================================
 
             copyArray(
                 result,
@@ -519,9 +843,63 @@ namespace waavs
                 database.pagePool().bitPages());
 
 
-            // ---------------------------------------------------------------
-            // Write string pool.
-            // ---------------------------------------------------------------
+            // ================================================================
+            // VALUE8 pools
+            // ================================================================
+
+            copyArray(
+                result,
+                layout.valueMasterPage8Offset,
+                database.valuePagePool8().masterPages());
+
+
+            copyArray(
+                result,
+                layout.valuePage8Offset,
+                database.valuePagePool8().valuePages());
+
+
+            // ================================================================
+            // Canonical-decomposition pools
+            // ================================================================
+
+            if (database.hasDecomposition())
+            {
+                copyArray(
+                    result,
+                    layout.decompositionMasterPageOffset,
+                    database.decompositionPagePool().masterPages());
+
+
+                copyArray(
+                    result,
+                    layout.decompositionPageOffset,
+                    database.decompositionPagePool().pages());
+
+
+                copyArray(
+                    result,
+                    layout.decompositionRecordOffset,
+                    database.decompositionRecords());
+            }
+
+
+            // ================================================================
+            // Canonical-composition records
+            // ================================================================
+
+            if (database.hasComposition())
+            {
+                copyArray(
+                    result,
+                    layout.compositionRecordOffset,
+                    database.compositionRecords());
+            }
+
+
+            // ================================================================
+            // String pool
+            // ================================================================
 
             if (!database.stringPool().empty())
             {
@@ -532,13 +910,12 @@ namespace waavs
             }
 
 
-            // ---------------------------------------------------------------
-            // Commit.
-            // ---------------------------------------------------------------
+            // ================================================================
+            // Commit
+            // ================================================================
 
             outData =
                 std::move(result);
-
 
             outResult.databaseSize =
                 layout.databaseSize;
@@ -571,8 +948,6 @@ namespace waavs
 
         // ====================================================================
         // writeFile
-        //
-        // Serialize and write directly to a .ucdb file.
         // ====================================================================
 
         static bool writeFile(const char* filename,
@@ -668,8 +1043,13 @@ namespace waavs
         // ====================================================================
         // calculateLayout
         //
-        // Perform layout calculations using uint64_t so overflow can be
-        // detected before values are narrowed into persistent uint32 fields.
+        // All calculations use uint64_t so overflow is detected before values
+        // are narrowed into persistent uint32_t fields.
+        //
+        // An absent decomposition or composition dataset consumes no storage.
+        //
+        // For decomposition pools, an empty pool has offset zero. This matches
+        // the UnicodeDecompositionSection persistent contract.
         // ====================================================================
 
         static bool calculateLayout(const UnicodeDatabaseBuilder& database,
@@ -679,9 +1059,9 @@ namespace waavs
                 sizeof(UnicodeDatabaseHeader);
 
 
-            // ---------------------------------------------------------------
-            // Blocks
-            // ---------------------------------------------------------------
+            // ================================================================
+            // Semantic directories
+            // ================================================================
 
             outLayout.blockOffset =
                 static_cast<uint32_t>(cursor);
@@ -694,10 +1074,6 @@ namespace waavs
                 return false;
             }
 
-
-            // ---------------------------------------------------------------
-            // Scripts
-            // ---------------------------------------------------------------
 
             if (!fitsUint32(cursor))
                 return false;
@@ -715,10 +1091,6 @@ namespace waavs
             }
 
 
-            // ---------------------------------------------------------------
-            // Properties
-            // ---------------------------------------------------------------
-
             if (!fitsUint32(cursor))
                 return false;
 
@@ -735,9 +1107,25 @@ namespace waavs
             }
 
 
-            // ---------------------------------------------------------------
-            // Coverages
-            // ---------------------------------------------------------------
+            if (!fitsUint32(cursor))
+                return false;
+
+
+            outLayout.valueProperty8Offset =
+                static_cast<uint32_t>(cursor);
+
+
+            if (!advanceArray<UnicodeValueProperty8Record>(
+                cursor,
+                database.valueProperty8Count()))
+            {
+                return false;
+            }
+
+
+            // ================================================================
+            // Root records
+            // ================================================================
 
             if (!fitsUint32(cursor))
                 return false;
@@ -755,12 +1143,71 @@ namespace waavs
             }
 
 
-            // ---------------------------------------------------------------
-            // Master-page pool
-            //
-            // Its file offset is explicitly aligned even though the C++
-            // structure itself need not have 64-byte type alignment.
-            // ---------------------------------------------------------------
+            if (!fitsUint32(cursor))
+                return false;
+
+
+            outLayout.valueTable8Offset =
+                static_cast<uint32_t>(cursor);
+
+
+            if (!advanceArray<UnicodeValueTable8Data>(
+                cursor,
+                database.valueTable8Count()))
+            {
+                return false;
+            }
+
+
+            // ================================================================
+            // Canonical-decomposition descriptor
+            // ================================================================
+
+            if (database.hasDecomposition())
+            {
+                if (!fitsUint32(cursor))
+                    return false;
+
+
+                outLayout.decompositionOffset =
+                    static_cast<uint32_t>(cursor);
+
+
+                if (!advanceArray<UnicodeDecompositionSection>(
+                    cursor,
+                    1))
+                {
+                    return false;
+                }
+            }
+
+
+            // ================================================================
+            // Canonical-composition descriptor
+            // ================================================================
+
+            if (database.hasComposition())
+            {
+                if (!fitsUint32(cursor))
+                    return false;
+
+
+                outLayout.compositionOffset =
+                    static_cast<uint32_t>(cursor);
+
+
+                if (!advanceArray<UnicodeCompositionSection>(
+                    cursor,
+                    1))
+                {
+                    return false;
+                }
+            }
+
+
+            // ================================================================
+            // SET master-page pool
+            // ================================================================
 
             if (!alignCursor(
                 cursor,
@@ -786,9 +1233,9 @@ namespace waavs
             }
 
 
-            // ---------------------------------------------------------------
-            // Bit-page pool
-            // ---------------------------------------------------------------
+            // ================================================================
+            // SET bit-page pool
+            // ================================================================
 
             if (!alignCursor(
                 cursor,
@@ -814,9 +1261,193 @@ namespace waavs
             }
 
 
-            // ---------------------------------------------------------------
+            // ================================================================
+            // VALUE8 master-page pool
+            // ================================================================
+
+            if (!alignCursor(
+                cursor,
+                kUnicodeDatabasePoolAlignment))
+            {
+                return false;
+            }
+
+
+            if (!fitsUint32(cursor))
+                return false;
+
+
+            outLayout.valueMasterPage8Offset =
+                static_cast<uint32_t>(cursor);
+
+
+            if (!advanceArray<UnicodeValueMasterPage8>(
+                cursor,
+                database.valuePagePool8().masterPageCount()))
+            {
+                return false;
+            }
+
+
+            // ================================================================
+            // VALUE8 leaf-page pool
+            // ================================================================
+
+            if (!alignCursor(
+                cursor,
+                kUnicodeDatabasePoolAlignment))
+            {
+                return false;
+            }
+
+
+            if (!fitsUint32(cursor))
+                return false;
+
+
+            outLayout.valuePage8Offset =
+                static_cast<uint32_t>(cursor);
+
+
+            if (!advanceArray<UnicodeValuePage8>(
+                cursor,
+                database.valuePagePool8().valuePageCount()))
+            {
+                return false;
+            }
+
+
+            // ================================================================
+            // Canonical-decomposition master-page pool
+            // ================================================================
+
+            if (database.hasDecomposition() &&
+                database.decompositionPagePool().masterPageCount() != 0)
+            {
+                if (!alignCursor(
+                    cursor,
+                    kUnicodeDatabasePoolAlignment))
+                {
+                    return false;
+                }
+
+
+                if (!fitsUint32(cursor))
+                    return false;
+
+
+                outLayout.decompositionMasterPageOffset =
+                    static_cast<uint32_t>(cursor);
+
+
+                if (!advanceArray<UnicodeDecompositionMasterPage>(
+                    cursor,
+                    database.decompositionPagePool().masterPageCount()))
+                {
+                    return false;
+                }
+            }
+
+
+            // ================================================================
+            // Canonical-decomposition leaf-page pool
+            // ================================================================
+
+            if (database.hasDecomposition() &&
+                database.decompositionPagePool().pageCount() != 0)
+            {
+                if (!alignCursor(
+                    cursor,
+                    kUnicodeDatabasePoolAlignment))
+                {
+                    return false;
+                }
+
+
+                if (!fitsUint32(cursor))
+                    return false;
+
+
+                outLayout.decompositionPageOffset =
+                    static_cast<uint32_t>(cursor);
+
+
+                if (!advanceArray<UnicodeDecompositionPage>(
+                    cursor,
+                    database.decompositionPagePool().pageCount()))
+                {
+                    return false;
+                }
+            }
+
+
+            // ================================================================
+            // Canonical-decomposition record pool
+            // ================================================================
+
+            if (database.hasDecomposition() &&
+                database.decompositionRecordCount() != 0)
+            {
+                if (!alignCursor(
+                    cursor,
+                    kUnicodeDatabasePoolAlignment))
+                {
+                    return false;
+                }
+
+
+                if (!fitsUint32(cursor))
+                    return false;
+
+
+                outLayout.decompositionRecordOffset =
+                    static_cast<uint32_t>(cursor);
+
+
+                if (!advanceArray<UnicodeDecompositionRecord>(
+                    cursor,
+                    database.decompositionRecordCount()))
+                {
+                    return false;
+                }
+            }
+
+
+            // ================================================================
+            // Canonical-composition record array
+            // ================================================================
+
+            if (database.hasComposition() &&
+                database.compositionRecordCount() != 0)
+            {
+                if (!alignCursor(
+                    cursor,
+                    kUnicodeDatabasePoolAlignment))
+                {
+                    return false;
+                }
+
+
+                if (!fitsUint32(cursor))
+                    return false;
+
+
+                outLayout.compositionRecordOffset =
+                    static_cast<uint32_t>(cursor);
+
+
+                if (!advanceArray<UnicodeCompositionRecord>(
+                    cursor,
+                    database.compositionRecordCount()))
+                {
+                    return false;
+                }
+            }
+
+
+            // ================================================================
             // String pool
-            // ---------------------------------------------------------------
+            // ================================================================
 
             if (!fitsUint32(cursor))
                 return false;
@@ -834,9 +1465,9 @@ namespace waavs
             }
 
 
-            // ---------------------------------------------------------------
+            // ================================================================
             // Final database size
-            // ---------------------------------------------------------------
+            // ================================================================
 
             if (!fitsUint32(cursor))
                 return false;
@@ -844,6 +1475,204 @@ namespace waavs
 
             outLayout.databaseSize =
                 static_cast<uint32_t>(cursor);
+
+
+            return true;
+        }
+
+
+        // ====================================================================
+        // validateDecomposition
+        //
+        // Validate the complete decomposition hierarchy before serialization.
+        //
+        // This intentionally repeats the important persistent-reference checks
+        // performed by UnicodeDatabaseBuilder::setDecomposition(). The builder
+        // exposes its page pool for generator construction, so validation here
+        // ensures later generator-side mutation cannot result in an invalid
+        // serialized image.
+        // ====================================================================
+
+        [[nodiscard]]
+        static bool validateDecomposition(
+            const UnicodeDatabaseBuilder& database) noexcept
+        {
+            const UnicodeDecompositionPagePoolBuilder& pool =
+                database.decompositionPagePool();
+
+
+            // ---------------------------------------------------------------
+            // An absent decomposition dataset must not leave orphaned
+            // decomposition storage in the database builder.
+            // ---------------------------------------------------------------
+
+            if (!database.hasDecomposition())
+            {
+                return
+                    pool.masterPageCount() == 0 &&
+                    pool.pageCount() == 0 &&
+                    database.decompositionRecordCount() == 0;
+            }
+
+
+            const size_t recordCount =
+                database.decompositionRecordCount();
+
+
+            // ---------------------------------------------------------------
+            // Validate decomposition records.
+            // ---------------------------------------------------------------
+
+            for (const UnicodeDecompositionRecord& record :
+                database.decompositionRecords())
+            {
+                if (record.first >= kUnicodeLimit)
+                    return false;
+
+
+                if (record.second != kUnicodeDecompositionSecondNone &&
+                    record.second >= kUnicodeLimit)
+                {
+                    return false;
+                }
+            }
+
+
+            // ---------------------------------------------------------------
+            // Root -> master pages.
+            // ---------------------------------------------------------------
+
+            const UnicodeDecompositionData& data =
+                database.decomposition();
+
+
+            for (uint32_t mi = 0; mi < kUnicodeMasterCount; ++mi)
+            {
+                const UnicodeDecompositionMasterPageRef ref =
+                    data.masters[mi];
+
+
+                if (ref == kUnicodeDecompositionPageEmpty)
+                    continue;
+
+
+                if (ref >= pool.masterPageCount())
+                    return false;
+            }
+
+
+            // ---------------------------------------------------------------
+            // Master pages -> leaf pages.
+            // ---------------------------------------------------------------
+
+            for (const UnicodeDecompositionMasterPage& master :
+                pool.masterPages())
+            {
+                for (uint32_t si = 0; si < kUnicodeSubsPerMaster; ++si)
+                {
+                    const UnicodeDecompositionPageRef ref =
+                        master.sub[si];
+
+
+                    if (ref == kUnicodeDecompositionPageEmpty)
+                        continue;
+
+
+                    if (ref >= pool.pageCount())
+                        return false;
+                }
+            }
+
+
+            // ---------------------------------------------------------------
+            // Leaf pages -> decomposition records.
+            // ---------------------------------------------------------------
+
+            for (const UnicodeDecompositionPage& page :
+                pool.pages())
+            {
+                for (uint32_t i = 0; i < kUnicodeSubSize; ++i)
+                {
+                    const UnicodeDecompositionRecordRef ref =
+                        page.mapping[i];
+
+
+                    if (ref == kUnicodeDecompositionRecordNone)
+                        continue;
+
+
+                    if (unicodeDecompositionRecordIndex(ref) >= recordCount)
+                        return false;
+                }
+            }
+
+
+            return true;
+        }
+
+
+        // ====================================================================
+        // validateComposition
+        //
+        // Validate the complete canonical-composition record array before
+        // serialization.
+        //
+        // This intentionally repeats the persistent invariants checked by
+        // UnicodeDatabaseBuilder::setComposition().
+        // ====================================================================
+
+        [[nodiscard]]
+        static bool validateComposition(
+            const UnicodeDatabaseBuilder& database) noexcept
+        {
+            // ---------------------------------------------------------------
+            // An absent composition dataset must not leave orphaned records.
+            // ---------------------------------------------------------------
+
+            if (!database.hasComposition())
+                return database.compositionRecordCount() == 0;
+
+
+            if (database.compositionRecordCount() == 0)
+                return false;
+
+
+            const std::vector<UnicodeCompositionRecord>& records =
+                database.compositionRecords();
+
+
+            for (size_t i = 0; i < records.size(); ++i)
+            {
+                const UnicodeCompositionRecord& record =
+                    records[i];
+
+
+                if (record.first >= kUnicodeLimit ||
+                    record.second >= kUnicodeLimit ||
+                    record.composite >= kUnicodeLimit)
+                {
+                    return false;
+                }
+
+
+                if (i == 0)
+                    continue;
+
+
+                const UnicodeCompositionRecord& previous =
+                    records[i - 1];
+
+
+                if (previous.first > record.first)
+                    return false;
+
+
+                if (previous.first == record.first &&
+                    previous.second >= record.second)
+                {
+                    return false;
+                }
+            }
 
 
             return true;
@@ -869,12 +1698,9 @@ namespace waavs
             }
 
 
-            const uint64_t bytes =
-                count64 *
-                sizeof(T);
-
-
-            return advanceBytes( cursor, bytes);
+            return advanceBytes(
+                cursor,
+                count64 * sizeof(T));
         }
 
 
@@ -884,18 +1710,22 @@ namespace waavs
 
         static bool advanceBytes(uint64_t& cursor, uint64_t bytes) noexcept
         {
-            if (bytes > static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()))
-            {
+            constexpr uint64_t maximum =
+                static_cast<uint64_t>(
+                    std::numeric_limits<uint32_t>::max());
+
+
+            if (bytes > maximum)
                 return false;
-            }
 
 
-            if (cursor > static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()) - bytes)
-            {
+            if (cursor > maximum - bytes)
                 return false;
-            }
 
-            cursor += bytes;
+
+            cursor +=
+                bytes;
+
 
             return true;
         }
@@ -914,21 +1744,27 @@ namespace waavs
 
 
             if ((alignment & (alignment - 1u)) != 0)
-            {
                 return false;
-            }
 
 
-            const uint64_t mask = static_cast<uint64_t>( alignment - 1u);
+            const uint64_t mask =
+                static_cast<uint64_t>(
+                    alignment - 1u);
 
 
-            if (cursor > static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()) - mask)
-            {
+            constexpr uint64_t maximum =
+                static_cast<uint64_t>(
+                    std::numeric_limits<uint32_t>::max());
+
+
+            if (cursor > maximum - mask)
                 return false;
-            }
 
 
-            cursor = (cursor + mask) & ~mask;
+            cursor =
+                (cursor + mask) &
+                ~mask;
+
 
             return true;
         }
@@ -938,17 +1774,21 @@ namespace waavs
         // fitsUint32
         // ====================================================================
 
+        [[nodiscard]]
         static bool fitsUint32(uint64_t value) noexcept
         {
-            return value <= static_cast<uint64_t>(std::numeric_limits<uint32_t>::max());
+            return
+                value <=
+                static_cast<uint64_t>(
+                    std::numeric_limits<uint32_t>::max());
         }
 
 
         // ====================================================================
         // copyArray
         //
-        // The layout has already been validated, so this is intentionally a
-        // simple raw copy of the persistent aggregate representation.
+        // Layout and persistent aggregate representations have already been
+        // validated, so serialization is a direct raw copy.
         // ====================================================================
 
         template <typename T>
@@ -973,9 +1813,13 @@ namespace waavs
         [[nodiscard]]
         static bool hostIsLittleEndian() noexcept
         {
-            const uint16_t value = 1;
+            const uint16_t value =
+                1;
 
-            return *reinterpret_cast<const uint8_t*>(&value) == 1;
+
+            return
+                *reinterpret_cast<const uint8_t*>(
+                    &value) == 1;
         }
     };
 
